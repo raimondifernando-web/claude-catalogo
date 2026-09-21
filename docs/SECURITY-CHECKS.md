@@ -64,3 +64,14 @@ Cambio: `skill-security-auditor` pasa a base-segura (L1) · `markitdown` como `p
 | JSON de manifiestos | 4 OK |
 | Instalación en HOME temporal desde copia local (rutas absolutas) | 3 plugins 0.2.0; `skill_security_auditor.py`, `crear-agente/SKILL.md`, `templates/pm-empresa.md` presentes; fallback `python3 -m markitdown` presente en la skill instalada |
 | Instalación desde GitHub (HOME temporal) | base-segura + metodo 0.2.0 OK; `docs/{CHEQUEO,HOSTING,RECURSOS,SECURITY-CHECKS}.md` en el marketplace; auditor instalado corre (PASS sobre `crear-agente`); raw de `docs/RECURSOS.md` responde 200 |
+
+## catálogo 0.2.1 (rubro-estudio-arquitectura) — 2026-09-21 — PASS con condición
+Cambio: skills `notebooklm` (notebooklm-py, no oficial) y `notebooklm-preparar` (solo texto) + `docs/NOTEBOOKLM-SEGURO.md` + línea OPCIONAL en `chequeo.sh`.
+| Control | Resultado |
+|---|---|
+| Revisión del código de `notebooklm-py` 0.8.2 (wheel de PyPI, sin instalar) | Hosts: solo `googleapis.com`, `accounts.google.com`, `notebooklm.google.com`, `drive.google.com` (los `github.com` son comentarios/docs). Sin telemetría externa. Cookies filtradas por dominio Google; escritura con `0o600`/`0o700`; storage en `~/.notebooklm/`. Existe modo "master token" y `login --browser-cookies` → **prohibidos por protocolo** |
+| Riesgo residual | La sesión de una cuenta Google queda en disco → mitigado por **cuenta Google dedicada obligatoria** (bloque de chequeo en el SKILL.md + protocolo). No oficial / ToS de Google: riesgo asumido por el usuario, documentado |
+| Auditor sobre las 2 skills | PASS / PASS |
+| Grep de datos/credenciales | 1 hit = ejemplo `notebooklm.<empresa>@gmail.com` del protocolo (no es un dato) |
+| Referencias al ecosistema de origen | 0 fuera de author |
+| Instalación desde GitHub (HOME temporal) | rubro 0.2.1 con 17 skills; `docs/NOTEBOOKLM-SEGURO.md` en el marketplace; `chequeo.sh` reporta `notebooklm-py` |
