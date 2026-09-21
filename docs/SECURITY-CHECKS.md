@@ -46,4 +46,4 @@ Cambio: `scripts/huerfanas.sh` + sección en `docs/CHEQUEO.md`. Sin cambios en s
 | Contenido de archivos | nunca se lee ni imprime. Los posibles secretos se detectan **por nombre** (`.env`, `*.pem`, `id_rsa*`, `*credential*`, `*password*`, `*token*`, `*secret*`, excluyendo código fuente) y se muestra solo la ruta relativa |
 | Grep de datos/credenciales del release | 0 hits reales |
 | Pruebas | Mac de Fernando (Documents/Desktop en iCloud detectados; `~/Proyectos` como carpeta extra → 1 huérfana real, `sandbox`) · HOME temporal sin nubes con 5 casos armados: documentos→nube, csv→datos, "backup viejo"→borrar, repo sin remoto→conectar, archivo de entorno→⚠️ nombre. Todos correctos |
-| Instalación desde GitHub | ver línea siguiente tras el push |
+| Instalación desde GitHub (HOME temporal) | marketplace agregado, `scripts/huerfanas.sh` presente y corre (`0 carpetas huérfanas ✓` en HOME vacío) |
