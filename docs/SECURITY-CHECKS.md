@@ -36,4 +36,4 @@ Cambio: requisitos declarados (`requisitos.md` por plugin), bloque de chequeo pr
 | Bloques de chequeo en SKILL.md | comandos de verificación idénticos a los del script; instruyen a no pedir claves por chat |
 | Hooks / MCP / settings / symlinks | ninguno / 0 |
 | Instalación en HOME temporal desde copia local (rutas absolutas) | 3 plugins 0.1.1 instalados; `requisitos.md` presente en caché; bloque de requisitos presente en skills instaladas |
-| Instalación desde GitHub | ver línea siguiente tras el push |
+| Instalación desde GitHub (HOME temporal) | base-segura 0.1.1 OK; `marketplaces/claude-catalogo/scripts/chequeo.sh` presente y corre; `raw.githubusercontent.com/.../chequeo.sh` responde |
