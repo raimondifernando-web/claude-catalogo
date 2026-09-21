@@ -18,3 +18,10 @@
 | Hooks / MCP / settings | ninguno; nada corre al instalar |
 | Claves pagas | `generate-image` (OPENROUTER_API_KEY) y `transcribe` (OPENAI_API_KEY) las lee de variables de entorno del usuario; sin clave no operan. Documentado en CHANGELOG y plugin.json |
 | Instalación en HOME temporal (local y desde GitHub) | 15 skills + 5 agentes, enabled |
+
+## metodo 0.1.0 — 2026-09-20 — PASS
+| Control | Resultado |
+|---|---|
+| Contenido | 4 skills de texto (sin scripts), 2 plantillas. Sin hooks, MCP, settings ni código ejecutable |
+| Grep de datos/credenciales y de referencias al ecosistema de origen (`Fernando|Mandamiento|ORQUESTA|Paperclip|fable`) | 0 hits fuera de author/homepage |
+| Instalación en HOME temporal desde GitHub | 4 skills, enabled |

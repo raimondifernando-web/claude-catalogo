@@ -30,6 +30,18 @@
         "arquitectura",
         "es"
       ]
+    },
+    {
+      "name": "metodo",
+      "source": "./plugins/metodo",
+      "description": "Método de trabajo (L3): /metodo:arrancar, /metodo:planear, /metodo:criticar (sin adular), /metodo:cerrar (handoff + prompt de reanudación) + 10 reglas.",
+      "version": "0.1.0",
+      "category": "productivity",
+      "tags": [
+        "l3",
+        "metodo",
+        "es"
+      ]
     }
   ]
 }
