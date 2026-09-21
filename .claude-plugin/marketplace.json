@@ -1,0 +1,15 @@
+{
+  "name": "claude-catalogo",
+  "owner": { "name": "Fernando Raimondi" },
+  "description": "Catálogo de plugins para empresas y profesionales que arrancan con Claude Code acompañados: base segura (L1), método (L3) y packs por rubro (L2). Genérico, sin datos ni credenciales.",
+  "plugins": [
+    {
+      "name": "base-segura",
+      "source": "./plugins/base-segura",
+      "description": "Base segura (L1): skills transversales + agentes básicos + plantillas de CLAUDE.md. Día 1 para cualquier empresa.",
+      "version": "0.1.0",
+      "category": "productivity",
+      "tags": ["l1", "base", "empresa", "es"]
+    }
+  ]
+}
