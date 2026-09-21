@@ -56,6 +56,6 @@ Entran al catálogo solo con un protocolo escrito, o se documentan sin incluir. 
 
 | Recurso | ★ · licencia | Para qué | Por qué "con aviso" |
 |---|---|---|---|
-| github.com/teng-lin/notebooklm-py (skill `notebooklm`) | 19k · MIT · activo | Manejar Google NotebookLM desde Claude | **No oficial** y funciona con las **cookies de sesión de una cuenta Google**. Está en `rubro-estudio-arquitectura` 0.2.1 **solo con el protocolo `docs/NOTEBOOKLM-SEGURO.md`**: cuenta Google dedicada obligatoria (si se filtra, se pierde un cuaderno, no tu Gmail), versión fija, nunca importar cookies de tu Chrome. Sin cuenta dedicada: `notebooklm-preparar` (camino manual) |
+| github.com/teng-lin/notebooklm-py (skill `notebooklm`) | 19k · MIT · activo | Manejar Google NotebookLM desde Claude | **No oficial** y funciona con las **cookies de sesión de una cuenta Google**. Está en `rubro-estudio-arquitectura` **con el protocolo `docs/NOTEBOOKLM-SEGURO.md`**: 5 reglas obligatorias (versión fija, login solo desde la herramienta, copia local, nunca leer ese archivo, saber revocar); cuenta dedicada opcional (si se filtra, se pierde un cuaderno, no tu Gmail). Sin aceptar las reglas: `notebooklm-preparar` (camino manual) |
 
 La lista se revisa con cada versión del catálogo. Si algo de acá pasa a un paquete, aparece en su `CHANGELOG.md`.

@@ -75,3 +75,6 @@ Cambio: skills `notebooklm` (notebooklm-py, no oficial) y `notebooklm-preparar` 
 | Grep de datos/credenciales | 1 hit = ejemplo `notebooklm.<empresa>@gmail.com` del protocolo (no es un dato) |
 | Referencias al ecosistema de origen | 0 fuera de author |
 | Instalación desde GitHub (HOME temporal) | rubro 0.2.1 con 17 skills; `docs/NOTEBOOKLM-SEGURO.md` en el marketplace; `chequeo.sh` reporta `notebooklm-py` |
+
+## catálogo 0.2.2 (rubro-estudio-arquitectura) — 2026-09-21 — PASS (decisión registrada)
+Cambio: protocolo `docs/NOTEBOOKLM-SEGURO.md` pasa de "cuenta Google dedicada obligatoria" a **5 reglas obligatorias + cuenta dedicada opcional**, por decisión explícita del dueño del catálogo (2026-09-21) tras la objeción de Orquesta. Fundamento: el navegador ya guarda las mismas cookies; el riesgo incremental es la segunda copia en manos de código de terceros → se controla con versión fija revisada, login solo desde la herramienta, copia local, prohibición de leer/pegar el archivo y revocación. Sin cambios de código; auditor PASS; grep 0 (salvo el ejemplo `notebooklm.<empresa>@gmail.com`).

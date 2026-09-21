@@ -8,15 +8,15 @@ sync: no
 
 ## Antes de usar esta skill — uso seguro (chequeo obligatorio)
 
-Esta skill usa **notebooklm-py**, una librería **no oficial** que entra a NotebookLM con la sesión (cookies) de una cuenta Google guardada en tu computadora. Regla de la casa: **solo con una cuenta Google dedicada** (sin Gmail en uso, sin Drive con documentos, distinta de la cuenta de la empresa). Protocolo completo: `docs/NOTEBOOKLM-SEGURO.md` del catálogo.
+Esta skill usa **notebooklm-py**, una librería **no oficial** que entra a NotebookLM con la sesión (cookies) de una cuenta Google guardada en tu computadora. Tu navegador ya guarda esas cookies; el riesgo nuevo es la segunda copia en manos de un programa ajeno. Por eso hay **5 reglas obligatorias** (versión fija `==0.8.2`, login solo desde la ventana que abre la herramienta, carpeta `~/.notebooklm/` local, nunca leer/pegar ese archivo, saber revocar) y la cuenta Google dedicada es un **refuerzo opcional**. Protocolo completo: `docs/NOTEBOOKLM-SEGURO.md` del catálogo.
 
 | Verificar | Cómo | Si falla, respondé |
 |---|---|---|
 | Instalada | `command -v notebooklm || python3 -c "import notebooklm"` | «Para esto hace falta instalar **notebooklm-py** (versión fija). Está en `docs/NOTEBOOKLM-SEGURO.md`.» |
-| Sesión sana | `notebooklm auth check` (mirar solo el estado; **nunca** imprimir ni leer archivos de `~/.notebooklm/`) | «Hay que iniciar sesión con la cuenta dedicada: `notebooklm login` (se abre una ventana).» |
-| Cuenta dedicada | Preguntar una vez: «¿La sesión de NotebookLM es con la cuenta dedicada, no con tu cuenta principal?» y anotarlo en el `CLAUDE.md` de la carpeta | Si es la principal: **no seguir**; sugerir `notebooklm logout` y usar `notebooklm-preparar` (camino manual) hasta que exista la cuenta dedicada |
+| Sesión sana | `notebooklm auth check` (mirar solo el estado; **nunca** imprimir ni leer archivos de `~/.notebooklm/`) | «Hay que iniciar sesión: `notebooklm login` (se abre una ventana).» |
+| Reglas aceptadas | Preguntar una vez: «¿Leíste las 5 reglas de NOTEBOOKLM-SEGURO.md y las aceptás?» y anotarlo en el `CLAUDE.md` de la carpeta («NotebookLM: 5 reglas aceptadas ✓ <fecha>») | Hasta entonces: `notebooklm-preparar` (camino manual) |
 
-⛔ Nunca sugerir `login --browser-cookies …` ni opciones con "master token". Si el usuario pide instalar "la última versión", recordá que se fija la versión y se revisa antes de actualizar.
+⛔ Nunca sugerir `login --browser-cookies …` ni opciones con "master token". Nunca leer ni imprimir archivos de `~/.notebooklm/`. Si el usuario pide instalar "la última versión", recordá que se fija la versión y se revisa antes de actualizar.
 Alternativa sin instalar nada: la skill `notebooklm-preparar` deja las fuentes y preguntas listas para pegar en notebooklm.google.com.
 
 # NotebookLM Automation
