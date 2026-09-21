@@ -1,6 +1,6 @@
 {
   "name": "rubro-estudio-arquitectura",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Capa L2 para estudios de arquitectura y profesionales similares (abogados, contadores, consultores): 15 skills de negocio y presentación (cotizar, propuestas, investigación de mercado, contenido, diseño web/visual) y 5 agentes (market-researcher, business-analyst, project-idea-validator, technical-writer, designer). Requiere base-segura. generate-image y transcribe son opcionales: funcionan solo si configurás tu propia clave (OpenRouter / OpenAI).",
   "author": { "name": "Fernando Raimondi" },
   "homepage": "https://github.com/raimondifernando-web/claude-catalogo",

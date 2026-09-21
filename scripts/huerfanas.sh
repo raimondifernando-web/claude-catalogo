@@ -81,13 +81,14 @@ for raiz in "${raices[@]}"; do
       estado="nada"; repo_sin_remoto "$d" && estado="repo SIN remoto (no es respaldo)"
       printf '  ❌ %-34s %6s  %s\n' "$nombre" "$tam" "$estado"
       printf '        cajón sugerido: %s → %s\n' "$cajon" "$propuesta"
-      s=$(posibles_secretos "$d")
-      if [ -n "$s" ]; then secretos=$((secretos+1)); echo "        ⚠️  posible clave fuera de lugar (solo el nombre): $(echo "$s" | sed "s|$d/||" | tr '\n' ' ')"; fi
     fi
+    # Claves fuera de lugar: se revisa SIEMPRE, también en repos y en nube (una clave en la nube sigue estando mal)
+    s=$(posibles_secretos "$d")
+    if [ -n "$s" ]; then secretos=$((secretos+1)); echo "        ⚠️  posible clave fuera de lugar (solo el nombre): $(echo "$s" | sed "s|$d/||" | tr '\n' ' ')"; fi
   done
 done
 echo
 echo "Revisadas: $revisadas carpetas."
 if [ "$huerfanas" -eq 0 ]; then echo "0 carpetas huérfanas ✓"; else echo "$huerfanas carpetas huérfanas — están en tu computadora y en ningún otro lado. Copiá esta pantalla y pegala en tu portal (fase Higiene). Vos decidís el cajón; este chequeo no mueve ni borra nada."; fi
-[ "$secretos" -gt 0 ] && echo "⚠️  $secretos carpeta(s) con archivos que parecen claves: van al gestor de contraseñas, nunca a un repo ni a la nube."
+[ "$secretos" -gt 0 ] && echo "⚠️  $secretos carpeta(s) con archivos que parecen claves (estén o no respaldadas): van al gestor de contraseñas, nunca a un repo ni a la nube."
 echo

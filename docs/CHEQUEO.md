@@ -61,7 +61,7 @@ Día 1 (fase Higiene, como línea de base) · cada 3 meses · siempre antes de s
 | ✅ en nube | Está dentro de iCloud Drive, Google Drive, OneDrive o Dropbox. Respaldado. |
 | ❌ nada | **Huérfana**: solo existe en esta computadora. Debajo va el cajón sugerido y la propuesta. |
 | ❌ repo SIN remoto | Tiene git pero no está subido a ningún lado: **no es respaldo**. |
-| ⚠️ posible clave | Un archivo con nombre de credencial (`.env`, `credentials`, `password`…). Se muestra **solo el nombre**, nunca el contenido. Va al gestor de contraseñas, no a un repo ni a la nube. |
+| ⚠️ posible clave | (Se revisa en TODAS las carpetas, también las ✅: una clave en la nube o en un repo sigue estando mal.) Un archivo con nombre de credencial (`.env`, `credentials`, `password`…). Se muestra **solo el nombre**, nunca el contenido. Va al gestor de contraseñas, no a un repo ni a la nube. |
 
 Última línea: `N carpetas huérfanas` (pegá la captura en tu portal, fase Higiene) o `0 carpetas huérfanas ✓`.
 

@@ -1,6 +1,6 @@
 {
   "name": "metodo",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Capa L3, el método de trabajo: /metodo:arrancar (leer el estado antes de tocar nada), /metodo:planear (8 preguntas antes de un plan), /metodo:criticar (abogado del diablo, sin adular), /metodo:cerrar (handoff + prompt de reanudación) y plantillas: 10 reglas del método y formato de handoff. Se activa cuando duele: la primera sesión perdida o a las 2 semanas de uso.",
   "author": { "name": "Fernando Raimondi" },
   "homepage": "https://github.com/raimondifernando-web/claude-catalogo",

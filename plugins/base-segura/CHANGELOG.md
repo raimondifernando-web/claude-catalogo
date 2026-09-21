@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.1.3 — 2026-09-21
+- Chequeo de carpetas huérfanas: el aviso ⚠️ de posibles claves ahora se revisa en **todas** las carpetas, también las que ya están en nube o en un repo (una contraseña en la nube sigue estando mal). Sin cambios en las skills.
+
 ## 0.1.2 — 2026-09-21
 - **Chequeo de carpetas huérfanas** (`scripts/huerfanas.sh`, ver `docs/CHEQUEO.md`): qué carpetas tuyas están solo en esta computadora, con el cajón sugerido. No mueve ni borra. Sin cambios en las skills.
 

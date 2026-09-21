@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.1.3 — 2026-09-21
+- Sin cambios; acompaña al catálogo 0.1.3.
+
 ## 0.1.2 — 2026-09-21
 - Sin cambios; acompaña al catálogo 0.1.2 (chequeo de carpetas huérfanas, ver `docs/CHEQUEO.md`).
 
