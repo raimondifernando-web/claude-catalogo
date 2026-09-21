@@ -49,4 +49,4 @@ Cambio: `scripts/huerfanas.sh` + sección en `docs/CHEQUEO.md`. Sin cambios en s
 | Instalación desde GitHub (HOME temporal) | marketplace agregado, `scripts/huerfanas.sh` presente y corre (`0 carpetas huérfanas ✓` en HOME vacío) |
 
 ## catálogo 0.1.3 — 2026-09-21 — PASS
-Cambio: `huerfanas.sh` revisa posibles claves (por nombre) en todas las carpetas, no solo en las huérfanas. Sigue solo lectura, sin contenido de archivos. Probado en Mac (detecta el caso real de un export de gestor de contraseñas dentro de una carpeta en iCloud) y en HOME temporal. Instalación desde GitHub: ver abajo.
+Cambio: `huerfanas.sh` revisa posibles claves (por nombre) en todas las carpetas, no solo en las huérfanas. Sigue solo lectura, sin contenido de archivos. Probado en Mac (detecta el caso real de un export de gestor de contraseñas dentro de una carpeta en iCloud) y en HOME temporal. Instalación desde GitHub (HOME temporal): OK, script 0.1.3 presente en el marketplace.
