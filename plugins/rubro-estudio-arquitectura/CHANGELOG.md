@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.1.2 — 2026-09-21
+- Sin cambios en las skills; acompaña al catálogo 0.1.2 (chequeo de carpetas huérfanas, ver `docs/CHEQUEO.md`).
+
 ## 0.1.1 — 2026-09-21
 - **`requisitos.md`** (nuevo): qué necesita cada skill. 11 de las 15 no necesitan nada extra.
 - **Aviso amable en vez de error** en `generate-image`, `transcribe`, `web-artifacts-builder` y `market-research-reports`: si falta un programa o una clave, Claude te avisa y te da la alternativa (por ejemplo, transcribir con Notas de Voz de Apple; prototipos simples en un solo archivo HTML).

@@ -37,3 +37,13 @@ Cambio: requisitos declarados (`requisitos.md` por plugin), bloque de chequeo pr
 | Hooks / MCP / settings / symlinks | ninguno / 0 |
 | Instalación en HOME temporal desde copia local (rutas absolutas) | 3 plugins 0.1.1 instalados; `requisitos.md` presente en caché; bloque de requisitos presente en skills instaladas |
 | Instalación desde GitHub (HOME temporal) | base-segura 0.1.1 OK; `marketplaces/claude-catalogo/scripts/chequeo.sh` presente y corre; `raw.githubusercontent.com/.../chequeo.sh` responde |
+
+## catálogo 0.1.2 — 2026-09-21 — PASS
+Cambio: `scripts/huerfanas.sh` + sección en `docs/CHEQUEO.md`. Sin cambios en skills.
+| Control | Resultado |
+|---|---|
+| Qué hace el script | solo lectura: `find`, `du`, `git remote`, `defaults read com.apple.finder` (preferencia de iCloud), `stat`. **No** `mv`/`rm`/`sudo`/instalación/red |
+| Contenido de archivos | nunca se lee ni imprime. Los posibles secretos se detectan **por nombre** (`.env`, `*.pem`, `id_rsa*`, `*credential*`, `*password*`, `*token*`, `*secret*`, excluyendo código fuente) y se muestra solo la ruta relativa |
+| Grep de datos/credenciales del release | 0 hits reales |
+| Pruebas | Mac de Fernando (Documents/Desktop en iCloud detectados; `~/Proyectos` como carpeta extra → 1 huérfana real, `sandbox`) · HOME temporal sin nubes con 5 casos armados: documentos→nube, csv→datos, "backup viejo"→borrar, repo sin remoto→conectar, archivo de entorno→⚠️ nombre. Todos correctos |
+| Instalación desde GitHub | ver línea siguiente tras el push |

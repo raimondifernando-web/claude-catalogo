@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.1.2 — 2026-09-21
+- Sin cambios; acompaña al catálogo 0.1.2 (chequeo de carpetas huérfanas, ver `docs/CHEQUEO.md`).
+
 ## 0.1.1 — 2026-09-21
 - **`requisitos.md`** (nuevo): confirma que este plugin no necesita nada extra. Sin cambios en las skills.
 

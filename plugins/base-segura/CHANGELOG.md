@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.1.2 — 2026-09-21
+- **Chequeo de carpetas huérfanas** (`scripts/huerfanas.sh`, ver `docs/CHEQUEO.md`): qué carpetas tuyas están solo en esta computadora, con el cajón sugerido. No mueve ni borra. Sin cambios en las skills.
+
 ## 0.1.1 — 2026-09-21
 Nada nuevo para aprender; esta versión te dice **qué necesita tu computadora** antes de que algo falle.
 - **`requisitos.md`** (nuevo, en la carpeta del plugin): qué skill necesita qué programa de fondo, qué pasa si falta y el comando exacto para Mac. 8 de las 11 skills no necesitan nada.

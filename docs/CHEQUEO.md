@@ -36,3 +36,35 @@ El detalle de qué skill necesita qué está en `plugins/<plugin>/requisitos.md`
 
 ## Windows
 Próximamente. Mientras tanto, tu consultor te pasa los pasos.
+
+---
+
+# Chequeo de carpetas huérfanas — ¿qué tenés en la compu y en ningún otro lado?
+
+Regla de la casa (5 cajones): **trabajo de Claude → repo privado · documentos → nube de la empresa · datos crudos → nube, carpeta `datos/` · copias y derivados → borrar · claves → gestor de contraseñas.**
+La regla sola no se cumple. Lo que la sostiene es este chequeo: lista lo que quedó afuera y sugiere el cajón. **Vos decidís; el script no mueve ni borra nada.**
+
+## Cómo correrlo (Mac)
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/raimondifernando-web/claude-catalogo/main/scripts/huerfanas.sh)
+```
+Sin internet (con el catálogo ya agregado): `bash ~/.claude/plugins/marketplaces/claude-catalogo/scripts/huerfanas.sh`
+Para revisar otra carpeta además de Documentos y Escritorio, agregala al final: `… huerfanas.sh ~/Trabajo`.
+
+## Cuándo
+Día 1 (fase Higiene, como línea de base) · cada 3 meses · siempre antes de sumar o dar de baja una computadora.
+
+## Cómo leerlo
+| Marca | Significa |
+|---|---|
+| ✅ repo con remoto | Está en GitHub (o similar). Respaldado con historial. |
+| ✅ en nube | Está dentro de iCloud Drive, Google Drive, OneDrive o Dropbox. Respaldado. |
+| ❌ nada | **Huérfana**: solo existe en esta computadora. Debajo va el cajón sugerido y la propuesta. |
+| ❌ repo SIN remoto | Tiene git pero no está subido a ningún lado: **no es respaldo**. |
+| ⚠️ posible clave | Un archivo con nombre de credencial (`.env`, `credentials`, `password`…). Se muestra **solo el nombre**, nunca el contenido. Va al gestor de contraseñas, no a un repo ni a la nube. |
+
+Última línea: `N carpetas huérfanas` (pegá la captura en tu portal, fase Higiene) o `0 carpetas huérfanas ✓`.
+
+## Qué revisa y qué no
+Revisa las carpetas de primer nivel de `~/Documents`, `~/Desktop`, `~/Documents/<Empresa>-Claude` y las que le pases. Detecta si Escritorio y Documentos están sincronizados con iCloud. No entra a `~/Library` ni a carpetas ocultas. El cajón es una **sugerencia** por nombre y tipo de archivos; puede equivocarse, por eso decide una persona.
+Windows: próximamente.
