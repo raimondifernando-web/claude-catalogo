@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.1.1 — 2026-09-21
+- **`requisitos.md`** (nuevo): confirma que este plugin no necesita nada extra. Sin cambios en las skills.
+
 ## 0.1.0 — 2026-09-20
 Primera versión del método (capa L3). Se activa cuando duele: la primera vez que perdés una sesión sin registro, o a las dos semanas de uso.
 - **`/metodo:arrancar`**: Claude lee tu `CLAUDE.md` y el último handoff antes de tocar nada, y te confirma el próximo paso.

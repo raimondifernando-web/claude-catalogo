@@ -7,6 +7,20 @@ source: https://github.com/microsoft/markitdown
 sync: no
 ---
 
+## Antes de usar esta skill — requisitos (chequeo automático)
+
+Esta skill necesita programas de fondo que no vienen con Claude Code. **Antes de ejecutar cualquier script, verificá con Bash** y, si falta algo, NO muestres el error de terminal: respondé con el mensaje indicado y ofrecé la alternativa.
+
+| Necesita | Cómo verificar | Si falta, respondé |
+|---|---|---|
+| Python 3 | `command -v python3` | «Para esto hace falta instalar **Python 3 (Herramientas de línea de comandos de Apple)**. Está en tu portal, fase «Herramientas de base».» |
+| markitdown | `command -v markitdown || python3 -c "import markitdown"` | «Para esto hace falta instalar **markitdown**. Está en tu portal, fase «Herramientas de base».» |
+| tesseract (solo para leer texto dentro de imágenes/escaneos) | `command -v tesseract` | «Para esto hace falta instalar **Tesseract (OCR)**. Está en tu portal, fase «Herramientas de base».» |
+
+Sin `tesseract` la skill funciona igual para PDF con texto, Word, Excel y PowerPoint; solo no lee imágenes escaneadas. Las funciones con IA (`convert_with_ai.py`) requieren además una clave `OPENAI_API_KEY` u `OPENROUTER_API_KEY` que el usuario configura por su cuenta; nunca la pidas por chat.
+
+El chequeo completo para el cliente es `bash ~/.claude/plugins/marketplaces/claude-catalogo/scripts/chequeo.sh` (ver `docs/CHEQUEO.md` del catálogo).
+
 # MarkItDown - File to Markdown Conversion
 
 ## Overview

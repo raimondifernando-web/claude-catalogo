@@ -4,6 +4,18 @@ description: Comprehensive guide for creating software diagrams using Mermaid sy
 sync: cowork
 ---
 
+## Antes de usar esta skill — requisitos (chequeo automático)
+
+Esta skill necesita programas de fondo que no vienen con Claude Code. **Antes de ejecutar cualquier script, verificá con Bash** y, si falta algo, NO muestres el error de terminal: respondé con el mensaje indicado y ofrecé la alternativa.
+
+| Necesita | Cómo verificar | Si falta, respondé |
+|---|---|---|
+| Mermaid CLI (`mmdc`) — SOLO para exportar el diagrama a PNG/SVG | `command -v mmdc` | «Para esto hace falta instalar **Mermaid CLI (requiere Node.js)**. Está en tu portal, fase «Herramientas de base».» |
+
+**Sin `mmdc` la skill funciona completa**: el diagrama se entrega como código Mermaid dentro de un bloque ```mermaid (se ve renderizado en claude.ai, Notion, GitHub y Obsidian) o como artifact HTML. Solo avisá del requisito si el usuario pide explícitamente un archivo de imagen.
+
+El chequeo completo para el cliente es `bash ~/.claude/plugins/marketplaces/claude-catalogo/scripts/chequeo.sh` (ver `docs/CHEQUEO.md` del catálogo).
+
 # Mermaid Diagramming
 
 Create professional software diagrams using Mermaid's text-based syntax. Mermaid renders diagrams from simple text definitions, making diagrams version-controllable, easy to update, and maintainable alongside code.

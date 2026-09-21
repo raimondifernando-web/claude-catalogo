@@ -4,6 +4,19 @@ description: Analyze Excel spreadsheets, create pivot tables, generate charts, a
 sync: cowork
 ---
 
+## Antes de usar esta skill — requisitos (chequeo automático)
+
+Esta skill necesita programas de fondo que no vienen con Claude Code. **Antes de ejecutar cualquier script, verificá con Bash** y, si falta algo, NO muestres el error de terminal: respondé con el mensaje indicado y ofrecé la alternativa.
+
+| Necesita | Cómo verificar | Si falta, respondé |
+|---|---|---|
+| Python 3 | `command -v python3` | «Para esto hace falta instalar **Python 3 (Herramientas de línea de comandos de Apple)**. Está en tu portal, fase «Herramientas de base».» |
+| pandas + openpyxl | `python3 -c "import pandas, openpyxl"` | «Para esto hace falta instalar **pandas y openpyxl (librerías de Python para Excel)**. Está en tu portal, fase «Herramientas de base».» |
+
+Alternativa sin instalar nada: si el archivo es chico, pedile al usuario que lo exporte a CSV y analizalo leyéndolo directo; o usá la skill `markitdown` para leer el contenido en texto.
+
+El chequeo completo para el cliente es `bash ~/.claude/plugins/marketplaces/claude-catalogo/scripts/chequeo.sh` (ver `docs/CHEQUEO.md` del catálogo).
+
 # Excel Analysis
 
 ## Quick start

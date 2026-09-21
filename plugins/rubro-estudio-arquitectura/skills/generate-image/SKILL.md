@@ -4,6 +4,20 @@ description: Generate or edit images using AI models (FLUX, Gemini). Use for gen
 sync: cowork
 ---
 
+## Antes de usar esta skill — requisitos (chequeo automático)
+
+Esta skill necesita programas de fondo que no vienen con Claude Code. **Antes de ejecutar cualquier script, verificá con Bash** y, si falta algo, NO muestres el error de terminal: respondé con el mensaje indicado y ofrecé la alternativa.
+
+| Necesita | Cómo verificar | Si falta, respondé |
+|---|---|---|
+| Python 3 | `command -v python3` | «Para esto hace falta instalar **Python 3 (Herramientas de línea de comandos de Apple)**. Está en tu portal, fase «Herramientas de base».» |
+| librería `requests` | `python3 -c "import requests"` | «Para esto hace falta instalar **requests (librería de Python)**. Está en tu portal, fase «Herramientas de base».» |
+| clave `OPENROUTER_API_KEY` (servicio pago del usuario) | `test -n "$OPENROUTER_API_KEY" || grep -qc "^OPENROUTER_API_KEY=" .env 2>/dev/null` | «Para esto hace falta instalar **una cuenta y clave de OpenRouter (ver portal, fase «Claves y servicios»)**. Está en tu portal, fase «Herramientas de base».» |
+
+Nunca pidas que peguen la clave en el chat: se configura como variable de entorno o en `.env`, y solo verificás que exista.
+
+El chequeo completo para el cliente es `bash ~/.claude/plugins/marketplaces/claude-catalogo/scripts/chequeo.sh` (ver `docs/CHEQUEO.md` del catálogo).
+
 # Generate Image
 
 Generate and edit high-quality images using OpenRouter's image generation models including FLUX.2 Pro and Gemini 3 Pro.

@@ -5,6 +5,19 @@ author: openai
 sync: no
 ---
 
+## Antes de usar esta skill — requisitos (chequeo automático)
+
+Esta skill necesita programas de fondo que no vienen con Claude Code. **Antes de ejecutar cualquier script, verificá con Bash** y, si falta algo, NO muestres el error de terminal: respondé con el mensaje indicado y ofrecé la alternativa.
+
+| Necesita | Cómo verificar | Si falta, respondé |
+|---|---|---|
+| Python 3 | `command -v python3` | «Para esto hace falta instalar **Python 3 (Herramientas de línea de comandos de Apple)**. Está en tu portal, fase «Herramientas de base».» |
+| librería `openai` | `python3 -c "import openai"` | «Para esto hace falta instalar **openai (librería de Python)**. Está en tu portal, fase «Herramientas de base».» |
+| clave `OPENAI_API_KEY` (servicio pago del usuario) | `test -n "$OPENAI_API_KEY"` | «Para esto hace falta instalar **una cuenta y clave de OpenAI (ver portal, fase «Claves y servicios»)**. Está en tu portal, fase «Herramientas de base».» |
+
+Nunca pidas que peguen la clave en el chat. Alternativa sin instalar nada: el usuario puede grabar con la app Notas de Voz de Apple, que transcribe sola, y pegar el texto.
+
+El chequeo completo para el cliente es `bash ~/.claude/plugins/marketplaces/claude-catalogo/scripts/chequeo.sh` (ver `docs/CHEQUEO.md` del catálogo).
 
 # Audio Transcribe
 

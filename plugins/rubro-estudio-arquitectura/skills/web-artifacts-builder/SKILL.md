@@ -5,6 +5,19 @@ license: Complete terms in LICENSE.txt
 sync: no
 ---
 
+## Antes de usar esta skill — requisitos (chequeo automático)
+
+Esta skill necesita programas de fondo que no vienen con Claude Code. **Antes de ejecutar cualquier script, verificá con Bash** y, si falta algo, NO muestres el error de terminal: respondé con el mensaje indicado y ofrecé la alternativa.
+
+| Necesita | Cómo verificar | Si falta, respondé |
+|---|---|---|
+| Node.js 18+ | `command -v node && node -v` | «Para esto hace falta instalar **Node.js**. Está en tu portal, fase «Herramientas de base».» |
+| pnpm o npm | `command -v pnpm || command -v npm` | «Para esto hace falta instalar **pnpm (viene con Node.js: `corepack enable`)**. Está en tu portal, fase «Herramientas de base».» |
+
+Alternativa sin instalar nada: para páginas o prototipos simples, entregá un único archivo HTML con CSS y JS inline (la skill `frontend-design` lo cubre). Usá esta skill solo cuando el usuario necesite React/Tailwind/shadcn con varios componentes.
+
+El chequeo completo para el cliente es `bash ~/.claude/plugins/marketplaces/claude-catalogo/scripts/chequeo.sh` (ver `docs/CHEQUEO.md` del catálogo).
+
 # Web Artifacts Builder
 
 To build powerful frontend claude.ai artifacts, follow these steps:

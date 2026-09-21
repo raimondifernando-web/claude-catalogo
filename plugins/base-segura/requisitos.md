@@ -1,0 +1,31 @@
+# base-segura — qué necesita tu computadora
+
+Claude Code trae el "cerebro". Algunas skills además usan programas de fondo que hay que instalar una sola vez.
+Esta tabla dice **qué skill necesita qué, qué pasa si falta y cómo instalarlo en Mac** (Windows: próximamente).
+Para saber qué te falta sin adivinar: corré el chequeo (`docs/CHEQUEO.md`).
+
+## Lo que NO necesita nada extra (8 de 11 skills)
+`copy-editing` · `doc-coauthoring` · `meeting-insights-analyzer` · `planning-with-files` · `professional-communication` ·
+`session-handoff` · `writing-clearly-and-concisely` · `skill-creator` (uso normal). Funcionan con Claude Code solo.
+
+## Lo que sí necesita algo
+
+| Skill | Necesita | Si falta | Instalar (Mac) |
+|---|---|---|---|
+| `markitdown` (leer PDF, Word, Excel, PowerPoint) | **Python 3** + **markitdown** | No puede abrir esos archivos. Claude te avisa: "hace falta instalar markitdown" | 1) `xcode-select --install` (Python 3, viene de Apple) · 2) `python3 -m pip install --user 'markitdown[all]'` |
+| `markitdown` — leer texto dentro de imágenes o PDF escaneados | **Tesseract** (OCR) — *opcional* | Lee todo lo demás; solo no reconoce texto en imágenes | `brew install tesseract` (requiere Homebrew: brew.sh) |
+| `markitdown` — funciones con IA (`convert_with_ai.py`) | Clave de OpenAI u OpenRouter — *opcional, pago* | Convierte igual sin IA | Se configura como variable de entorno; **nunca se pega en el chat** |
+| `excel-analysis` (tablas dinámicas, gráficos) | **Python 3** + librerías **pandas** y **openpyxl** | Claude te avisa y ofrece la alternativa: exportar a CSV o leer con `markitdown` | `python3 -m pip install --user pandas openpyxl` |
+| `mermaid-diagrams` — exportar a imagen PNG/SVG | **Mermaid CLI** (`mmdc`, requiere Node.js) — *opcional* | **Los diagramas funcionan igual**: se ven en claude.ai, Notion, GitHub y Obsidian. Solo no genera el archivo de imagen | `npm install -g @mermaid-js/mermaid-cli` (requiere Node.js: nodejs.org) |
+| `skill-creator` — evaluaciones avanzadas (`run_eval.py`) | Python 3 + `pyyaml` — *solo para usuarios avanzados* | Crear y editar skills funciona igual | `python3 -m pip install --user pyyaml` |
+
+## En orden, para arrancar (10 minutos)
+1. **Python 3**: abrí Terminal y pegá `xcode-select --install`. Aceptá la ventana de Apple. Es gratis y oficial.
+2. **markitdown**: `python3 -m pip install --user 'markitdown[all]'`
+3. **Excel**: `python3 -m pip install --user pandas openpyxl`
+4. Corré el chequeo (`docs/CHEQUEO.md`) y pegá la captura en tu portal.
+
+Lo demás (Tesseract, Mermaid CLI, claves) solo si vas a usar esas funciones puntuales — tu consultor te dice cuándo.
+
+## Qué NO hace este plugin
+No instala nada por su cuenta. Instalar programas en tu computadora es una decisión tuya, guiada por tu consultor.

@@ -5,6 +5,18 @@ allowed-tools: [Read, Write, Edit, Bash]
 sync: cowork
 ---
 
+## Antes de usar esta skill — requisitos (chequeo automático)
+
+Esta skill necesita programas de fondo que no vienen con Claude Code. **Antes de ejecutar cualquier script, verificá con Bash** y, si falta algo, NO muestres el error de terminal: respondé con el mensaje indicado y ofrecé la alternativa.
+
+| Necesita | Cómo verificar | Si falta, respondé |
+|---|---|---|
+| Python 3 (solo para generar figuras con el script) | `command -v python3` | «Para esto hace falta instalar **Python 3 (Herramientas de línea de comandos de Apple)**. Está en tu portal, fase «Herramientas de base».» |
+
+**El informe en Markdown/Word no necesita nada.** Las partes que dependen de `scientific-schematics`, `research-lookup` o LaTeX/PDF NO están incluidas en este paquete: si el usuario las pide, avisá que en esta versión el informe se entrega en Markdown (convertible a Word con la skill `docx` si está instalada) y las figuras se generan con `generate-image` o como diagramas Mermaid.
+
+El chequeo completo para el cliente es `bash ~/.claude/plugins/marketplaces/claude-catalogo/scripts/chequeo.sh` (ver `docs/CHEQUEO.md` del catálogo).
+
 # Market Research Reports
 
 ## Overview
