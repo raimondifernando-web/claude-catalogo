@@ -50,3 +50,17 @@ Cambio: `scripts/huerfanas.sh` + sección en `docs/CHEQUEO.md`. Sin cambios en s
 
 ## catálogo 0.1.3 — 2026-09-21 — PASS
 Cambio: `huerfanas.sh` revisa posibles claves (por nombre) en todas las carpetas, no solo en las huérfanas. Sigue solo lectura, sin contenido de archivos. Probado en Mac (detecta el caso real de un export de gestor de contraseñas dentro de una carpeta en iCloud) y en HOME temporal. Instalación desde GitHub (HOME temporal): OK, script 0.1.3 presente en el marketplace.
+
+## catálogo 0.2.0 (base-segura · metodo · rubro-estudio-arquitectura) — 2026-09-21 — PASS
+Cambio: `skill-security-auditor` pasa a base-segura (L1) · `markitdown` como `python3 -m markitdown` · `/metodo:cerrar` propone (no ejecuta solo) `git add/commit/push` del repo de trabajo · `/metodo:crear-agente` + `templates/pm-empresa.md` y `especialista.md` · `docs/RECURSOS.md` (filtro + repos de confianza + sección "con aviso") · `docs/HOSTING.md` · conectores Canva/Excalidraw en `requisitos.md` del rubro.
+| Control | Resultado |
+|---|---|
+| Grep de datos/credenciales (mismo patrón) | 0 archivos |
+| Referencias al ecosistema de origen en los 19 archivos nuevos/modificados (`Fernando|Mandamiento|ORQUESTA|Paperclip|fable|EBRAS|Dani|TIBP`) | 0 fuera de `author` |
+| Hooks / MCP / settings / symlinks | ninguno / 0 |
+| `skill_security_auditor.py` (nuevo en L1) | stdlib pura; única llamada externa `subprocess.run(["git","clone","--depth","1",url,tmp])` a carpeta temporal cuando se audita por URL; sin HTTP saliente; sin `shell=True`; compila |
+| El auditor corrido sobre el propio catálogo | PASS en 24 de 31 skills. FAIL/WARN restantes revisados línea por línea: **todos falsos positivos** (el script se detecta a sí mismo; `markitdown`/`generate-image`/`transcribe` leen su clave del entorno y llaman a su API por diseño; docs que dicen "API key"). Por eso el SKILL.md incorpora la regla de interpretación: leer cada hallazgo contra el propósito declarado; FAIL ≠ malicioso, WARN ≠ inocuo |
+| `/metodo:cerrar` paso 5 | solo propone el comando; ejecuta con «sí» explícito; nunca `--force`; excluye archivos con nombre de clave |
+| JSON de manifiestos | 4 OK |
+| Instalación en HOME temporal desde copia local (rutas absolutas) | 3 plugins 0.2.0; `skill_security_auditor.py`, `crear-agente/SKILL.md`, `templates/pm-empresa.md` presentes; fallback `python3 -m markitdown` presente en la skill instalada |
+| Instalación desde GitHub (HOME temporal) | base-segura + metodo 0.2.0 OK; `docs/{CHEQUEO,HOSTING,RECURSOS,SECURITY-CHECKS}.md` en el marketplace; auditor instalado corre (PASS sobre `crear-agente`); raw de `docs/RECURSOS.md` responde 200 |
