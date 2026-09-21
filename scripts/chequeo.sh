@@ -38,6 +38,7 @@ if py pandas && py openpyxl; then r OK "pandas+openpyxl" "analizar Excel (base-s
 echo
 
 echo "3) Opcionales (solo para funciones puntuales)"
+if have notebooklm || py notebooklm; then r OK "notebooklm-py" "NotebookLM desde Claude (rubro) — solo con cuenta Google dedicada: docs/NOTEBOOKLM-SEGURO.md"; else r OPCIONAL "notebooklm-py" "NotebookLM desde Claude (rubro) — requiere cuenta Google dedicada: docs/NOTEBOOKLM-SEGURO.md" "python3 -m pip install --user 'notebooklm-py[browser]==0.8.2' && python3 -m playwright install chromium"; fi
 if have tesseract; then r OK "tesseract" "leer texto dentro de imágenes escaneadas (markitdown)"; else r OPCIONAL "tesseract" "leer texto dentro de imágenes escaneadas (markitdown)" "brew install tesseract   (requiere Homebrew: https://brew.sh)"; fi
 if have mmdc; then r OK "mermaid-cli" "exportar diagramas a PNG (mermaid-diagrams)"; else r OPCIONAL "mermaid-cli" "exportar diagramas a PNG; sin esto los diagramas se ven igual en claude.ai" "npm install -g @mermaid-js/mermaid-cli   (requiere Node.js)"; fi
 if have node; then r OK "node" "Node.js $(node -v) — web-artifacts-builder (rubro)"; else r OPCIONAL "node" "Node.js — solo para web-artifacts-builder (rubro)" "https://nodejs.org (versión LTS)"; fi

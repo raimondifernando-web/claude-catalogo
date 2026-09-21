@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.2.1 — 2026-09-21
+- Sin cambios; acompaña al catálogo 0.2.1.
+
 ## 0.2.0 — 2026-09-21
 - **Nueva skill `skill-security-auditor`**: antes de instalar una skill de afuera, Claude la audita (qué hace, qué archivos toca, qué comandos corre, qué claves pide) y da un veredicto PASS / WARN / FAIL. Con esto podés sumar recursos de los repositorios de confianza sin tu consultor al lado (`docs/RECURSOS.md` del catálogo). Necesita Python 3 (ya lo tenés si hiciste el paso 1 de `requisitos.md`).
 - **`markitdown` sin "command not found"**: si el comando no quedó en el PATH (pasa con `pip install --user`), Claude lo usa como `python3 -m markitdown`. No tenés que arreglar nada.

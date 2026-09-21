@@ -52,10 +52,10 @@ Desde `base-segura` 0.2.0 esa auditoría la hace la skill **`skill-security-audi
 - Dar acceso a Gmail/Drive a una herramienta que no lo necesita para lo que dice hacer.
 
 ## 5. Con aviso: pasan 4 de las 5 preguntas, pero piden más de lo normal
-No están en los paquetes del catálogo. Se pueden usar si entendés lo que entregás; conviene decidirlo con tu consultor.
+Entran al catálogo solo con un protocolo escrito, o se documentan sin incluir. Se pueden usar si entendés lo que entregás; conviene decidirlo con tu consultor.
 
 | Recurso | ★ · licencia | Para qué | Por qué "con aviso" |
 |---|---|---|---|
-| github.com/teng-lin/notebooklm-py (skill `notebooklm`) | 19k · MIT · activo | Manejar Google NotebookLM desde Claude (crear cuadernos, cargar fuentes, generar resúmenes/podcasts) | **No oficial** (Google no lo respalda) y funciona con las **cookies de sesión de tu cuenta Google** guardadas en tu computadora, o con un "master token" de la cuenta. Quien tenga tu máquina tiene tu Google. Alternativa sin riesgo: usar NotebookLM en el navegador (viene con Google AI Pro) y que Claude te prepare las fuentes y las preguntas |
+| github.com/teng-lin/notebooklm-py (skill `notebooklm`) | 19k · MIT · activo | Manejar Google NotebookLM desde Claude | **No oficial** y funciona con las **cookies de sesión de una cuenta Google**. Está en `rubro-estudio-arquitectura` 0.2.1 **solo con el protocolo `docs/NOTEBOOKLM-SEGURO.md`**: cuenta Google dedicada obligatoria (si se filtra, se pierde un cuaderno, no tu Gmail), versión fija, nunca importar cookies de tu Chrome. Sin cuenta dedicada: `notebooklm-preparar` (camino manual) |
 
 La lista se revisa con cada versión del catálogo. Si algo de acá pasa a un paquete, aparece en su `CHANGELOG.md`.
