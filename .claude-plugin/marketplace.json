@@ -1,6 +1,8 @@
 {
   "name": "claude-catalogo",
-  "owner": { "name": "Fernando Raimondi" },
+  "owner": {
+    "name": "Fernando Raimondi"
+  },
   "description": "Catálogo de plugins para empresas y profesionales que arrancan con Claude Code acompañados: base segura (L1), método (L3) y packs por rubro (L2). Genérico, sin datos ni credenciales.",
   "plugins": [
     {
@@ -9,7 +11,25 @@
       "description": "Base segura (L1): skills transversales + agentes básicos + plantillas de CLAUDE.md. Día 1 para cualquier empresa.",
       "version": "0.1.0",
       "category": "productivity",
-      "tags": ["l1", "base", "empresa", "es"]
+      "tags": [
+        "l1",
+        "base",
+        "empresa",
+        "es"
+      ]
+    },
+    {
+      "name": "rubro-estudio-arquitectura",
+      "source": "./plugins/rubro-estudio-arquitectura",
+      "description": "Pack de rubro (L2): cotizar, propuestas, investigación de mercado, contenido y diseño para estudios de arquitectura y profesiones similares. Requiere base-segura.",
+      "version": "0.1.0",
+      "category": "productivity",
+      "tags": [
+        "l2",
+        "rubro",
+        "arquitectura",
+        "es"
+      ]
     }
   ]
 }

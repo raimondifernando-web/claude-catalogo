@@ -7,6 +7,7 @@ acompañados por una consultoría. Todo lo que hay acá es genérico: sin datos,
 ```
 claude plugin marketplace add raimondifernando-web/claude-catalogo
 claude plugin install base-segura@claude-catalogo
+claude plugin install rubro-estudio-arquitectura@claude-catalogo   # según el rubro
 ```
 Actualizar más adelante: `claude plugin update base-segura@claude-catalogo` (o `/plugin` → Update dentro de Claude Code).
 
@@ -15,7 +16,7 @@ Actualizar más adelante: `claude plugin update base-segura@claude-catalogo` (o 
 |---|---|---|---|
 | `base-segura` | L1 | Skills transversales (escritura, documentos, análisis) + agentes básicos + plantillas de `CLAUDE.md` | 0.1.0 |
 | `metodo` | L3 | `/cerrar`, `/arrancar`, `/criticar`, `/planear`, handoffs | pendiente |
-| `rubro-estudio-arquitectura` | L2 | Propuestas, cotización, presentación, investigación de mercado | pendiente |
+| `rubro-estudio-arquitectura` | L2 | Propuestas, cotización, presentación, investigación de mercado, contenido y diseño (15 skills + 5 agentes). Requiere `base-segura` | 0.1.0 |
 
 Cada plugin tiene su `CHANGELOG.md` escrito en lenguaje del cliente ("qué cambia para vos").
 

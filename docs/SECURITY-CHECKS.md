@@ -10,3 +10,11 @@
 | Llamadas de red en scripts | solo `openrouter.ai` (opcional, clave del usuario), `localhost`, Google Fonts en un HTML de reporte | grep `http|requests|urllib` |
 | Symlinks | 0 | `find -type l` |
 | Instalación en HOME temporal (`HOME=$(mktemp -d)`) | 11 skills + 3 agentes, enabled, ~1.163 tok always-on | `claude plugin install base-segura@claude-catalogo` |
+
+## rubro-estudio-arquitectura 0.1.0 — 2026-09-20 — PASS
+| Control | Resultado |
+|---|---|
+| Grep de datos/credenciales (mismo patrón) | 0 hits |
+| Hooks / MCP / settings | ninguno; nada corre al instalar |
+| Claves pagas | `generate-image` (OPENROUTER_API_KEY) y `transcribe` (OPENAI_API_KEY) las lee de variables de entorno del usuario; sin clave no operan. Documentado en CHANGELOG y plugin.json |
+| Instalación en HOME temporal (local y desde GitHub) | 15 skills + 5 agentes, enabled |
