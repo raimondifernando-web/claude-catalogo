@@ -1,8 +1,10 @@
 {
   "name": "rubro-estudio-arquitectura",
-  "version": "0.2.2",
-  "description": "Capa L2 para estudios de arquitectura y profesionales similares (abogados, contadores, consultores): 17 skills de negocio y presentación (cotizar, propuestas, investigación de mercado, contenido, diseño web/visual, NotebookLM con protocolo de 5 reglas) y 5 agentes (market-researcher, business-analyst, project-idea-validator, technical-writer, designer). Requiere base-segura. generate-image y transcribe son opcionales: funcionan solo si configurás tu propia clave (OpenRouter / OpenAI).",
-  "author": { "name": "Fernando Raimondi" },
+  "version": "0.3.0",
+  "description": "Capa L2 para estudios de arquitectura y profesionales similares: 26 skills — estudio (propuesta-de-honorarios, pliego-especificaciones, informe-visita-de-obra), obra (orden-de-cambio, punch-list-obra, revision-de-presupuestos), normativa-argentina (sobre PDFs oficiales, nunca de memoria), método (plan-semanal-estudio, a3-decision), más negocio, investigación de mercado, contenido, diseño web/visual y NotebookLM con protocolo de 5 reglas — y 5 agentes (market-researcher, business-analyst, project-idea-validator, technical-writer, designer). Requiere base-segura. generate-image y transcribe son opcionales: funcionan solo si configurás tu propia clave (OpenRouter / OpenAI). Conectores CAD/BIM documentados en docs/CAD-BIM.md.",
+  "author": {
+    "name": "Fernando Raimondi"
+  },
   "homepage": "https://github.com/raimondifernando-web/claude-catalogo",
   "repository": "https://github.com/raimondifernando-web/claude-catalogo",
   "license": "MIT"

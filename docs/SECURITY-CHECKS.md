@@ -78,3 +78,16 @@ Cambio: skills `notebooklm` (notebooklm-py, no oficial) y `notebooklm-preparar` 
 
 ## catálogo 0.2.2 (rubro-estudio-arquitectura) — 2026-09-21 — PASS (decisión registrada)
 Cambio: protocolo `docs/NOTEBOOKLM-SEGURO.md` pasa de "cuenta Google dedicada obligatoria" a **5 reglas obligatorias + cuenta dedicada opcional**, por decisión explícita del dueño del catálogo (2026-09-21) tras la objeción de Orquesta. Fundamento: el navegador ya guarda las mismas cookies; el riesgo incremental es la segunda copia en manos de código de terceros → se controla con versión fija revisada, login solo desde la herramienta, copia local, prohibición de leer/pegar el archivo y revocación. Sin cambios de código; auditor PASS; grep 0 (salvo el ejemplo `notebooklm.<empresa>@gmail.com`).
+
+## catálogo 0.3.0 (rubro-estudio-arquitectura + docs/CAD-BIM.md) — 2026-09-21 — PASS
+Cambio: 9 skills nuevas (`propuesta-de-honorarios`, `pliego-especificaciones`, `informe-visita-de-obra`, `orden-de-cambio`, `punch-list-obra`, `revision-de-presupuestos`, `normativa-argentina`, `plan-semanal-estudio`, `a3-decision`), conectores ClickUp/Mapbox en `requisitos.md`, nuevo `docs/CAD-BIM.md`. Los 3 plugins a 0.3.0.
+| Control | Resultado |
+|---|---|
+| Origen y licencias | 6 adaptadas de repos MIT (`pm-claude-skills`, `skills-for-architects`), licencia de origen conservada como `LICENSE-origen.md` dentro de cada skill; 3 creadas de cero. Ninguna trae scripts (`find -name "*.py" -o -name "*.sh"` = 0) |
+| Auditor (`skill-security-auditor`) sobre las 9 | PASS / 0 hallazgos en las 9 (segunda corrida; la primera la hizo el equipo de desarrollo) |
+| Grep de datos/credenciales sobre el plugin instalado | 1 hit = nombre de variable `OPENROUTER_API_KEY` en `generate-image` (ya presente desde 0.1.1; no es un valor) |
+| Referencias al ecosistema de origen (`Fernando|Mandamiento|ORQUESTA|Paperclip|fable|EBRAS|Dani`) | 0 en las 9 skills y en `docs/CAD-BIM.md` |
+| `docs/CAD-BIM.md` — verificación de fuentes | Licencias/★/push de 10 repos por API de GitHub el 2026-09-21. Correcciones respecto de la investigación previa: **Autodesk publicó un Revit MCP Server oficial** (Revit 2027, tech preview, 2026-06-17) → pasa a ser el recomendado; Blender = `ahujasid/mcp-for-blender` (renombrado); Speckle = Apache-2.0 salvo módulos `workspaces`/`gatekeeper` (EE). SketchUp sigue excluido. Los directorios glama/smithery/PulseMCP no respondieron por API; la búsqueda web coincide con los líderes |
+| Instalación en HOME temporal desde copia local (rutas absolutas) | 3 plugins 0.3.0; rubro con 26 skills en caché; 6 `LICENSE-origen.md` presentes |
+| Prueba funcional | `punch-list-obra` con notas de recorrida reales inventadas: tabla completa por sector/gremio/nivel A-B-C, sin pedir claves, sin inventar precios ni empresas (`[asignar]`), cita CCyC con aviso "verificar numeración vigente". La prueba end-to-end con `claude -p --plugin-dir` quedó bloqueada por sesión OAuth vencida de la CLI standalone (no del plugin): se repite tras `claude login` |
+| Instalación desde GitHub (HOME temporal) | ver línea siguiente tras el push |

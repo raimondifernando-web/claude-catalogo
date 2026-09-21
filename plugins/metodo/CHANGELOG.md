@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.3.0 — 2026-09-21
+- Sin cambios; acompaña al catálogo 0.3.0 (9 skills nuevas en `rubro-estudio-arquitectura` + `docs/CAD-BIM.md`).
+
 ## 0.2.2 — 2026-09-21
 - Sin cambios; acompaña al catálogo 0.2.2.
 

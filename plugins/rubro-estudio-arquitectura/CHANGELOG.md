@@ -1,5 +1,15 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.3.0 — 2026-09-21
+**9 skills nuevas** (17 → 26), pensadas para el día a día de un estudio, en español rioplatense y con Argentina por defecto (Código Civil y Comercial, rubros de cómputo local). Ninguna necesita instalar nada ni manda datos a ningún servicio: trabajan sobre lo que vos pegás o compartís.
+- **Estudio:** `propuesta-de-honorarios` (alcance por etapa, entregables, plazos, honorarios sin cifras inventadas) · `pliego-especificaciones` (Generalidades · Materiales · Ejecución por rubro, con marcas "a verificar") · `informe-visita-de-obra` (de notas/fotos/audio a informe firmable: lo que viste, lo que te contaron, lo que interpretás). Adaptadas de `skills-for-architects` (MIT).
+- **Obra:** `orden-de-cambio` (adicional con base contractual, delta de alcance, precios ítem a ítem, impacto en plazo) · `punch-list-obra` (pendientes numerados con ubicación, gremio y referencia al pliego) · `revision-de-presupuestos` (huecos de alcance, exclusiones, precios fuera de rango, comparación de cotizaciones). Adaptadas de `pm-claude-skills` (MIT).
+- **Normativa:** `normativa-argentina` — responde "¿esto cumple?" **solo sobre los PDFs oficiales que le compartas** (municipal, provincial, CIRSOC, IRAM), citando artículo y archivo. Sin el PDF, te dice dónde conseguirlo. **Nunca inventa un artículo ni un valor.** Usa `pdf`/`markitdown` de `base-segura`.
+- **Método del estudio (Lean, sin jerga):** `plan-semanal-estudio` (reunión de 15-20 min → plan de la semana por persona + mirada a 4-6 semanas; una tarea con algo que la frena no entra al plan) · `a3-decision` (ficha de una página para un problema que se repite o una decisión importante). Si tenés el conector de ClickUp, el plan semanal lee tus tareas; si no, pegás la lista.
+- `requisitos.md`: conectores **ClickUp** (oficial, beta; lo autoriza el dueño de la cuenta) y **Mapbox** (oficial; token propio) + puntero a `docs/CAD-BIM.md`.
+- **Nuevo `docs/CAD-BIM.md`:** qué conector existe para Revit (Autodesk sacó uno **oficial** para Revit 2027), Archicad, AutoCAD, Rhino, FreeCAD, Blender, QGIS, IFC, Speckle y Mapbox; qué pide cada uno y las 3 reglas (licencia propia, archivo de prueba, oficial gana a comunitario). No se instalan con el paquete: se activan uno por vez cuando el consultor lo indique. SketchUp queda fuera (sin conector seguro).
+Para actualizar: `claude plugin update rubro-estudio-arquitectura@claude-catalogo`.
+
 ## 0.2.2 — 2026-09-21
 - `notebooklm`: el protocolo `docs/NOTEBOOKLM-SEGURO.md` queda en **5 reglas obligatorias** (versión fija, iniciar sesión solo desde la ventana que abre la herramienta, carpeta local, nunca leer ni pegar ese archivo, saber revocar) y la **cuenta Google dedicada pasa a ser un refuerzo opcional**. Por qué: tu navegador ya guarda esas mismas cookies; lo que protege es el programa revisado y la copia local. Claude te pregunta una vez si aceptás las reglas y lo anota en tu `CLAUDE.md`.
 
