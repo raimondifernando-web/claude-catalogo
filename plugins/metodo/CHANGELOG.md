@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.2.0 — 2026-09-21
+- **`/metodo:cerrar` ahora guarda tu avance en el repositorio**: al cerrar, si tu carpeta es un repo, te muestra qué cambió y te propone el comando para guardarlo y subirlo. Se ejecuta solo si decís «sí». Así quien te acompaña ve tu avance sin que tengas que saber git. Nunca sube archivos con pinta de clave o contraseña.
+- **Nueva skill `/metodo:crear-agente`**: crea tu PM de empresa (`pm-<empresa>`, el que conoce tu negocio y reparte el trabajo) y especialistas, con dos plantillas nuevas en `templates/` (`pm-empresa.md`, `especialista.md`). Antes de crear busca si ya existe; nunca borra, archiva.
+Para actualizar: `claude plugin update metodo@claude-catalogo`.
+
 ## 0.1.3 — 2026-09-21
 - Sin cambios; acompaña al catálogo 0.1.3.
 

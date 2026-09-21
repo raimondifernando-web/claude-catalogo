@@ -15,6 +15,8 @@ Esta skill necesita programas de fondo que no vienen con Claude Code. **Antes de
 |---|---|---|
 | Python 3 | `command -v python3` | «Para esto hace falta instalar **Python 3 (Herramientas de línea de comandos de Apple)**. Está en tu portal, fase «Herramientas de base».» |
 | markitdown | `command -v markitdown || python3 -c "import markitdown"` | «Para esto hace falta instalar **markitdown**. Está en tu portal, fase «Herramientas de base».» |
+
+**Cómo invocarlo (importante):** con `pip install --user` el comando `markitdown` suele NO quedar en el PATH aunque la librería esté instalada. Regla: si `command -v markitdown` falla pero `python3 -c "import markitdown"` funciona, **usá siempre `python3 -m markitdown …`** con los mismos argumentos (`python3 -m markitdown documento.pdf -o salida.md`). Nunca le pidas al usuario que "arregle el PATH".
 | tesseract (solo para leer texto dentro de imágenes/escaneos) | `command -v tesseract` | «Para esto hace falta instalar **Tesseract (OCR)**. Está en tu portal, fase «Herramientas de base».» |
 
 Sin `tesseract` la skill funciona igual para PDF con texto, Word, Excel y PowerPoint; solo no lee imágenes escaneadas. Las funciones con IA (`convert_with_ai.py`) requieren además una clave `OPENAI_API_KEY` u `OPENROUTER_API_KEY` que el usuario configura por su cuenta; nunca la pidas por chat.
@@ -104,9 +106,13 @@ pip install -e 'packages/markitdown[all]'
 
 ### Command-Line Usage
 
+> Si el comando `markitdown` no existe pero el módulo sí, reemplazá `markitdown` por `python3 -m markitdown` en todos los ejemplos de abajo.
+
 ```bash
 # Basic conversion
 markitdown document.pdf > output.md
+# (equivalente sin PATH)
+python3 -m markitdown document.pdf > output.md
 
 # Specify output file
 markitdown document.pdf -o output.md

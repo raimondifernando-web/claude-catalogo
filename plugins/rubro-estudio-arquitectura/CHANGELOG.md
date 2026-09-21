@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.2.0 — 2026-09-21
+- Sin cambios en las skills. `requisitos.md` suma la sección **Conectores de claude.ai**: Canva (diseños) y Excalidraw (diagramas a mano alzada), qué hacen, cómo se conectan y qué sale de tu computadora.
+
 ## 0.1.3 — 2026-09-21
 - Sin cambios; acompaña al catálogo 0.1.3.
 

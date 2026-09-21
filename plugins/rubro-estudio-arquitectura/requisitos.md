@@ -24,6 +24,20 @@ Funcionan con Claude Code solo.
 4. Node.js solo si tu consultor te lo indica (prototipos web complejos).
 5. Corré el chequeo y pegá la captura en tu portal.
 
+## Conectores de claude.ai que suman a este rubro (no se instalan: se conectan)
+Un **conector** es una herramienta que Claude usa a través de tu cuenta en ese servicio. No se instala nada en tu
+computadora: se activa una vez desde claude.ai y vale en Claude Code, Cowork y el chat. Cómo: **claude.ai → tu perfil
+→ Configuración → Conectores → Explorar conectores** → buscá el nombre → *Conectar* → iniciás sesión con tu cuenta
+del servicio y aceptás los permisos. Luego, en Claude Code, se ve con `/mcp`.
+
+| Conector | Para qué en un estudio | Qué sale de tu computadora | Costo |
+|---|---|---|---|
+| **Canva** (oficial, `mcp.canva.com`) | Buscar, crear, completar y exportar diseños de tu Canva: presentaciones de propuesta, posteos, láminas | Claude lee y crea diseños **en tu cuenta de Canva**; lo que le pidas (textos, imágenes) pasa por Canva. No pidas que suba planos o datos de clientes que no quieras en Canva | Cuenta Canva (gratis o Pro, la tuya) |
+| **Excalidraw** (oficial, `mcp.excalidraw.com`) | Diagramas "a mano alzada": esquemas de proceso, organigramas, flujos de obra, bocetos de ideas | El contenido del diagrama se genera en el servicio de Excalidraw; no accede a tus archivos | Gratis |
+
+Alternativa sin conector: `mermaid-diagrams` (base-segura) hace diagramas en texto que se ven en Notion, GitHub y Obsidian.
+Regla: un conector pide acceso a una cuenta tuya → antes de conectar, la pregunta 5 del filtro (`docs/RECURSOS.md`) pesa doble.
+
 ## Sobre las claves
 Son tuyas, con tu tarjeta, con tu límite de gasto. Claude solo verifica que existan; nunca las lee ni las muestra.
 Se guardan como variable de entorno del sistema (tu consultor te pasa el paso exacto).

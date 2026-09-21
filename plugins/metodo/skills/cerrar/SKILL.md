@@ -28,12 +28,24 @@ demás pasos, nunca termines sin emitir ese bloque.
 4. **Handoff** (obligatorio si se modificaron 3 o más archivos o se tomaron 2 o más decisiones): escribí
    `handoffs/YYYY-MM-DD-tema.md` con la plantilla `metodo/templates/handoff.md`: estado, decisiones (con el
    porqué), próximos pasos en orden, dudas abiertas.
-5. **Confirmá al usuario** en 2-3 líneas qué quedó hecho y dónde.
-6. **Validá el prompt antes de emitirlo:** tiene las dos partes; la PARTE A trae rol, alcance y reglas con
+5. **Guardá el avance en el repositorio (si la carpeta de trabajo es un repo git).** Verificá con
+   `git rev-parse --is-inside-work-tree` y `git remote -v`. Si es un repo: mostrá en 1 línea qué archivos
+   cambiaron (`git status --short`) y **proponé el comando listo**, sin ejecutarlo:
+   ```
+   git add -A && git commit -m "cierre YYYY-MM-DD-tema" && git push
+   ```
+   Preguntá: «¿Lo guardo y lo subo? (sí/no)». Solo si el usuario dice que sí, ejecutalo y reportá el resultado
+   real (`git log --oneline -1`; si `push` falla, decí qué falló y que el commit quedó local). Si dice que no
+   o no contesta, el cierre sigue igual y en el prompt de reanudación queda «PENDIENTE: subir cambios».
+   Nunca uses `--force`, nunca borres ni reescribas historial. Si `git status` muestra un archivo con pinta de
+   clave o contraseña (archivos de entorno `.env`, `*.pem`, `*token*`, `*secret*`, `*password*`), **no lo agregues**:
+   avisá y sugerí `.gitignore`. Si no es un repo, saltá este paso y anotá en el prompt «carpeta sin repositorio».
+6. **Confirmá al usuario** en 2-3 líneas qué quedó hecho y dónde (incluida la subida al repo, si se hizo).
+7. **Validá el prompt antes de emitirlo:** tiene las dos partes; la PARTE A trae rol, alcance y reglas con
    contenido real (no una línea genérica); la PARTE B trae lo hecho, los pendientes en orden y el puntero al
    handoff; no tiene números de memoria; entra en 30-50 líneas. Si se pasa, no recortes borrando: es señal de
    que algo durable quedó sin bajar al `CLAUDE.md` (paso 3).
-7. **⛔ EMITÍ EL PROMPT DE REANUDACIÓN COPIABLE** con la plantilla de abajo. Es el último mensaje.
+8. **⛔ EMITÍ EL PROMPT DE REANUDACIÓN COPIABLE** con la plantilla de abajo. Es el último mensaje.
 
 ## Plantilla del prompt de reanudación
 ````
@@ -57,3 +69,5 @@ Arrancá con /metodo:arrancar y confirmá: "Leí el estado. El próximo paso es 
 - Si el usuario dice solo "cerrá", asumí cierre completo. Si dice "cerrá rápido", saltá el handoff largo
   pero **igual emití el prompt de reanudación** (regla de oro).
 - Si la conversación ya es muy larga, sugerí cerrar aunque el usuario no lo pida.
+- El paso 5 (guardar en el repo) existe para que quien te acompaña vea tu avance sin que tengas que saber git.
+  Por eso el comando se propone y se ejecuta con tu «sí»: subir es una acción que sale de tu computadora.

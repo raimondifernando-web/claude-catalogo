@@ -1,5 +1,10 @@
 # base-segura — qué cambia para vos
 
+## 0.2.0 — 2026-09-21
+- **Nueva skill `skill-security-auditor`**: antes de instalar una skill de afuera, Claude la audita (qué hace, qué archivos toca, qué comandos corre, qué claves pide) y da un veredicto PASS / WARN / FAIL. Con esto podés sumar recursos de los repositorios de confianza sin tu consultor al lado (`docs/RECURSOS.md` del catálogo). Necesita Python 3 (ya lo tenés si hiciste el paso 1 de `requisitos.md`).
+- **`markitdown` sin "command not found"**: si el comando no quedó en el PATH (pasa con `pip install --user`), Claude lo usa como `python3 -m markitdown`. No tenés que arreglar nada.
+Para actualizar: `claude plugin update base-segura@claude-catalogo`.
+
 ## 0.1.3 — 2026-09-21
 - Chequeo de carpetas huérfanas: el aviso ⚠️ de posibles claves ahora se revisa en **todas** las carpetas, también las que ya están en nube o en un repo (una contraseña en la nube sigue estando mal). Sin cambios en las skills.
 
