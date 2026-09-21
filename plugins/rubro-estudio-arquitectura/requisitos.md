@@ -47,7 +47,9 @@ del servicio y aceptás los permisos. Luego, en Claude Code, se ve con `/mcp`.
 
 Alternativa sin conector: `mermaid-diagrams` (base-segura) hace diagramas en texto que se ven en Notion, GitHub y Obsidian.
 
-**¿Usás Revit, Archicad, AutoCAD, Rhino, SketchUp, FreeCAD, Blender o QGIS?** Los conectores para cada programa, qué piden y
+**¿Usás AutoCAD LT, ZWCAD o SketchUp?** Está resuelto en la primera sección de `docs/CAD-BIM.md`: para AutoCAD LT y ZWCAD hay conectores que **solo corren en Windows** (AutoCAD LT para Mac no los soporta), y el camino que funciona en cualquier computadora es la librería `ezdxf` sobre los archivos DXF. Para SketchUp **todavía no hay nada seguro**.
+
+**¿Usás Revit, Archicad, AutoCAD, Rhino, FreeCAD, Blender o QGIS?** Los conectores para cada programa, qué piden y
 con qué cuidado se activan están en `docs/CAD-BIM.md`. No se instalan con este paquete: se activan uno por vez cuando tu consultor
 lo indique, y siempre primero en un archivo de prueba. Para leer y medir **planos DXF sin AutoCAD** existe la librería `ezdxf`
 (`python3 -m pip install --user ezdxf`); la skill que la usa (`planos-dxf`) llega en una próxima versión.

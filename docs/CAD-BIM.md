@@ -5,6 +5,19 @@
 > consultor lo indique**, después de responder una pregunta: **¿qué programa usás y con qué licencia?** Eso decide cuál
 > se activa. Verificado en GitHub el 2026-09-21; los números cambian, la regla no.
 
+## Si tu estudio usa AutoCAD LT, ZWCAD o SketchUp (el caso más común en Argentina)
+Estos tres son el stack típico de un estudio chico. La respuesta corta, por si no querés leer la tabla larga:
+
+| Lo que usás | Qué se puede hacer hoy | Dónde corre |
+|---|---|---|
+| **AutoCAD LT** | **Dos caminos.** (a) **Sin AutoCAD abierto, en cualquier computadora (también Mac):** leer, medir y generar planos DXF con la librería **`ezdxf`** — es lo más seguro y lo que más rinde; la skill que lo usa (`planos-dxf`) llega en una próxima versión. (b) **Con AutoCAD abierto, solo en Windows:** el conector `puran-water/autocad-mcp` (MIT, 523★) maneja AutoCAD LT **2024 o más nuevo**. | (a) Mac y Windows · (b) **solo Windows** |
+| **ZWCAD** | Conector `daobataotie/CAD-MCP` (MIT, 562★): soporta AutoCAD, ZWCAD y GstarCAD. Ejecuta comandos dentro del programa abierto. | **Solo Windows** |
+| **SketchUp** | **Nada, por ahora.** El conector más popular (460★) ejecuta código Ruby arbitrario y **no publica licencia**: no pasa el filtro. El de diseño seguro no tiene uso real todavía. Se está investigando aparte. | — |
+
+**Por qué "solo Windows" y no es un capricho:** estos conectores le hablan al programa a través de AutoLISP o de componentes de Windows. **AutoCAD LT para Mac no soporta AutoLISP** (Autodesk lo agregó solo en la versión Windows, desde LT 2024). En una Mac, el camino es `ezdxf`: trabaja sobre el archivo DXF sin abrir AutoCAD, y funciona igual en Mac, Windows y Linux.
+
+**Conclusión práctica:** si tu equipo mezcla Mac y Windows, empezá por **`ezdxf`** — sirve para los tres programas (todos exportan DXF) y en cualquier computadora. Los conectores que manejan el programa abierto se suman después, en una máquina Windows, uno por vez y con la regla del archivo de prueba.
+
 ## Las 3 reglas antes de conectar cualquier CAD
 1. **El conector no reemplaza la licencia.** Todos requieren el programa instalado y con licencia vigente en tu computadora.
 2. **Probar en un archivo de prueba, nunca en un proyecto real.** Estos conectores dejan que Claude **cree, modifique y borre elementos** dentro del programa. Copiá un proyecto viejo, probá ahí, mirá qué hace.
@@ -16,7 +29,8 @@
 | **Revit 2027** | **Autodesk Revit MCP Server** (oficial, tech preview) — se descarga desde tu cuenta de Autodesk, con la licencia de Revit 2027 | Oficial · Windows | Revit 2027 con licencia | Es vista previa técnica: puede cambiar sin aviso. Preferirlo igual al comunitario |
 | **Revit 2020-2026** | `mcp-servers-for-revit/mcp-servers-for-revit` (MIT, 339★) | Comunitario · activo (el repo original `revit-mcp` de 461★ está **archivado**, no usarlo) | Revit con licencia, Windows, instalar add-in | Sin garantía de soporte; probar en archivo de prueba |
 | **Archicad** | `SzamosiMate/tapir-archicad-MCP` (MIT, 105★) | Comunitario · **alfa** · activo | Archicad con licencia + add-on Tapir (Mac/Windows) | Muy nuevo; solo si el estudio quiere experimentar |
-| **AutoCAD** | `daobataotie/CAD-MCP` (MIT, 562★) | Comunitario · activo | AutoCAD con licencia, Windows | Ejecuta código LISP dentro de AutoCAD: doble cuidado con la regla 2 |
+| **AutoCAD (completo) / ZWCAD / GstarCAD** | `daobataotie/CAD-MCP` (MIT, 562★) | Comunitario · activo | El programa con licencia, **Windows**, Python 3.10+ | Ejecuta comandos dentro del programa abierto: doble cuidado con la regla 2 |
+| **AutoCAD LT 2024+** | `puran-water/autocad-mcp` (MIT, 523★) | Comunitario · último cambio feb-2026 | AutoCAD LT 2024 o más nuevo, **Windows** (LT para Mac no sirve: no tiene AutoLISP), Python 3.10+ de Windows | Trae además un modo `ezdxf` "sin AutoCAD" que sí funciona en Mac |
 | **Planos DXF sin AutoCAD** | librería `ezdxf` (MIT, 1,4k★) — la usa una skill del catálogo cuando esté lista (`planos-dxf`) | Librería Python · madura | Python 3 + `python3 -m pip install --user ezdxf` | Todo corre en tu computadora; nada sale. Es la opción más segura para leer/medir planos |
 | **Rhino / Grasshopper** | `jingcheng-chen/rhinomcp` (MIT, 1,1k★) | Comunitario · activo | Rhino 8 con licencia + plugin | — |
 | **FreeCAD** (gratis) | `neka-nat/freecad-mcp` (MIT, 2,4k★, auditoría externa) | Comunitario · activo | FreeCAD + add-on | Alternativa sin licencia paga para CAD 3D |
