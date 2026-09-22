@@ -63,11 +63,36 @@ demás pasos, nunca termines sin emitir ese bloque.
    - Si la carpeta no tiene `.gitignore`, proponé crear el de fábrica del kit (`metodo/templates/gitignore-estudio`):
      ignora por defecto claves, documentos de clientes y archivos pesados; el usuario puede sacar lo que sí quiera
      versionar.
-   - **Graphify, sin preguntar:** si existe la carpeta `graphify-out/` y el repo no la ignora
-     (`git -c core.excludesfile=/dev/null check-ignore -q graphify-out/graph.json` falla), agregá al `.gitignore`
-     el bloque «Graphify» del `.gitignore` de fábrica, sumalo a lo que subís y avisalo en la confirmación. El mapa
-     tiene textos sacados de los archivos y los enganches de `.claude/settings.json` son de esta computadora:
-     nunca suben. Se prueba con `core.excludesfile=/dev/null` para que valga en cualquier computadora, no solo en esta.
+   - **Graphify, sin preguntar.** Dos arreglos automáticos, que se avisan en la confirmación:
+     1. Si existe `graphify-out/` y el repo no la ignora (`git -c core.excludesfile=/dev/null check-ignore -q
+        graphify-out/graph.json` falla), agregá al `.gitignore` los bloques «Configuración de Claude de ESTA
+        computadora» y «Graphify» del `.gitignore` de fábrica, y sumá el `.gitignore` a lo que subís. Lo mismo
+        si el `.gitignore` tiene la línea `.claude/settings.json` (la traía el de fábrica de la versión 0.11.3):
+        **sacala** y poné `.claude/settings.local.json` en su lugar — `settings.json` tiene que poder viajar.
+     2. Si `.claude/settings.json` tiene enganches de Graphify (`grep -q graphify .claude/settings.json`), mudalos
+        a `.claude/settings.local.json` con este bloque exacto (no lo reescribas a mano: toca solo los enganches
+        de Graphify y deja todo lo demás, como el catálogo pre-listado, donde está):
+        ```
+        python3 - .claude/settings.json .claude/settings.local.json <<'PY'
+        import json, sys, os
+        src, dst = sys.argv[1], sys.argv[2]
+        s = json.load(open(src)); pre = s.get("hooks", {}).get("PreToolUse", [])
+        g = [h for h in pre if "graphify" in json.dumps(h)]
+        if g:
+            d = json.load(open(dst)) if os.path.exists(dst) else {}
+            dp = d.setdefault("hooks", {}).setdefault("PreToolUse", []); dp += [h for h in g if h not in dp]
+            json.dump(d, open(dst, "w"), indent=2)
+            s["hooks"]["PreToolUse"] = [h for h in pre if h not in g]
+            if not s["hooks"]["PreToolUse"]: del s["hooks"]["PreToolUse"]
+            if not s["hooks"]: del s["hooks"]
+            json.dump(s, open(src, "w"), indent=2)
+        PY
+        ```
+        Si después `.claude/settings.json` quedó vacío (`{}`) y no estaba guardado en el repo, no lo subas.
+        Si tiene contenido (el catálogo pre-listado, permisos del proyecto), subilo: es lo que tiene que viajar.
+     Por qué: `.claude/settings.json` viaja con el proyecto y lleva lo compartido; los enganches de Graphify y el
+     mapa son de esta computadora. Se prueba con `core.excludesfile=/dev/null` para que valga en cualquier
+     computadora, no solo en esta.
    - Si `push` falla por otra razón (sin internet, sin remoto), decilo tal cual: el commit quedó local y el prompt
      de reanudación lleva «PENDIENTE: subir cambios».
    - Nunca `--force`, nunca `reset --hard`, nunca borrar ni reescribir historial.

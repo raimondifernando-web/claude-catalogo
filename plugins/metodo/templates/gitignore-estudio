@@ -55,9 +55,12 @@
 Thumbs.db
 ~$*
 
+# --- Configuración de Claude de ESTA computadora (la compartida, .claude/settings.json, sí viaja) ---
+.claude/settings.local.json
+
 # --- Graphify (si lo instalás: docs/GRAPHIFY.md) ---
-# El mapa contiene textos sacados de tus archivos; los enganches de Claude son de esta computadora.
+# El mapa contiene textos sacados de tus archivos. Sus enganches van a .claude/settings.local.json.
 graphify-out/
 .graphifyignore
 .claude/skills/graphify/
-.claude/settings.json
+*.graphify-bak

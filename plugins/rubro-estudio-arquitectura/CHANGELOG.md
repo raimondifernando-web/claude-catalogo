@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.11.4 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.11.4 (`metodo`: `settings.json` vuelve a viajar; los enganches de Graphify van al archivo local).
+
 ## 0.11.3 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.11.3 (`metodo`: el mapa de Graphify nunca se sube).
 

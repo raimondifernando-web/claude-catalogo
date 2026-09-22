@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.11.4 — 2026-09-22
+- `docs/GRAPHIFY.md`: los enganches de Graphify van a `.claude/settings.local.json`, no se ignora `settings.json` (que lleva lo compartido del proyecto). Acompaña a `metodo` 0.11.4.
+
 ## 0.11.3 — 2026-09-22
 - `docs/GRAPHIFY.md`: la regla 1 ahora dice dónde va el bloque (en el `.gitignore` del proyecto, no en una configuración de tu computadora) y cómo comprobarlo. Acompaña a `metodo` 0.11.3.
 

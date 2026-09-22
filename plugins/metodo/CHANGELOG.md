@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.11.4 — 2026-09-22
+- **Corrige un error de 0.11.3: tu `.claude/settings.json` vuelve a viajar con el proyecto.** En 0.11.3 el `.gitignore` de fábrica lo ignoraba entero para que no se subieran los enganches de Graphify. Pero ese archivo también lleva lo compartido del proyecto, como el catálogo pre-listado, que es lo que hace que una computadora nueva ya lo tenga declarado. Ignorarlo entero rompía eso. Lo detectó Consultoría antes del primer guardado de un cliente.
+- **Ahora se parte en dos, como Claude Code ya lo prevé:** `.claude/settings.json` viaja (lo compartido) y `.claude/settings.local.json` no viaja (lo de esta computadora, incluidos los enganches de Graphify).
+- **`/metodo:cerrar` hace la mudanza solo:** si Graphify dejó sus enganches en `settings.json`, los pasa a `settings.local.json` sin tocar nada más. Si tu `.gitignore` es el de 0.11.3, le saca la línea de `settings.json` y pone la de `settings.local.json`.
+- Probado con una sesión real, simulando otra computadora: con 0.11.3 el catálogo pre-listado no llegaba nunca al repositorio; con 0.11.4 llega, sin los enganches de Graphify.
+Para actualizar: `claude plugin update metodo@claude-catalogo`.
+
 ## 0.11.3 — 2026-09-22
 - **Si usás Graphify, el mapa nunca se sube, aunque nadie se acuerde de la regla.** Graphify arma en tu carpeta un mapa (`graphify-out/`) con textos sacados de tus archivos, y agrega unos enganches de Claude que solo sirven en tu computadora. Hasta ahora, evitar que se subieran dependía de que leyeras la regla 1 de `docs/GRAPHIFY.md` antes de instalarlo.
 - **El `.gitignore` de fábrica ya trae el bloque «Graphify».** Si arrancás una carpeta nueva con él, está cubierto desde el día uno.

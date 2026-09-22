@@ -262,3 +262,14 @@ Cambio (decisión directa de Fernando: «solucionalo de raíz, que no dependa de
 | `verificar-metadatos.sh` | TODO COINCIDE (0.11.3 alineada) |
 | Grep de datos/credenciales sobre el diff | 0 |
 | Nada ejecutable tocado | solo `.md`, la plantilla de texto y 4 JSON de versión |
+
+## catálogo 0.11.4 (`settings.json` viaja; los enganches de Graphify van a `settings.local.json`) — 2026-09-22 — PASS
+Cambio (pedido `2026-09-22-orquesta-settings-json-marketplace-vs-graphify.md` de pm-consultoria-ia): 0.11.3 ignoraba `.claude/settings.json` entero y contradecía `Consultoria-IA/docs/SISTEMA.md:82` (el repo del cliente versiona `settings.json` con el marketplace pre-listado). Error de Orquesta en 0.11.3: no se cruzó contra SISTEMA.md.
+| Control | Resultado |
+|---|---|
+| ¿Dónde escribe Graphify sus hooks? | Siempre en `.claude/settings.json` (`install.py`, `_install_claude_hook`), sin opción. Soporta que el usuario los mude a `settings.local.json`: su uninstall limpia los dos (issue #1731) |
+| ¿Claude Code ejecuta hooks de `settings.local.json`? | **Sí, verificado**: hook de prueba en `settings.local.json` corrió con `claude -p` |
+| Cambio | plantilla: `.claude/settings.local.json` + `*.graphify-bak`, sale `.claude/settings.json` · `/metodo:cerrar` muda los hooks con un bloque Python fijo (rutas por `sys.argv`, toca solo hooks con «graphify») y migra el `.gitignore` de 0.11.3 · `GRAPHIFY.md` regla 1 e instalación |
+| Prueba con sesión real (otra computadora simulada, `.gitignore` de 0.11.3, `settings.json` con marketplace + hooks, `graphify-out/`) | **0.11.4:** `settings.json` en el remoto con el marketplace y 0 hooks de graphify · 2 hooks en `settings.local.json`, ignorado · mapa en el remoto: 0 · línea vieja del `.gitignore` removida |
+| Control 0.11.3, mismo escenario | `settings.json` en el remoto: **0** — el marketplace pre-listado no viaja nunca (el problema del pedido) |
+| `verificar-metadatos.sh` · grep de datos | TODO COINCIDE · 0 |
