@@ -1,6 +1,6 @@
 {
   "name": "metodo",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Capa L3, el método de trabajo: /metodo:arrancar (leer el estado antes de tocar nada; verifica copia y rama si hay varias sesiones), /metodo:planear (8 preguntas antes de un plan), /metodo:criticar (abogado del diablo, sin adular), /metodo:cerrar (handoff + prompt de reanudación + guarda y sube el avance en un solo gesto; frena solo ante archivos con pinta de clave, conflictos o carpeta sin repo), /metodo:crear-agente (PM de empresa y especialistas), /metodo:otra-sesion (segunda sesión en su propia copia y rama, sin pisarse) y plantillas: 14 reglas del método, handoff, pm-empresa y especialista. /cerrar deja REANUDAR.md en la carpeta de trabajo y /arrancar lo levanta solo: no se pega el texto de arranque. Atajos /arrancar y /cerrar. Se activa cuando duele: la primera sesión perdida o a las 2 semanas de uso.",
   "author": {
     "name": "Fernando Raimondi"

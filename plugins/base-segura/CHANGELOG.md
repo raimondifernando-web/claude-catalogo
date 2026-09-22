@@ -1,5 +1,12 @@
 # base-segura — qué cambia para vos
 
+## 0.11.0 — 2026-09-22
+- **Nuevo `docs/GRAPHIFY.md`: el mapa de tu código, para que Claude no lo lea entero cada vez.** Cuando una herramienta que fuiste construyendo con Claude se hace grande, cada pregunta vuelve a leer medio proyecto y eso se paga en tiempo y en cuota. Graphify (externo, Apache-2.0, 120.000 estrellas) arma un mapa de qué llama a qué y Claude consulta el mapa en vez de abrir todo.
+- **Lo medimos en vez de creerle al folleto.** La herramienta promete «71,5x menos tokens»; sobre un proyecto real de 352 archivos el ahorro fue de **38%** (USD 2,60 → 1,65 en la misma pregunta), a cambio de tardar más. Sirve, no es magia, y el documento lo dice con esos números.
+- **La decisión que te puede salir cara, explicada:** tiene dos modos. El de código (`graphify update .`) tarda **8 segundos y no cuesta nada**. El que además entiende documentos y PDFs manda tus archivos a Claude en tandas: medido, **USD 12 y ni siquiera terminó**. El documento manda usar siempre el primero.
+- **5 reglas obligatorias** salidas de la auditoría del código, entre ellas poner `graphify-out/` en el `.gitignore` **antes** de la primera corrida (el mapa incluye comentarios de tu código y la herramienta te recomienda subirlo al repositorio) y usar solo el modo de código sobre carpetas que no son tuyas. Incluye cómo se desinstala entero.
+Para actualizar: `claude plugin update base-segura@claude-catalogo`.
+
 ## 0.10.1 — 2026-09-22
 - **Los agentes `critic` y `planner` estaban atados a un modelo viejo. Ya no.** Traían anotado el número de versión del modelo (`claude-opus-4-6`) en lugar del nombre genérico (`opus`). Es justo el error que la guía de 0.9.0 te pide evitar: con el número puesto, el agente sigue pensando con el modelo de esa fecha aunque salga uno mejor, y nadie se entera. Ahora dicen `opus` y toman siempre el Opus vigente. **No tenés que hacer nada más que actualizar.**
 - De paso, sus descripciones ya no dicen con qué modelo corren: ese dato vive en un solo lugar y así no queda desactualizado en dos.

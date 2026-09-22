@@ -203,3 +203,18 @@ Cambio (pedido `2026-09-22-orquesta-agentes-del-catalogo-sin-migrar.md` de pm-co
 | Referencias al ecosistema de origen en el diff | 0 fuera de `author`/URLs |
 | Nada ejecutable tocado | 0 archivos `.sh`/`.py`/`.js`, 0 hooks, 0 MCP, 0 settings, 0 symlinks; los 4 JSON validan |
 | IDs de modelo que NO se tocaron y por qué | `plugins/base-segura/skills/markitdown/*.md` documenta IDs de **OpenRouter** (`anthropic/claude-sonnet-4.5`), donde el ID explícito es obligatorio por contrato de esa API. No es `model:` de agente; la regla del alias no aplica |
+
+## catálogo 0.11.0 (`docs/GRAPHIFY.md`: protocolo para una herramienta externa) — 2026-09-22 — PASS
+Cambio: documento de protocolo para Graphify (`Graphify-Labs/graphify`, Apache-2.0, paquete PyPI `graphifyy` 0.9.65). **Solo documentación**: el catálogo no instala ni vendoriza nada — mismo patrón que `NOTEBOOKLM-SEGURO.md` y `CAD-BIM.md` (una herramienta externa útil se documenta con su protocolo, no se empaqueta).
+| Control | Resultado |
+|---|---|
+| Mand. XVI — camino de confianza | (a) **120.382 estrellas** (`gh api repos/Graphify-Labs/graphify`). El camino (c) NO aplica: es código Python, no puro texto |
+| Licencia · actividad · propósito único | Apache-2.0 · push hace 2 días, 30 releases, 30 contribuyentes · una cosa: grafo de conocimiento de una carpeta |
+| Typosquatting del paquete | **Descartado y verificado.** El paquete se llama `graphifyy` (doble Y) y el repo `graphify`, que es el patrón del paquete trucho. No lo es: `graphify` a secas no existe en PyPI y el `pyproject.toml` del repo oficial declara `name = "graphifyy"` v0.9.65, la misma publicada |
+| Auditoría de código (agente `security-reviewer`, sobre el fuente, sin instalar) | **PASS con condiciones.** Sin `setup.py` ni hooks de build (nada corre al instalar) · 0 telemetría · sin exfiltración por config de repo ajeno (`llm.py:268-277`) · validador SSRF propio (`security.py:129-280`) · `watch` es foreground, no demonio · el rebuild de git se autolimita (600s) y mata a sus hijos — **no es el caso `claude-mem`** · desinstalación limpia que revierte settings, CLAUDE.md y hooks de git |
+| Alcance de escritura — corrección a la premisa | `graphify install --project` **NO toca `~/.claude/settings.json`**: escribe en el `.claude/settings.json` del cwd. **Verificado en la prueba real**: `grep -c graphify ~/.claude/CLAUDE.md` = 0 tras instalar |
+| Convivencia con el hook propio de Fernando | No lo rompe: read-modify-write, borra solo entradas que contienen `graphify`, deja `.graphify-bak` y **aborta** si el JSON no parsea |
+| FLAG 1 — `graphify-out/` no se auto-ignora | El README recomienda commitearlo y el directorio contiene docstrings y comentarios extraídos del código. Con un `git add -A` de cierre entra solo. → **Regla 1 del documento, obligatoria y antes de la primera corrida** |
+| FLAG 2 — camino de inyección de prompt | `report.py` y `wiki.py` no pasan por `sanitize_label` (sí lo hacen `serve.py`, `exporters/html.py`, `cli.py`). Texto de un archivo de terceros → label de nodo → `GRAPH_REPORT.md` → leído por el asistente como documentación. Acotado (labels capados a 256 caracteres) pero real. → **Regla 4: sobre carpetas ajenas, solo modo determinista** |
+| Costo real medido (no el prometido) | Promete 71,5x. Medido sobre 352 archivos de código: **38% menos** (USD 2,60 → 1,65), y **5x más lento** (32 s → 173 s). Modo determinista: **8 s, USD 0**. Modo con IA sobre 159 markdown: **USD 12,03 y no completó**. Los números están en el documento, no la promesa |
+| Riesgo que asume el cliente | Ninguno por instalar el catálogo: es un `.md`. La instalación de la herramienta es decisión suya, con el protocolo y el precio a la vista |
