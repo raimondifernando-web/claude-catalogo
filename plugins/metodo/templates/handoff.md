@@ -1,5 +1,7 @@
 # Handoff — YYYY-MM-DD-tema
 
+**Copia/rama:** [ruta de la copia · rama `tema/AAAA-MM-DD`, o «carpeta única, sin copia»]
+
 ## Estado en una línea
 [Qué quedó: terminado / a medias / bloqueado por X]
 
@@ -22,3 +24,6 @@
 
 ## Lecciones (si hubo)
 - [qué salió distinto a lo esperado y qué regla nueva deja; si es permanente, ya está en CLAUDE.md]
+
+## Fuera de alcance que apareció
+- [qué surgió que no era de esta sesión → a qué sesión o persona le corresponde]

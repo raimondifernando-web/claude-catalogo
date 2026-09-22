@@ -1,6 +1,6 @@
 ---
 name: cerrar
-description: "Cierre de sesión en un paso: guarda un handoff (qué se hizo, qué se decidió, qué falta) y SIEMPRE termina entregando el prompt de reanudación copiable para la próxima sesión. SOLO la invoca el usuario (escribe '/metodo:cerrar', 'cerrá', 'cerrar sesión', 'terminamos', 'guardá y cerrá'); Claude nunca la ejecuta por iniciativa propia, solo la PROPONE al terminar el trabajo."
+description: "Cierre de sesión en un solo gesto: guarda un handoff (qué se hizo, qué se decidió, qué falta), sube el avance al repositorio sin volver a preguntar (invocarla ya es el consentimiento) y SIEMPRE termina entregando el prompt de reanudación copiable para la próxima sesión. SOLO la invoca el usuario (escribe '/metodo:cerrar' o '/cerrar', 'cerrá', 'cerrar sesión', 'terminamos', 'guardá y cerrá'); Claude nunca la ejecuta por iniciativa propia, solo la PROPONE al terminar el trabajo."
 ---
 
 # /metodo:cerrar — Cerrar dejando la cadena escrita
@@ -25,21 +25,38 @@ demás pasos, nunca termines sin emitir ese bloque.
 3. **Bajar lo durable a su lugar ANTES de escribir el prompt.** Si esta sesión aprendió una regla permanente
    ("los presupuestos siempre en USD", "a este cliente no se le manda mail los viernes"), va al `CLAUDE.md`
    de la carpeta de trabajo, no solo al prompt. Un cambio que vive solo en el prompt se pierde en dos sesiones.
+   En `CLAUDE.md` y en `handoffs/` **agregá al final, no reescribas**: otra sesión puede estar cerrando a la vez y
+   una reescritura le pisa lo suyo (regla 13).
 4. **Handoff** (obligatorio si se modificaron 3 o más archivos o se tomaron 2 o más decisiones): escribí
    `handoffs/YYYY-MM-DD-tema.md` con la plantilla `metodo/templates/handoff.md`: estado, decisiones (con el
    porqué), próximos pasos en orden, dudas abiertas.
-5. **Guardá el avance en el repositorio (si la carpeta de trabajo es un repo git).** Verificá con
-   `git rev-parse --is-inside-work-tree` y `git remote -v`. Si es un repo: mostrá en 1 línea qué archivos
-   cambiaron (`git status --short`) y **proponé el comando listo**, sin ejecutarlo:
+5. **Guardá y subí el avance (si la carpeta de trabajo es un repo git) — sin volver a preguntar.** Verificá con
+   `git rev-parse --is-inside-work-tree` y `git remote -v`. Si es un repo, mirá `git status --short`, ejecutá en
+   orden y reportá el resultado real (`git log --oneline -1`):
    ```
-   git add -A && git commit -m "cierre YYYY-MM-DD-tema" && git push
+   git add -A && git commit -m "cierre YYYY-MM-DD-tema" && git pull --rebase --autostash && git push
    ```
-   Preguntá: «¿Lo guardo y lo subo? (sí/no)». Solo si el usuario dice que sí, ejecutalo y reportá el resultado
-   real (`git log --oneline -1`; si `push` falla, decí qué falló y que el commit quedó local). Si dice que no
-   o no contesta, el cierre sigue igual y en el prompt de reanudación queda «PENDIENTE: subir cambios».
-   Nunca uses `--force`, nunca borres ni reescribas historial. Si `git status` muestra un archivo con pinta de
-   clave o contraseña (archivos de entorno `.env`, `*.pem`, `*token*`, `*secret*`, `*password*`), **no lo agregues**:
-   avisá y sugerí `.gitignore`. Si no es un repo, saltá este paso y anotá en el prompt «carpeta sin repositorio».
+   - **Escribir `/metodo:cerrar` ya es el consentimiento** para guardar y subir: el usuario lo pidió al invocar el
+     comando, así que no vuelvas a preguntar «¿lo subo?». La regla 3 del método (confirmar antes de publicar) se
+     cumple con la invocación misma; volver a preguntar es fricción, no seguridad.
+   - Si la sesión está en una copia con rama propia (regla 11), `push` sube **la rama**, no `main`
+     (`git push -u origin <rama>` la primera vez).
+   - **Parás y preguntás SOLO en tres casos:** (a) `git status` muestra un archivo con pinta de clave o contraseña
+     (archivos de entorno `.env`, `*.pem`, `*token*`, `*secret*`, `*password*`): **no lo agregues**, avisá y sugerí
+     `.gitignore`; (b) el `pull --rebase` da conflicto: mostralo tal cual y **no fuerces** (`git rebase --abort` deja
+     todo como estaba; el commit queda local); (c) la carpeta no es repo: saltá este paso y anotá en el prompt
+     «carpeta sin repositorio».
+   - Si `push` falla por otra razón (sin internet, sin remoto), decilo tal cual: el commit quedó local y el prompt
+     de reanudación lleva «PENDIENTE: subir cambios».
+   - Nunca `--force`, nunca `reset --hard`, nunca borrar ni reescribir historial.
+   - **Juntar la rama a `main` es otra cosa y SÍ se pregunta**, porque afecta a las demás sesiones: si estás en una
+     rama propia, al final ofrecé «¿Junto esta rama a `main`? Se hace de a una sesión por vez» y ejecutalo solo con
+     «sí». Desde una copia, `main` suele estar en uso en la carpeta principal y `git checkout main` falla; por eso
+     el camino es traer `main` a tu rama y empujar el avance rápido:
+     `git fetch origin && git merge origin/main && git push origin HEAD:main`
+     (si `git merge origin/main` da conflicto, mostralo y no fuerces; el push a `main` solo entra si es avance
+     rápido — nunca `--force`). Después ofrecé borrar la copia (`git worktree remove <ruta>`),
+     también con «sí»; nunca borres copias de otra sesión.
 6. **Confirmá al usuario** en 2-3 líneas qué quedó hecho y dónde (incluida la subida al repo, si se hizo).
 7. **Validá el prompt antes de emitirlo:** tiene las dos partes; la PARTE A trae rol, alcance y reglas con
    contenido real (no una línea genérica); la PARTE B trae lo hecho, los pendientes en orden y el puntero al
@@ -52,11 +69,13 @@ demás pasos, nunca termines sin emitir ese bloque.
 ═══ PARTE A — CONTRATO ═══
 ROL: [cómo tiene que trabajar Claude en este tema: rol, para quién, con qué criterio]
 ALCANCE: [qué toca esta sesión y qué NO; qué carpeta de trabajo]
+Fuera de alcance (→ a quién): [lo que apareció y no era de esta sesión → a qué sesión o persona va]
 REGLAS: [las que aplican acá: verificar antes de afirmar · secretos nunca en el chat · confirmar antes de
 borrar/enviar/publicar · no adular · leer CLAUDE.md y el último handoff antes de tocar nada]
 
 ═══ PARTE B — ESTADO ═══
 Seguimos con [tema]. Último cierre: YYYY-MM-DD-tema (handoffs/YYYY-MM-DD-tema.md).
+Copia: <ruta> · Rama: <tema/fecha>   (o «carpeta única, sin copia»)
 Hecho esta sesión: [derivado de los archivos, no de memoria]
 PENDIENTES (en este orden):
 1. [próximo paso exacto]
@@ -69,5 +88,9 @@ Arrancá con /metodo:arrancar y confirmá: "Leí el estado. El próximo paso es 
 - Si el usuario dice solo "cerrá", asumí cierre completo. Si dice "cerrá rápido", saltá el handoff largo
   pero **igual emití el prompt de reanudación** (regla de oro).
 - Si la conversación ya es muy larga, sugerí cerrar aunque el usuario no lo pida.
-- El paso 5 (guardar en el repo) existe para que quien te acompaña vea tu avance sin que tengas que saber git.
-  Por eso el comando se propone y se ejecuta con tu «sí»: subir es una acción que sale de tu computadora.
+- El paso 5 (guardar y subir) existe para que quien te acompaña vea tu avance sin que tengas que saber git.
+  Se ejecuta sin volver a preguntar porque **vos ya lo pediste al escribir el comando**; las únicas frenadas son
+  las tres del paso 5 (archivo con pinta de clave, conflicto, carpeta sin repo).
+- Atajo: si no tenés otra skill llamada `cerrar`, `/cerrar` a secas también la activa.
+- Si hay otra sesión abierta sobre el mismo proyecto, el orden de cierre no importa: cada una sube su rama y la
+  junta a `main` de a una (regla 13). La segunda que junte hace `pull --rebase` y trae lo de la primera.

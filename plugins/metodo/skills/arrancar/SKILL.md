@@ -24,6 +24,13 @@ dejó. Este protocolo cuesta dos minutos y evita todo eso.
 
 ### 3. Verificar el entorno (el archivo manda sobre la memoria)
 - ¿La carpeta abierta es la de trabajo (`~/Documents/<Empresa>-Claude/`) y no otra?
+- **Si el texto de arranque declara `Copia: <ruta> · Rama: <tema/fecha>`** (PARTE B): verificalo con `pwd` y
+  `git branch --show-current`. **Si no coincide, PARÁ y avisá** — «Este texto es para la copia X en la rama Y, y
+  estoy en Z. No trabajo en la copia equivocada: abrí la ventana en la carpeta correcta o dame el texto de esta.»
+  No sigas con "ya que estoy": trabajar en la copia equivocada pisa a otra sesión.
+- **Si no lo declara y hay otra sesión abierta sobre el mismo proyecto** (el usuario lo dice, o `git worktree list`
+  muestra más de una copia): antes de tocar nada, proponé abrir esta sesión en su propia copia con
+  `/metodo:otra-sesion`. Regla 11: una sesión, un tema, una copia.
 - ¿Las herramientas que voy a usar están disponibles (plugins, conectores)? Si no: avisar, no simular.
 - Cualquier número que vayas a usar ("hay N archivos", "son N clientes") se cuenta ahora, no se recuerda.
 
@@ -38,4 +45,6 @@ para alinear, no para pedir permiso de trabajar.
 - **Si la carpeta de trabajo no tiene `CLAUDE.md`**, eso es lo primero: proponer crearlo (plantilla en `base-segura/templates/CLAUDE-empresa.md`).
 
 ## Qué NO es esta skill
-No reemplaza a `/metodo:cerrar` (cierre) ni a `/metodo:planear` (planificación). Es solo la apertura.
+No reemplaza a `/metodo:cerrar` (cierre), `/metodo:planear` (planificación) ni `/metodo:otra-sesion` (abrir una
+segunda sesión sin pisarse). Es solo la apertura. Atajo: si no tenés otra skill llamada `arrancar`, `/arrancar` a secas
+también la activa.

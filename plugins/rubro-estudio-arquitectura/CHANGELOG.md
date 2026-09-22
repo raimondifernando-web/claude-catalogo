@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.4.0 — 2026-09-21
+- Sin cambios; acompaña al catálogo 0.4.0 (`metodo`: sesiones en paralelo + cierre en un gesto).
+
 ## 0.3.0 — 2026-09-21
 **9 skills nuevas** (17 → 26), pensadas para el día a día de un estudio, en español rioplatense y con Argentina por defecto (Código Civil y Comercial, rubros de cómputo local). Ninguna necesita instalar nada ni manda datos a ningún servicio: trabajan sobre lo que vos pegás o compartís.
 - **Estudio:** `propuesta-de-honorarios` (alcance por etapa, entregables, plazos, honorarios sin cifras inventadas) · `pliego-especificaciones` (Generalidades · Materiales · Ejecución por rubro, con marcas "a verificar") · `informe-visita-de-obra` (de notas/fotos/audio a informe firmable: lo que viste, lo que te contaron, lo que interpretás). Adaptadas de `skills-for-architects` (MIT).
