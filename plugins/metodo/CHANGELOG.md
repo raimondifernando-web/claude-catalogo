@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.8.0 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.8.0 (`base-segura`: `humanizalo` + `modo-directo`).
+
 ## 0.7.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.7.0 (`rubro-estudio-arquitectura`: `identidad-visual-del-estudio` reemplaza a `brand-guidelines`).
 

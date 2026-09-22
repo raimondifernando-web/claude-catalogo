@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.8.0 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.8.0 (`base-segura`: `humanizalo` + `modo-directo`).
+
 ## 0.7.0 — 2026-09-22
 - **La skill de marca ahora aplica TU marca, no la de Anthropic.** Sale `brand-guidelines` (era la skill interna de Anthropic para su propia marca: pintaba tus piezas con los colores de Anthropic) y entra **`identidad-visual-del-estudio`**: la primera vez te hace 6 preguntas de a una (colores, tipografías, logo, tono, qué no, firma), te muestra el archivo `identidad-visual.md` y lo guarda con tu confirmación; desde ahí, cada propuesta, presentación, página, imagen o posteo sale con la identidad del estudio. Si no sabés un color, le pasás una tarjeta o un PDF y lo saca de ahí; lo que propone Claude queda marcado «propuesta» hasta que lo confirmes. No necesita instalar nada, no pide claves y nada sale de tu computadora. Siguen 26 skills (sale una, entra una).
 Para actualizar: `claude plugin update rubro-estudio-arquitectura@claude-catalogo`.

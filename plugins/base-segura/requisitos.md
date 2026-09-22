@@ -4,9 +4,15 @@ Claude Code trae el "cerebro". Algunas skills además usan programas de fondo qu
 Esta tabla dice **qué skill necesita qué, qué pasa si falta y cómo instalarlo en Mac** (Windows: próximamente).
 Para saber qué te falta sin adivinar: corré el chequeo (`docs/CHEQUEO.md`).
 
-## Lo que NO necesita nada extra (8 de 12 skills)
+## Lo que NO necesita nada extra (10 de 14 skills)
 `copy-editing` · `doc-coauthoring` · `meeting-insights-analyzer` · `planning-with-files` · `professional-communication` ·
 `session-handoff` · `writing-clearly-and-concisely` · `skill-creator` (uso normal). Funcionan con Claude Code solo.
+**Nuevas en 0.8.0:** `humanizalo` (que tus textos no suenen a IA: 40 señas, nota sobre 60, lista en español incluida) ·
+`modo-directo` (respuestas del largo que corresponde a tu pregunta, y recorte de textos largos que ya existen).
+Son archivos de texto: no instalan nada, no piden claves y nada sale de tu computadora.
+⚠️ **`modo-directo` necesita que hayas copiado las dos plantillas de `CLAUDE.md`** (`templates/`, paso 1 del arranque):
+ahí está la regla de pedirte permiso antes de borrar, enviar o publicar algo. Verificado: sin esas plantillas, una
+respuesta corta puede darte un comando que borra archivos sin avisarte que no se recuperan; con ellas, te pregunta primero.
 
 ## Lo que sí necesita algo
 

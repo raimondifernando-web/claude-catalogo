@@ -27,6 +27,12 @@ Las reglas generales están en `~/.claude/CLAUDE.md`. Acá solo lo específico d
 - [programas específicos del rubro; Claude no los abre, pero lee lo que exportás en PDF/Excel]
 
 ## Formato y tono
+- **Todo texto que sale a un cliente pasa por `humanizalo` antes de que yo lo lea.** Correos,
+  propuestas, textos de la web, posteos. No quiero leer algo que se note escrito por una máquina.
+  Mostrame la nota y qué cambiaste.
+- **Contestame en `modo-directo`**: el largo lo fija mi pregunta. Si pregunto sí o no, contestame
+  sí o no. Las advertencias de plata, de datos o de algo que no se puede deshacer van completas
+  igual. Si necesito el detalle, te digo "extendete".
 - **Tono con clientes:** [cercano pero profesional · formal · técnico]
 - **Documentos:** [membrete · tipografía · estructura · moneda y unidades]
 - **Cosas que NUNCA hay que decir/hacer:** [prometer plazos sin confirmar · dar precios cerrados sin relevar · …]

@@ -1,5 +1,14 @@
 # base-segura — qué cambia para vos
 
+## 0.8.0 — 2026-09-22
+**Dos skills nuevas** (12 → 14), las dos sobre cómo suena Claude, y las dos gratis y de licencia MIT. Ninguna instala nada ni manda datos a ningún lado: son archivos de texto.
+- **`humanizalo`** — que lo que escribe no se note escrito por una máquina. Revisa el texto contra **40 señas** concretas (el guion largo, «no es solo X, es Y», «en conclusión esto representa un cambio de paradigma», «espero que te sirva»), lo reescribe con voz propia, **se pone nota del 1 al 10 en 6 cosas** y no te lo entrega hasta pasar 42 de 60 o haber intentado 3 veces. Te muestra la nota y qué cambió. Para correos a clientes, propuestas, textos de la web y posteos. De `Hainrixz/humanizalo`; le agregamos la lista de señas **en español** (`references/espanol.md`: «profundizar», «panorama», «el mismo fue aprobado», «por medio de la presente», voseo) porque la original traía solo las inglesas.
+- **`modo-directo`** — que te contesten lo que preguntaste. El largo lo fija **tu pregunta**: un sí o no se contesta en una línea; un «cómo hago» con el comando y listo; un «explicame» se extiende lo que haga falta. Sirve también al revés: le pegás un correo largo o un documento y te lo deja en lo esencial, diciéndote **qué quitó y de cuántas palabras a cuántas quedó**. Se apaga con «modo normal», y para una sola respuesta con «extendete».
+- **Lo que nunca se recorta, aunque pidas respuestas cortas:** las advertencias de plata, de seguridad, de datos personales y de cosas que no se pueden deshacer; los supuestos; de dónde salió un número; y la lista de lo que se cambió cuando hubo cambios. Eso lo revisamos y lo reforzamos antes de publicarlas (ver `docs/SECURITY-CHECKS.md`).
+- **Importante:** `modo-directo` cuenta con que tengas puestas las dos plantillas de `CLAUDE.md` de este paquete (el paso 1 del arranque). Lo probamos: **sin** ellas, a un «borrá estos archivos» te puede tirar el comando sin avisarte que no se recupera; **con** ellas, te pregunta antes y no borra nada. Si todavía no copiaste las plantillas, hacelo antes de usar el modo.
+- **Quedan enganchadas en la plantilla `CLAUDE-empresa.md`**, en «Formato y tono»: si copiás la plantilla, Claude ya humaniza lo que va a un cliente y te contesta corto sin que se lo pidas cada vez.
+Para actualizar: `claude plugin update base-segura@claude-catalogo`.
+
 ## 0.7.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.7.0 (`rubro-estudio-arquitectura`: `identidad-visual-del-estudio` reemplaza a `brand-guidelines`).
 
