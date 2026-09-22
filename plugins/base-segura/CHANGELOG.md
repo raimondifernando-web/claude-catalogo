@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.5.0 — 2026-09-21
+- Sin cambios; acompaña al catálogo 0.5.0 (`metodo`: `/arrancar` levanta `REANUDAR.md` sin pegar).
+
 ## 0.4.1 — 2026-09-21
 - Sin cambios; acompaña al catálogo 0.4.1 (`metodo`: freno por archivos no-texto + `.gitignore` de fábrica).
 

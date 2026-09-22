@@ -71,7 +71,16 @@ demás pasos, nunca termines sin emitir ese bloque.
    contenido real (no una línea genérica); la PARTE B trae lo hecho, los pendientes en orden y el puntero al
    handoff; no tiene números de memoria; entra en 30-50 líneas. Si se pasa, no recortes borrando: es señal de
    que algo durable quedó sin bajar al `CLAUDE.md` (paso 3).
-8. **⛔ EMITÍ EL PROMPT DE REANUDACIÓN COPIABLE** con la plantilla de abajo. Es el último mensaje.
+8. **Guardalo en `REANUDAR.md`, en la raíz de la carpeta de trabajo**, para que la próxima ventana arranque con
+   `/arrancar` sin pegar nada. Es el mismo bloque completo (PARTE A + PARTE B) que vas a emitir, con una primera
+   línea `<!-- cierre YYYY-MM-DD-tema · lo escribe /metodo:cerrar · lo lee /metodo:arrancar -->`. **Sobrescribí
+   siempre**: ese archivo es "el último", no un historial (el historial son los `handoffs/`). Si estás en una copia
+   de `/metodo:otra-sesion`, va en la raíz de esa copia. Hacelo **antes** del paso 5 para que entre en el mismo
+   guardado; si ya guardaste, un guardado chico aparte. Nunca con claves adentro (el prompt no las tiene).
+9. **⛔ EMITÍ EL PROMPT DE REANUDACIÓN COPIABLE** con la plantilla de abajo. Es el último mensaje. Aunque ya
+   quedó guardado, se emite igual: si el archivo se pierde o la ventana se abre en otra carpeta, el chat es el
+   respaldo. Cerrá con una línea afuera del bloque: «Guardado en `REANUDAR.md`. La próxima vez, abrí Claude en
+   esta carpeta y escribí `/arrancar`: no hace falta pegar nada.»
 
 ## Plantilla del prompt de reanudación
 ````
@@ -90,7 +99,7 @@ PENDIENTES (en este orden):
 1. [próximo paso exacto]
 2. ...
 A VERIFICAR (si aplica): [dudas técnicas que Claude resuelve solo al arrancar]
-Arrancá con /metodo:arrancar y confirmá: "Leí el estado. El próximo paso es [X]. ¿Arrancamos?"
+Arrancá con /arrancar (o /metodo:arrancar) y confirmá: "Leí el estado. El próximo paso es [X]. ¿Arrancamos?"
 ````
 
 ## Notas

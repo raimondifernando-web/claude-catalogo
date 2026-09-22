@@ -114,3 +114,13 @@ Cambio: cierra el riesgo residual de 0.4.0 (propuesta de Orquesta, aceptada por 
 | Prueba 1 (repo con remoto, `.md` + PDF de 293 KB nuevos, sin respuesta del usuario) | **Frenó**: listó el PDF, preguntó; `origin/main` sin cambios, nada subió ✓ |
 | Prueba 2 (misma situación, respuesta «solo los de texto», sí al gitignore) | Subió `notas-sesion.md` + `.gitignore` de fábrica; el PDF quedó fuera y cubierto por `*.pdf`; prompt de reanudación con la regla incorporada ✓ |
 | Nota | En modo no interactivo el modelo prefirió preguntar antes de subir también el texto (una sola pausa, luego todo); en uso real es una pregunta y sigue. Aceptable: la pausa es el objetivo |
+
+## catálogo 0.5.0 (metodo: `/arrancar` levanta `REANUDAR.md`) — 2026-09-21 — PASS
+Cambio (pedido directo de Fernando): `cerrar` paso 8 escribe el prompt de reanudación completo en `REANUDAR.md` (raíz de la carpeta de trabajo, visible, sobrescribe siempre, sin claves por construcción) y sigue emitiéndolo en el chat; `arrancar` paso 0 lo levanta si el usuario no pegó nada (gana el pegado si hay ambos; sin archivo → camino anterior). Los 3 plugins a 0.5.0.
+| Control | Resultado |
+|---|---|
+| Auditor sobre `arrancar`, `cerrar` | PASS / PASS, 0 hallazgos |
+| Grep de datos/ecosistema de origen sobre skills + templates de metodo | 0 |
+| Riesgo | `REANUDAR.md` entra al repo del cliente: contiene rol/alcance/pendientes, nunca claves (regla 2 + paso 5(a)). Mismo nivel de exposición que `handoffs/`, que ya se versionaba |
+| Prueba (repo con remoto, sesión real, `--plugin-dir`, `--setting-sources project`) | `/cerrar` → `REANUDAR.md` 1.423 bytes con cabecera `<!-- cierre … -->`, PARTE A/B, y **dentro de `origin/main`** ✓ · ventana nueva con `/arrancar` a secas → levantó el archivo, verificó carpeta/rama, leyó el handoff, y **avisó una discrepancia real** (el handoff decía "etapas escritas", el archivo tenía una línea) antes de proponer el próximo paso ✓ |
+| Instalación desde GitHub (HOME temporal) | ver línea siguiente tras el push |

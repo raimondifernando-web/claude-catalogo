@@ -10,9 +10,19 @@ dejó. Este protocolo cuesta dos minutos y evita todo eso.
 
 ## Secuencia (en orden, antes de tocar NADA)
 
+### 0. Levantar el último texto de arranque (el usuario ya no tiene que pegarlo)
+- Si el mensaje **no** trae un bloque `═══ PARTE A`, buscá el que dejó `/metodo:cerrar`: el archivo
+  **`REANUDAR.md` en la carpeta de trabajo** (la carpeta donde está abierta esta ventana; si es una copia de
+  `/metodo:otra-sesion`, la de esa copia — cada una tiene el suyo). Leelo entero y **tratalo exactamente como si el
+  usuario lo hubiera pegado**: es tu contrato y tu estado.
+- Decile en una línea de dónde salió y de cuándo es: «Levanté el cierre del [fecha-tema] de `REANUDAR.md`». Si es
+  viejo para el ritmo del proyecto, avisalo: el estado puede haber cambiado y los archivos mandan.
+- Si **no existe** el archivo, seguí con el paso 1 "sin contrato". No lo inventes.
+- Si el usuario **sí** pegó un texto y además existe el archivo, gana el pegado.
+
 ### 1. ¿Tengo contrato?
-- **Si el usuario pegó un prompt de reanudación** (bloque `═══ PARTE A`): ese es tu contrato. Leelo entero.
-  Tu ROL, tu alcance y tus reglas salen de ahí, no de tu intuición.
+- **Si hay un texto de arranque** (pegado por el usuario o levantado en el paso 0; bloque `═══ PARTE A`): ese es tu
+  contrato. Leelo entero. Tu ROL, tu alcance y tus reglas salen de ahí, no de tu intuición.
 - **Si NO hay contrato**: reconstruilo ANTES de trabajar: `CLAUDE.md` de la carpeta de trabajo (quién es el
   usuario, cómo trabaja) + el último archivo en `handoffs/` (dónde quedó todo). Declarale al usuario el rol que
   asumís: "Voy a trabajar como [rol] sobre [tema]".
