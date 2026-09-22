@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.9.0 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.9.0 (`metodo`: guía de ruteo de modelos + criterio en `/metodo:crear-agente`).
+
 ## 0.8.0 — 2026-09-22
 **Dos skills nuevas** (12 → 14), las dos sobre cómo suena Claude, y las dos gratis y de licencia MIT. Ninguna instala nada ni manda datos a ningún lado: son archivos de texto.
 - **`humanizalo`** — que lo que escribe no se note escrito por una máquina. Revisa el texto contra **40 señas** concretas (el guion largo, «no es solo X, es Y», «en conclusión esto representa un cambio de paradigma», «espero que te sirva»), lo reescribe con voz propia, **se pone nota del 1 al 10 en 6 cosas** y no te lo entrega hasta pasar 42 de 60 o haber intentado 3 veces. Te muestra la nota y qué cambió. Para correos a clientes, propuestas, textos de la web y posteos. De `Hainrixz/humanizalo`; le agregamos la lista de señas **en español** (`references/espanol.md`: «profundizar», «panorama», «el mismo fue aprobado», «por medio de la presente», voseo) porque la original traía solo las inglesas.

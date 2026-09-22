@@ -1,6 +1,6 @@
 ---
 name: crear-agente
-description: "Crea, modifica o archiva agentes en ~/.claude/agents/ (o en .claude/agents/ de la carpeta de trabajo). Usala cuando el usuario diga 'quiero un agente para X', 'creá un PM para mi empresa', 'un especialista en X', 'modificá el agente Y', o cuando una tarea se repite y siempre necesita el mismo rol y contexto. Trae la plantilla de PM de empresa (pm-<empresa>) y la de especialista. Antes de crear, busca si ya existe."
+description: "Crea, modifica o archiva agentes en ~/.claude/agents/ (o en .claude/agents/ de la carpeta de trabajo). Usala cuando el usuario diga 'quiero un agente para X', 'creá un PM para mi empresa', 'un especialista en X', 'modificá el agente Y', o cuando una tarea se repite y siempre necesita el mismo rol y contexto. Usala TAMBIÉN cuando la pregunta sea qué modelo lleva un agente: 'qué modelo le pongo', '¿opus o sonnet?', 'está bien el modelo de este agente', 'qué modelo usan mis agentes', 'esto necesita opus', 'conviene fable acá' — el criterio está en templates/RUTEO-DE-MODELOS.md y no se contesta de memoria. Trae la plantilla de PM de empresa (pm-<empresa>) y la de especialista. Antes de crear, busca si ya existe."
 ---
 
 # /metodo:crear-agente — Un agente por rol, no por capricho
@@ -17,8 +17,22 @@ una disciplina y sirven para cualquier empresa.
    **skill** (`skill-creator`). Si es un **rol** que necesita contexto propio, criterio y delegar, es un agente.
 3. **¿Es PM o especialista?** Si el nombre empieza con `pm-`, conoce UNA empresa/proyecto y coordina. Si no,
    domina UNA disciplina y sirve para cualquiera. Sin mezclas: un PM no ejecuta lo que un especialista hace mejor.
-4. **¿Qué modelo?** `sonnet` por defecto (ejecución experta). `opus` solo si un error cuesta plata o tiene
-   consecuencia legal (contratos, precios finales, impuestos). `haiku` para tareas rápidas y simples.
+4. **¿Qué modelo?** Se elige por **el trabajo que pide la tarea, no por el tema**. Contá los sí:
+   - ¿Hay que **juzgar o decidir**, o solo ejecutar algo ya decidido?
+   - ¿**Equivocarse sale caro**, o el error pasa inadvertido?
+   - ¿Hay que **sostener mucho contexto** o muchos pasos encadenados?
+
+   **0 sí → `haiku` · 1 sí → `sonnet` · 2 sí → `opus` · 3 sí y tarea larga y autónoma → `fable`, pero a pedido,
+   nunca en el frontmatter.** Ante la duda entre dos escalones, el de abajo: subir después es cambiar una
+   palabra. **Un PM va en `sonnet`**, aunque coordine cosas importantes: el razonamiento duro pasa en el
+   especialista al que le delega, y un PM en `opus` paga caro cada ida y vuelta.
+
+   Dos reglas que no se negocian: **siempre alias** (`haiku`/`sonnet`/`opus`/`fable`/`inherit`), **nunca un ID
+   de versión** como `claude-sonnet-4-6` (queda clavado y no sigue a los modelos nuevos); y **`fable` no se
+   clava en ningún agente** — corre en el modelo más caro también para la versión trivial de su tarea, así que
+   se pide en el momento («usá fable para esto: …»).
+
+   El detalle, con lo que cuesta cada uno y cómo queda repartido: `templates/RUTEO-DE-MODELOS.md`.
 
 ## Dónde se guarda
 - Agente **personal** (sirve en todas tus carpetas): `~/.claude/agents/<nombre>.md`

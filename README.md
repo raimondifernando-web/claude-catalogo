@@ -15,9 +15,9 @@ Actualizar más adelante: `claude plugin update base-segura@claude-catalogo` (o 
 ## Plugins
 | Plugin | Capa | Qué es | Estado |
 |---|---|---|---|
-| `base-segura` | L1 | Skills transversales (escritura, documentos, análisis) + `humanizalo` (que tus textos no suenen a IA) + `modo-directo` (respuestas del largo que corresponde) + `skill-security-auditor` (auditar skills de afuera) + agentes básicos + plantillas de `CLAUDE.md` | 0.8.0 |
-| `metodo` | L3 | `/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar` (sin adular), `/metodo:cerrar` (handoff + prompt de reanudación + sube el avance en un solo gesto), `/metodo:crear-agente` (PM de empresa), `/metodo:otra-sesion` (dos sesiones a la vez sin pisarse) + 14 reglas del método. `/cerrar` deja `REANUDAR.md` y `/arrancar` lo levanta solo: no se pega nada | 0.8.0 |
-| `rubro-estudio-arquitectura` | L2 | Propuestas y honorarios, pliegos, informes de visita, adicionales, punch list, revisión de presupuestos, normativa argentina sobre PDFs, plan semanal + ficha A3 (método), identidad visual del estudio (tu marca en cada pieza), investigación de mercado, contenido y diseño (26 skills + 5 agentes). Conectores CAD/BIM en `docs/CAD-BIM.md`. Requiere `base-segura` | 0.8.0 |
+| `base-segura` | L1 | Skills transversales (escritura, documentos, análisis) + `humanizalo` (que tus textos no suenen a IA) + `modo-directo` (respuestas del largo que corresponde) + `skill-security-auditor` (auditar skills de afuera) + agentes básicos + plantillas de `CLAUDE.md` | 0.9.0 |
+| `metodo` | L3 | `/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar` (sin adular), `/metodo:cerrar` (handoff + prompt de reanudación + sube el avance en un solo gesto), `/metodo:crear-agente` (PM de empresa, con el criterio de qué modelo lleva cada agente), `/metodo:otra-sesion` (dos sesiones a la vez sin pisarse) + 14 reglas del método. `/cerrar` deja `REANUDAR.md` y `/arrancar` lo levanta solo: no se pega nada | 0.9.0 |
+| `rubro-estudio-arquitectura` | L2 | Propuestas y honorarios, pliegos, informes de visita, adicionales, punch list, revisión de presupuestos, normativa argentina sobre PDFs, plan semanal + ficha A3 (método), identidad visual del estudio (tu marca en cada pieza), investigación de mercado, contenido y diseño (26 skills + 5 agentes). Conectores CAD/BIM en `docs/CAD-BIM.md`. Requiere `base-segura` | 0.9.0 |
 
 Cada plugin tiene su `CHANGELOG.md` escrito en lenguaje del cliente ("qué cambia para vos").
 

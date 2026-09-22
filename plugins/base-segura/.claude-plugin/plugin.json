@@ -1,6 +1,6 @@
 {
   "name": "base-segura",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Capa L1 para empresas que arrancan con Claude Code: 12 skills transversales (escritura, documentos, análisis, planificación, auditoría de skills externas), 3 agentes básicos (research-analyst, critic, planner) y plantillas de CLAUDE.md global y de empresa. Sin datos, sin credenciales.",
   "author": { "name": "Fernando Raimondi" },
   "homepage": "https://github.com/raimondifernando-web/claude-catalogo",

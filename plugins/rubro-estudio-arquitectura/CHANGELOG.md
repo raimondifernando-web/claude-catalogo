@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.9.0 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.9.0 (`metodo`: guía de ruteo de modelos + criterio en `/metodo:crear-agente`).
+
 ## 0.8.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.8.0 (`base-segura`: `humanizalo` + `modo-directo`).
 
