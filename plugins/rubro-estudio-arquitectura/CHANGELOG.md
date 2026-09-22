@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.11.1 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.11.1 (`base-segura`: la cuenta de skills decía 12 y son 14; chequeo automático antes de publicar). Verificado: este paquete sí declara bien sus 26 skills y 5 agentes.
+
 ## 0.11.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.11.0 (`base-segura`: `docs/GRAPHIFY.md`). Aplica al estudio cuando empiece a construir sus propias herramientas con Claude: el mapa es gratis sobre código, y el modo que entiende planos y PDFs es el caro — está medido en el documento.
 

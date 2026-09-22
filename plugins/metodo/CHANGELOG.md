@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.11.1 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.11.1 (`base-segura`: cuenta de skills corregida + chequeo automático de metadatos antes de publicar).
+
 ## 0.11.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.11.0 (`base-segura`: `docs/GRAPHIFY.md`).
 

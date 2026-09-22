@@ -218,3 +218,15 @@ Cambio: documento de protocolo para Graphify (`Graphify-Labs/graphify`, Apache-2
 | FLAG 2 — camino de inyección de prompt | `report.py` y `wiki.py` no pasan por `sanitize_label` (sí lo hacen `serve.py`, `exporters/html.py`, `cli.py`). Texto de un archivo de terceros → label de nodo → `GRAPH_REPORT.md` → leído por el asistente como documentación. Acotado (labels capados a 256 caracteres) pero real. → **Regla 4: sobre carpetas ajenas, solo modo determinista** |
 | Costo real medido (no el prometido) | Promete 71,5x. Medido sobre 352 archivos de código: **38% menos** (USD 2,60 → 1,65), y **5x más lento** (32 s → 173 s). Modo determinista: **8 s, USD 0**. Modo con IA sobre 159 markdown: **USD 12,03 y no completó**. Los números están en el documento, no la promesa |
 | Riesgo que asume el cliente | Ninguno por instalar el catálogo: es un `.md`. La instalación de la herramienta es decisión suya, con el protocolo y el precio a la vista |
+
+## catálogo 0.11.1 (la cuenta de skills + chequeo automático de metadatos) — 2026-09-22 — PASS
+Cambio (pedido `2026-09-22-orquesta-base-segura-dice-12-skills.md` de pm-consultoria-ia): `base-segura` declaraba «12 skills transversales» y tiene 14 desde 0.8.0. Corregido el metadato y, por el punto 3 del pedido, agregado `scripts/verificar-metadatos.sh` al pipeline.
+| Control | Resultado |
+|---|---|
+| Hallazgo | Confirmado en filesystem: `base-segura` declara 12, `ls skills` da 14. El desfasaje entró en 0.8.0 (`humanizalo` + `modo-directo`) y el propio CHANGELOG lo decía textual |
+| Los otros dos plugins | **Sin desfasaje**: `rubro-estudio-arquitectura` declara 26 skills / 5 agentes y tiene 26/5 ✓ · `metodo` no declara números |
+| Respuesta al punto 3 («que no dependa de acordarse») | `scripts/verificar-metadatos.sh`, obligatorio antes de publicar. Cubre los **tres** errores que el catálogo ya cometió, no solo este: (1) cuenta declarada vs real de skills/agentes/plantillas · (2) IDs de modelo clavados y `fable` en frontmatter (el bug de 0.10.1) · (3) versiones desalineadas entre `marketplace.json` y los `plugin.json`. Suma el modelo declarado en `description` y skills sin `SKILL.md`. Sale 1 y frena la publicación |
+| Prueba del chequeo | Corrido **antes** de corregir: detecta el desfasaje de `base-segura` y ningún falso positivo en los otros dos. Corrido **después**: «TODO COINCIDE» |
+| Naturaleza del script | Solo lectura: `ls`, `grep`, `python3 -c json.load`. No escribe, no instala, sin llamadas de red |
+| Grep de datos/credenciales sobre el diff | 0 hits reales |
+| Riesgo | Ninguno: es un metadato de texto más un script de verificación local |

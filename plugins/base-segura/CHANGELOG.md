@@ -1,5 +1,10 @@
 # base-segura — qué cambia para vos
 
+## 0.11.1 — 2026-09-22
+- **El paquete decía «12 skills» y trae 14.** Las dos que faltaba contar son `humanizalo` y `modo-directo`, que entraron en 0.8.0. Corregido el texto que ves en `/plugin` → Installed. No cambia nada de lo que tenés instalado: solo decía mal cuántas eran.
+- **Para que no vuelva a pasar, ahora hay un chequeo automático antes de publicar** (`scripts/verificar-metadatos.sh`): compara lo que el paquete *dice* contra lo que *contiene* — la cuenta de skills, agentes y plantillas, que ningún agente tenga clavado un modelo viejo, que las versiones coincidan y que cada skill tenga su archivo. Si algo no cuadra, la publicación se frena. Es la tercera vez en el día que el catálogo publica un número que quedó viejo; ya no depende de que alguien se acuerde.
+Para actualizar: `claude plugin update base-segura@claude-catalogo`.
+
 ## 0.11.0 — 2026-09-22
 - **Nuevo `docs/GRAPHIFY.md`: el mapa de tu código, para que Claude no lo lea entero cada vez.** Cuando una herramienta que fuiste construyendo con Claude se hace grande, cada pregunta vuelve a leer medio proyecto y eso se paga en tiempo y en cuota. Graphify (externo, Apache-2.0, 120.000 estrellas) arma un mapa de qué llama a qué y Claude consulta el mapa en vez de abrir todo.
 - **Lo medimos en vez de creerle al folleto.** La herramienta promete «71,5x menos tokens»; sobre un proyecto real de 352 archivos el ahorro fue de **38%** (USD 2,60 → 1,65 en la misma pregunta), a cambio de tardar más. Sirve, no es magia, y el documento lo dice con esos números.
