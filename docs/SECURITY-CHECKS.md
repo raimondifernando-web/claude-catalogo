@@ -242,3 +242,12 @@ Cambio (decisión directa de Fernando; aviso a pm-consultoria-ia): `/metodo:cerr
 | Grep de datos/credenciales sobre el diff | 0 hits |
 | Nada ejecutable tocado | 0 `.sh`/`.py`/`.js`, 0 hooks; solo `.md` + 4 JSON de versión |
 | Riesgo | Menor que antes: el cierre sube menos, nunca más |
+
+## pipeline — `scripts/verificar-metadatos.sh`: inyección de código corregida — 2026-09-22 — PASS tras arreglo
+Hallazgo del `/fable-security-check` de Orquesta (Fase 3, agente `security-reviewer`) sobre el script agregado en 0.11.1. No afecta a los plugins instalados: el script vive en la raíz del repo y solo lo corre quien publica o revisa un fork.
+| Control | Resultado |
+|---|---|
+| FLAG HIGH — inyección de Python | Las rutas y nombres de plugin se interpolaban dentro de `python3 -c "…'$p…'"`. Una carpeta llamada `x'+str(__import__('os').system(…))+'` ejecutaba código al correr el chequeo sobre un fork. **Reproducido:** la versión vieja creó el archivo testigo |
+| Arreglo | Los valores entran a Python como argumentos (`python3 - "$ruta" <<'PY'`), nunca dentro del código · chequeo 0 nuevo: nombres de plugin `^[a-z0-9-]+$` y rutas sin caracteres raros, si no, frena · `plugin.json` ilegible = FALLA (antes se salteaba en silencio) · conteo con `find` en vez de `ls` · «skills revisadas» ya no dice ok si hubo fallas |
+| Prueba después | Mismo ataque sobre la versión nueva: **no se ejecuta nada**, exit 1. Sobre el catálogo real: TODO COINCIDE |
+| Lección | Este script nació para frenar errores del catálogo y tenía uno propio: el chequeo también se chequea |
