@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.11.5 — 2026-09-22
+- `docs/GRAPHIFY.md`: la comprobación antes de instalar ahora mira de dónde sale la regla (`git check-ignore -v`) y exige que sea el `.gitignore` del proyecto. La anterior podía dar verde con una regla que solo existía en tu computadora. Acompaña a `metodo` 0.11.5.
+
 ## 0.11.4 — 2026-09-22
 - `docs/GRAPHIFY.md`: los enganches de Graphify van a `.claude/settings.local.json`, no se ignora `settings.json` (que lleva lo compartido del proyecto). Acompaña a `metodo` 0.11.4.
 

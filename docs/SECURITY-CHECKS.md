@@ -273,3 +273,14 @@ Cambio (pedido `2026-09-22-orquesta-settings-json-marketplace-vs-graphify.md` de
 | Prueba con sesión real (otra computadora simulada, `.gitignore` de 0.11.3, `settings.json` con marketplace + hooks, `graphify-out/`) | **0.11.4:** `settings.json` en el remoto con el marketplace y 0 hooks de graphify · 2 hooks en `settings.local.json`, ignorado · mapa en el remoto: 0 · línea vieja del `.gitignore` removida |
 | Control 0.11.3, mismo escenario | `settings.json` en el remoto: **0** — el marketplace pre-listado no viaja nunca (el problema del pedido) |
 | `verificar-metadatos.sh` · grep de datos | TODO COINCIDE · 0 |
+
+## catálogo 0.11.5 (regla 15 + `verificar-copia.py` · regla 11 · chequeo de ignore por la fuente) — 2026-09-22 — PASS
+Cambio (pedido `2026-09-22-orquesta-pedido-regla-15-verificar-copia.md` de pm-consultoria-ia + falso verde residual que marcó Consultoría). **Primer ejecutable nuevo del plugin `metodo`**: `scripts/verificar-copia.py`, solo lectura.
+| Control | Resultado |
+|---|---|
+| `security-reviewer` sobre `verificar-copia.py` | Solo lee: PASS · no muestra contenido: PASS · symlinks: LOW · DoS por archivos enormes: LOW → tope 50 MB · **verde sin medir: MEDIUM** (ilegible = «vacío», alfabetos no latinos, ocultos sin aviso) → corregido |
+| Control vs la fuente de Consultoría, 16 casos | Nueva: 16/16. Vieja: falla 7, **6 son verde falso** con «seguro archivar el origen» (colisión de nombres en subcarpetas, PDF sin medir, misma carpeta, solo vacíos, cirílico, ilegible) + se rompe con `--umbral` antes de las carpetas |
+| Caso realista: 30 fichas juntadas en 1 tabla, 3 resumidas | **Las dos versiones de palabras sueltas daban «30 de 30»**: con el destino juntado, las palabras de una pieza resumida aparecen en las otras. Arreglo: segunda medición con las palabras PROPIAS de cada pieza (0% en las resumidas, 100% en las buenas, 100% en un reformateo legítimo con etiquetas renombradas) |
+| Prueba con sesión real (Sonnet, `--plugin-dir`, reglas nuevas vs viejas en `CLAUDE.md`) | Nueva: corrió el script y no borró el origen. **Control: tampoco borró** (comparó a mano, 3 y 30 piezas). La sesión real NO prueba que la regla cambie la conducta a esta escala; prueba que el script es correcto. Queda dicho |
+| Chequeo de ignore (`docs/GRAPHIFY.md`, `/metodo:cerrar`, `graphify-en-repo` de Orquesta) | `-c core.excludesfile=/dev/null check-ignore -q` daba verde con la regla solo en `.git/info/exclude` (reproducido). Ahora `check-ignore -v` y se exige fuente `.gitignore` del repo y patrón sin `!` (el `-v` sale 0 aun en negaciones, verificado). 8/8 casos |
+| `verificar-metadatos.sh` · grep de datos/credenciales sobre el diff | TODO COINCIDE (0.11.5 alineada) · 0 |

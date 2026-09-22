@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.11.5 — 2026-09-22
+- **Regla 15: copiar no es resumir, y el conteo no lo demuestra.** Cuando Claude pasa contenido de un lado a otro (una planilla a una base, PDFs a notas, fichas de clientes a otro sistema), puede devolver la misma cantidad de piezas, con la misma forma, pero resumidas o inventadas. Contar no lo delata. La regla pide verificar texto contra texto y no archivar ni borrar el original hasta que todo pase.
+- **La medición viene con el kit: `scripts/verificar-copia.py`.** Solo lee. Por cada pieza del original mide qué parte de su texto aparece en la copia, y sale en rojo si alguna queda por debajo del 85%. También sale en rojo si hay archivos que no pudo medir (PDF, Word, Excel): esos se pasan antes a texto con `markitdown`, así nunca te dice «todo bien» sobre algo que no miró.
+- **Regla 11 corregida:** decía que dos sesiones en la misma carpeta se pisan siempre. Desde 0.11.2 no es así: en la misma rama conviven, porque cada cierre sube solo lo suyo. La copia aparte (`/metodo:otra-sesion`) sigue siendo lo más prolijo. Hace falta de verdad solo si las sesiones usan ramas distintas o van a editar el mismo archivo a la vez.
+- **`/metodo:cerrar` comprueba mejor que Graphify no se suba.** Antes podía dar por buena una regla escrita solo en la configuración interna de tu computadora, que no viaja con el proyecto. Ahora exige que la regla esté en el `.gitignore` del proyecto.
+Para actualizar: `claude plugin update metodo@claude-catalogo`.
+
 ## 0.11.4 — 2026-09-22
 - **Corrige un error de 0.11.3: tu `.claude/settings.json` vuelve a viajar con el proyecto.** En 0.11.3 el `.gitignore` de fábrica lo ignoraba entero para que no se subieran los enganches de Graphify. Pero ese archivo también lleva lo compartido del proyecto, como el catálogo pre-listado, que es lo que hace que una computadora nueva ya lo tenga declarado. Ignorarlo entero rompía eso. Lo detectó Consultoría antes del primer guardado de un cliente.
 - **Ahora se parte en dos, como Claude Code ya lo prevé:** `.claude/settings.json` viaja (lo compartido) y `.claude/settings.local.json` no viaja (lo de esta computadora, incluidos los enganches de Graphify).

@@ -1,4 +1,4 @@
-# Las 14 reglas del método
+# Las 15 reglas del método
 
 > Agregá este bloque al final de tu `~/.claude/CLAUDE.md` (o reemplazá las reglas que ya tenías por estas).
 > Son las que hacen que Claude trabaje con criterio y no como un asistente que dice a todo que sí.
@@ -16,11 +16,14 @@
 
 ## Cuando hay más de una sesión a la vez (reglas 11-14)
 Si abrís dos ventanas de Claude sobre el mismo proyecto, o dos personas del estudio trabajan a la vez, pasan tres cosas que
-las reglas 1-10 no cubren: se pisan los archivos, una sesión hace trabajo de otra, y los dos cierres se pisan entre sí.
+las reglas 1-10 no cubren: dos sesiones editan el mismo archivo, una sesión hace trabajo de otra, y los dos cierres se pisan entre sí.
 
-11. **Una sesión, un tema, una copia.** Si abrís más de una sesión a la vez sobre el mismo proyecto, cada una trabaja en
-    **su propia copia de la carpeta** (Claude la crea con `/metodo:otra-sesion`) y en **su propia rama** `<tema>/<AAAA-MM-DD>`,
-    nunca en `main`. Dos sesiones en la misma carpeta se pisan los archivos, aunque usen ramas distintas.
+11. **Una sesión, un tema.** Podés abrir varias sesiones en la misma carpeta y en la misma rama: cada cierre sube solo
+    lo suyo (regla 13). Lo **más prolijo** es que cada una trabaje en **su propia copia de la carpeta** y en **su propia
+    rama** `<tema>/<AAAA-MM-DD>`, nunca en `main` (Claude la crea con `/metodo:otra-sesion`), pero no es condición.
+    Dos cosas sí la exigen: que las sesiones necesiten **ramas distintas** (cambiar de rama en una carpeta reescribe
+    los archivos para todas las sesiones de esa carpeta), o que vayan a editar **el mismo archivo a la vez** (eso no se
+    puede separar: lo sube la primera que cierra y la segunda avisa).
 12. **Cada sesión sabe su rol y su alcance.** Van en el bloque ALCANCE del texto de arranque. Lo que cae fuera se anota
     («fuera de alcance → tal sesión») y se avisa; no se ejecuta.
 13. **Cierre seguro entre sesiones.** Id `AAAA-MM-DD-tema`. En los archivos compartidos (`CLAUDE.md`, `handoffs/`) cada
@@ -30,3 +33,16 @@ las reglas 1-10 no cubren: se pisan los archivos, una sesión hace trabajo de ot
 14. **Ninguna sesión de proyecto arranca sin preparación.** Una sesión de preparación (o una llamada con quien te acompaña)
     define: carpeta, ficha (`CLAUDE.md`), equipo (PM + especialistas), skills que hacen falta, límites con otros
     proyectos — y entrega el texto de arranque. Sin eso, la sesión improvisa.
+
+## Cuando pasás contenido de un lado a otro (regla 15)
+Es conducta general, como las 1-10; va numerada al final para no cambiarles el número a las demás.
+
+15. **Copiar no es resumir, y el conteo no lo demuestra.** Cuando pases contenido de un lado a otro (una planilla
+    a una base, PDFs a notas, fichas de clientes a otro sistema), la verificación es **texto contra texto**, no
+    «están todos». Que la cantidad coincida es justamente lo que no delata el error: se puede devolver la misma
+    cantidad de piezas, con la misma forma, resumidas o inventadas. Medí qué proporción del texto original aparece
+    en el resultado, pieza por pieza, y **no archives ni borres el original hasta que todas pasen**.
+    El kit trae la medición: `python3 <ruta>/verificar-copia.py <origen> <destino>`, con la ruta que da
+    `find ~/.claude/plugins/cache/claude-catalogo/metodo -name verificar-copia.py | sort -V | tail -1`. Solo lee; sale en
+    rojo si una pieza queda bajo el 85% o si hay archivos que no pudo medir (PDF, Word, Excel: pasalos antes a texto
+    con la skill `markitdown`). Lo corre quien verifica, no el mismo agente que hizo la copia.

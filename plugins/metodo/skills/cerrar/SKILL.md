@@ -64,8 +64,9 @@ demás pasos, nunca termines sin emitir ese bloque.
      ignora por defecto claves, documentos de clientes y archivos pesados; el usuario puede sacar lo que sí quiera
      versionar.
    - **Graphify, sin preguntar.** Dos arreglos automáticos, que se avisan en la confirmación:
-     1. Si existe `graphify-out/` y el repo no la ignora (`git -c core.excludesfile=/dev/null check-ignore -q
-        graphify-out/graph.json` falla), agregá al `.gitignore` los bloques «Configuración de Claude de ESTA
+     1. Si existe `graphify-out/` y el repo no la ignora **por sí solo** — `git check-ignore -v graphify-out/graph.json`
+        no lista nada, o la línea NO empieza con `.gitignore:` / `<carpeta>/.gitignore:` (si empieza con
+        `.git/info/exclude` o con `/`, la regla es de esta computadora y no viaja), o el patrón empieza con `!` —, agregá al `.gitignore` los bloques «Configuración de Claude de ESTA
         computadora» y «Graphify» del `.gitignore` de fábrica, y sumá el `.gitignore` a lo que subís. Lo mismo
         si el `.gitignore` tiene la línea `.claude/settings.json` (la traía el de fábrica de la versión 0.11.3):
         **sacala** y poné `.claude/settings.local.json` en su lugar — `settings.json` tiene que poder viajar.

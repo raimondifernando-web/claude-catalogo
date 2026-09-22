@@ -71,7 +71,10 @@ Se saca entero: `graphify uninstall` deja la configuración y los enganches como
 uv tool install graphifyy          # una sola vez en la computadora
 cd <tu proyecto>
 # regla 1, antes que nada: si tu .gitignore no es el de fábrica del kit, copiale el bloque «Graphify»
-git -c core.excludesfile=/dev/null check-ignore graphify-out/x .claude/settings.local.json   # tiene que listar las dos
+git check-ignore -v graphify-out/x .claude/settings.local.json
+#   ↑ tiene que listar las dos, y CADA línea empezar con `.gitignore:` (o `<carpeta>/.gitignore:`).
+#     Si empieza con `.git/info/exclude` o con una ruta que arranca en `/`, la regla vale solo en esta
+#     computadora: no viaja con el repo. Si el patrón empieza con `!`, NO está ignorado. En los tres casos: rojo.
 graphify install --project          # regla 2
 graphify update .                   # el mapa, gratis
 # y los enganches a settings.local.json: lo hace /metodo:cerrar solo en el próximo cierre

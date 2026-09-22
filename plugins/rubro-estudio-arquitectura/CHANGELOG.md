@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.11.5 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.11.5 (`metodo`: regla 15 + `verificar-copia.py`, regla 11 corregida).
+
 ## 0.11.4 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.11.4 (`metodo`: `settings.json` vuelve a viajar; los enganches de Graphify van al archivo local).
 

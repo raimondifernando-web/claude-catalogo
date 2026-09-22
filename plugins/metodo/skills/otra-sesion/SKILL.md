@@ -5,8 +5,9 @@ description: "Abrir una segunda sesión de Claude sobre el mismo proyecto sin qu
 
 # /metodo:otra-sesion — Dos sesiones a la vez sin pisarse
 
-El problema que resuelve: dos ventanas de Claude sobre **la misma carpeta** se pisan los archivos, **aunque usen
-ramas distintas** — cambiar de rama reescribe el disco para las dos. Y si nadie le dice a la segunda sesión cuál es
+El problema que resuelve: dos ventanas de Claude sobre **la misma carpeta** pueden convivir en la misma rama (cada
+cierre sube solo lo suyo), pero **no en ramas distintas** — cambiar de rama reescribe el disco para las dos — ni
+editando el mismo archivo a la vez. Y si nadie le dice a la segunda sesión cuál es
 su tema, termina haciendo el trabajo de la primera. Esta skill deja a cada sesión en **su propia copia, su propia
 rama y con su propio texto de arranque** (reglas 11 y 12 del método).
 
