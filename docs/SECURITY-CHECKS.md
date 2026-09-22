@@ -123,4 +123,4 @@ Cambio (pedido directo de Fernando): `cerrar` paso 8 escribe el prompt de reanud
 | Grep de datos/ecosistema de origen sobre skills + templates de metodo | 0 |
 | Riesgo | `REANUDAR.md` entra al repo del cliente: contiene rol/alcance/pendientes, nunca claves (regla 2 + paso 5(a)). Mismo nivel de exposición que `handoffs/`, que ya se versionaba |
 | Prueba (repo con remoto, sesión real, `--plugin-dir`, `--setting-sources project`) | `/cerrar` → `REANUDAR.md` 1.423 bytes con cabecera `<!-- cierre … -->`, PARTE A/B, y **dentro de `origin/main`** ✓ · ventana nueva con `/arrancar` a secas → levantó el archivo, verificó carpeta/rama, leyó el handoff, y **avisó una discrepancia real** (el handoff decía "etapas escritas", el archivo tenía una línea) antes de proponer el próximo paso ✓ |
-| Instalación desde GitHub (HOME temporal) | ver línea siguiente tras el push |
+| Instalación desde GitHub (HOME temporal) | metodo 0.5.0 en caché; `arrancar` y `cerrar` con las referencias a `REANUDAR.md` presentes |
