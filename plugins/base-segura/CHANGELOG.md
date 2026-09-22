@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.11.2 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.11.2 (`metodo`: el cierre sube solo lo de cada sesión).
+
 ## 0.11.1 — 2026-09-22
 - **El paquete decía «12 skills» y trae 14.** Las dos que faltaba contar son `humanizalo` y `modo-directo`, que entraron en 0.8.0. Corregido el texto que ves en `/plugin` → Installed. No cambia nada de lo que tenés instalado: solo decía mal cuántas eran.
 - **Para que no vuelva a pasar, ahora hay un chequeo automático antes de publicar** (`scripts/verificar-metadatos.sh`): compara lo que el paquete *dice* contra lo que *contiene* — la cuenta de skills, agentes y plantillas, que ningún agente tenga clavado un modelo viejo, que las versiones coincidan y que cada skill tenga su archivo. Si algo no cuadra, la publicación se frena. Es la tercera vez en el día que el catálogo publica un número que quedó viejo; ya no depende de que alguien se acuerde.

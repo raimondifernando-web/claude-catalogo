@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.11.2 — 2026-09-22
+- **`/metodo:cerrar` ahora sube solo lo que hizo esa sesión.** Antes subía todo lo que hubiera en la carpeta (`git add -A`). Si tenías dos ventanas de Claude abiertas en la misma carpeta, la primera que cerraba se llevaba el trabajo a medias de la otra y lo subía con su nombre y su descripción. Ahora cada sesión sube sus propios archivos. Si ve cambios que no son suyos, no los toca: te los lista («quedaron sin subir cambios que no son de esta sesión») y los sube la sesión que los hizo cuando cierre.
+- **Podés trabajar con varias sesiones en la misma carpeta.** `/metodo:otra-sesion` sigue siendo lo más prolijo (cada sesión en su copia), pero ya no es condición para que el cierre salga bien. Lo único que no se puede separar es un mismo archivo editado por las dos a la vez: lo sube la primera que cierra, y la segunda te avisa.
+- **`/metodo:otra-sesion`** aplica la misma regla al guardar antes de abrir la copia, y la **regla 13** de `REGLAS-DEL-METODO.md` lo dice explícito.
+- Sin cambios en las frenadas de siempre: archivo con pinta de clave, documento o plano nuevo, conflicto, carpeta sin repositorio.
+Para actualizar: `claude plugin update metodo@claude-catalogo`.
+
 ## 0.11.1 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.11.1 (`base-segura`: cuenta de skills corregida + chequeo automático de metadatos antes de publicar).
 

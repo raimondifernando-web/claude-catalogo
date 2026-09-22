@@ -1,6 +1,6 @@
 {
   "name": "rubro-estudio-arquitectura",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "description": "Capa L2 para estudios de arquitectura y profesionales similares: 26 skills — estudio (propuesta-de-honorarios, pliego-especificaciones, informe-visita-de-obra, identidad-visual-del-estudio: aplica TU marca, no la de Anthropic), obra (orden-de-cambio, punch-list-obra, revision-de-presupuestos), normativa-argentina (sobre PDFs oficiales, nunca de memoria), método (plan-semanal-estudio, a3-decision), más negocio, investigación de mercado, contenido, diseño web/visual y NotebookLM con protocolo de 5 reglas — y 5 agentes (market-researcher, business-analyst, project-idea-validator, technical-writer, designer). Requiere base-segura. generate-image y transcribe son opcionales: funcionan solo si configurás tu propia clave (OpenRouter / OpenAI). Conectores CAD/BIM documentados en docs/CAD-BIM.md.",
   "author": {
     "name": "Fernando Raimondi"

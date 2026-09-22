@@ -24,7 +24,8 @@ las reglas 1-10 no cubren: se pisan los archivos, una sesión hace trabajo de ot
 12. **Cada sesión sabe su rol y su alcance.** Van en el bloque ALCANCE del texto de arranque. Lo que cae fuera se anota
     («fuera de alcance → tal sesión») y se avisa; no se ejecuta.
 13. **Cierre seguro entre sesiones.** Id `AAAA-MM-DD-tema`. En los archivos compartidos (`CLAUDE.md`, `handoffs/`) cada
-    sesión **agrega al final**, nunca edita líneas de otra. Antes de subir: `git pull --rebase --autostash`. Juntar a
+    sesión **agrega al final**, nunca edita líneas de otra. Cada sesión **sube solo los archivos que tocó**, nunca
+    `git add -A`: si hay otra sesión en la misma carpeta, se llevaría su trabajo a medias. Antes de subir: `git pull --rebase --autostash`. Juntar a
     `main` es **un evento al cerrar, de a una sesión por vez**. Nunca `--force`, nunca `reset --hard`.
 14. **Ninguna sesión de proyecto arranca sin preparación.** Una sesión de preparación (o una llamada con quien te acompaña)
     define: carpeta, ficha (`CLAUDE.md`), equipo (PM + especialistas), skills que hacen falta, límites con otros

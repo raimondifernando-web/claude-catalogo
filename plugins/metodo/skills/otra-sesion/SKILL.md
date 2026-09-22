@@ -21,7 +21,9 @@ Sin claves. Nada sale de la computadora: crear la copia es local; subir la rama 
 ## Secuencia (mostrar y ejecutar solo con «sí»)
 1. **Verificá** que estás en un repositorio (tabla de arriba) y que el árbol está limpio o con cambios guardados
    (`git status --short`). Si hay cambios sin guardar de la sesión actual, primero proponé guardarlos
-   (`git add -A && git commit -m "avance antes de abrir otra sesión"`); la copia nueva parte de lo último guardado.
+   (`git add <los archivos que tocó esta sesión> && git commit -m "avance antes de abrir otra sesión"`); la copia
+   nueva parte de lo último guardado. **Nunca `git add -A`:** si ya hay otra sesión en esta carpeta, se llevaría su
+   trabajo a medias. Si `git status` muestra cambios que no son de esta sesión, dejalos como están y avisalo.
 2. **Pedí el tema en una palabra** (ej. `cotizacion-lopez`, `obra-rivera`). Con eso armás:
    - **Rama:** `<tema>/<AAAA-MM-DD>` (fecha de hoy, `date +%F`).
    - **Copia:** carpeta hermana `../<carpeta>-<tema>` (ej. `~/Documents/Estudio-Claude-cotizacion-lopez`).

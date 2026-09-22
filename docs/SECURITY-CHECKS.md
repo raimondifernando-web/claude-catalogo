@@ -230,3 +230,15 @@ Cambio (pedido `2026-09-22-orquesta-base-segura-dice-12-skills.md` de pm-consult
 | Naturaleza del script | Solo lectura: `ls`, `grep`, `python3 -c json.load`. No escribe, no instala, sin llamadas de red |
 | Grep de datos/credenciales sobre el diff | 0 hits reales |
 | Riesgo | Ninguno: es un metadato de texto más un script de verificación local |
+
+## catálogo 0.11.2 (`metodo:cerrar` sube solo lo de cada sesión) — 2026-09-22 — PASS
+Cambio (decisión directa de Fernando; aviso a pm-consultoria-ia): `/metodo:cerrar` y `/metodo:otra-sesion` dejan de usar `git add -A`. Cada sesión sube solo los archivos que tocó; los cambios ajenos se listan y quedan intactos. Regla 13 de `REGLAS-DEL-METODO.md` actualizada. Motivo: el kit no puede suponer que el cliente usa `/metodo:otra-sesion` — dos sesiones en la misma carpeta son un uso válido.
+| Control | Resultado |
+|---|---|
+| Prueba funcional con sesión real (`claude -p --plugin-dir`, `--setting-sources project`) | Repo de prueba con 2 cambios de «otra sesión» (borrador nuevo + línea en `CLAUDE.md`). **Versión nueva:** el commit y el remoto tienen solo `lista-materiales.md` + `REANUDAR.md`; lo ajeno queda sin subir y se reporta |
+| El control se vio fallar | **Versión vieja (0.11.1), mismo escenario:** subió 5 archivos, incluidos el borrador y la nota de la otra sesión |
+| Frenadas previas (clave, archivo no-texto, conflicto, sin repo) | Sin cambios |
+| `scripts/verificar-metadatos.sh` | TODO COINCIDE (versiones 0.11.2 alineadas) |
+| Grep de datos/credenciales sobre el diff | 0 hits |
+| Nada ejecutable tocado | 0 `.sh`/`.py`/`.js`, 0 hooks; solo `.md` + 4 JSON de versión |
+| Riesgo | Menor que antes: el cierre sube menos, nunca más |

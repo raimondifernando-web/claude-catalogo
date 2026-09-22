@@ -34,8 +34,16 @@ demás pasos, nunca termines sin emitir ese bloque.
    `git rev-parse --is-inside-work-tree` y `git remote -v`. Si es un repo, mirá `git status --short`, ejecutá en
    orden y reportá el resultado real (`git log --oneline -1`):
    ```
-   git add -A && git commit -m "cierre YYYY-MM-DD-tema" && git pull --rebase --autostash && git push
+   git add <los archivos que creó o modificó ESTA sesión> && git commit -m "cierre YYYY-MM-DD-tema" \
+     && git pull --rebase --autostash && git push
    ```
+   - **Subí solo lo de esta sesión, nunca `git add -A` ni `git add .`** Puede haber otra sesión abierta en esta
+     misma carpeta (se puede trabajar así, aunque exista `/metodo:otra-sesion`): `add -A` se lleva lo que la otra
+     dejó a medias y lo sube con el nombre y la descripción de esta. Armá la lista con lo que hiciste en la sesión
+     (los archivos que editaste, el handoff, `REANUDAR.md`, lo que agregaste a `CLAUDE.md`). Si `git status` muestra
+     cambios que esta sesión **no** hizo, no los subas ni los descartes: listalos en la confirmación («Quedaron sin
+     subir cambios que no son de esta sesión: [lista] — los sube la sesión que los hizo») y en la PARTE B, y seguí.
+     No es una frenada: es el comportamiento por defecto, y lo ajeno queda intacto.
    - **Escribir `/metodo:cerrar` ya es el consentimiento** para guardar y subir: el usuario lo pidió al invocar el
      comando, así que no vuelvas a preguntar «¿lo subo?». La regla 3 del método (confirmar antes de publicar) se
      cumple con la invocación misma; volver a preguntar es fricción, no seguridad.
@@ -113,3 +121,6 @@ Arrancá con /arrancar (o /metodo:arrancar) y confirmá: "Leí el estado. El pr�
 - Atajo: si no tenés otra skill llamada `cerrar`, `/cerrar` a secas también la activa.
 - Si hay otra sesión abierta sobre el mismo proyecto, el orden de cierre no importa: cada una sube su rama y la
   junta a `main` de a una (regla 13). La segunda que junte hace `pull --rebase` y trae lo de la primera.
+- Si las dos sesiones están en la **misma carpeta** (sin copia), también funciona: cada una sube solo sus
+  archivos (paso 5). Lo único que no se puede separar es un mismo archivo editado por las dos: lo sube la primera
+  que cierra, y la segunda lo avisa en su confirmación.
