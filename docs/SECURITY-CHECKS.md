@@ -105,3 +105,12 @@ Cambio: reglas 11-14 · `arrancar` verifica Copia/Rama · `cerrar` ejecuta `add 
 | Hallazgo de la prueba | Desde una copia, `git checkout main` falla (main en uso en la principal). El SKILL.md pasa a `git fetch origin && git merge origin/main && git push origin HEAD:main` (avance rápido, sin force) |
 | Atajo `/cerrar` a secas (pedido 7) | **Funciona**: con el plugin cargado y sin otra skill `cerrar`, `/cerrar` y `/arrancar` resuelven a `metodo:cerrar`/`metodo:arrancar` (control negativo `/noexiste` → sin skill). Si el usuario tiene otra skill con ese nombre, gana la propia: documentado como atajo condicional |
 | Instalación desde GitHub (HOME temporal) | metodo 0.4.0: 6 skills en caché (incl. `otra-sesion`), reglas 11-14 presentes, plantilla de handoff con `Copia/rama` + «Fuera de alcance» |
+
+## catálogo 0.4.1 (metodo: freno por archivos no-texto) — 2026-09-21 — PASS
+Cambio: cierra el riesgo residual de 0.4.0 (propuesta de Orquesta, aceptada por Fernando). `cerrar` paso 5 suma el freno (b): archivos **nuevos** que no son texto (PDF, planos, imágenes, Office, comprimidos, audio/video) o >5 MB → se listan y se pregunta una vez «sí / no / solo los de texto»; el texto sube sin preguntar. Nuevo `templates/gitignore-estudio` (claves, documentos de clientes, pesados, basura del sistema); `cerrar` lo propone si no hay `.gitignore`. Los 3 plugins a 0.4.1.
+| Control | Resultado |
+|---|---|
+| Auditor sobre `cerrar` | PASS, 0 hallazgos (106 líneas) |
+| Prueba 1 (repo con remoto, `.md` + PDF de 293 KB nuevos, sin respuesta del usuario) | **Frenó**: listó el PDF, preguntó; `origin/main` sin cambios, nada subió ✓ |
+| Prueba 2 (misma situación, respuesta «solo los de texto», sí al gitignore) | Subió `notas-sesion.md` + `.gitignore` de fábrica; el PDF quedó fuera y cubierto por `*.pdf`; prompt de reanudación con la regla incorporada ✓ |
+| Nota | En modo no interactivo el modelo prefirió preguntar antes de subir también el texto (una sola pausa, luego todo); en uso real es una pregunta y sigue. Aceptable: la pausa es el objetivo |

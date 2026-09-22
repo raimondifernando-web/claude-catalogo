@@ -41,11 +41,20 @@ demás pasos, nunca termines sin emitir ese bloque.
      cumple con la invocación misma; volver a preguntar es fricción, no seguridad.
    - Si la sesión está en una copia con rama propia (regla 11), `push` sube **la rama**, no `main`
      (`git push -u origin <rama>` la primera vez).
-   - **Parás y preguntás SOLO en tres casos:** (a) `git status` muestra un archivo con pinta de clave o contraseña
+   - **Parás y preguntás SOLO en cuatro casos:** (a) `git status` muestra un archivo con pinta de clave o contraseña
      (archivos de entorno `.env`, `*.pem`, `*token*`, `*secret*`, `*password*`): **no lo agregues**, avisá y sugerí
-     `.gitignore`; (b) el `pull --rebase` da conflicto: mostralo tal cual y **no fuerces** (`git rebase --abort` deja
-     todo como estaba; el commit queda local); (c) la carpeta no es repo: saltá este paso y anotá en el prompt
-     «carpeta sin repositorio».
+     `.gitignore`; (b) entre los archivos **nuevos** (`??` en `git status --short`) hay alguno que **no es texto**
+     — PDF, planos (`.dwg`, `.dxf`, `.skp`, `.rvt`, `.pln`), imágenes, Word/Excel/PowerPoint, comprimidos, audio/video —
+     o pesa más de 5 MB: los archivos de texto suben igual sin preguntar, pero **esos los listás y preguntás una vez**:
+     «Estos N archivos van a subir al repositorio: [lista]. ¿Sí, no, o solo los de texto?». Con «no» o «solo texto»
+     los excluís del `add` (y proponé sumarlos al `.gitignore`); el resto del cierre sigue igual. Por qué: un PDF de
+     un cliente o un plano pesado no tienen nombre de clave, pero tampoco deberían subir sin que alguien los mire;
+     (c) el `pull --rebase` da conflicto: mostralo tal cual y **no fuerces** (`git rebase --abort` deja todo como
+     estaba; el commit queda local); (d) la carpeta no es repo: saltá este paso y anotá en el prompt «carpeta sin
+     repositorio».
+   - Si la carpeta no tiene `.gitignore`, proponé crear el de fábrica del kit (`metodo/templates/gitignore-estudio`):
+     ignora por defecto claves, documentos de clientes y archivos pesados; el usuario puede sacar lo que sí quiera
+     versionar.
    - Si `push` falla por otra razón (sin internet, sin remoto), decilo tal cual: el commit quedó local y el prompt
      de reanudación lleva «PENDIENTE: subir cambios».
    - Nunca `--force`, nunca `reset --hard`, nunca borrar ni reescribir historial.
@@ -90,7 +99,8 @@ Arrancá con /metodo:arrancar y confirmá: "Leí el estado. El próximo paso es 
 - Si la conversación ya es muy larga, sugerí cerrar aunque el usuario no lo pida.
 - El paso 5 (guardar y subir) existe para que quien te acompaña vea tu avance sin que tengas que saber git.
   Se ejecuta sin volver a preguntar porque **vos ya lo pediste al escribir el comando**; las únicas frenadas son
-  las tres del paso 5 (archivo con pinta de clave, conflicto, carpeta sin repo).
+  las cuatro del paso 5 (archivo con pinta de clave · archivo nuevo que no es texto o pesa mucho · conflicto ·
+  carpeta sin repo).
 - Atajo: si no tenés otra skill llamada `cerrar`, `/cerrar` a secas también la activa.
 - Si hay otra sesión abierta sobre el mismo proyecto, el orden de cierre no importa: cada una sube su rama y la
   junta a `main` de a una (regla 13). La segunda que junte hace `pull --rebase` y trae lo de la primera.

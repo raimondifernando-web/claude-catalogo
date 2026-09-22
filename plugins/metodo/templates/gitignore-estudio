@@ -1,0 +1,56 @@
+# .gitignore de fábrica para la carpeta de trabajo de un estudio (kit metodo)
+# Qué hace: evita que suban al repositorio claves, documentos de clientes y archivos pesados.
+# Cómo usarlo: copiá este archivo a la raíz de tu carpeta de trabajo con el nombre `.gitignore`.
+# Si algún tipo SÍ querés versionar (por ejemplo tus planos DXF), borrá esa línea.
+
+# --- Claves y contraseñas: NUNCA suben ---
+.env
+.env.*
+*.pem
+*.key
+*token*
+*secret*
+*password*
+*credencial*
+
+# --- Documentos de clientes y entregables (se guardan en tu nube/Drive, no en el repo) ---
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+
+# --- Planos y modelos (pesados; el repo guarda el trabajo con Claude, no el CAD) ---
+*.dwg
+*.dxf
+*.skp
+*.rvt
+*.rfa
+*.pln
+*.ifc
+*.3dm
+*.blend
+
+# --- Imágenes, audio, video, comprimidos ---
+*.jpg
+*.jpeg
+*.png
+*.heic
+*.tif
+*.tiff
+*.psd
+*.mp3
+*.m4a
+*.wav
+*.mp4
+*.mov
+*.zip
+*.rar
+*.7z
+
+# --- Basura del sistema ---
+.DS_Store
+Thumbs.db
+~$*

@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.4.1 — 2026-09-21
+- Sin cambios; acompaña al catálogo 0.4.1 (`metodo`: freno por archivos no-texto + `.gitignore` de fábrica).
+
 ## 0.4.0 — 2026-09-21
 - Sin cambios; acompaña al catálogo 0.4.0 (`metodo`: sesiones en paralelo + cierre en un gesto).
 
