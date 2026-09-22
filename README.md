@@ -15,9 +15,9 @@ Actualizar más adelante: `claude plugin update base-segura@claude-catalogo` (o 
 ## Plugins
 | Plugin | Capa | Qué es | Estado |
 |---|---|---|---|
-| `base-segura` | L1 | Skills transversales (escritura, documentos, análisis) + `skill-security-auditor` (auditar skills de afuera) + agentes básicos + plantillas de `CLAUDE.md` | 0.6.0 |
-| `metodo` | L3 | `/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar` (sin adular), `/metodo:cerrar` (handoff + prompt de reanudación + sube el avance en un solo gesto), `/metodo:crear-agente` (PM de empresa), `/metodo:otra-sesion` (dos sesiones a la vez sin pisarse) + 14 reglas del método. `/cerrar` deja `REANUDAR.md` y `/arrancar` lo levanta solo: no se pega nada | 0.6.0 |
-| `rubro-estudio-arquitectura` | L2 | Propuestas y honorarios, pliegos, informes de visita, adicionales, punch list, revisión de presupuestos, normativa argentina sobre PDFs, plan semanal + ficha A3 (método), investigación de mercado, contenido y diseño (26 skills + 5 agentes). Conectores CAD/BIM en `docs/CAD-BIM.md`. Requiere `base-segura` | 0.6.0 |
+| `base-segura` | L1 | Skills transversales (escritura, documentos, análisis) + `skill-security-auditor` (auditar skills de afuera) + agentes básicos + plantillas de `CLAUDE.md` | 0.7.0 |
+| `metodo` | L3 | `/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar` (sin adular), `/metodo:cerrar` (handoff + prompt de reanudación + sube el avance en un solo gesto), `/metodo:crear-agente` (PM de empresa), `/metodo:otra-sesion` (dos sesiones a la vez sin pisarse) + 14 reglas del método. `/cerrar` deja `REANUDAR.md` y `/arrancar` lo levanta solo: no se pega nada | 0.7.0 |
+| `rubro-estudio-arquitectura` | L2 | Propuestas y honorarios, pliegos, informes de visita, adicionales, punch list, revisión de presupuestos, normativa argentina sobre PDFs, plan semanal + ficha A3 (método), identidad visual del estudio (tu marca en cada pieza), investigación de mercado, contenido y diseño (26 skills + 5 agentes). Conectores CAD/BIM en `docs/CAD-BIM.md`. Requiere `base-segura` | 0.7.0 |
 
 Cada plugin tiene su `CHANGELOG.md` escrito en lenguaje del cliente ("qué cambia para vos").
 

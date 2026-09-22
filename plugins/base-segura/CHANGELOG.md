@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.7.0 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.7.0 (`rubro-estudio-arquitectura`: `identidad-visual-del-estudio` reemplaza a `brand-guidelines`).
+
 ## 0.6.0 — 2026-09-21
 - **Nuevo `docs/CONECTORES.md`** + sección en `requisitos.md`: las herramientas que Claude puede usar en cualquier negocio y cómo se activan, en tres grupos. **A.** Conectores oficiales de claude.ai: Gmail, Google Calendar, Google Drive, Notion (más Canva, Excalidraw, ClickUp). **B.** Funciones de la app de Claude: **Claude in Chrome** (navega en tu Chrome) y **uso de la computadora** (maneja programas de la Mac) — mucho poder, se activan a conciencia, y nunca para pagar ni para códigos de verificación. **C.** Si hacés publicidad, medís tu web o automatizás: Meta Ads (conector oficial), Google Ads (oficial de Google, solo lectura), Microsoft Clarity (oficial), n8n, Firecrawl. Para cada uno: qué pide, qué sale de tu computadora, cuidados. Con orden sugerido para arrancar (A el día 1 → B → C solo si aplica). Por qué: el kit tenía las skills pero no decía cómo conectar Claude a las herramientas que ya usás.
 
