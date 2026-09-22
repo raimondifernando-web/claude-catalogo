@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.10.0 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.10.0 (`base-segura`: la pregunta 1 del filtro pasa a tener tres caminos).
+
 ## 0.9.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.9.0 (`metodo`: guía de ruteo de modelos + criterio en `/metodo:crear-agente`).
 

@@ -13,7 +13,7 @@
 ## 2. El filtro: 5 preguntas antes de instalar cualquier cosa de afuera
 | # | Pregunta | Cómo se ve en GitHub | Si falla |
 |---|---|---|---|
-| 1 | **¿Lo usa mucha gente?** | ≥ 5.000 estrellas ★ (arriba a la derecha) | No, salvo que sea de una organización oficial (Anthropic, Microsoft, Google) |
+| 1 | **¿Es confiable el que lo hizo?** Alcanza con **UNO** de tres: (a) lo usa mucha gente · (b) es de una organización oficial · (c) alguien leyó el contenido entero | (a) ≥ 5.000 estrellas ★ (arriba a la derecha) · (b) Anthropic, Microsoft, Google, Vercel, Cursor y equivalentes · (c) **solo si son puros archivos de texto**: ningún `.py`, `.sh`, `.js`, nada que se ejecute ni se instale | Ninguno de los tres → no se instala. Y el camino (c) **no vale si hay código adentro**: leer un programa no dice qué hace cuando corre |
 | 2 | **¿Se puede usar libremente?** | Licencia MIT, Apache 2.0 o BSD (archivo `LICENSE`) | "No license", GPL o licencias raras → no |
 | 3 | **¿Está vivo?** | Último commit hace menos de 6 meses | Abandonado → no (no recibe parches) |
 | 4 | **¿Hace una sola cosa?** | El README describe un propósito claro | "Hace de todo" → sospechar |
@@ -24,6 +24,13 @@ Y aunque venga de la lista: antes de instalar una skill, pedile a Claude:
 ```
 Auditá esta skill antes de instalarla: qué hace, qué archivos toca, qué comandos ejecuta, qué claves o accesos pide, y si algo no coincide con lo que dice hacer.
 ```
+**Sobre el tercer camino de la pregunta 1** (agregado 2026-09-22): una skill que son dos archivos de texto y nada
+más se puede leer completa en diez minutos, y **leerla entera prueba más que contar estrellas** — es ver la cosa en
+vez de ver cuánta gente la mira. Por eso existe ese camino. Pero vale **solo** cuando no hay nada que se ejecute:
+con un script adentro, leerlo no te dice qué hace en tu máquina ni qué arrastra al instalarse. Ahí hacen falta (a) o (b).
+Ejemplo real: `humanizalo`, la skill que hace que tus textos no suenen a IA, entró por este camino — su repo es chico,
+pero son 27 KB de texto sin una línea de código y se auditó el 100% antes de ponerla en el kit.
+
 Desde `base-segura` 0.2.0 esa auditoría la hace la skill **`skill-security-auditor`** (veredicto PASS / WARN / FAIL con hallazgos). FAIL = no se instala. WARN = Claude te explica el hallazgo y decidís vos.
 
 ## 3. Repositorios de confianza (verificados por el consultor; ★ al 2026-09-19)

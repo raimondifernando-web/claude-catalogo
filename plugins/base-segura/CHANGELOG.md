@@ -1,5 +1,11 @@
 # base-segura — qué cambia para vos
 
+## 0.10.0 — 2026-09-22
+- **Cambia la primera pregunta del filtro de seguridad** (`docs/RECURSOS.md`), la que decide si se puede instalar algo de afuera. Antes era una sola: «¿tiene 5.000 estrellas?». Ahora alcanza con **uno** de tres caminos: **(a)** lo usa mucha gente (≥5.000 estrellas), **(b)** es de una organización oficial (Anthropic, Microsoft, Google, Vercel, Cursor), **o (c)** alguien leyó el contenido entero — y este último vale **solo si son puros archivos de texto**, sin nada que se ejecute ni se instale. Con código adentro no hay atajo: hace falta (a) o (b), porque leer un programa no te dice qué hace cuando corre.
+- **Por qué cambió, dicho sin vueltas:** la skill `humanizalo` que entró en 0.8.0 **no llega a las 5.000 estrellas ni es de una organización oficial**. La pusimos igual, después de leer sus 27 KB de texto completos y auditarla. La decisión fue correcta —en algo que es solo texto, leerlo entero prueba más que contar estrellas—, pero dejaba la regla diciendo una cosa y nuestra práctica haciendo otra. Si te pedimos un criterio, lo cumplimos nosotros primero: cuando la excepción está bien fundada, **se corrige la regla**, no se hace la excepción por lo bajo.
+- Las otras cuatro preguntas (licencia, que esté vivo, que haga una sola cosa, qué accesos pide) no cambian.
+Para actualizar: `claude plugin update base-segura@claude-catalogo`.
+
 ## 0.9.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.9.0 (`metodo`: guía de ruteo de modelos + criterio en `/metodo:crear-agente`).
 

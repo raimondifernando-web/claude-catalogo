@@ -178,3 +178,14 @@ Cambio (pedido de pm-consultoria-ia, decisión de Fernando: «está mal que sea 
 | Corrección | Gatillos de modelo agregados a la `description` («qué modelo le pongo», «¿opus o sonnet?», «está bien el modelo de este agente», «conviene fable acá») en la skill del catálogo **y** en la personal `agent-creator` |
 | Prueba 3 — los dos casos que fallaron, con los gatillos nuevos y sin invocar la skill | «contratos» → `model: opus` **con alias**, más la nota de pedir fable en el momento sin clavarlo ✓ · «el PM» → **Sonnet**, razonando que el trabajo duro pasa en el especialista al que delega ✓ |
 | Lección | Una regla escrita en una skill vale solo si la skill se dispara. Al publicar un criterio nuevo hay que probarlo **sin invocar la skill a mano** y, si no aparece, el problema es la `description`, no el criterio |
+
+## catálogo 0.10.0 (base-segura: el filtro de instalación pasa a tener tres caminos) — 2026-09-22 — PASS
+Cambio (§6 del pedido de pm-consultoria-ia, agregada después del aviso 0.8.0): la pregunta 1 de `docs/RECURSOS.md` deja de ser «¿tiene 5.000 estrellas?» y pasa a **uno de tres caminos** — (a) ≥5.000 estrellas · (b) organización oficial · (c) auditoría del 100% del contenido, **válida solo si son puros archivos de texto**. Mismo texto en el Mandamiento XVI y en la fila XVI de la tabla activa. Solo documentación.
+| Control | Resultado |
+|---|---|
+| Origen del problema | **Autoinfligido y correctamente señalado por Consultoría.** En el aviso 0.8.0 declaré que `humanizalo` no cumple el umbral de estrellas y que lo compensé auditando el 100%. La decisión era correcta; el problema es que dejaba la regla mintiendo mientras el portal del cliente le exige a Dani ese mismo umbral |
+| Criterio del tercer camino | Condicionado a **cero código**: sin scripts, ejecutables, symlinks ni dependencias que se instalen. Razón escrita en los tres lugares: leer un programa no dice qué hace en runtime ni qué arrastran sus dependencias, así que la lectura completa solo es concluyente sobre texto |
+| Lo que NO cambió | Licencia permisiva, actividad reciente, `skill-security-auditor` PASS y propósito diferenciado siguen siendo obligatorios por cualquiera de los tres caminos |
+| Regla nueva de procedimiento | «El filtro que se le pide a un cliente es el mismo que se aplica acá. Si una excepción está bien fundada, **se reescribe la regla**, no se hace la excepción en silencio.» Queda en MANDAMIENTOS XVI |
+| Grep de datos propios sobre lo publicado | 0 (el único ejemplo citado es `humanizalo`, que es público) |
+| Tercer caso del día del mismo patrón | Una regla escrita en un lugar y una práctica distinta en otro: (1) `modo-directo` sin la plantilla de `CLAUDE.md`, (2) el criterio de modelos que la skill no disparaba, (3) este. Los tres se detectaron comparando lo escrito contra lo que realmente pasa |
