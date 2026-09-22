@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.11.3 — 2026-09-22
+- **Si usás Graphify, el mapa nunca se sube, aunque nadie se acuerde de la regla.** Graphify arma en tu carpeta un mapa (`graphify-out/`) con textos sacados de tus archivos, y agrega unos enganches de Claude que solo sirven en tu computadora. Hasta ahora, evitar que se subieran dependía de que leyeras la regla 1 de `docs/GRAPHIFY.md` antes de instalarlo.
+- **El `.gitignore` de fábrica ya trae el bloque «Graphify».** Si arrancás una carpeta nueva con él, está cubierto desde el día uno.
+- **Si tu carpeta ya tiene su `.gitignore`, `/metodo:cerrar` lo completa solo:** cuando ve un mapa de Graphify que tu proyecto no ignora, agrega el bloque, lo sube junto con tu trabajo y te lo cuenta en la confirmación. Sin preguntas.
+- Se comprueba de forma que valga en cualquier computadora, no solo en la tuya: la regla queda escrita en el proyecto y viaja con él.
+Para actualizar: `claude plugin update metodo@claude-catalogo`.
+
 ## 0.11.2 — 2026-09-22
 - **`/metodo:cerrar` ahora sube solo lo que hizo esa sesión.** Antes subía todo lo que hubiera en la carpeta (`git add -A`). Si tenías dos ventanas de Claude abiertas en la misma carpeta, la primera que cerraba se llevaba el trabajo a medias de la otra y lo subía con su nombre y su descripción. Ahora cada sesión sube sus propios archivos. Si ve cambios que no son suyos, no los toca: te los lista («quedaron sin subir cambios que no son de esta sesión») y los sube la sesión que los hizo cuando cierre.
 - **Podés trabajar con varias sesiones en la misma carpeta.** `/metodo:otra-sesion` sigue siendo lo más prolijo (cada sesión en su copia), pero ya no es condición para que el cierre salga bien. Lo único que no se puede separar es un mismo archivo editado por las dos a la vez: lo sube la primera que cierra, y la segunda te avisa.

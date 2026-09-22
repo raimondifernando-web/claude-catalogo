@@ -42,9 +42,12 @@ Puede valer la pena algún día sobre una carpeta de documentos puntual, con la 
 precio. Nunca por costumbre y nunca automático.
 
 ## Las 5 reglas (obligatorias)
-1. **`graphify-out/` va al `.gitignore` ANTES de la primera corrida.** El mapa incluye comentarios y textos
-   sacados de tu código, y la herramienta recomienda subirlo al repositorio. Si tu rutina de cierre sube todo
-   lo que cambió, se va solo sin que lo decidas. Una línea y listo.
+1. **El bloque «Graphify» va al `.gitignore` DEL PROYECTO antes de la primera corrida.** El mapa
+   (`graphify-out/`) incluye comentarios y textos sacados de tu código, y la herramienta recomienda subirlo al
+   repositorio; los enganches que agrega en `.claude/settings.json` son de tu computadora y en otra darían error.
+   El `.gitignore` de fábrica del kit ya trae el bloque. Tiene que estar en el `.gitignore` del proyecto, no en
+   una configuración general de tu computadora: así viaja con el proyecto a cualquier máquina. Si igual se te
+   pasa, `/metodo:cerrar` lo detecta y lo agrega solo.
 2. **Instalar siempre parado dentro del proyecto**, con `graphify install --project`. Así toca únicamente esa
    carpeta. Verificado: de este modo **no toca nada de tu configuración general**.
 3. **Nunca `--strict`.** Es el único modo que puede negarle a Claude el permiso de abrir un archivo.
@@ -65,7 +68,8 @@ Se saca entero: `graphify uninstall` deja la configuración y los enganches como
 ```
 uv tool install graphifyy          # una sola vez en la computadora
 cd <tu proyecto>
-echo "graphify-out/" >> .gitignore  # regla 1, antes que nada
+# regla 1, antes que nada: si tu .gitignore no es el de fábrica del kit, copiale el bloque «Graphify»
+git -c core.excludesfile=/dev/null check-ignore graphify-out/x .claude/settings.json   # tiene que listar las dos
 graphify install --project          # regla 2
 graphify update .                   # el mapa, gratis
 ```

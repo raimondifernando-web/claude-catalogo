@@ -54,3 +54,10 @@
 .DS_Store
 Thumbs.db
 ~$*
+
+# --- Graphify (si lo instalás: docs/GRAPHIFY.md) ---
+# El mapa contiene textos sacados de tus archivos; los enganches de Claude son de esta computadora.
+graphify-out/
+.graphifyignore
+.claude/skills/graphify/
+.claude/settings.json

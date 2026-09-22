@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.11.3 — 2026-09-22
+- `docs/GRAPHIFY.md`: la regla 1 ahora dice dónde va el bloque (en el `.gitignore` del proyecto, no en una configuración de tu computadora) y cómo comprobarlo. Acompaña a `metodo` 0.11.3.
+
 ## 0.11.2 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.11.2 (`metodo`: el cierre sube solo lo de cada sesión).
 

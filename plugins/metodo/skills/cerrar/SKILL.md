@@ -63,6 +63,11 @@ demás pasos, nunca termines sin emitir ese bloque.
    - Si la carpeta no tiene `.gitignore`, proponé crear el de fábrica del kit (`metodo/templates/gitignore-estudio`):
      ignora por defecto claves, documentos de clientes y archivos pesados; el usuario puede sacar lo que sí quiera
      versionar.
+   - **Graphify, sin preguntar:** si existe la carpeta `graphify-out/` y el repo no la ignora
+     (`git -c core.excludesfile=/dev/null check-ignore -q graphify-out/graph.json` falla), agregá al `.gitignore`
+     el bloque «Graphify» del `.gitignore` de fábrica, sumalo a lo que subís y avisalo en la confirmación. El mapa
+     tiene textos sacados de los archivos y los enganches de `.claude/settings.json` son de esta computadora:
+     nunca suben. Se prueba con `core.excludesfile=/dev/null` para que valga en cualquier computadora, no solo en esta.
    - Si `push` falla por otra razón (sin internet, sin remoto), decilo tal cual: el commit quedó local y el prompt
      de reanudación lleva «PENDIENTE: subir cambios».
    - Nunca `--force`, nunca `reset --hard`, nunca borrar ni reescribir historial.

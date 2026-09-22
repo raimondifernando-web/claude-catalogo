@@ -251,3 +251,14 @@ Hallazgo del `/fable-security-check` de Orquesta (Fase 3, agente `security-revie
 | Arreglo | Los valores entran a Python como argumentos (`python3 - "$ruta" <<'PY'`), nunca dentro del código · chequeo 0 nuevo: nombres de plugin `^[a-z0-9-]+$` y rutas sin caracteres raros, si no, frena · `plugin.json` ilegible = FALLA (antes se salteaba en silencio) · conteo con `find` en vez de `ls` · «skills revisadas» ya no dice ok si hubo fallas |
 | Prueba después | Mismo ataque sobre la versión nueva: **no se ejecuta nada**, exit 1. Sobre el catálogo real: TODO COINCIDE |
 | Lección | Este script nació para frenar errores del catálogo y tenía uno propio: el chequeo también se chequea |
+
+## catálogo 0.11.3 (el mapa de Graphify nunca se sube) — 2026-09-22 — PASS
+Cambio (decisión directa de Fernando: «solucionalo de raíz, que no dependa de la memoria de nadie», para él, Consultoría y Dani). Hallazgo del `/fable-security-check` de Orquesta: en el ecosistema de Fernando el ignore de `graphify-out/` vivía solo en `~/.gitignore_global` (no viajaba con el repo), y en el kit dependía de leer la regla 1 de `docs/GRAPHIFY.md`.
+| Control | Resultado |
+|---|---|
+| Cambio | `templates/gitignore-estudio` + bloque «Graphify» (`graphify-out/`, `.graphifyignore`, `.claude/skills/graphify/`, `.claude/settings.json`) · `/metodo:cerrar` completa el `.gitignore` sin preguntar si ve `graphify-out/` no ignorado · `GRAPHIFY.md` regla 1 reescrita |
+| Prueba con sesión real (`--plugin-dir`, repo con `core.excludesfile=/dev/null` = «otra computadora», `.gitignore` de fábrica viejo, `graphify-out/` presente) | **0.11.3:** agregó el bloque al `.gitignore`, lo subió con el trabajo y lo avisó; mapa en el remoto: 0; el repo lo ignora |
+| Control con 0.11.2, mismo escenario | El mapa no se subió (efecto del arreglo de 0.11.2) **pero el repo no lo ignora**: queda `?? graphify-out/` expuesto a cualquier `git add -A` |
+| `verificar-metadatos.sh` | TODO COINCIDE (0.11.3 alineada) |
+| Grep de datos/credenciales sobre el diff | 0 |
+| Nada ejecutable tocado | solo `.md`, la plantilla de texto y 4 JSON de versión |

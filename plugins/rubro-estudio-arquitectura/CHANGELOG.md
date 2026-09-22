@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.11.3 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.11.3 (`metodo`: el mapa de Graphify nunca se sube).
+
 ## 0.11.2 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.11.2 (`metodo`: el cierre sube solo lo de cada sesión).
 
