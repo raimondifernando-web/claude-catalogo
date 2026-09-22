@@ -28,5 +28,13 @@ Para saber qué te falta sin adivinar: corré el chequeo (`docs/CHEQUEO.md`).
 
 Lo demás (Tesseract, Mermaid CLI, claves) solo si vas a usar esas funciones puntuales — tu consultor te dice cuándo.
 
+## Conectores y herramientas para tu negocio (no se instalan: se conectan)
+Gmail, Google Calendar, Google Drive y Notion son **conectores oficiales de claude.ai**: se activan una vez desde
+claude.ai → Configuración → Conectores, con tu cuenta, y valen en Claude Code, Cowork y el chat. Son lo que más rinde
+el día 1. Después vienen **manejar Chrome y la computadora** (funciones de la app de Claude: mucho poder, se activan a
+conciencia y nunca para pagar ni para códigos de verificación) y, si hacés publicidad o medís tu web, **Meta Ads,
+Google Ads, Microsoft Clarity, n8n y Firecrawl**. Qué hace cada uno, qué sale de tu computadora, cómo se activa y en qué
+orden conviene: **`docs/CONECTORES.md`**.
+
 ## Qué NO hace este plugin
 No instala nada por su cuenta. Instalar programas en tu computadora es una decisión tuya, guiada por tu consultor.

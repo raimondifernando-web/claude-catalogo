@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.6.0 — 2026-09-21
+- Sin cambios; acompaña al catálogo 0.6.0 (`base-segura`: `docs/CONECTORES.md`).
+
 ## 0.5.0 — 2026-09-21
 **Ya no hace falta copiar y pegar el texto de arranque.**
 - **`/cerrar` guarda el texto de arranque en `REANUDAR.md`**, en la raíz de tu carpeta de trabajo (lo ves en el Finder). Siempre es el último: cada cierre lo reemplaza. Sigue mostrándolo en el chat por si acaso.

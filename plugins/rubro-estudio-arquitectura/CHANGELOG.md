@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.6.0 — 2026-09-21
+- Sin cambios; acompaña al catálogo 0.6.0 (`base-segura`: `docs/CONECTORES.md`). Los conectores Canva/Excalidraw/ClickUp/Mapbox de `requisitos.md` siguen ahí; el resto (Gmail, Drive, Chrome, Mac, marketing) está en `docs/CONECTORES.md`.
+
 ## 0.5.0 — 2026-09-21
 - Sin cambios; acompaña al catálogo 0.5.0 (`metodo`: `/arrancar` levanta `REANUDAR.md` sin pegar).
 

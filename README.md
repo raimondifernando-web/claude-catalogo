@@ -15,9 +15,9 @@ Actualizar más adelante: `claude plugin update base-segura@claude-catalogo` (o 
 ## Plugins
 | Plugin | Capa | Qué es | Estado |
 |---|---|---|---|
-| `base-segura` | L1 | Skills transversales (escritura, documentos, análisis) + `skill-security-auditor` (auditar skills de afuera) + agentes básicos + plantillas de `CLAUDE.md` | 0.5.0 |
-| `metodo` | L3 | `/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar` (sin adular), `/metodo:cerrar` (handoff + prompt de reanudación + sube el avance en un solo gesto), `/metodo:crear-agente` (PM de empresa), `/metodo:otra-sesion` (dos sesiones a la vez sin pisarse) + 14 reglas del método. `/cerrar` deja `REANUDAR.md` y `/arrancar` lo levanta solo: no se pega nada | 0.5.0 |
-| `rubro-estudio-arquitectura` | L2 | Propuestas y honorarios, pliegos, informes de visita, adicionales, punch list, revisión de presupuestos, normativa argentina sobre PDFs, plan semanal + ficha A3 (método), investigación de mercado, contenido y diseño (26 skills + 5 agentes). Conectores CAD/BIM en `docs/CAD-BIM.md`. Requiere `base-segura` | 0.5.0 |
+| `base-segura` | L1 | Skills transversales (escritura, documentos, análisis) + `skill-security-auditor` (auditar skills de afuera) + agentes básicos + plantillas de `CLAUDE.md` | 0.6.0 |
+| `metodo` | L3 | `/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar` (sin adular), `/metodo:cerrar` (handoff + prompt de reanudación + sube el avance en un solo gesto), `/metodo:crear-agente` (PM de empresa), `/metodo:otra-sesion` (dos sesiones a la vez sin pisarse) + 14 reglas del método. `/cerrar` deja `REANUDAR.md` y `/arrancar` lo levanta solo: no se pega nada | 0.6.0 |
+| `rubro-estudio-arquitectura` | L2 | Propuestas y honorarios, pliegos, informes de visita, adicionales, punch list, revisión de presupuestos, normativa argentina sobre PDFs, plan semanal + ficha A3 (método), investigación de mercado, contenido y diseño (26 skills + 5 agentes). Conectores CAD/BIM en `docs/CAD-BIM.md`. Requiere `base-segura` | 0.6.0 |
 
 Cada plugin tiene su `CHANGELOG.md` escrito en lenguaje del cliente ("qué cambia para vos").
 
@@ -29,6 +29,7 @@ Para ver de una vez qué te falta: **`docs/CHEQUEO.md`** → un comando que devu
 
 **¿Querés sumar una herramienta de afuera?** `docs/RECURSOS.md`: dónde buscar, el filtro de 5 preguntas y los repositorios de confianza; la auditoría la hace `skill-security-auditor` (base-segura).
 **¿NotebookLM desde Claude?** `docs/NOTEBOOKLM-SEGURO.md`: 5 reglas obligatorias (versión fija, login desde la herramienta, copia local, no leer el archivo, saber revocar); cuenta dedicada opcional.
+**¿Gmail, Calendar, Drive, Notion, Chrome, manejar la Mac, Meta Ads, Google Ads, Clarity, n8n?** `docs/CONECTORES.md`: qué es cada conector, qué pide, qué sale de tu computadora, en qué orden activarlos y las 3 reglas (lo autorizás vos · claves nunca en el chat · pagos y códigos siempre vos).
 **¿Usás Revit, Archicad, AutoCAD, Rhino, FreeCAD, Blender o QGIS?** `docs/CAD-BIM.md`: qué conector existe para cada programa, qué pide y las 3 reglas antes de activar uno (licencia propia, archivo de prueba, oficial gana a comunitario).
 **¿Hay que publicar una herramienta en internet?** `docs/HOSTING.md`: Vercel vs VPS para no técnicos, con el tope de gasto del día 1.
 
