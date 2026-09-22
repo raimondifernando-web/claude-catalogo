@@ -1,5 +1,10 @@
 # base-segura — qué cambia para vos
 
+## 0.10.1 — 2026-09-22
+- **Los agentes `critic` y `planner` estaban atados a un modelo viejo. Ya no.** Traían anotado el número de versión del modelo (`claude-opus-4-6`) en lugar del nombre genérico (`opus`). Es justo el error que la guía de 0.9.0 te pide evitar: con el número puesto, el agente sigue pensando con el modelo de esa fecha aunque salga uno mejor, y nadie se entera. Ahora dicen `opus` y toman siempre el Opus vigente. **No tenés que hacer nada más que actualizar.**
+- De paso, sus descripciones ya no dicen con qué modelo corren: ese dato vive en un solo lugar y así no queda desactualizado en dos.
+Para actualizar: `claude plugin update base-segura@claude-catalogo`.
+
 ## 0.10.0 — 2026-09-22
 - **Cambia la primera pregunta del filtro de seguridad** (`docs/RECURSOS.md`), la que decide si se puede instalar algo de afuera. Antes era una sola: «¿tiene 5.000 estrellas?». Ahora alcanza con **uno** de tres caminos: **(a)** lo usa mucha gente (≥5.000 estrellas), **(b)** es de una organización oficial (Anthropic, Microsoft, Google, Vercel, Cursor), **o (c)** alguien leyó el contenido entero — y este último vale **solo si son puros archivos de texto**, sin nada que se ejecute ni se instale. Con código adentro no hay atajo: hace falta (a) o (b), porque leer un programa no te dice qué hace cuando corre.
 - **Por qué cambió, dicho sin vueltas:** la skill `humanizalo` que entró en 0.8.0 **no llega a las 5.000 estrellas ni es de una organización oficial**. La pusimos igual, después de leer sus 27 KB de texto completos y auditarla. La decisión fue correcta —en algo que es solo texto, leerlo entero prueba más que contar estrellas—, pero dejaba la regla diciendo una cosa y nuestra práctica haciendo otra. Si te pedimos un criterio, lo cumplimos nosotros primero: cuando la excepción está bien fundada, **se corrige la regla**, no se hace la excepción por lo bajo.

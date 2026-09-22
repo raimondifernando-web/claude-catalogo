@@ -1,5 +1,10 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.10.1 — 2026-09-22
+- **`designer`: mismo arreglo que en `base-segura`** — tenía anotado `claude-sonnet-4-6` (un modelo de fecha fija) y ahora dice `sonnet`, que es siempre el vigente.
+- **`project-idea-validator` pasa a pensar con Opus** (antes Sonnet). Su trabajo es darte un go/no-go sobre una idea antes de que le pongas plata y meses encima: juzga, decide, y equivocarse ahí sale caro. Por las tres preguntas de la guía de ruteo le corresponde el modelo más capaz. En la práctica: te va a contestar un poco más lento y bastante mejor argumentado.
+Para actualizar: `claude plugin update rubro-estudio-arquitectura@claude-catalogo`.
+
 ## 0.10.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.10.0 (`base-segura`: la pregunta 1 del filtro pasa a tener tres caminos).
 

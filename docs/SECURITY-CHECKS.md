@@ -189,3 +189,17 @@ Cambio (§6 del pedido de pm-consultoria-ia, agregada después del aviso 0.8.0):
 | Regla nueva de procedimiento | «El filtro que se le pide a un cliente es el mismo que se aplica acá. Si una excepción está bien fundada, **se reescribe la regla**, no se hace la excepción en silencio.» Queda en MANDAMIENTOS XVI |
 | Grep de datos propios sobre lo publicado | 0 (el único ejemplo citado es `humanizalo`, que es público) |
 | Tercer caso del día del mismo patrón | Una regla escrita en un lugar y una práctica distinta en otro: (1) `modo-directo` sin la plantilla de `CLAUDE.md`, (2) el criterio de modelos que la skill no disparaba, (3) este. Los tres se detectaron comparando lo escrito contra lo que realmente pasa |
+
+## catálogo 0.10.1 (los 8 agentes del catálogo se alinean con la guía de ruteo de 0.9.0) — 2026-09-22 — PASS
+Cambio (pedido `2026-09-22-orquesta-agentes-del-catalogo-sin-migrar.md` de pm-consultoria-ia): la migración de modelos de 0.9.0 se había aplicado a los 60 agentes personales pero **no a los 8 que el catálogo le instala al cliente**. `critic` y `planner` (`claude-opus-4-6`) y `designer` (`claude-sonnet-4-6`) pasan a alias; `project-idea-validator` sube de `sonnet` a `opus`. Solo frontmatter y documentación.
+| Control | Resultado |
+|---|---|
+| Origen del problema | **Autoinfligido y correctamente señalado por Consultoría.** El CHANGELOG de `metodo` 0.9.0 le enseña al cliente que un ID de versión «queda clavado y tu agente se queda atrás», y usa `claude-sonnet-4-6` como ejemplo del error — mientras el mismo release instalaba `designer` con exactamente ese valor. Cuarto caso del mismo patrón en el día: la regla escrita contradice lo que el kit hace, y el cliente puede verlo con un comando |
+| Alcance real del riesgo | No es cosmético: con el ID clavado, el estudio criticaría y planificaría con Opus 4.6 en vez del Opus vigente sin que nadie se entere. `project-idea-validator` da go/no-go antes de comprometer plata y meses (juzga + error caro = 2 sí → Opus por la guía) |
+| Alias en los 8 agentes | `opus`×2 · `sonnet`×3 · `opus` (validator) · `haiku`×1 · `sonnet`×1 → 0 IDs de versión. `grep -rE 'claude-(opus\|sonnet\|haiku)-[0-9]' plugins/*/agents/` = 0 hits |
+| Modelo declarado en `description` (punto 3 del pedido) | Estaba: `critic` y `planner` decían «(Opus)», `designer` «(Sonnet)». Removidos — el modelo vive en un solo lugar, si no queda desactualizado en dos |
+| Fable | No se le clava a ningún agente del catálogo (Mand. III); se pide en el momento |
+| Grep de datos/credenciales sobre el diff | 0 hits reales (los únicos matches son `author` y la URL pública del repo) |
+| Referencias al ecosistema de origen en el diff | 0 fuera de `author`/URLs |
+| Nada ejecutable tocado | 0 archivos `.sh`/`.py`/`.js`, 0 hooks, 0 MCP, 0 settings, 0 symlinks; los 4 JSON validan |
+| IDs de modelo que NO se tocaron y por qué | `plugins/base-segura/skills/markitdown/*.md` documenta IDs de **OpenRouter** (`anthropic/claude-sonnet-4.5`), donde el ID explícito es obligatorio por contrato de esa API. No es `model:` de agente; la regla del alias no aplica |

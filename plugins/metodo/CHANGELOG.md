@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.10.1 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.10.1 (corrección: los agentes de `base-segura` y `rubro-estudio-arquitectura` pasan a nombre genérico de modelo, como manda la guía de ruteo de 0.9.0).
+
 ## 0.10.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.10.0 (`base-segura`: la pregunta 1 del filtro pasa a tener tres caminos).
 
