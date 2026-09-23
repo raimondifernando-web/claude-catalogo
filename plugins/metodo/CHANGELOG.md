@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.12.0 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.12.0 (paquete nuevo `escala-desarrollo`: dos revisores para tu app).
+
 ## 0.11.5 — 2026-09-22
 - **Regla 15: copiar no es resumir, y el conteo no lo demuestra.** Cuando Claude pasa contenido de un lado a otro (una planilla a una base, PDFs a notas, fichas de clientes a otro sistema), puede devolver la misma cantidad de piezas, con la misma forma, pero resumidas o inventadas. Contar no lo delata. La regla pide verificar texto contra texto y no archivar ni borrar el original hasta que todo pase.
 - **La medición viene con el kit: `scripts/verificar-copia.py`.** Solo lee. Por cada pieza del original mide qué parte de su texto aparece en la copia, y sale en rojo si alguna queda por debajo del 85%. También sale en rojo si hay archivos que no pudo medir (PDF, Word, Excel): esos se pasan antes a texto con `markitdown`, así nunca te dice «todo bien» sobre algo que no miró.

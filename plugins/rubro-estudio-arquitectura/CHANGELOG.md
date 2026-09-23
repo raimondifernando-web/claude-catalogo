@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.12.0 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.12.0 (paquete nuevo `escala-desarrollo`: dos revisores para cuando el estudio empiece a hacer sus propias herramientas).
+
 ## 0.11.5 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.11.5 (`metodo`: regla 15 + `verificar-copia.py`, regla 11 corregida).
 

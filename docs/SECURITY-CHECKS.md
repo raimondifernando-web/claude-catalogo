@@ -284,3 +284,15 @@ Cambio (pedido `2026-09-22-orquesta-pedido-regla-15-verificar-copia.md` de pm-co
 | Prueba con sesión real (Sonnet, `--plugin-dir`, reglas nuevas vs viejas en `CLAUDE.md`) | Nueva: corrió el script y no borró el origen. **Control: tampoco borró** (comparó a mano, 3 y 30 piezas). La sesión real NO prueba que la regla cambie la conducta a esta escala; prueba que el script es correcto. Queda dicho |
 | Chequeo de ignore (`docs/GRAPHIFY.md`, `/metodo:cerrar`, `graphify-en-repo` de Orquesta) | `-c core.excludesfile=/dev/null check-ignore -q` daba verde con la regla solo en `.git/info/exclude` (reproducido). Ahora `check-ignore -v` y se exige fuente `.gitignore` del repo y patrón sin `!` (el `-v` sale 0 aun en negaciones, verificado). 8/8 casos |
 | `verificar-metadatos.sh` · grep de datos/credenciales sobre el diff | TODO COINCIDE (0.11.5 alineada) · 0 |
+
+## catálogo 0.12.0 (paquete nuevo `escala-desarrollo`: code-reviewer + security-reviewer) — 2026-09-22 — PASS
+Pedido `2026-09-22-orquesta-pedido-escala-desarrollo-revisores.md` de pm-consultoria-ia. Evidencia de producto:
+`Consultoria-IA/docs/investigacion/2026-09-22-revisores-de-codigo-para-dani.md` (Ronda 2, Mand. XI hecho: oficiales y repos de confianza no los superan).
+| Control | Resultado |
+|---|---|
+| Mand. XVI | VoltAgent/awesome-claude-code-subagents MIT 25.3K★ · Yeachan-Heo/oh-my-claudecode MIT 39.3K★ (verificado por Consultoría con `gh api`). Puro texto: 2 `.md`, sin scripts |
+| Cambios de Orquesta al publicar | `code-reviewer`: quitada la línea residual «Skills disponibles: commit-work» (la adaptación de Consultoría la había dejado) · **sin `Write`/`Edit`** (revisor ≠ autor; un vibe coder no vería un cambio silencioso). `security-reviewer`: sin cambios (ya era `disallowedTools: Write, Edit`) |
+| Prueba en entorno de cliente (`--setting-sources project`, `--plugin-dir escala-desarrollo + base-segura`, sin CLAUDE.md de Fernando, sonda previa: solo ve `escala-desarrollo:*`) | Banco de 10 errores de Consultoría, clave fuera de la carpeta. `code-reviewer` ≈9,5/10 (◐ path traversal) · `security-reviewer` ≈9,5/10 (◐ m²=0) · **juntos 10/10**, castellano llano, veredicto y orden de arreglo, revisan la carpeta en `main` (sin falso verde) |
+| Honestidad del texto | Tienen `Bash` (lo usan para verificar cálculos y auditar dependencias): el CHANGELOG no promete «solo leen», dice «no editan archivos» |
+| Preload `skill-security-auditor` de `code-reviewer` | Vive en `base-segura`: el marketplace lo marca «recomendado junto con base-segura» |
+| `verificar-metadatos.sh` · grep de datos sobre el diff | TODO COINCIDE (4 plugins en 0.12.0) · 0 (las 3 coincidencias son autor/repo estándar del plugin.json) |

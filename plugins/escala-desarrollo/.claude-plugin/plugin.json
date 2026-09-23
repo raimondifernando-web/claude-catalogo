@@ -1,0 +1,9 @@
+{
+  "name": "escala-desarrollo",
+  "version": "0.12.0",
+  "description": "Capa L4, para cuando empezás a desarrollar tus propias herramientas con Claude (vibe coding): 2 agentes que revisan tu app antes de usarla con clientes. code-reviewer (errores de cálculo, fallas, calidad) y security-reviewer (claves expuestas, accesos abiertos, datos de clientes). Revisan la carpeta entera, explican en castellano qué puede pasar y en qué orden arreglarlo. Pedile a Claude: «revisá mi app con los dos revisores».",
+  "author": { "name": "Fernando Raimondi" },
+  "homepage": "https://github.com/raimondifernando-web/claude-catalogo",
+  "repository": "https://github.com/raimondifernando-web/claude-catalogo",
+  "license": "MIT"
+}

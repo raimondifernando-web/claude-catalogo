@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.12.0 — 2026-09-22
+- Sin cambios; acompaña al catálogo 0.12.0 (paquete nuevo `escala-desarrollo`). Si lo instalás, `base-segura` le presta al revisor de código su auditor de skills.
+
 ## 0.11.5 — 2026-09-22
 - `docs/GRAPHIFY.md`: la comprobación antes de instalar ahora mira de dónde sale la regla (`git check-ignore -v`) y exige que sea el `.gitignore` del proyecto. La anterior podía dar verde con una regla que solo existía en tu computadora. Acompaña a `metodo` 0.11.5.
 
