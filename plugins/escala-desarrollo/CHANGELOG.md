@@ -1,5 +1,9 @@
 # escala-desarrollo — qué cambia para vos
 
+## 0.12.1 — 2026-09-23
+- **Nueva skill `research-deep-dive`**: para cuando necesitás una investigación a fondo sobre un tema, mercado, competidor o tecnología (no una consulta rápida). Coordina 3 agentes en cadena: uno busca y sintetiza, el segundo valida con fuentes primarias y datos duros, el tercero arma el informe final accionable. Pedilo con «investigación profunda sobre X».
+- Incluye los 3 agentes que usa: `research-analyst`, `data-researcher`, `knowledge-synthesizer`.
+
 ## 0.12.0 — 2026-09-22
 - **Paquete nuevo, para cuando empezás a hacer tus propias herramientas con Claude.** Si le pedís a Claude que te arme una app (un presupuestador, una planilla web, un formulario), el código lo escribe él y vos no lo podés leer. Estos dos revisores lo leen por vos antes de que la uses con clientes.
 - **`code-reviewer`** encuentra lo que se rompe o calcula mal. En la prueba detectó un descuento que se aplicaba solo en un 21%, así que cada presupuesto con descuento salía más caro de lo prometido. Mostró cuánto se cobraba de más, con ejemplos.
