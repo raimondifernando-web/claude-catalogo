@@ -77,6 +77,98 @@
         "seguridad",
         "fork-auditado"
       ]
+    },
+    {
+      "name": "agent-skills",
+      "source": {
+        "source": "github",
+        "repo": "addyosmani/agent-skills",
+        "sha": "bcab6a1b8503100e8618c3b4e32cc78de43de769"
+      },
+      "description": "Production-grade engineering skills for AI coding agents — covering the full software development lifecycle from spec to ship. (Original de Addy Osmani, 98.7K★, MIT, fijado al commit auditado bcab6a1 — PASS con condiciones, 2026-09-23: preguntar antes de reset --hard, push, deploy, npm/brew/pip install o agregar MCP.)",
+      "version": "0.6.10",
+      "category": "development",
+      "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
+    },
+    {
+      "name": "voltagent-core-dev",
+      "source": { "source": "git-subdir", "url": "https://github.com/VoltAgent/awesome-claude-code-subagents.git", "path": "categories/01-core-development", "sha": "82b73821baa7a911d5b14cfb6da238b7f0db6b42" },
+      "description": "Essential development subagents for everyday coding tasks - backend, frontend, fullstack, mobile, and API design. (VoltAgent, 25.3K★, MIT, fijado al commit auditado 82b7382 — PASS con condiciones, 2026-09-23: nunca modo bypass; preguntar antes de agent-installer o curl|bash / npm -g.)",
+      "version": "1.0.4",
+      "category": "development",
+      "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
+    },
+    {
+      "name": "voltagent-lang",
+      "source": { "source": "git-subdir", "url": "https://github.com/VoltAgent/awesome-claude-code-subagents.git", "path": "categories/02-language-specialists", "sha": "82b73821baa7a911d5b14cfb6da238b7f0db6b42" },
+      "description": "Language-specific expert agents with deep framework knowledge - Python, TypeScript, Go, Rust, Java, and more. (VoltAgent, 25.3K★, MIT, fijado al commit auditado 82b7382 — mismas condiciones que voltagent-core-dev.)",
+      "version": "1.0.4",
+      "category": "development",
+      "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
+    },
+    {
+      "name": "voltagent-infra",
+      "source": { "source": "git-subdir", "url": "https://github.com/VoltAgent/awesome-claude-code-subagents.git", "path": "categories/03-infrastructure", "sha": "82b73821baa7a911d5b14cfb6da238b7f0db6b42" },
+      "description": "DevOps, cloud, and deployment specialists - Kubernetes, Terraform, AWS, Azure, GCP, and SRE. (VoltAgent, 25.3K★, MIT, fijado al commit auditado 82b7382 — mismas condiciones que voltagent-core-dev.)",
+      "version": "1.0.1",
+      "category": "infrastructure",
+      "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
+    },
+    {
+      "name": "voltagent-qa-sec",
+      "source": { "source": "git-subdir", "url": "https://github.com/VoltAgent/awesome-claude-code-subagents.git", "path": "categories/04-quality-security", "sha": "82b73821baa7a911d5b14cfb6da238b7f0db6b42" },
+      "description": "Testing, security, and code quality experts - code review, penetration testing, QA automation. (VoltAgent, 25.3K★, MIT, fijado al commit auditado 82b7382 — mismas condiciones que voltagent-core-dev.)",
+      "version": "1.1.1",
+      "category": "quality",
+      "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
+    },
+    {
+      "name": "voltagent-data-ai",
+      "source": { "source": "git-subdir", "url": "https://github.com/VoltAgent/awesome-claude-code-subagents.git", "path": "categories/05-data-ai", "sha": "82b73821baa7a911d5b14cfb6da238b7f0db6b42" },
+      "description": "Data engineering, ML, and AI specialists - data pipelines, machine learning, LLM architecture. (VoltAgent, 25.3K★, MIT, fijado al commit auditado 82b7382 — mismas condiciones que voltagent-core-dev.)",
+      "version": "1.0.2",
+      "category": "data",
+      "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
+    },
+    {
+      "name": "voltagent-dev-exp",
+      "source": { "source": "git-subdir", "url": "https://github.com/VoltAgent/awesome-claude-code-subagents.git", "path": "categories/06-developer-experience", "sha": "82b73821baa7a911d5b14cfb6da238b7f0db6b42" },
+      "description": "Tooling and developer productivity experts - CLI tools, documentation, README generation, and DX optimization. (VoltAgent, 25.3K★, MIT, fijado al commit auditado 82b7382 — mismas condiciones que voltagent-core-dev.)",
+      "version": "1.0.3",
+      "category": "tooling",
+      "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
+    },
+    {
+      "name": "voltagent-domains",
+      "source": { "source": "git-subdir", "url": "https://github.com/VoltAgent/awesome-claude-code-subagents.git", "path": "categories/07-specialized-domains", "sha": "82b73821baa7a911d5b14cfb6da238b7f0db6b42" },
+      "description": "Domain-specific technology experts - blockchain, fintech, gaming, IoT, payments, X/Twitter APIs. (VoltAgent, 25.3K★, MIT, fijado al commit auditado 82b7382 — mismas condiciones que voltagent-core-dev.)",
+      "version": "1.0.4",
+      "category": "specialized",
+      "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
+    },
+    {
+      "name": "voltagent-biz",
+      "source": { "source": "git-subdir", "url": "https://github.com/VoltAgent/awesome-claude-code-subagents.git", "path": "categories/08-business-product", "sha": "82b73821baa7a911d5b14cfb6da238b7f0db6b42" },
+      "description": "Product, legal, and business specialists - product strategy, licensing, project management, UX research. (VoltAgent, 25.3K★, MIT, fijado al commit auditado 82b7382 — mismas condiciones que voltagent-core-dev.)",
+      "version": "1.0.4",
+      "category": "business",
+      "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
+    },
+    {
+      "name": "voltagent-meta",
+      "source": { "source": "git-subdir", "url": "https://github.com/VoltAgent/awesome-claude-code-subagents.git", "path": "categories/09-meta-orchestration", "sha": "82b73821baa7a911d5b14cfb6da238b7f0db6b42" },
+      "description": "Agent coordination and meta-programming - multi-agent orchestration, workflow automation, and safe refactor governance. Works best with other voltagent plugins installed. (VoltAgent, 25.3K★, MIT, fijado al commit auditado 82b7382 — mismas condiciones que voltagent-core-dev.)",
+      "version": "1.0.5",
+      "category": "orchestration",
+      "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
+    },
+    {
+      "name": "voltagent-research",
+      "source": { "source": "git-subdir", "url": "https://github.com/VoltAgent/awesome-claude-code-subagents.git", "path": "categories/10-research-analysis", "sha": "82b73821baa7a911d5b14cfb6da238b7f0db6b42" },
+      "description": "Research, search, and analysis specialists - market research, competitive analysis, trend forecasting, and idea validation. (VoltAgent, 25.3K★, MIT, fijado al commit auditado 82b7382 — mismas condiciones que voltagent-core-dev.)",
+      "version": "1.0.4",
+      "category": "research",
+      "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
     }
   ]
 }
