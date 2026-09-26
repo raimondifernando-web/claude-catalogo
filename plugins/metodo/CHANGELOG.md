@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.12.2 — 2026-09-26
+- **El `.gitignore` de fábrica (`gitignore-estudio`) ahora también ignora `.omc/`.** Si instalás
+  `oh-my-claudecode-fixed`, esa carpeta guarda el estado de cada sesión y el registro de qué hizo —
+  no es tu trabajo, y sin esta línea el primer `git add` la subía entera al repo.
+
 ## 0.12.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.12.0 (paquete nuevo `escala-desarrollo`: dos revisores para tu app).
 

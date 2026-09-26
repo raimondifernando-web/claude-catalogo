@@ -64,3 +64,9 @@ graphify-out/
 .graphifyignore
 .claude/skills/graphify/
 *.graphify-bak
+
+# --- oh-my-claudecode-fixed (si lo instalás) ---
+# Carpeta de trabajo por sesión: guarda estado y el registro de las herramientas que usó. No es tu trabajo, es
+# ejecución de la sesión — no debería viajar al repo.
+.omc/
+.session-stats.json

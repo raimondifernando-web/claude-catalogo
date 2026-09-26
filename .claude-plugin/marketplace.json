@@ -36,8 +36,8 @@
     {
       "name": "metodo",
       "source": "./plugins/metodo",
-      "description": "Método de trabajo (L3): /metodo:arrancar, /metodo:planear, /metodo:criticar (sin adular), /metodo:cerrar (handoff + prompt de reanudación + sube el avance en un solo gesto), /metodo:crear-agente (PM de empresa y especialistas, con el criterio para elegir el modelo de cada uno), /metodo:otra-sesion (dos sesiones a la vez sin pisarse) + 15 reglas. /cerrar deja REANUDAR.md y /arrancar lo levanta solo (sin pegar el texto de arranque).",
-      "version": "0.12.0",
+      "description": "Método de trabajo (L3): /metodo:arrancar, /metodo:planear, /metodo:criticar (sin adular), /metodo:cerrar (handoff + prompt de reanudación + sube el avance en un solo gesto), /metodo:crear-agente (PM de empresa y especialistas, con el criterio para elegir el modelo de cada uno), /metodo:otra-sesion (dos sesiones a la vez sin pisarse) + 15 reglas. /cerrar deja REANUDAR.md y /arrancar lo levanta solo (sin pegar el texto de arranque). El .gitignore de fábrica ignora .omc/ (estado de oh-my-claudecode-fixed).",
+      "version": "0.12.2",
       "category": "productivity",
       "tags": [
         "l3",
