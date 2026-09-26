@@ -308,3 +308,15 @@ Pedido `2026-09-23-orquesta-pedido-paridad-f2-origenes-fijados.md` de pm-consult
 | Pendiente (no bloqueante) | Prueba funcional de instalación (`claude plugin install oh-my-claudecode-fixed@claude-catalogo` en HOME temporal) también cayó en el mismo bloqueo; queda para correrla Fernando o Consultoría. El comentario JSDoc de `getHardMaxIterations()` en el fork («Returns 0 if unlimited») quedó desactualizado — cosmético, no funcional, no se tocó por el mismo bloqueo |
 | `research-deep-dive` (propio de Fernando) + sus 3 agentes (`research-analyst`, `data-researcher`, `knowledge-synthesizer`) | Frontmatter sin `author`/`sync:`; cuerpo ya genérico (sin Fernando/TIBP/Mandamientos: verificado con grep, 0 coincidencias en los 4 archivos) |
 | `verificar-metadatos.sh` | TODO COINCIDE (`escala-desarrollo` 0.12.1: description ajustada a 5 agentes reales) |
+
+## `33963ad` (addyosmani/agent-skills + los 10 bloques de VoltAgent entran fijados al original) — 2026-09-24 — PASS
+Corrige la entrada 0.12.1 («no entran al marketplace»): sin `ref`/`sha`, un marketplace de terceros se refresca en cada install/update aunque la auto-actualización esté apagada. No es fork ni copia: una línea por plugin apuntando al repo **original** en el commit que auditó `security-reviewer` el 2026-09-23.
+
+| Ítem | Resultado |
+|---|---|
+| Fuentes externas con `sha` | 12/12 (fork OMC + `addyosmani/agent-skills` @ `bcab6a1` + 10 × `VoltAgent/awesome-claude-code-subagents` @ `82b7382`) |
+| Los `sha` existen en el remoto | `gh api repos/<repo>/commits/<sha>` → los 3 responden (2026-09-26) |
+| Código ejecutable propio | 0 — el commit solo toca `marketplace.json` |
+
+## pipeline — primer chequeo de seguridad del proyecto — 2026-09-26 — PASS con flags
+Chequeo del repo entero (no de una versión): 0 secretos en el árbol y en la historia completa (13 patrones de credenciales, 39 commits), secret scanning + push protection activos, 0 deploy keys, 0 webhooks, un solo colaborador. Arreglado en el mismo acto: el estado de sesión de oh-my-claudecode (`.omc/`, incluye trazas de herramientas) y `__pycache__/` pasan a `.gitignore`; se deja de trackear un `.pyc` (sin rutas locales embebidas). Pendientes fuera del repo: la plantilla `gitignore-estudio` también tiene que ignorar `.omc/` (quien instala `oh-my-claudecode-fixed` la genera en cada repo), y la rama `main` no tiene protección contra force-push.
