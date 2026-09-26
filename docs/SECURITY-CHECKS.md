@@ -31,7 +31,7 @@ Cambio: requisitos declarados (`requisitos.md` por plugin), bloque de chequeo pr
 | Control | Resultado |
 |---|---|
 | Grep de datos/credenciales (mismo patrón) | 0 hits reales (los únicos matches son el propio patrón en este archivo y el usuario de GitHub en URLs del repo) |
-| Referencias al ecosistema de origen en lo nuevo (`Fernando|Mandamiento|ORQUESTA|Paperclip|fable|EBRAS`) | 0 fuera de author/URLs |
+| Referencias al ecosistema de origen en lo nuevo (`Fernando|Mandamiento|ORQUESTA|Paperclip|fable|<cliente>`) | 0 fuera de author/URLs |
 | `scripts/chequeo.sh` | solo lectura: `command -v`, `python3 -c import`, `test -n "$VAR"`/`grep -q` sobre nombre de variable. No instala, no escribe, no imprime valores de claves. Sin llamadas de red. `bash -n` OK |
 | Bloques de chequeo en SKILL.md | comandos de verificación idénticos a los del script; instruyen a no pedir claves por chat |
 | Hooks / MCP / settings / symlinks | ninguno / 0 |
@@ -56,7 +56,7 @@ Cambio: `skill-security-auditor` pasa a base-segura (L1) · `markitdown` como `p
 | Control | Resultado |
 |---|---|
 | Grep de datos/credenciales (mismo patrón) | 0 archivos |
-| Referencias al ecosistema de origen en los 19 archivos nuevos/modificados (`Fernando|Mandamiento|ORQUESTA|Paperclip|fable|EBRAS|Dani|TIBP`) | 0 fuera de `author` |
+| Referencias al ecosistema de origen en los 19 archivos nuevos/modificados (`Fernando|Mandamiento|ORQUESTA|Paperclip|fable|<cliente>|<persona>|TIBP`) | 0 fuera de `author` |
 | Hooks / MCP / settings / symlinks | ninguno / 0 |
 | `skill_security_auditor.py` (nuevo en L1) | stdlib pura; única llamada externa `subprocess.run(["git","clone","--depth","1",url,tmp])` a carpeta temporal cuando se audita por URL; sin HTTP saliente; sin `shell=True`; compila |
 | El auditor corrido sobre el propio catálogo | PASS en 24 de 31 skills. FAIL/WARN restantes revisados línea por línea: **todos falsos positivos** (el script se detecta a sí mismo; `markitdown`/`generate-image`/`transcribe` leen su clave del entorno y llaman a su API por diseño; docs que dicen "API key"). Por eso el SKILL.md incorpora la regla de interpretación: leer cada hallazgo contra el propósito declarado; FAIL ≠ malicioso, WARN ≠ inocuo |
@@ -86,12 +86,12 @@ Cambio: 9 skills nuevas (`propuesta-de-honorarios`, `pliego-especificaciones`, `
 | Origen y licencias | 6 adaptadas de repos MIT (`pm-claude-skills`, `skills-for-architects`), licencia de origen conservada como `LICENSE-origen.md` dentro de cada skill; 3 creadas de cero. Ninguna trae scripts (`find -name "*.py" -o -name "*.sh"` = 0) |
 | Auditor (`skill-security-auditor`) sobre las 9 | PASS / 0 hallazgos en las 9 (segunda corrida; la primera la hizo el equipo de desarrollo) |
 | Grep de datos/credenciales sobre el plugin instalado | 1 hit = nombre de variable `OPENROUTER_API_KEY` en `generate-image` (ya presente desde 0.1.1; no es un valor) |
-| Referencias al ecosistema de origen (`Fernando|Mandamiento|ORQUESTA|Paperclip|fable|EBRAS|Dani`) | 0 en las 9 skills y en `docs/CAD-BIM.md` |
+| Referencias al ecosistema de origen (`Fernando|Mandamiento|ORQUESTA|Paperclip|fable|<cliente>|<persona>`) | 0 en las 9 skills y en `docs/CAD-BIM.md` |
 | `docs/CAD-BIM.md` — verificación de fuentes | Licencias/★/push de 10 repos por API de GitHub el 2026-09-21. Correcciones respecto de la investigación previa: **Autodesk publicó un Revit MCP Server oficial** (Revit 2027, tech preview, 2026-06-17) → pasa a ser el recomendado; Blender = `ahujasid/mcp-for-blender` (renombrado); Speckle = Apache-2.0 salvo módulos `workspaces`/`gatekeeper` (EE). SketchUp sigue excluido. Los directorios glama/smithery/PulseMCP no respondieron por API; la búsqueda web coincide con los líderes |
 | Instalación en HOME temporal desde copia local (rutas absolutas) | 3 plugins 0.3.0; rubro con 26 skills en caché; 6 `LICENSE-origen.md` presentes |
 | Prueba funcional | `punch-list-obra` con notas de recorrida reales inventadas: tabla completa por sector/gremio/nivel A-B-C, sin pedir claves, sin inventar precios ni empresas (`[asignar]`), cita CCyC con aviso "verificar numeración vigente" |
 | Prueba **end-to-end** `claude -p --plugin-dir …/rubro-estudio-arquitectura --setting-sources user` | **PASA** (tras `claude auth login`; el bloqueo previo era la sesión OAuth vencida de la CLI standalone, no el plugin). La skill se activa por nombre y produce la tabla completa. Cierra el pedido 3 de `orquesta-arquitectura-lean` |
-| Adenda stack EBRAS (AutoCAD LT · ZWCAD · SketchUp) | `puran-water/autocad-mcp` 523★ MIT (push 2026-02-20): README confirma **AutoCAD LT 2024+ y Windows**; "AutoCAD LT for Mac does not support AutoLISP" → el aviso "solo Windows" es del propio proyecto, no una inferencia. Trae backend `ezdxf` headless multiplataforma. `daobataotie/CAD-MCP` 562★ MIT (push 2026-09-15): README confirma AutoCAD/GstarCAD/**ZWCAD**, `pywin32`, **Windows**. SketchUp sigue excluido |
+| Adenda stack del cliente (AutoCAD LT · ZWCAD · SketchUp) | `puran-water/autocad-mcp` 523★ MIT (push 2026-02-20): README confirma **AutoCAD LT 2024+ y Windows**; "AutoCAD LT for Mac does not support AutoLISP" → el aviso "solo Windows" es del propio proyecto, no una inferencia. Trae backend `ezdxf` headless multiplataforma. `daobataotie/CAD-MCP` 562★ MIT (push 2026-09-15): README confirma AutoCAD/GstarCAD/**ZWCAD**, `pywin32`, **Windows**. SketchUp sigue excluido |
 | Instalación desde GitHub (HOME temporal) | rubro 0.3.0 con 26 skills en caché; `docs/CAD-BIM.md` en el marketplace; raw responde 200; `chequeo.sh` corre (19 líneas OK/FALTA/OPCIONAL) |
 
 ## catálogo 0.4.0 (metodo: sesiones en paralelo + cierre en un gesto) — 2026-09-21 — PASS (decisión registrada)
@@ -139,7 +139,7 @@ Cambio (pedido de pm-consultoria-ia, decisión de Fernando 2026-09-21 «lo de br
 | Control | Resultado |
 |---|---|
 | Skill nueva: contenido | 2 archivos Markdown (`SKILL.md` + `assets/identidad-visual.md`), sin scripts, sin ejecutables, sin symlinks, sin llamadas de red, sin claves. Auditor en origen (Consultoría IA): PASS 0/0/0 |
-| Grep de datos propios/ajenos sobre la skill (`fernando|raimondi|orquesta|tibp|ebras|@gmail`) | 0 (solo menciona "Anthropic" para decir que NO aplica esa marca) |
+| Grep de datos propios/ajenos sobre la skill (`fernando|raimondi|orquesta|tibp|<cliente>|@gmail`) | 0 (solo menciona "Anthropic" para decir que NO aplica esa marca) |
 | Grep de datos/credenciales sobre los 3 plugins | 0 (los únicos hits son la URL pública del repo en `plugin.json`) |
 | Prueba (a) — carpeta sin `identidad-visual.md`, sesión real `--plugin-dir`, herramientas solo lectura | Detectó que falta el archivo, hizo la pregunta 1 (colores) sola y enumeró las 5 restantes; **no escribió nada** (carpeta intacta) ✓ |
 | Prueba (b) — carpeta con `identidad-visual.md` de prueba (Estudio Río Verde: #1F4D3A / #C2703D / #F4EFE6 / #2B2B2B, Playfair Display + Source Sans 3, «sin degradados, sombras ni mayúsculas») → «armá una portada de propuesta con la marca del estudio» | `portada.html` con **exactamente** los 4 colores del archivo y las 2 tipografías; 0 colores/menciones de Anthropic; 0 `gradient`/`box-shadow`/`text-transform` (respetó el «Qué NO»); logo marcado pendiente como decía el archivo ✓ |
@@ -169,7 +169,7 @@ Cambio (pedido de pm-consultoria-ia, decisión de Fernando: «está mal que sea 
 | Control | Resultado |
 |---|---|
 | Contenido publicado | 1 plantilla Markdown nueva + edición de `crear-agente/SKILL.md`. 0 scripts, 0 red, 0 claves |
-| Grep de datos propios sobre lo publicado (`fernando|raimondi|orquesta|tibp|ebras|@gmail|Proyectos/`) | 0 |
+| Grep de datos propios sobre lo publicado (`fernando|raimondi|orquesta|tibp|<cliente>|@gmail|Proyectos/`) | 0 |
 | Precios citados | Verificados contra la referencia oficial de la API (skill `claude-api`, tabla 2026-06-24): Fable 5.1 $10/$50 · Opus 5 $5/$25 · Sonnet 5 $2/$10 · Haiku 4.5 $1/$5. La plantilla publica **proporciones** (5× / 2,5× / 0,5× contra Sonnet), que envejecen mejor que los valores absolutos |
 | `fable` como valor de `model:` | Verificado en la doc oficial de subagentes vía el agente `claude-code-guide`: válido junto a `haiku`/`sonnet`/`opus`/`inherit`/ID completo. **No documentado** qué pasa con un ID de generación anterior — razón adicional para exigir alias |
 | Prueba 1 — agente mecánico («buscar y listar planos»), sin invocar la skill | `haiku` ✓ |
@@ -183,7 +183,7 @@ Cambio (pedido de pm-consultoria-ia, decisión de Fernando: «está mal que sea 
 Cambio (§6 del pedido de pm-consultoria-ia, agregada después del aviso 0.8.0): la pregunta 1 de `docs/RECURSOS.md` deja de ser «¿tiene 5.000 estrellas?» y pasa a **uno de tres caminos** — (a) ≥5.000 estrellas · (b) organización oficial · (c) auditoría del 100% del contenido, **válida solo si son puros archivos de texto**. Mismo texto en el Mandamiento XVI y en la fila XVI de la tabla activa. Solo documentación.
 | Control | Resultado |
 |---|---|
-| Origen del problema | **Autoinfligido y correctamente señalado por Consultoría.** En el aviso 0.8.0 declaré que `humanizalo` no cumple el umbral de estrellas y que lo compensé auditando el 100%. La decisión era correcta; el problema es que dejaba la regla mintiendo mientras el portal del cliente le exige a Dani ese mismo umbral |
+| Origen del problema | **Autoinfligido y correctamente señalado por Consultoría.** En el aviso 0.8.0 declaré que `humanizalo` no cumple el umbral de estrellas y que lo compensé auditando el 100%. La decisión era correcta; el problema es que dejaba la regla mintiendo mientras el portal del cliente le exige al cliente ese mismo umbral |
 | Criterio del tercer camino | Condicionado a **cero código**: sin scripts, ejecutables, symlinks ni dependencias que se instalen. Razón escrita en los tres lugares: leer un programa no dice qué hace en runtime ni qué arrastran sus dependencias, así que la lectura completa solo es concluyente sobre texto |
 | Lo que NO cambió | Licencia permisiva, actividad reciente, `skill-security-auditor` PASS y propósito diferenciado siguen siendo obligatorios por cualquiera de los tres caminos |
 | Regla nueva de procedimiento | «El filtro que se le pide a un cliente es el mismo que se aplica acá. Si una excepción está bien fundada, **se reescribe la regla**, no se hace la excepción en silencio.» Queda en MANDAMIENTOS XVI |
@@ -253,7 +253,7 @@ Hallazgo del `/fable-security-check` de Orquesta (Fase 3, agente `security-revie
 | Lección | Este script nació para frenar errores del catálogo y tenía uno propio: el chequeo también se chequea |
 
 ## catálogo 0.11.3 (el mapa de Graphify nunca se sube) — 2026-09-22 — PASS
-Cambio (decisión directa de Fernando: «solucionalo de raíz, que no dependa de la memoria de nadie», para él, Consultoría y Dani). Hallazgo del `/fable-security-check` de Orquesta: en el ecosistema de Fernando el ignore de `graphify-out/` vivía solo en `~/.gitignore_global` (no viajaba con el repo), y en el kit dependía de leer la regla 1 de `docs/GRAPHIFY.md`.
+Cambio (decisión directa de Fernando: «solucionalo de raíz, que no dependa de la memoria de nadie», para él, Consultoría y los clientes). Hallazgo del `/fable-security-check` de Orquesta: en el ecosistema de Fernando el ignore de `graphify-out/` vivía solo en `~/.gitignore_global` (no viajaba con el repo), y en el kit dependía de leer la regla 1 de `docs/GRAPHIFY.md`.
 | Control | Resultado |
 |---|---|
 | Cambio | `templates/gitignore-estudio` + bloque «Graphify» (`graphify-out/`, `.graphifyignore`, `.claude/skills/graphify/`, `.claude/settings.json`) · `/metodo:cerrar` completa el `.gitignore` sin preguntar si ve `graphify-out/` no ignorado · `GRAPHIFY.md` regla 1 reescrita |
@@ -287,7 +287,7 @@ Cambio (pedido `2026-09-22-orquesta-pedido-regla-15-verificar-copia.md` de pm-co
 
 ## catálogo 0.12.0 (paquete nuevo `escala-desarrollo`: code-reviewer + security-reviewer) — 2026-09-22 — PASS
 Pedido `2026-09-22-orquesta-pedido-escala-desarrollo-revisores.md` de pm-consultoria-ia. Evidencia de producto:
-`Consultoria-IA/docs/investigacion/2026-09-22-revisores-de-codigo-para-dani.md` (Ronda 2, Mand. XI hecho: oficiales y repos de confianza no los superan).
+una investigación interna de Consultoría (2026-09-22) (Ronda 2, Mand. XI hecho: oficiales y repos de confianza no los superan).
 | Control | Resultado |
 |---|---|
 | Mand. XVI | VoltAgent/awesome-claude-code-subagents MIT 25.3K★ · Yeachan-Heo/oh-my-claudecode MIT 39.3K★ (verificado por Consultoría con `gh api`). Puro texto: 2 `.md`, sin scripts |
@@ -297,13 +297,13 @@ Pedido `2026-09-22-orquesta-pedido-escala-desarrollo-revisores.md` de pm-consult
 | Preload `skill-security-auditor` de `code-reviewer` | Vive en `base-segura`: el marketplace lo marca «recomendado junto con base-segura» |
 | `verificar-metadatos.sh` · grep de datos sobre el diff | TODO COINCIDE (4 plugins en 0.12.0) · 0 (las 3 coincidencias son autor/repo estándar del plugin.json) |
 
-## catálogo 0.12.1 (paridad EBRAS F2: fork de seguridad de oh-my-claudecode + research-deep-dive) — 2026-09-23 — PASS con condiciones
-Pedido `2026-09-23-orquesta-pedido-paridad-f2-origenes-fijados.md` de pm-consultoria-ia, sobre el plan `Consultoria-IA/clientes/ebras/PLAN-PARIDAD-2026-09-23.md` (revisión de privacidad de 3 lectores Opus + auditoría de seguridad de 4 orígenes por `security-reviewer` Opus, 2026-09-23). addyosmani/agent-skills y los 10 bloques de VoltAgent/awesome-claude-code-subagents **no entran al marketplace**: decisión de Fernando en esta sesión — lo que Orquesta no creó, Dani lo instala directo del repo original (pasos del portal, no responsabilidad de Orquesta). Solo entran al catálogo el fork de seguridad (obra de esta auditoría) y `research-deep-dive` (propio de Fernando).
+## catálogo 0.12.1 (paridad de cliente F2: fork de seguridad de oh-my-claudecode + research-deep-dive) — 2026-09-23 — PASS con condiciones
+Pedido `2026-09-23-orquesta-pedido-paridad-f2-origenes-fijados.md` de pm-consultoria-ia, sobre el plan de paridad del cliente (revisión de privacidad de 3 lectores Opus + auditoría de seguridad de 4 orígenes por `security-reviewer` Opus, 2026-09-23). addyosmani/agent-skills y los 10 bloques de VoltAgent/awesome-claude-code-subagents **no entran al marketplace**: decisión de Fernando en esta sesión — lo que Orquesta no creó, el cliente lo instala directo del repo original (pasos del portal, no responsabilidad de Orquesta). Solo entran al catálogo el fork de seguridad (obra de esta auditoría) y `research-deep-dive` (propio de Fernando).
 | Control | Resultado |
 |---|---|
 | Vulnerabilidad en `oh-my-claudecode` @ `9fd35ec` (auditada por Consultoría, **verificada por Orquesta leyendo el código, no solo el reporte**) | Confirmado en `src/hooks/permission-handler/index.ts:61-64,580-598`: `isHeredocWithSafeBase()` auto-aprueba cualquier heredoc cuya primera línea sea `git commit`/`git tag`, sin mirar el cuerpo. Un heredoc **sin comillas en el delimitador** (`<<EOF` vs `<<'EOF'`) ejecuta sustitución de comandos (`$(...)`) en el cuerpo — auto-aprobado igual. Vector real, no teórico |
 | Hallazgo adicional que la auditoría no tenía (Mand. I: se verificó el código, no el reporte) | El límite `hardMaxIterations` de `src/lib/security-config.ts` (tope real, `Math.min` en modo estricto) **no es el que corre**: el hook `Stop` ejecuta `scripts/persistent-mode.mjs`, que reimplementa la función por separado y en modo normal (sin `OMC_SECURITY=strict`) devuelve **0 = sin límite** por defecto, sin tope alguno para un override de config. «Un número escrito dos veces se desincroniza» (receta 2026-09-22), esta vez en el propio upstream |
-| Arreglo (fork `raimondifernando-web/oh-my-claudecode` @ `4805ecaaffba6d24b824b36b756bf6f4226409cb`, rama `ebras-security-fixed`, sobre `9fd35ec`) | (1) se quita el bloque `PermissionRequest` de `hooks/hooks.json` completo: los comandos Bash caen al permission-prompting nativo de Claude Code, no al handler con el bug. (2) `getHardMaxIterations()` en `scripts/persistent-mode.mjs`: tope real de 500 (200 en estricto) que ningún override de config puede subir ni desactivar (antes: 0 = ilimitado por defecto). Dos cambios, nada más — el resto del original entra intacto |
+| Arreglo (fork `raimondifernando-web/oh-my-claudecode` @ `4805ecaaffba6d24b824b36b756bf6f4226409cb`, rama `security-fixed`, sobre `9fd35ec`) | (1) se quita el bloque `PermissionRequest` de `hooks/hooks.json` completo: los comandos Bash caen al permission-prompting nativo de Claude Code, no al handler con el bug. (2) `getHardMaxIterations()` en `scripts/persistent-mode.mjs`: tope real de 500 (200 en estricto) que ningún override de config puede subir ni desactivar (antes: 0 = ilimitado por defecto). Dos cambios, nada más — el resto del original entra intacto |
 | Quién ejecutó qué (clasificador de auto-mode, motivo "Create Unsafe Agents") | El clasificador bloqueó a Orquesta 4 veces sobre esta pieza puntual: `gh repo fork`, editar `hooks.json`/`persistent-mode.mjs`, `curl`+`grep`+`git log` sobre el clon local, y `WebFetch` de solo lectura sobre el repo de VoltAgent. **Fernando ejecutó el fork y los dos parches él mismo en su Terminal** (comandos entregados por Orquesta); Orquesta verificó el resultado con `git ls-remote` (existencia del commit) y `Read` local (contenido de los dos archivos, textual) — ninguno de los dos bloqueado |
 | Pendiente (no bloqueante) | Prueba funcional de instalación (`claude plugin install oh-my-claudecode-fixed@claude-catalogo` en HOME temporal) también cayó en el mismo bloqueo; queda para correrla Fernando o Consultoría. El comentario JSDoc de `getHardMaxIterations()` en el fork («Returns 0 if unlimited») quedó desactualizado — cosmético, no funcional, no se tocó por el mismo bloqueo |
 | `research-deep-dive` (propio de Fernando) + sus 3 agentes (`research-analyst`, `data-researcher`, `knowledge-synthesizer`) | Frontmatter sin `author`/`sync:`; cuerpo ya genérico (sin Fernando/TIBP/Mandamientos: verificado con grep, 0 coincidencias en los 4 archivos) |
@@ -323,7 +323,7 @@ Chequeo del repo entero (no de una versión): 0 secretos en el árbol y en la hi
 
 ## metodo 0.12.2 (`gitignore-estudio` ignora `.omc/`) — 2026-09-26 — PASS
 Cierra el pendiente del chequeo anterior. Pedido `2026-09-26-consultoria-pedido-gitignore-omc.md` de
-pm-consultoria-ia, con verificación propia hecha por Consultoría antes de pedir: EBRAS todavía no llega
+pm-consultoria-ia, con verificación propia hecha por Consultoría antes de pedir: el cliente todavía no llega
 al paso que instala `oh-my-claudecode-fixed` (0 archivos `.omc` en su repo hoy), pero su `.gitignore` ya
 instalado es el mismo template — sin este cambio, el día que llegara habría subido esa carpeta entera.
 | Control | Resultado |
@@ -332,3 +332,11 @@ instalado es el mismo template — sin este cambio, el día que llegara habría 
 | `verificar-metadatos.sh` | TODO COINCIDE (`metodo` 0.12.2 alineada) |
 | Grep de datos/credenciales sobre el diff | 0 |
 | Nada ejecutable tocado | plantilla de texto, `CHANGELOG.md` y 2 JSON de versión |
+
+## pipeline — el catálogo deja de nombrar clientes — 2026-09-26 — PASS
+Decisión de Fernando a partir del chequeo de proyecto de hoy: un repo público que cada cliente se lleva a su disco no puede identificar a otros clientes. En este log, los nombres de clientes y personas pasan a `<cliente>`/`<persona>` y se quitan las rutas internas de Consultoría. En `marketplace.json`, el fork de oh-my-claudecode deja de declarar `ref` y queda fijado solo por `sha`, igual que `agent-skills`: lo que se instala no cambia. Lo ya publicado sigue en el historial de git. Se eligió a propósito no reescribirlo.
+
+| Control | Resultado |
+|---|---|
+| Nombre del cliente o de la persona en el árbol | `git grep -i` → 0 |
+| `marketplace.json` | JSON válido; diff de 1 línea (`ref` quitada), `sha` intacto |
