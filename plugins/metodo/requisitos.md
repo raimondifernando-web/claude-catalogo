@@ -1,6 +1,8 @@
 # metodo — qué necesita tu computadora
 
-**Casi nada.** Las 6 skills (`/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar`, `/metodo:cerrar`, `/metodo:crear-agente`, `/metodo:otra-sesion`) son solo texto: funcionan con Claude Code, sin programas de fondo, sin claves.
+**Casi nada.** Las 7 skills (`/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar`, `/metodo:cerrar`, `/metodo:crear-agente`, `/metodo:otra-sesion`, `/metodo:darwin-skill`) funcionan con Claude Code, sin programas de fondo, sin claves.
+
+`/metodo:darwin-skill` usa **git** para guardar o deshacer cada mejora, y trabaja **siempre en una copia aparte** (`git worktree`), nunca en la carpeta que usan tus otras sesiones. Tiene un script opcional que arma una imagen con el resultado: solo corre si tenés Playwright (`npm install -g playwright-core`). Sin eso, todo lo demás funciona igual.
 
 Lo único que usan `/metodo:cerrar` (guardar y subir el avance) y `/metodo:otra-sesion` (segunda sesión en su propia copia) es **git**, que viene con las herramientas de desarrollo de Apple que ya instalaste para `base-segura`. El chequeo del catálogo lo verifica. Plantilla `templates/gitignore-estudio`: qué NO sube al repositorio por defecto (claves, documentos de clientes, archivos pesados).
 

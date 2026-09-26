@@ -22,7 +22,7 @@
       "name": "rubro-estudio-arquitectura",
       "source": "./plugins/rubro-estudio-arquitectura",
       "description": "Pack de rubro (L2): propuestas y honorarios, pliegos, informes de visita, adicionales, punch list, revisión de presupuestos, normativa argentina (sobre PDFs oficiales), plan semanal + ficha A3, identidad visual del estudio (tu marca en cada pieza), investigación de mercado, contenido y diseño para estudios de arquitectura y profesiones similares. Requiere base-segura.",
-      "version": "0.12.0",
+      "version": "0.13.0",
       "category": "productivity",
       "tags": [
         "arquitectura",
@@ -36,8 +36,8 @@
     {
       "name": "metodo",
       "source": "./plugins/metodo",
-      "description": "Método de trabajo (L3): /metodo:arrancar, /metodo:planear, /metodo:criticar (sin adular), /metodo:cerrar (handoff + prompt de reanudación + sube el avance en un solo gesto), /metodo:crear-agente (PM de empresa y especialistas, con el criterio para elegir el modelo de cada uno), /metodo:otra-sesion (dos sesiones a la vez sin pisarse) + 15 reglas. /cerrar deja REANUDAR.md y /arrancar lo levanta solo (sin pegar el texto de arranque). El .gitignore de fábrica ignora .omc/ (estado de oh-my-claudecode-fixed).",
-      "version": "0.12.2",
+      "description": "Método de trabajo (L3): /metodo:arrancar, /metodo:planear, /metodo:criticar (sin adular), /metodo:cerrar (handoff + prompt de reanudación + sube el avance en un solo gesto), /metodo:crear-agente (PM de empresa y especialistas, con el criterio para elegir el modelo de cada uno), /metodo:otra-sesion (dos sesiones a la vez sin pisarse), /metodo:darwin-skill (revisa y mejora tus skills; siempre en una copia aparte) + 15 reglas. /cerrar deja REANUDAR.md y /arrancar lo levanta solo (sin pegar el texto de arranque). El .gitignore de fábrica ignora .omc/ (estado de oh-my-claudecode-fixed).",
+      "version": "0.13.0",
       "category": "productivity",
       "tags": [
         "l3",
@@ -168,6 +168,14 @@
       "version": "1.0.4",
       "category": "research",
       "tags": ["l4", "desarrollo", "agentes", "original-fijado"]
+    },
+    {
+      "name": "codex",
+      "source": { "source": "git-subdir", "url": "https://github.com/openai/codex-plugin-cc.git", "path": "plugins/codex", "sha": "db52e28f4d9ded852ab3942cea316258ae4ef346" },
+      "description": "Plugin oficial de OpenAI (openai/codex-plugin-cc, 33.6K★, Apache-2.0), fijado al commit auditado db52e28. Le pide a Codex (GPT) revisiones de código o tareas desde Claude Code. OJO: lo que le pasás sale a OpenAI y usa TU cuenta de ChatGPT (el login lo hacés vos con /codex:setup). Dejá apagada la «review gate» (revisión automática al terminar cada respuesta): agota el cupo rápido.",
+      "version": "1.0.6",
+      "category": "development",
+      "tags": ["l4", "desarrollo", "terceros", "original-fijado"]
     }
   ]
 }

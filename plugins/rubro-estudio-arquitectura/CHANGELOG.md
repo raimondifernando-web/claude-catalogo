@@ -1,5 +1,8 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.13.0 — 2026-09-26
+- **Sale el agente `designer`.** Era una copia vieja del diseñador de oh-my-claudecode, y si instalaste `oh-my-claudecode-fixed` tenías dos. Queda el del plugin, que está más actualizado. Los otros 4 agentes del rubro no cambian.
+
 ## 0.12.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.12.0 (paquete nuevo `escala-desarrollo`: dos revisores para cuando el estudio empiece a hacer sus propias herramientas).
 

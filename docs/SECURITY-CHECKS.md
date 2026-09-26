@@ -340,3 +340,15 @@ Decisión de Fernando a partir del chequeo de proyecto de hoy: un repo público 
 |---|---|
 | Nombre del cliente o de la persona en el árbol | `git grep -i` → 0 |
 | `marketplace.json` | JSON válido; diff de 1 línea (`ref` quitada), `sha` intacto |
+
+## catálogo 0.13.0 (`metodo` + darwin-skill · `rubro` sin designer · `codex` de OpenAI fijado) — 2026-09-26 — PASS
+Pedido de pm-consultoria-ia del 2026-09-26 (vigía y herramientas nuevas). Decisiones de Fernando: Codex entra para el cliente, con aviso de qué sale a un tercero.
+
+| Control | Resultado |
+|---|---|
+| `darwin-skill` (alchaincyf @ `8a8b662`, 6.1K★, MIT) | `skill-security-auditor` dio FAIL. Leído contra el propósito es PASS: `execSync` en `scripts/screenshot.mjs` solo ubica Playwright y abre la imagen generada, y el script es opcional. Se copia sin material promocional; `ORIGEN.md` y `LICENSE-origen.md` van dentro. Cambio propio: la regla de correrla siempre en una copia aparte (`git worktree`) va en el SKILL.md, porque la skill hace `checkout -b`/`stash`/`revert` |
+| `codex` (openai/codex-plugin-cc @ `db52e28`, oficial, 33.6K★, Apache-2.0) | Mand. XVI por organización oficial. El FAIL del escáner es de falsos positivos: `spawn` del CLI `codex` y un socket local con su broker; `shell` solo en Windows. Hooks: SessionStart exporta el id de sesión, SessionEnd limpia su broker y Stop no hace nada con la review gate apagada. Lo que se le pasa sale a OpenAI: la `description` lo dice |
+| `rubro` sin `designer` | El agente era una copia vieja del designer de OMC y duplicaba al de `oh-my-claudecode-fixed` |
+| Referencias al ecosistema de origen en lo nuevo | 0 en `plugins/metodo/skills/darwin-skill/` (grep de nombres propios, clientes y rutas) |
+| `verificar-metadatos.sh` | TODO COINCIDE: rubro dice 4 agentes y metodo 0.13.0 |
+| Instalación limpia (HOME temporal, catálogo local) | `metodo` 0.13.0 con `darwin-skill` y su regla · rubro con 4 agentes · `codex` 1.0.6 desde el original |

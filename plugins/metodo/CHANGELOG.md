@@ -1,5 +1,9 @@
 # metodo — qué cambia para vos
 
+## 0.13.0 — 2026-09-26
+- **Nueva: `/metodo:darwin-skill`, para revisar y mejorar tus skills.** Evalúa cada skill con una rúbrica de 9 puntos, prueba una mejora por vez, la hace juzgar por agentes independientes (el que la escribió no la califica) y te pide confirmación antes de quedarse con el cambio. Si no mejora, lo deshace. Es de un autor externo (alchaincyf/darwin-skill, 6.1K★, MIT), copiada del commit auditado.
+- **Trae una regla de uso adentro:** guarda y deshace sus cambios con git, así que corre **siempre en una copia aparte** de tu carpeta. Si la usás donde trabajan otras sesiones, les cambiaría la rama o guardaría aparte el trabajo que no subieron. La regla está en la propia skill, así que viaja con ella.
+
 ## 0.12.2 — 2026-09-26
 - **El `.gitignore` de fábrica (`gitignore-estudio`) ahora también ignora `.omc/`.** Si instalás
   `oh-my-claudecode-fixed`, esa carpeta guarda el estado de cada sesión y el registro de qué hizo —
