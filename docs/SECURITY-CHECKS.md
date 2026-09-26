@@ -320,3 +320,15 @@ Corrige la entrada 0.12.1 («no entran al marketplace»): sin `ref`/`sha`, un ma
 
 ## pipeline — primer chequeo de seguridad del proyecto — 2026-09-26 — PASS con flags
 Chequeo del repo entero (no de una versión): 0 secretos en el árbol y en la historia completa (13 patrones de credenciales, 39 commits), secret scanning + push protection activos, 0 deploy keys, 0 webhooks, un solo colaborador. Arreglado en el mismo acto: el estado de sesión de oh-my-claudecode (`.omc/`, incluye trazas de herramientas) y `__pycache__/` pasan a `.gitignore`; se deja de trackear un `.pyc` (sin rutas locales embebidas). Pendientes fuera del repo: la plantilla `gitignore-estudio` también tiene que ignorar `.omc/` (quien instala `oh-my-claudecode-fixed` la genera en cada repo), y la rama `main` no tiene protección contra force-push.
+
+## metodo 0.12.2 (`gitignore-estudio` ignora `.omc/`) — 2026-09-26 — PASS
+Cierra el pendiente del chequeo anterior. Pedido `2026-09-26-consultoria-pedido-gitignore-omc.md` de
+pm-consultoria-ia, con verificación propia hecha por Consultoría antes de pedir: EBRAS todavía no llega
+al paso que instala `oh-my-claudecode-fixed` (0 archivos `.omc` en su repo hoy), pero su `.gitignore` ya
+instalado es el mismo template — sin este cambio, el día que llegara habría subido esa carpeta entera.
+| Control | Resultado |
+|---|---|
+| Línea agregada | `.omc/` + `.session-stats.json`, con comentario explicando qué es (mismo estilo que la sección de Graphify) |
+| `verificar-metadatos.sh` | TODO COINCIDE (`metodo` 0.12.2 alineada) |
+| Grep de datos/credenciales sobre el diff | 0 |
+| Nada ejecutable tocado | plantilla de texto, `CHANGELOG.md` y 2 JSON de versión |
