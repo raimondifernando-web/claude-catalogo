@@ -4,7 +4,7 @@ Recomendado junto con `base-segura` (ver `plugins/base-segura/requisitos.md`). E
 paquete. Para saber qué te falta: corré el chequeo (`docs/CHEQUEO.md`).
 
 ## Lo que NO necesita nada extra
-`estilo-de-marca` · `frontend-ui-engineering` · `components-build` · `ui-design-system` · `algorithmic-art` (arte generativo
+`estilo-de-marca` · `video-content-strategist` · `frontend-ui-engineering` · `components-build` · `ui-design-system` · `algorithmic-art` (arte generativo
 en un HTML que abrís en el navegador). Funcionan con Claude Code solo.
 
 ## Lo que sí necesita algo

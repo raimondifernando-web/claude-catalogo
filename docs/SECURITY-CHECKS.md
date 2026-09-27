@@ -457,3 +457,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | `skill-security-auditor` | 23 PASS · 1 WARN (ui-ux-pro-max, ya auditada) · 8 FAIL leídos contra el propósito, todos falsos positivos: HyperFrames/media-use (execFileSync/spawn sin shell, regex.exec: revisados por security-reviewer Opus el mismo día), huashu-design (auditada el mismo día), algorithmic-art (regex.exec sobre un color hex), n8n-mcp-tools-expert (documentación de la API de credenciales, texto) |
 | Instalación limpia (HOME temporal) | escala-diseno-video 0.1.0 = 19 skills, 19 ORIGEN.txt, 0 archivos de claves · escala-automatizacion 0.1.0 = 13 skills + 3 agentes |
 | Nombres de clientes / `verificar-metadatos.sh` | 0 · TODO COINCIDE |
+
+## catálogo — `escala-diseno-video` 0.1.1 — 2026-09-27 — PASS
+| Control | Resultado |
+|---|---|
+| Corrección | CHANGELOG, descripción y README ya no dicen que la telemetría de HyperFrames viene apagada: se apaga con dos variables en `env` (lo avisó el dueño del producto) |
+| Pieza nueva | `video-content-strategist` (alirezarezvani/claude-skills@19392f7, MIT, 26.6k★): `skill-security-auditor` PASS, 0 hallazgos; sin datos propios |
+| Fuera, con motivo | `lottie` (borrada por el autor, reemplazada por el Core Set) · `remotion-to-hyperframes` (el autor la pasó a flujo de trabajo, no es skill) |
+| Instalación limpia / `verificar-metadatos.sh` / clientes | 20 skills · TODO COINCIDE · 0 |
