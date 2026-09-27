@@ -1,0 +1,104 @@
+# Tests del vigía de actualizaciones (plugin metodo) en Mac, Linux y Windows.
+# Sin secretos, sin red real (los tests simulan GitHub/npm/PyPI) y con permisos de solo lectura.
+name: vigia-tests
+
+on:
+  push:
+    paths:
+      - "plugins/metodo/scripts/vigia/**"
+      - "plugins/metodo/hooks/**"
+      - ".github/workflows/vigia-tests.yml"
+  pull_request:
+    paths:
+      - "plugins/metodo/scripts/vigia/**"
+      - "plugins/metodo/hooks/**"
+      - ".github/workflows/vigia-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: unittest
+        run: python -m unittest discover -s plugins/metodo/scripts/vigia/tests -v
+
+  hook-bash:
+    # El comando REAL de hooks/hooks.json, corrido con bash (en Windows, Git Bash) desde
+    # una ruta con espacios: tiene que salir 0, imprimir el aviso una sola vez y lanzar el
+    # detector desacoplado, que termina solo.
+    name: comando del hook con bash (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: correr el hook desde una ruta con espacios
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="$(cd "$RUNNER_TEMP" && pwd)/carpeta con espacios"
+          CASA="$BASE/home con espacios"
+          mkdir -p "$CASA/.claude/vigia"
+          cp -R plugins/metodo "$BASE/metodo"
+
+          # Estado viejo con una novedad: el hook tiene que avisar y lanzar el detector.
+          ESTADO="$CASA/.claude/vigia/estado.json"
+          printf '%s' '{"estado":"ok","ultima_corrida":"2020-01-01T00:00:00+00:00","novedades":{"x":{"estado":"nueva"}}}' > "$ESTADO"
+
+          COMANDO="$(python -c "import json;print(json.load(open('plugins/metodo/hooks/hooks.json'))['hooks']['SessionStart'][0]['hooks'][0]['command'])")"
+          if command -v cygpath >/dev/null 2>&1; then
+            # Así llegan las rutas en Windows: con barras invertidas y letra de unidad.
+            export CLAUDE_PLUGIN_ROOT="$(cygpath -w "$BASE/metodo")"
+            export USERPROFILE="$(cygpath -w "$CASA")"
+          else
+            export CLAUDE_PLUGIN_ROOT="$BASE/metodo"
+          fi
+          export HOME="$CASA"
+          export GH_CONFIG_DIR="$CASA/.gh-vacio"
+          unset GH_TOKEN GITHUB_TOKEN || true
+
+          inicio=$(python -c "import time;print(time.time())")
+          set +e
+          SALIDA="$(bash -c "$COMANDO")"
+          rc=$?
+          set -e
+          dura=$(python -c "import time,sys;print(round(time.time()-float(sys.argv[1]),2))" "$inicio")
+          echo "exit=$rc · duración=${dura}s"
+          echo "salida: $SALIDA"
+          test "$rc" -eq 0
+          test "$(printf '%s\n' "$SALIDA" | grep -c systemMessage)" -eq 1
+
+          # El detector desacoplado tiene que terminar solo y actualizar el estado.
+          for i in $(seq 1 60); do
+            if python -c "import json,sys;e=json.load(open(sys.argv[1],encoding='utf-8'));sys.exit(0 if not (e.get('ultima_corrida') or '2020').startswith('2020') else 1)" "$ESTADO" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          cat "$ESTADO"
+          python -c "import json,sys;e=json.load(open(sys.argv[1],encoding='utf-8'));assert not e['ultima_corrida'].startswith('2020'), 'el detector no corrió';assert e['estado']!='caido', e" "$ESTADO"
+          cat "$CASA/.claude/vigia/vigia.log"
