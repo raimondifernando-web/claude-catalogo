@@ -77,6 +77,7 @@ LIMITE_LLAMADAS_GH_SIN_GH = 40  # API pública sin token: 60/hora por IP, se dej
 DIAS_ENTRE_CORRIDAS = 7
 HORAS_ESPERA_TRAS_INTENTO = 24
 MINUTOS_VENCE_LOCK = 30
+SEGUNDOS_MAX_CORRIDA = 20 * 60  # tope de tiempo total: siempre menor que el vencimiento del lock
 LOG_MAX_BYTES = 512 * 1024
 MAX_BYTES_RESPUESTA = 20 * 1024 * 1024
 
@@ -119,6 +120,8 @@ PATRON_NOMBRE_BREW = re.compile(r"^[a-z0-9][a-z0-9@._+-]{0,100}$")
 PATRON_SEMVER_EXACTO = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
 PATRON_OWNER_REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 PATRON_SHA = re.compile(r"^[0-9a-fA-F]{7,40}$")
+PATRON_VERSION = re.compile(r"^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$")
+PATRON_TEXTO_ID = re.compile(r"^[A-Za-z0-9@._/:+-]{1,100}$")
 # Enlaces solo a los hosts que este script construye a mano (para mostrar; no se piden).
 PATRON_ENLACE_VALIDO = re.compile(
     r"^https://(github\.com|www\.npmjs\.com|pypi\.org|formulae\.brew\.sh)/[A-Za-z0-9._~/%@+=,-]*$"
@@ -226,7 +229,34 @@ def es_semver_exacto(version: str | None) -> bool:
 
 
 def owner_repo_valido(repo: object) -> bool:
-    return isinstance(repo, str) and bool(PATRON_OWNER_REPO.match(repo))
+    if not isinstance(repo, str) or not PATRON_OWNER_REPO.match(repo):
+        return False
+    return all(segmento not in (".", "..") for segmento in repo.split("/"))
+
+
+def ruta_valida(ruta: object) -> bool:
+    """Ruta relativa dentro de un repo (git-subdir, skillPath): lista blanca de
+    caracteres y sin segmentos '.'/'..' ni barra inicial."""
+    if not isinstance(ruta, str) or not ruta or not PATRON_RAMA_VALIDA.match(ruta) or ruta.startswith("/"):
+        return False
+    return all(s not in (".", "..") for s in ruta.split("/") if s)
+
+
+def sha_valido(sha: object) -> bool:
+    return isinstance(sha, str) and bool(PATRON_SHA.match(sha))
+
+
+def version_valida(version: object) -> bool:
+    return isinstance(version, str) and bool(PATRON_VERSION.match(version))
+
+
+def texto_id(texto: object) -> str:
+    """Parte de un id armada con un dato de terceros: tal cual si pasa la lista
+    blanca; si no, un hash (nunca el texto crudo)."""
+    t = str(texto) if texto is not None else ""
+    if PATRON_TEXTO_ID.match(t):
+        return t
+    return f"no-valido-{hash_corto(t)}"
 
 
 def enlace_valido(url: str | None) -> str:
@@ -251,13 +281,14 @@ def registrar_novedad(
     desde: str,
 ) -> bool:
     """Crea la novedad si el id todavía no existe. Nunca pisa un estado ya decidido."""
+    id_ = limpiar_texto(id_)[:200]
     if id_ in novedades:
         return False
     novedades[id_] = {
         "estado": "nueva",
         "desde": desde,
         "tipo": tipo,
-        "detalle": limpiar_texto(detalle),
+        "detalle": limpiar_texto(detalle)[:400],
         "enlace": enlace_valido(enlace),
         "confianza": confianza,
     }
@@ -351,20 +382,32 @@ class Red:
     """GET de JSON con memoria de hosts caídos: si un host no responde, el resto de
     los pedidos a ese host en esta corrida fallan al instante (no 15 s cada uno)."""
 
-    def __init__(self):
+    def __init__(self, segundos_max: float = SEGUNDOS_MAX_CORRIDA):
         self.hosts_caidos: set = set()
+        self.exitos = 0  # respuestas recibidas (HTTPS o gh): 0 + hubo_sin_red = corrida sin red
+        self.hubo_sin_red = False
+        self.vence = time.monotonic() + segundos_max
+
+    def controlar_plazo(self) -> None:
+        # Tope de tiempo total, bien por debajo del vencimiento del lock (30 min).
+        if time.monotonic() > self.vence:
+            raise CupoAgotado("se llegó al tope de tiempo de la corrida")
 
     def get_json(self, url: str, headers: dict | None = None):
+        self.controlar_plazo()
         host = (urllib.parse.urlsplit(url).hostname or "").lower()
         if host in self.hosts_caidos:
             raise SinRed(f"{host}: sin conexión (ya falló antes en esta corrida)")
         try:
             crudo = abrir_url(url, headers)
         except urllib.error.HTTPError:
-            raise  # el servidor respondió: no es falta de red
+            self.exitos += 1  # el servidor respondió: no es falta de red
+            raise
         except (urllib.error.URLError, OSError) as e:
             self.hosts_caidos.add(host)
+            self.hubo_sin_red = True
             raise SinRed(f"{host}: {truncar(str(getattr(e, 'reason', e)), 120)}") from None
+        self.exitos += 1
         return json.loads(crudo.decode("utf-8"))
 
 
@@ -387,6 +430,26 @@ def obtener_ultima_version_pypi(red: Red, pkg: str) -> str | None:
 # --------------------------------------------------------------------------- #
 
 
+def _run(cmd: list, *, timeout: float, env: dict | None = None) -> subprocess.CompletedProcess:
+    """ÚNICO lugar donde este script corre otro programa (gh, git, npm, uv, brew,
+    osascript). Salida siempre en UTF-8 con reemplazo (un emoji o una «Á» nunca rompen
+    la corrida) y, en Windows, sin abrir ventanas de consola."""
+    extra = {}
+    if os.name == "nt":
+        extra["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+    return subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        **extra,
+    )
+
+
 def _entorno_gh() -> dict:
     # gh siempre fijado a github.com: ni un GH_HOST heredado puede mandarlo a otro host.
     return {**os.environ, "GH_HOST": "github.com"}
@@ -396,14 +459,7 @@ def gh_autenticado(gh_bin: str | None) -> bool:
     if not gh_bin:
         return False
     try:
-        r = subprocess.run(
-            [gh_bin, "api", "--hostname", "github.com", "user", "--jq", ".login"],
-            capture_output=True,
-            text=True,
-            timeout=TIMEOUT_GH,
-            env=_entorno_gh(),
-            stdin=subprocess.DEVNULL,
-        )
+        r = _run([gh_bin, "api", "--hostname", "github.com", "user", "--jq", ".login"], timeout=TIMEOUT_GH, env=_entorno_gh())
         return r.returncode == 0
     except Exception:  # noqa: BLE001
         return False
@@ -431,6 +487,7 @@ class ClienteGitHub:
             return self._cache[endpoint]
         if self.usadas >= self.limite:
             raise CupoAgotado(f"se llegó al tope de {self.limite} pedidos a GitHub en esta corrida")
+        self.red.controlar_plazo()
         self.usadas += 1
         datos = self._api_gh(endpoint) if self.modo == "gh" else self._api_https(endpoint)
         self._cache[endpoint] = datos
@@ -438,21 +495,23 @@ class ClienteGitHub:
 
     def _api_gh(self, endpoint: str):
         try:
-            r = subprocess.run(
-                [self.gh_bin, "api", "--hostname", "github.com", endpoint],
-                capture_output=True,
-                text=True,
-                timeout=TIMEOUT_GH,
-                env=_entorno_gh(),
-                stdin=subprocess.DEVNULL,
-            )
+            r = _run([self.gh_bin, "api", "--hostname", "github.com", endpoint], timeout=TIMEOUT_GH, env=_entorno_gh())
         except subprocess.TimeoutExpired:
+            self.red.hubo_sin_red = True
             raise SinRed("gh api: no respondió a tiempo") from None
+        except UnicodeDecodeError:
+            raise RuntimeError("gh api: salida con codificación inesperada") from None
         if r.returncode != 0:
             texto = (r.stderr or r.stdout or "error desconocido de gh").strip()
-            if "rate limit" in texto.lower():
+            bajo = texto.lower()
+            if "rate limit" in bajo:
                 raise CupoAgotado("GitHub devolvió límite de pedidos")
+            if any(m in bajo for m in ("error connecting", "dial tcp", "no such host", "i/o timeout", "network is unreachable")):
+                self.red.hubo_sin_red = True
+                raise SinRed("gh api: sin conexión con GitHub")
+            self.red.exitos += 1  # GitHub respondió (con un error propio)
             raise RuntimeError(truncar(texto))
+        self.red.exitos += 1
         try:
             return json.loads(r.stdout)
         except json.JSONDecodeError as e:
@@ -485,18 +544,23 @@ class ClienteGitHub:
         datos = self.api(f"repos/{repo}/compare/{base_sha}...{head_ref}")
         ahead = datos.get("ahead_by", 0) or 0
         commits = datos.get("commits") or []
-        head_sha = commits[-1]["sha"] if commits else base_sha
+        head_sha = commits[-1].get("sha") if commits and isinstance(commits[-1], dict) else base_sha
+        if not sha_valido(head_sha) or not isinstance(ahead, int):
+            raise RuntimeError("GitHub devolvió una comparación con datos no válidos")
         return ahead, head_sha
 
     def commit_info(self, repo: str, ref: str) -> dict:
         clave = (repo, ref)
         if clave not in self._commit_info_cache:
             datos = self.api(f"repos/{repo}/commits/{urllib.parse.quote(ref, safe='')}")
-            self._commit_info_cache[clave] = {
+            info = {
                 "sha": datos["sha"],
                 "tree_sha": datos["commit"]["tree"]["sha"],
                 "fecha": datos["commit"]["committer"]["date"],
             }
+            if not (sha_valido(info["sha"]) and sha_valido(info["tree_sha"]) and parsear_fecha(info["fecha"])):
+                raise RuntimeError("GitHub devolvió un commit con datos no válidos")
+            self._commit_info_cache[clave] = info
         return self._commit_info_cache[clave]
 
     def fecha_commit(self, repo: str, sha: str) -> str:
@@ -509,7 +573,11 @@ class ClienteGitHub:
         clave = (repo, rama)
         if clave not in self._tree_cache:
             datos = self.api(f"repos/{repo}/git/trees/{urllib.parse.quote(rama, safe='')}?recursive=1")
-            mapa = {e["path"]: e["sha"] for e in datos.get("tree", []) if e.get("type") == "tree"}
+            mapa = {
+                e["path"]: e["sha"]
+                for e in datos.get("tree", [])
+                if isinstance(e, dict) and e.get("type") == "tree" and ruta_valida(e.get("path")) and sha_valido(e.get("sha"))
+            }
             self._tree_cache[clave] = (mapa, bool(datos.get("truncated", False)))
         return self._tree_cache[clave]
 
@@ -566,9 +634,15 @@ def _confianza_sin_forzar_llamada(gh: ClienteGitHub, repo: str) -> str:
 # --------------------------------------------------------------------------- #
 
 
+def dir_config() -> Path:
+    """Carpeta de configuración de Claude Code: $CLAUDE_CONFIG_DIR si está definida,
+    si no ~/.claude (Path.home() en Windows es %USERPROFILE%)."""
+    propia = os.environ.get("CLAUDE_CONFIG_DIR", "").strip()
+    return Path(propia).expanduser() if propia else Path.home() / ".claude"
+
+
 def dir_vigia() -> Path:
-    # Path.home() en Windows es %USERPROFILE%.
-    return Path.home() / ".claude" / "vigia"
+    return dir_config() / "vigia"
 
 
 @dataclass
@@ -588,14 +662,17 @@ class Rutas:
 
 def resolver_rutas() -> Rutas:
     home = Path.home()
+    config = dir_config()
     d = dir_vigia()
+    # Con CLAUDE_CONFIG_DIR, Claude Code guarda su .claude.json adentro de esa carpeta.
+    claude_json = config / ".claude.json" if os.environ.get("CLAUDE_CONFIG_DIR", "").strip() else home / ".claude.json"
     return Rutas(
-        installed_plugins=home / ".claude/plugins/installed_plugins.json",
-        known_marketplaces=home / ".claude/plugins/known_marketplaces.json",
+        installed_plugins=config / "plugins/installed_plugins.json",
+        known_marketplaces=config / "plugins/known_marketplaces.json",
         skill_lock_agents=home / ".agents/.skill-lock.json",
-        skills_lock_claude=home / ".claude/skills-lock.json",
+        skills_lock_claude=config / "skills-lock.json",
         mcp_json=home / ".mcp.json",
-        claude_json=home / ".claude.json",
+        claude_json=claude_json,
         dir=d,
         estado_json=d / "estado.json",
         novedades_md=d / "NOVEDADES.md",
@@ -612,6 +689,7 @@ def perfil_vacio() -> dict:
         "marketplaces_excluidas": [],
         "catalogo_compartido": None,
         "descubrimiento_mensual": False,
+        "usar_gh": True,
     }
 
 
@@ -687,6 +765,8 @@ def cargar_perfil(ruta: Path, explicita: bool) -> tuple:
         perfil["catalogo_compartido"] = Path(cat).expanduser()
 
     perfil["descubrimiento_mensual"] = crudo.get("descubrimiento_mensual") is True
+    # `usar_gh: false` = no usar la sesión de gh aunque exista (va la API pública, sin cuenta).
+    perfil["usar_gh"] = crudo.get("usar_gh") is not False
     return perfil, avisos
 
 
@@ -748,6 +828,7 @@ def cargar_estado(ruta: Path, solo_lectura: bool = False) -> tuple:
     datos.setdefault("version", 2)
     datos.setdefault("estado", None)
     datos.setdefault("ultima_corrida", None)
+    datos.setdefault("ultima_corrida_con_red", None)
     datos.setdefault("ultimo_intento", None)
     datos.setdefault("ok", True)
     datos.setdefault("errores", [])
@@ -855,16 +936,16 @@ class LockVigia:
         self.token = uuid.uuid4().hex
         self.tomado = False
 
-    def _leer(self) -> dict:
+    def _leer(self, ruta: Path | None = None) -> dict:
         try:
-            with open(self.ruta, "r", encoding="utf-8") as f:
+            with open(ruta or self.ruta, "r", encoding="utf-8") as f:
                 datos = json.load(f)
             return datos if isinstance(datos, dict) else {}
         except Exception:  # noqa: BLE001
             return {}
 
-    def _vencido(self) -> bool:
-        desde = parsear_fecha(self._leer().get("desde"))
+    def _vencido(self, datos: dict) -> bool:
+        desde = parsear_fecha(datos.get("desde"))
         if desde is None:
             try:
                 desde = datetime.fromtimestamp(self.ruta.stat().st_mtime, timezone.utc)
@@ -872,23 +953,48 @@ class LockVigia:
                 return True
         return ahora_utc() - desde > self.vence
 
+    def _devolver(self, aparte: Path) -> None:
+        """Pone de vuelta un lock que no era el que se quería mover (sin pisar uno nuevo)."""
+        try:
+            if not self.ruta.exists():
+                os.replace(aparte, self.ruta)
+            else:
+                os.unlink(aparte)
+        except OSError:
+            pass
+
+    def _apartar_si_es(self, token_esperado: object) -> bool:
+        """Mueve el lock a un nombre propio y confirma que era el esperado. Si en el
+        medio otro proceso lo reemplazó, lo devuelve y responde False."""
+        aparte = self.ruta.with_name(f"{self.ruta.name}.aparte-{self.token}")
+        try:
+            os.replace(self.ruta, aparte)
+        except OSError:
+            return False
+        if self._leer(aparte).get("token") != token_esperado:
+            self._devolver(aparte)
+            return False
+        try:
+            os.unlink(aparte)
+        except OSError:
+            pass
+        return True
+
     def tomar(self) -> bool:
         self.ruta.parent.mkdir(parents=True, exist_ok=True)
         for intento in range(2):
             try:
                 fd = os.open(str(self.ruta), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
             except FileExistsError:
-                if intento == 0 and self._vencido():
-                    # Se renombra antes de borrar: si dos procesos ven el mismo lock
-                    # vencido, solo uno logra moverlo.
-                    aparte = self.ruta.with_name(f"{self.ruta.name}.vencido-{self.token}")
-                    try:
-                        os.replace(self.ruta, aparte)
-                        os.unlink(aparte)
-                    except OSError:
-                        pass
-                    continue
-                return False
+                if intento > 0:
+                    return False
+                visto = self._leer()
+                if not self._vencido(visto):
+                    return False
+                # Vencido: se aparta SOLO si sigue siendo el mismo que se leyó.
+                if not self._apartar_si_es(visto.get("token")):
+                    return False
+                continue
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump({"pid": os.getpid(), "desde": ahora_iso(), "token": self.token}, f)
             self.tomado = True
@@ -900,10 +1006,7 @@ class LockVigia:
             return
         self.tomado = False
         if self._leer().get("token") == self.token:
-            try:
-                os.unlink(self.ruta)
-            except OSError:
-                pass
+            self._apartar_si_es(self.token)
 
 
 # --------------------------------------------------------------------------- #
@@ -1010,7 +1113,9 @@ def _revisar_plugin_github(nombre, fuente, gh, base, novedades, nuevas_ids, ahor
             f"repos/{padre_full}/commits?since={urllib.parse.quote(fecha_pin, safe='')}&per_page=100"
         )
         clave_up = f"plugin:{nombre}:upstream"
-        head_padre = commits_padre[0]["sha"] if commits_padre else None
+        head_padre = commits_padre[0].get("sha") if commits_padre and isinstance(commits_padre[0], dict) else None
+        if head_padre is not None and not sha_valido(head_padre):
+            raise RuntimeError(f"{padre_full}: GitHub devolvió un sha no válido")
         base[clave_up] = {"visto": (head_padre[:7] if head_padre else None), "fecha": ahora}
         if commits_padre and head_padre:
             registrar_novedad(
@@ -1033,10 +1138,12 @@ def _revisar_plugin_git_subdir(
 ) -> None:
     owner_repo = re.sub(r"^https://github\.com/", "", str(fuente.get("url", "")))
     owner_repo = re.sub(r"\.git$", "", owner_repo)
-    ruta = str(fuente.get("path", ""))
+    ruta = fuente.get("path", "")
     sha = fuente["sha"]
     if not owner_repo_valido(owner_repo) or not PATRON_SHA.match(sha):
         raise RuntimeError("la 'url' fijada no resolvió a owner/repo + sha válidos, se omite")
+    if not ruta_valida(ruta):
+        raise RuntimeError("la 'path' fijada tiene caracteres no válidos, se omite")
     info = gh.repo_info(owner_repo)
     if not info:
         raise RuntimeError(f"no se pudo consultar {owner_repo}")
@@ -1046,7 +1153,9 @@ def _revisar_plugin_git_subdir(
     if clave_fecha not in cache_fecha_commit:
         cache_fecha_commit[clave_fecha] = gh.fecha_commit(owner_repo, sha)
     commits = gh.commits_en_ruta_desde(owner_repo, ruta, cache_fecha_commit[clave_fecha])
-    commits = [c for c in commits if c.get("sha") != sha]
+    commits = [c for c in commits if isinstance(c, dict) and c.get("sha") != sha]
+    if commits and not sha_valido(commits[0].get("sha")):
+        raise RuntimeError(f"{owner_repo}: GitHub devolvió un sha no válido")
 
     clave = f"plugin:{nombre}"
     ref_actual = commits[0]["sha"][:7] if commits else sha[:7]
@@ -1158,10 +1267,7 @@ def _ref_actual_clon(ubicacion: Path) -> str | None:
     if not git:
         return None
     try:
-        r = subprocess.run(
-            [git, "-C", str(ubicacion), "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=10, stdin=subprocess.DEVNULL,
-        )
+        r = _run([git, "-C", str(ubicacion), "rev-parse", "HEAD"], timeout=10)
         if r.returncode == 0:
             return r.stdout.strip()
     except Exception:  # noqa: BLE001
@@ -1241,7 +1347,7 @@ def fuente_plugins_terceros(
                     raise RuntimeError(f"no se pudo consultar {owner_repo}")
                 rama = rama_valida(info_repo, owner_repo)
                 ahead, head_sha = gh.comparar(owner_repo, sha_instalado, urllib.parse.quote(rama, safe=""))
-                clave = f"plugin-mkt:{clave_inst}"
+                clave = f"plugin-mkt:{texto_id(clave_inst)}"
                 base[clave] = {"visto": head_sha[:7], "fecha": ahora, "pin_actual": sha_instalado[:7]}
                 if ahead > 0:
                     registrar_novedad(
@@ -1279,7 +1385,7 @@ def fuente_skill_locks(rutas_locks, gh, base, novedades, nuevas_ids, degradado, 
             continue
 
         for nombre, info in skills.items():
-            clave = f"skill-{etiqueta}:{nombre}"
+            clave = f"skill-{etiqueta}:{texto_id(nombre)}"
             try:
                 if not isinstance(info, dict):
                     continue
@@ -1288,7 +1394,10 @@ def fuente_skill_locks(rutas_locks, gh, base, novedades, nuevas_ids, degradado, 
                     degradado.append(f"{limpiar_texto(clave)[:80]}: 'source' no tiene forma owner/repo, se omite")
                     continue
                 skill_path = info.get("skillPath") or "SKILL.md"
-                carpeta = posixpath.dirname(str(skill_path))
+                if not ruta_valida(skill_path):
+                    degradado.append(f"{clave}: 'skillPath' con caracteres no válidos, se omite")
+                    continue
+                carpeta = posixpath.dirname(skill_path)
                 info_repo = gh.repo_info(repo)
                 if not info_repo:
                     raise RuntimeError(f"no se pudo consultar {repo}")
@@ -1298,7 +1407,7 @@ def fuente_skill_locks(rutas_locks, gh, base, novedades, nuevas_ids, degradado, 
 
                 truncado = False
                 if carpeta == "":
-                    sha_actual = gh.sha_arbol_raiz(repo, rama)
+                    sha_actual = gh.sha_arbol_raiz(repo, rama)  # validado en commit_info
                 else:
                     mapa, truncado = gh.tree_recursivo(repo, rama)
                     sha_actual = mapa.get(carpeta)
@@ -1408,9 +1517,10 @@ def extraer_paquete_de_args(args: list) -> str | None:
                 continue
             i += 2
             continue
-        if _parece_nombre_de_paquete(a):
-            return a
-        i += 1
+        # El PRIMER posicional es lo que npx ejecuta. Si no parece un paquete (una URL,
+        # una ruta), se corta acá: lo que sigue son argumentos del programa y pueden
+        # ser secretos; nunca se sigue buscando entre ellos.
+        return a if _parece_nombre_de_paquete(a) else None
     return None
 
 
@@ -1458,8 +1568,10 @@ def fuente_mcps(rutas: Rutas, red: Red, base, novedades, nuevas_ids, degradado, 
                 if version_pin and not es_semver_exacto(version_pin):
                     version_pin = None  # 'latest', rangos, etc.: no es un pin real
                 ultima = obtener_ultima_version_npm(red, nombre_pkg)
+                if ultima is not None and not version_valida(ultima):
+                    raise RuntimeError("npm devolvió una versión no válida")
                 nombre_limpio = limpiar_texto(nombre)[:80]
-                clave = f"mcp:{nombre_limpio}"
+                clave = f"mcp:{texto_id(nombre)}"
                 if version_pin:
                     fijadas.append({"nombre": nombre_limpio, "paquete": nombre_pkg, "fijada": version_pin, "ultima": ultima})
                     if ultima and ultima != version_pin:
@@ -1495,9 +1607,7 @@ def fuente_mcps(rutas: Rutas, red: Red, base, novedades, nuevas_ids, degradado, 
 
 
 def _correr_cli(cmd: list, env: dict | None = None) -> str:
-    r = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=TIMEOUT_CLI, env=env, stdin=subprocess.DEVNULL
-    )
+    r = _run(cmd, timeout=TIMEOUT_CLI, env=env)
     if r.returncode != 0:
         raise RuntimeError(f"{_nombre_ejecutable(cmd[0])} {cmd[1]} falló: {truncar(r.stderr or '', 120)}")
     return r.stdout
@@ -1589,6 +1699,9 @@ def formulas_brew_outdated() -> list | None:
 
 
 def _comparar_y_registrar(clave, instalada, disponible, *, tipo, enlace, confianza, base, novedades, nuevas_ids, ahora):
+    if disponible is not None and not version_valida(disponible):
+        raise RuntimeError(f"{clave}: el registro devolvió una versión no válida")
+    instalada = limpiar_texto(instalada)[:100] if instalada else instalada
     base[clave] = {"visto": disponible, "fecha": ahora, "instalada": instalada}
     if not disponible or not instalada or disponible == instalada:
         return
@@ -1728,8 +1841,8 @@ def fuente_catalogo_compartido(ruta_catalogo, gh, base, novedades, nuevas_ids, d
             if not owner_repo_valido(repo):
                 raise RuntimeError("el 'origen' no resolvió a owner/repo válido")
             head_sha = gh.api(f"repos/{repo}/commits/HEAD").get("sha")
-            if not head_sha:
-                raise RuntimeError("la respuesta no trajo sha de HEAD")
+            if not sha_valido(head_sha):
+                raise RuntimeError("la respuesta no trajo un sha de HEAD válido")
         except CORTAN_FUENTE:
             raise
         except Exception as e:  # noqa: BLE001
@@ -1797,7 +1910,8 @@ def generar_novedades_md(novedades, sin_fijar, informativos, estado_corrida, deg
         lineas += ["| pieza | tipo | versión | cambios | confianza | enlace |", "|---|---|---|---|---|---|"]
         for id_, dat in sorted(actualizaciones.items()):
             pieza, ref = id_.rsplit("@", 1) if "@" in id_ else (id_, "-")
-            celda = f"[ver]({dat['enlace']})" if dat.get("enlace") else "(sin enlace)"
+            enlace = enlace_valido(dat.get("enlace"))
+            celda = f"[ver]({enlace})" if enlace else "(sin enlace)"
             lineas.append(
                 f"| {escapar_md(pieza)} | {escapar_md(dat.get('tipo', ''))} | {escapar_md(ref)} | "
                 f"{escapar_md(dat.get('detalle', ''))} | {escapar_md(dat.get('confianza', 'otro'))} | {celda} |"
@@ -1807,7 +1921,8 @@ def generar_novedades_md(novedades, sin_fijar, informativos, estado_corrida, deg
     if en_catalogo:
         lineas += ["## Nuevas en catálogos", ""]
         for _id, dat in sorted(en_catalogo.items()):
-            celda = f"[ver]({dat['enlace']})" if dat.get("enlace") else "(sin enlace)"
+            enlace = enlace_valido(dat.get("enlace"))
+            celda = f"[ver]({enlace})" if enlace else "(sin enlace)"
             lineas.append(
                 f"- {escapar_md(dat.get('detalle', ''))} (confianza: {escapar_md(dat.get('confianza', 'otro'))}) — {celda}"
             )
@@ -1845,10 +1960,7 @@ def notificar_macos(mensaje: str) -> None:
     osascript = shutil.which("osascript") or "/usr/bin/osascript"
     mensaje = mensaje.replace("\\", "\\\\").replace('"', "'")
     try:
-        subprocess.run(
-            [osascript, "-e", f'display notification "{mensaje}" with title "Vigía"'],
-            capture_output=True, timeout=10, stdin=subprocess.DEVNULL,
-        )
+        _run([osascript, "-e", f'display notification "{mensaje}" with title "Vigía"'], timeout=10)
     except Exception:  # noqa: BLE001
         pass
 
@@ -1882,7 +1994,7 @@ def _correr(args, rutas: Rutas, log: Log) -> int:
     degradado += avisos_perfil
 
     red = Red()
-    gh_bin = encontrar_ejecutable("gh", rutas_extra("gh"))
+    gh_bin = encontrar_ejecutable("gh", rutas_extra("gh")) if perfil["usar_gh"] else None
     gh_ok = gh_autenticado(gh_bin)
     gh = ClienteGitHub(red, gh_bin if gh_ok else None, limite=args.limite_github)
     log.escribir(f"inicio: GitHub vía {'gh' if gh_ok else 'API pública sin token'} (tope {gh.limite} pedidos)")
@@ -1891,7 +2003,7 @@ def _correr(args, rutas: Rutas, log: Log) -> int:
         try:
             return funcion(*a)
         except CupoAgotado as e:
-            degradado.append(f"{nombre}: cupo de GitHub agotado ({truncar(str(e), 120)}); lo que faltaba se saltea")
+            degradado.append(f"{nombre}: tope alcanzado ({truncar(str(e), 120)}); lo que faltaba se saltea")
         except SinRed as e:
             degradado.append(f"{nombre}: sin red ({truncar(str(e), 120)}); se saltea")
         except Exception as e:  # noqa: BLE001 — esto sí es un error del detector
@@ -1929,13 +2041,19 @@ def _correr(args, rutas: Rutas, log: Log) -> int:
         perfil["catalogo_compartido"], gh, base, novedades, nuevas_ids, degradado, ahora,
     ) or conteos_vacios()
 
+    # Sin red de punta a punta (ninguna consulta respondió y alguna falló por red) no es
+    # una corrida completa: no mueve `ultima_corrida`, así el hook reintenta en 24 h.
+    sin_red_total = red.hubo_sin_red and red.exitos == 0
+    if sin_red_total:
+        degradado.append("sin red: no respondió ningún origen; se reintenta en 24 h")
     estado_corrida = "caido" if caidas else ("degradado" if degradado else "ok")
     estado["estado"] = estado_corrida
     estado["ok"] = estado_corrida != "caido"  # compatibilidad: `ok: false` = caído
     estado["degradado"] = degradado
     estado["errores"] = caidas
-    if estado_corrida != "caido":
+    if estado_corrida != "caido" and not sin_red_total:
         estado["ultima_corrida"] = ahora
+        estado["ultima_corrida_con_red"] = ahora
     estado["base"] = base
     estado["novedades"] = novedades
     estado["catalogos"] = catalogos
@@ -2029,6 +2147,11 @@ def construir_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list | None = None) -> int:
+    for flujo in (sys.stdout, sys.stderr):
+        try:
+            flujo.reconfigure(encoding="utf-8", errors="replace")  # consola de Windows en cp1252
+        except Exception:  # noqa: BLE001
+            pass
     args = construir_parser().parse_args(argv)
     rutas = resolver_rutas()
 

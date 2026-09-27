@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 2>/dev/null || true",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 1 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 2 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 3 2>/dev/null || true",
             "timeout": 5
           }
         ]

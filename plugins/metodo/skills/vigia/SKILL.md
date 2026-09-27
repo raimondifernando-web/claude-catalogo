@@ -1,6 +1,6 @@
 ---
 name: vigia
-description: "Revisa con criterio lo que detectó el vigía de actualizaciones: versiones nuevas de las herramientas externas que tenés instaladas (plugins, skills, MCPs, CLIs). Clasifica cada novedad, audita las candidatas, propone como máximo 5 con el comando exacto, pregunta sí o no y nunca aplica nada solo. Usala cuando el usuario diga 'revisá las novedades del vigía', 'revisalas', 'qué hay nuevo', 'qué avisó el vigía', 'actualizá las herramientas', o cuando al abrir la sesión aparezca 'Vigía: N novedades', 'Vigía caído' o 'Vigía sin correr'. También para apagarlo o prenderlo."
+description: "Revisa con criterio lo que detectó el vigía de actualizaciones: versiones nuevas de las herramientas externas que tenés instaladas (plugins, skills, MCPs, CLIs). Clasifica cada novedad, audita las candidatas, propone como máximo 5 con el comando exacto, pregunta sí o no y nunca aplica nada solo. Usala cuando el usuario diga 'revisá las novedades del vigía', 'revisalas', 'qué hay nuevo', 'qué avisó el vigía', 'actualizá las herramientas', o cuando al abrir la sesión aparezca 'Vigía: N novedades', 'Vigía caído', 'Vigía sin una búsqueda completa', 'no se pudo lanzar' o 'Vigía necesita Python 3.9+'. También para apagarlo o prenderlo."
 ---
 
 # /metodo:vigia — Revisar lo que encontró el vigía
@@ -14,8 +14,12 @@ El vigía tiene dos mitades:
 Regla madre: **aplicar una novedad es instalar de nuevo.** Pasa por el mismo filtro que cualquier herramienta de afuera
 y hace falta el sí del usuario. Nunca se aplica nada por iniciativa propia.
 
-## 0. Si el aviso es «Vigía caído» o «sin correr»
+## 0. Si el aviso es «caído», «sin una búsqueda completa», «no se pudo lanzar» o «necesita Python 3.9+»
 Arreglá eso primero: sin detector, lo demás no sirve.
+- «necesita Python 3.9+»: instalar un Python más nuevo (ver `requisitos.md` del plugin). En Windows, además, Git for
+  Windows: sin él los hooks corren en PowerShell y el vigía no arranca.
+- «sin una búsqueda completa hace N días»: casi siempre es falta de conexión (una corrida sin red no cuenta y se
+  reintenta al día siguiente). Si hay conexión, seguí con lo de abajo.
 - Leé las últimas líneas de `~/.claude/vigia/vigia.log` y el campo `errores` de `estado.json`.
 - Probá a mano, sin escribir nada: `python3 <carpeta del plugin>/scripts/vigia/vigia.py --dry-run --verbose`
   (en Windows, `py -3` en vez de `python3`). La carpeta del plugin está en `~/.claude/plugins/cache/`.
@@ -79,14 +83,18 @@ Después de aplicar, corré el detector a mano (paso 0, sin `--dry-run`) para co
 
 ## Apagar o prender el vigía
 Viene **prendido**. Se apaga en un paso, sin desinstalar nada:
-- **Apagar**: crear el archivo vacío `~/.claude/vigia/apagado` (en Windows, `%USERPROFILE%\.claude\vigia\apagado`),
-  o definir la variable de entorno `VIGIA_OFF=1`.
+- **Apagar**: crear el archivo vacío `~/.claude/vigia/apagado` (en Windows, `%USERPROFILE%\.claude\vigia\apagado`;
+  con `CLAUDE_CONFIG_DIR`, adentro de esa carpeta), o definir la variable de entorno `VIGIA_OFF=1`.
 - **Prender**: borrar ese archivo (o sacar la variable).
 
 Apagado, el hook no avisa ni lanza nada. El perfil opcional (`~/.claude/vigia/perfil.json`) suma fuentes, como CLIs a
 vigilar; el ejemplo está en `scripts/vigia/perfil.ejemplo.json`. Sin perfil funciona igual.
 
-## Qué no hace
+## Qué no hace (y qué se ve desde afuera)
 - No instala nada nuevo sin pasar por el paso 3.
 - No edita `NOVEDADES.md`, que se regenera. En `estado.json` solo toca `estado` y `motivo` de cada novedad.
-- No manda datos a nadie: el detector solo consulta GitHub, npm y PyPI, sin claves.
+- El detector consulta solo GitHub, npm y PyPI, sin claves propias. Para preguntar por una versión nueva nombra la
+  pieza: **esos tres sitios ven el inventario de lo instalado**, como en cualquier chequeo de actualizaciones. No
+  manda nada al consultor, a quien mantiene el catálogo ni a nadie más. Si hay `gh` con sesión iniciada, GitHub
+  además asocia las consultas a esa cuenta; se evita con `"usar_gh": false` en el perfil.
+- Si el usuario pregunta qué sale de su computadora, contestá esto mismo, sin achicarlo.

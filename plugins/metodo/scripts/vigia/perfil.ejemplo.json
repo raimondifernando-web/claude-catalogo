@@ -16,5 +16,7 @@
   "marketplaces_excluidas": [],
   "_catalogo_compartido": "Opcional: un CATALOGO.yaml con 'origen: github:owner/repo' por pieza. null = no se usa.",
   "catalogo_compartido": null,
-  "descubrimiento_mensual": false
+  "descubrimiento_mensual": false,
+  "_usar_gh": "true (default): si hay gh con sesión iniciada, se usa y GitHub asocia las consultas a esa cuenta. false: siempre la API pública, sin cuenta.",
+  "usar_gh": true
 }
