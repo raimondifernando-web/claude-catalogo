@@ -47,7 +47,7 @@ name: pm-miempresa
 description: "Cuándo usar este agente, en una frase que empiece por el caso de uso (máx. 250 caracteres)"
 model: sonnet
 skills:            # opcional: skills que ya tiene que conocer al arrancar
-  - pricing-strategy
+  - pricing
 ---
 # (acá va el rol, en criollo: qué sabe, cómo trabaja, a quién delega)
 ```

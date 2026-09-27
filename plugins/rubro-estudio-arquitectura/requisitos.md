@@ -5,7 +5,7 @@ Esta tabla cubre solo lo que agrega este paquete. Para saber qué te falta: corr
 
 ## Lo que NO necesita nada extra (20 de 26 skills)
 **Negocio y comunicación:** `competitive-teardown` · `content-strategy` · `customer-research` · `founder-coach` ·
-`frontend-design` · `pestel-analysis` · `pricing-strategy` · `social-content` · `storyboard` · `theme-factory` ·
+`frontend-design` · `pestel-analysis` · `pricing` · `social` · `storyboard` · `theme-factory` ·
 `notebooklm-preparar` (te deja listo qué cargar y qué preguntar en notebooklm.google.com; vos lo pegás en el navegador — no instala nada ni toca tu cuenta de Google).
 **Estudio (nuevas en 0.3.0):** `propuesta-de-honorarios` · `pliego-especificaciones` · `informe-visita-de-obra`.
 **Estudio (nueva en 0.7.0):** `identidad-visual-del-estudio` — no necesita nada; logo opcional (SVG o PNG en `assets/`). Guarda tu marca una vez en `identidad-visual.md` y la aplica a todo lo que Claude produce.

@@ -1,6 +1,16 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
 
+## 0.14.0 — 2026-09-27
+- ⚠️ **Dos skills cambian de nombre** porque el autor las renombró en su versión 2:
+  | Antes | Ahora |
+  |---|---|
+  | `pricing-strategy` | `pricing` |
+  | `social-content` | `social` |
+  Si le pedís a Claude «cómo cobro» o «armame un posteo», se usan solas igual que antes. **Solo te afecta si las nombraste a mano**: en un agente que creaste (campo `skills:`) o en tu `CLAUDE.md`. En ese caso, cambiá el nombre viejo por el nuevo. Tu consultor te ayuda a revisarlo.
+- **Actualizadas a la versión nueva de sus autores:** `pricing`, `social`, `content-strategy` y `customer-research` (marketingskills 2.11.1), y `competitive-teardown` y `founder-coach`. A estas dos últimas les faltaban guías y planillas de apoyo que la skill mencionaba y no estaban. Ahora vienen completas.
+
+
 ## 0.13.1 — 2026-09-27
 - **NotebookLM: la versión revisada pasa a 0.8.3.** Tu consultor revisó el código completo de la versión nueva: sigue hablando solo con Google, guarda la sesión igual que antes y el paquete coincide con el publicado por el autor. Trae borrado y compartir en lote.
 - **Dos reglas más en `docs/NOTEBOOKLM-SEGURO.md`:** nada de re-login automático (se conectaría a tu Chrome de todos los días), y Claude te lista y te pide el sí antes de borrar o compartir algo.

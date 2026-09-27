@@ -3,7 +3,7 @@ name: <disciplina-en-kebab-case>
 description: "Especialista en <disciplina>. Invocar para: <3 casos de uso concretos>. NO para: <qué queda afuera>."
 model: sonnet
 skills:
-  # skills de la disciplina (ej.: pricing-strategy para un cotizador)
+  # skills de la disciplina (ej.: pricing para un cotizador)
 ---
 
 # <Nombre del especialista>

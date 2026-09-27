@@ -1,0 +1,2 @@
+origen: github:anthropics/skills//skills/academy-guide@3337550
+copiado: 2026-09-27 (copia fija, sin cambios). Licencia Apache-2.0 → LICENSE.txt

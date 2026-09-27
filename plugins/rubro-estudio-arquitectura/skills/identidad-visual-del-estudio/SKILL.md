@@ -45,7 +45,7 @@ confirmá** (regla 3 de la casa). Sugerí guardarla en el repositorio con el res
    - **Página web / Artifact / HTML**: definí los colores como variables (`--principal`, `--secundario`, `--fondo`,
      `--texto`) y las tipografías una sola vez arriba; el resto las usa. Si la tipografía no es gratuita ni está en
      Google Fonts, usá la alternativa que diga el archivo.
-   - **Imagen / render / posteo**: pasale al generador de imágenes o a `social-content` los colores en palabras y en
+   - **Imagen / render / posteo**: pasale al generador de imágenes o a `social` los colores en palabras y en
      código, el tono, y «sin texto» si el logo va aparte.
 3. Respetá la sección **Qué NO** como prohibiciones, no como sugerencias.
 4. Si la pieza es para un **cliente del estudio** con su propia marca (ej. un informe para una empresa), la identidad

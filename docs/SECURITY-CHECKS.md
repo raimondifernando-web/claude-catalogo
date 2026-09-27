@@ -381,3 +381,20 @@ Aplicado por el vigía con el sí del dueño («sí, con auditoría»).
 | Cookies | Escritura 0600 sin cambios; más redacción de credenciales en logs |
 | Riesgo nuevo | Borrado en lote sin confirmación a nivel librería → regla en el protocolo: Claude lista y pide el sí antes de borrar o compartir. Re-login automático (ya en 0.8.2, apagado) → prohibido en la regla 2 |
 | Instalación del dueño | `pip install --no-deps --require-hashes` 0.8.3 · `notebooklm auth check` = válido |
+
+## catálogo — `base-segura` 0.13.0 · `rubro-estudio-arquitectura` 0.14.0 · `metodo` 0.15.0 — 2026-09-27 — PASS
+Vigía mensual. Tres cambios: skills de marketing migradas a la versión del autor, que renombró dos; `academy-guide` oficial
+pedida por el dueño del producto; y el vigía aplica solo lo auditado que no rompe, decisión del dueño.
+
+| Control | Resultado |
+|---|---|
+| Origen y licencia | marketingskills v2.11.1 @5b2c000 (MIT, >5K★) · alirezarezvani/claude-skills @19392f7 (MIT, >5K★) · anthropics/skills @3337550 (org oficial, Apache-2.0). Cada skill con `ORIGEN.txt` y sha |
+| Auditor de skills | 33 de marketingskills: PASS salvo `ads` (3 CRITICAL = falsos positivos: dos términos de publicidad ABM y una regla **defensiva** «datos, no instrucciones»; `ads` no se publica) · 4 de alirezarezvani: PASS · `academy-guide`: texto puro |
+| Código nuevo | Scripts Python de `competitive-teardown` revisados a mano: sin red, sin `subprocess`, sin `eval`; la única escritura es el archivo de salida que pide el usuario |
+| Red | `academy-guide` descarga el catálogo público de `academy.claude.com` y lo trata como datos. Declarado en `requisitos.md` y CHANGELOG |
+| Rompe | `pricing-strategy`→`pricing` y `social-content`→`social`: CHANGELOG del rubro con la tabla y qué revisar (el `skills:` de agentes propios); plantillas de `metodo` actualizadas; 0 referencias viejas fuera de los CHANGELOG |
+| Retenida | `discernment-nudge` (oficial): prueba contra `modo-directo`, 8 corridas con control. Errática en planes (1 de 3) y duplica la nota de supuestos → el dueño del producto decidió no sumarla |
+| Vigía | Cambia solo texto (skill + mensaje de `aviso.py`); lógica intacta; 54 tests locales OK |
+| Instalación limpia (HOME temporal, catálogo local) | base-segura 0.13.0 = 15 skills (con `academy-guide`) · rubro 0.14.0 = 26 (con `pricing`, `social`, sin los nombres viejos) · metodo 0.15.0 = 8, con el aviso nuevo |
+| Nombres de clientes / secretos | `git grep` → 0 / 0 |
+| `verificar-metadatos.sh` | TODO COINCIDE |

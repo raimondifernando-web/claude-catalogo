@@ -208,7 +208,7 @@ def armar_mensaje(estado, ahora, intento, lanzamientos):
         "Aviso del vigía de actualizaciones (plugin metodo): " + " · ".join(partes) + ". "
         + (
             "Al terminar de arrancar, ofrecé revisarlo con la skill `vigia` "
-            "(nunca aplicar nada sin el sí del usuario)."
+            "(aplica solo lo auditado que no rompe; lo nuevo, lo que rompe o lo riesgoso se pregunta)."
             if accionables
             else "No hace falta hacer nada."
         )

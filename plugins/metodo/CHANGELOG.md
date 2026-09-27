@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.15.0 — 2026-09-27
+- **El vigía ya no te pregunta por lo que es seguro.** Si una herramienta que tenés instalada saca una versión nueva, Claude la revisa. Si pasa la revisión y no rompe nada, la actualiza y te cuenta qué cambió y cómo volver atrás. **Te pregunta solo** si la versión nueva cambia nombres o comandos (y te dice qué tuyo se ve afectado), si es una herramienta nueva o si hay un riesgo real (claves, costo, datos que salen). Lo que fija tu consultor sigue sin moverse: se lo reportás.
+- Nuevo en la revisión: Claude compara lo que tenés instalado contra la versión nueva, no solo lo último que cambió. Así detecta cuando el autor renombró cosas en el medio.
+- Plantillas de agentes: el ejemplo de skill del cotizador ahora dice `pricing` (antes `pricing-strategy`), por el cambio de nombre del rubro 0.14.0.
+
 ## 0.14.0 — 2026-09-27
 - **Nuevo: el vigía de actualizaciones (`/metodo:vigia`).** Cuando algo de lo que instalaste (plugins, conectores MCP, herramientas de línea de comandos) saca una versión nueva, nadie te avisa. Ahora sí: al abrir una sesión, Claude te dice «Vigía: N novedades». Le pedís «revisá las novedades del vigía» y te propone como mucho 5, con sí o no. **Nunca instala nada solo.** Si una pieza la fijó tu consultor, no la movés vos: se la reportás.
 - **Cómo funciona:** al abrir cada sesión corre un chequeo de menos de un segundo, que solo lee una fecha. La búsqueda de verdad se hace como mucho una vez por semana, en segundo plano, sin usar tu plan de Claude.

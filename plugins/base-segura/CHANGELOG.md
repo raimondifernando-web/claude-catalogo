@@ -1,5 +1,10 @@
 # base-segura — qué cambia para vos
 
+## 0.13.0 — 2026-09-27
+- **Nueva: `academy-guide`** (oficial de Anthropic). Cuando le preguntás a Claude cómo usar algo de Claude («¿cómo funcionan los proyectos?», «quiero aprender a usar skills»), te contesta y, si hay un curso o tutorial de Claude Academy que encaje bien, te sugiere uno o dos. Nunca inventa cursos: los toma del catálogo oficial y, si no encuentra uno bueno, no dice nada.
+- **Qué sale de tu computadora:** para sugerirte un curso descarga la lista pública de cursos de `academy.claude.com`. No manda nada tuyo.
+- **`copy-editing` actualizada** a la versión nueva del autor (marketingskills 2.11.1): mejores pasadas de revisión y actualización de textos viejos. Se usa igual que antes.
+
 ## 0.12.0 — 2026-09-22
 - Sin cambios; acompaña al catálogo 0.12.0 (paquete nuevo `escala-desarrollo`). Si lo instalás, `base-segura` le presta al revisor de código su auditor de skills.
 
