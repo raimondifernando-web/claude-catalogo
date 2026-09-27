@@ -82,7 +82,7 @@ done
 
 echo "== 4b. Licencias: nada no comercial ni sin permiso de redistribución (Mand. XVI)"
 # Causa raíz 2026-09-27: dos skills CC BY-NC-SA se publicaron porque nadie leía la licencia al empaquetar.
-while IFS= read -r f; do rojo "licencia no redistribuible en $f"; done < <(grep -rlE 'NonCommercial|Non-Commercial|CC[ -]BY-NC|BY-NC-(SA|ND)|Figma Developer Terms' plugins 2>/dev/null)
+while IFS= read -r f; do rojo "licencia no redistribuible en $f"; done < <(grep -rlE --exclude=CHANGELOG.md 'NonCommercial|Non-Commercial|CC[ -]BY-NC|BY-NC-(SA|ND)|Figma Developer Terms' plugins 2>/dev/null)  # el CHANGELOG nombra licencias al explicar retiros
 [ "$fallos" -eq 0 ] && ok "sin licencias no comerciales"
 
 echo "== 5. Cada skill declarada tiene su SKILL.md"

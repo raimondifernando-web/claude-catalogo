@@ -1,5 +1,9 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.14.3 — 2026-09-27
+- ⚠️ **Salen `pestel-analysis` y `storyboard`.** Eran traducciones de un autor que las publica con licencia **no comercial** (CC BY-NC-SA 4.0), y no se pueden usar en un kit de trabajo pago ni redistribuir con la licencia de este catálogo. Se detectó en una revisión de orígenes. Si las usabas, tu consultor te ofrece una alternativa; el análisis PESTEL o un storyboard se los podés pedir igual a Claude directamente, sin skill.
+- Para que no vuelva a pasar, el catálogo ahora revisa las licencias antes de cada publicación y frena cualquiera que no sea libre.
+
 ## 0.14.2 — 2026-09-27
 - **NotebookLM: las instrucciones ahora coinciden con la versión instalada (0.8.3).** Antes describían comandos de una versión muy anterior, así que Claude podía proponer algo que ya no existe. El bloque de uso seguro sigue arriba de todo, con una línea nueva: las opciones del autor que el protocolo prohíbe (sacar la sesión de tu navegador, el «master token», el re-login automático o instalar sin versión fija) siguen prohibidas.
 - `frontend-design`, `theme-factory` y `web-artifacts-builder` pasan a la versión nueva de sus autores. Se usan igual que antes.

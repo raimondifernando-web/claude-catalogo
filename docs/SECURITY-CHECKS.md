@@ -424,3 +424,15 @@ Causa raíz: la fuente del catálogo compartido ignoraba el sha fijado, así que
 | notebooklm | Alineada con el tag v0.8.3 de notebooklm-py (la copia era de v0.3.4); bloque de uso seguro conservado + línea que prohíbe browser-cookies, master-token, auth refresh e instalaciones sin versión |
 | Instalación limpia (HOME temporal) | base-segura 0.13.1 · escala-desarrollo 0.12.2 · metodo 0.15.1 · rubro 0.14.2, con el contenido nuevo presente |
 | Nombres de clientes / `verificar-metadatos.sh` | 0 · TODO COINCIDE |
+
+## catálogo — `rubro-estudio-arquitectura` 0.14.3 (retiro por licencia) — 2026-09-27 — PASS
+`pestel-analysis` y `storyboard` eran traducciones de deanpeters/Product-Manager-Skills, **CC BY-NC-SA 4.0**
+(verificado con `gh api`: NonCommercial-ShareAlike). No comercial + share-alike no pasan el Mand. XVI y chocan con la
+MIT del catálogo. El dueño del producto eligió retirarlas.
+
+| Control | Resultado |
+|---|---|
+| Retiro | Las 2 carpetas fuera de `plugins/`; conteos (26→24), `requisitos.md`, README y CHANGELOG al día |
+| Causa raíz | `verificar-metadatos.sh` 4b: frena cualquier publicación con un archivo de licencia no comercial o no redistribuible dentro de `plugins/` (los CHANGELOG quedan excluidos porque nombran licencias). Probado: falla con las 2 adentro y pasa sin ellas |
+| Instalación limpia (HOME temporal) | rubro 0.14.3 = 24 skills, 0 pestel/storyboard |
+| Nombres de clientes / `verificar-metadatos.sh` | 0 · TODO COINCIDE |
