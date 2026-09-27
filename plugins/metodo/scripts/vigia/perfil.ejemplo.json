@@ -1,0 +1,22 @@
+{
+  "_comentario": "Ejemplo de perfil del vigía. Es OPCIONAL: sin perfil, el vigía funciona igual y saltea lo que depende de él. Copialo a ~/.claude/vigia/perfil.json (o indicá otra ruta con --perfil o VIGIA_PERFIL) y dejá solo lo que uses. Las claves que empiezan con _ se ignoran.",
+  "clis": {
+    "npm": ["@openai/codex"],
+    "pipx": ["markitdown"],
+    "uv": [],
+    "brew": ["gh", "node"]
+  },
+  "confianza_cli": {
+    "@openai/codex": "oficial",
+    "markitdown": "oficial"
+  },
+  "_marketplaces_locales": "Modo autor: si mantenés un catálogo, poné {\"nombre-del-marketplace\": \"~/ruta/al/clon/.claude-plugin/marketplace.json\"} y el vigía revisa TODOS sus plugins fijados, no solo los instalados.",
+  "marketplaces_locales": {},
+  "_marketplaces_excluidas": "Marketplaces cuyos commits nuevos no te interesa ver (por ejemplo, el que mantenés vos).",
+  "marketplaces_excluidas": [],
+  "_catalogo_compartido": "Opcional: un CATALOGO.yaml con 'origen: github:owner/repo' por pieza. null = no se usa.",
+  "catalogo_compartido": null,
+  "descubrimiento_mensual": false,
+  "_usar_gh": "true (default): si hay gh con sesión iniciada, se usa y GitHub asocia las consultas a esa cuenta. false: siempre la API pública, sin cuenta.",
+  "usar_gh": true
+}

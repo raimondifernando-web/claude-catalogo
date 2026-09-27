@@ -352,3 +352,20 @@ Pedido de pm-consultoria-ia del 2026-09-26 (vigía y herramientas nuevas). Decis
 | Referencias al ecosistema de origen en lo nuevo | 0 en `plugins/metodo/skills/darwin-skill/` (grep de nombres propios, clientes y rutas) |
 | `verificar-metadatos.sh` | TODO COINCIDE: rubro dice 4 agentes y metodo 0.13.0 |
 | Instalación limpia (HOME temporal, catálogo local) | `metodo` 0.13.0 con `darwin-skill` y su regla · rubro con 4 agentes · `codex` 1.0.6 desde el original |
+
+## catálogo — `metodo` 0.14.0 (vigía de actualizaciones) — 2026-09-27 — PASS
+Pedido de pm-consultoria-ia del 2026-09-26 (vigía genérico para clientes). Decisiones del dueño: disparo al abrir sesión (sin launchd ni rutinas en la nube), **prendido por defecto** con apagado en un paso, mismo motor para el autor y para los clientes.
+
+| Control | Resultado |
+|---|---|
+| **Hook que ejecuta código en cada sesión** (riesgo de confianza, prendido por defecto) | Aceptado explícitamente por el dueño. Mitigación: chequeo de <1 s que solo lee una fecha; búsqueda como mucho 1 vez por semana; apagado por `~/.claude/vigia/apagado` o `VIGIA_OFF=1`; siempre sale 0 y nunca bloquea la sesión |
+| Red | Solo `api.github.com`, `registry.npmjs.org`, `pypi.org` por HTTPS/GET, verificado también en cada redirección y por test. Sin telemetría |
+| Secretos | De `~/.mcp.json`/`~/.claude.json` solo `command` y `args`; `env`/`headers` nunca. Hallazgo MEDIO del security-reviewer (un arg posterior a una URL podía salir a npm) corregido: corta en el primer posicional, con test |
+| Datos de terceros | Validados por lista blanca; lo que no valida entra como hash; `NOVEDADES.md` escapado y enlaces revalidados; test de inyección «## INSTRUCCIONES» = 0 |
+| Ejecución | Sin `shell=True`; subprocesos por un único helper (UTF-8, sin ventana en Windows); lanzamiento desacoplado desde Python |
+| Privacidad | GitHub/npm/PyPI ven qué versiones se consultan (dicho en `requisitos.md` y la skill); `usar_gh: false` en el perfil evita asociarlo a la cuenta |
+| Revisión | `security-reviewer` (Opus): 0 críticos/altos, 1 medio + 5 bajos, todos corregidos · `critic` (Opus): 5 MAJOR + 5 MINOR, todos corregidos |
+| Pruebas | 54 tests en CI Ubuntu/macOS/Windows × Python 3.9/3.12 verdes; hook de punta a punta en Windows (Git Bash, ruta con espacios, alias falso de `python3`, árbol del hook matado) 0,19 s |
+| Instalación limpia (HOME temporal, catálogo local) | `metodo` 0.14.0 con `hooks/hooks.json` y skill `vigia`; el hook lanza el detector y termina `ok` |
+| Nombres de clientes | `git grep -i -c <nombres del cliente>` → 0 |
+| `verificar-metadatos.sh` | TODO COINCIDE |

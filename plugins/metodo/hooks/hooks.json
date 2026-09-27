@@ -1,0 +1,16 @@
+{
+  "description": "Vigía de actualizaciones: al abrir la sesión avisa si hay novedades y, como mucho una vez por semana, lanza la búsqueda en segundo plano. Se apaga con ~/.claude/vigia/apagado o VIGIA_OFF=1.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 1 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 2 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 3 2>/dev/null || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
