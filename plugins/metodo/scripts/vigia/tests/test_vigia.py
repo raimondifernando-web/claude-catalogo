@@ -1073,6 +1073,17 @@ class TestCatalogoCompartido(unittest.TestCase):
         self.assertEqual(self.tipos(), {f"origen-perdido:pieza:s1@{SHA_A}": "origen-perdido"})
         self.assertEqual(self.degradado, [])
 
+    def test_corregir_la_ruta_invalida_lo_guardado(self):
+        # Caso real 2026-09-27: se fijó 'agents/x' sin '.md' → origen perdido guardado 30 días.
+        # Al corregir la ruta en el catálogo, la corrida siguiente tiene que recalcular y cerrarlo.
+        r = {**self.head(), **self.arbol(SHA_A, {"skills/s1.md": T1}), **self.arbol(SHA_F, {"skills/s1.md": T1})}
+        self.correr_fuente([self.linea("s1", f"github:{REPO}//skills/s1@{SHA_A}")], r)
+        self.assertEqual(set(self.tipos().values()), {"origen-perdido"})
+        self.correr_fuente([self.linea("s1", f"github:{REPO}//skills/s1.md@{SHA_A}")], r)
+        self.assertEqual(self.tipos(), {})
+        self.assertEqual(self.base["pieza:s1"]["ruta"], "skills/s1.md")
+        self.assertEqual(self.degradado, [])
+
     def test_ref_tag_verificado(self):
         r = {**self.head(), **self.tag("v1.0.2"), **self.arbol(SHA_D, {"skills/s1": T1}),
              **self.arbol(SHA_F, {"skills/s1": T2})}

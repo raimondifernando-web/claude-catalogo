@@ -2003,17 +2003,19 @@ class _Registro:
             )
 
 
-def _guardado_valido(previo: object, ref: str, ref_sha: str) -> bool:
+def _guardado_valido(previo: object, ref: str, ref_sha: str, ruta=None) -> bool:
+    # La ruta es parte de la llave: si se corrige la ruta de un origen, lo guardado no sirve.
     return (
         isinstance(previo, dict) and previo.get("v") == ESQUEMA_PIEZA
         and previo.get("ref") == ref and previo.get("ref_sha") == ref_sha
+        and previo.get("ruta") == ruta
     )
 
 
-def _resultado_guardado(previo: object, ref: str, ref_sha: str, head: str, ahora: str):
+def _resultado_guardado(previo: object, ref: str, ref_sha: str, head: str, ahora: str, ruta=None):
     """El resultado de la corrida anterior, si sirve tal cual: mismo esquema, mismo ref y
     mismo HEAD. Un ref que ya no existía se vuelve a verificar cada 30 días."""
-    if not _guardado_valido(previo, ref, ref_sha) or previo.get("resultado") not in RESULTADOS_PIEZA:
+    if not _guardado_valido(previo, ref, ref_sha, ruta) or previo.get("resultado") not in RESULTADOS_PIEZA:
         return None
     if previo["resultado"] == "ref-perdido":
         return previo if _reciente(previo.get("fecha"), ahora) else None
@@ -2024,10 +2026,10 @@ def _resultado_guardado(previo: object, ref: str, ref_sha: str, head: str, ahora
     return previo
 
 
-def _sha_ref_guardado(previo: object, ref: str, ref_sha: str):
+def _sha_ref_guardado(previo: object, ref: str, ref_sha: str, ruta=None):
     """(hay_dato, sha) de la ruta en el ref fijado, de una corrida anterior: un ref fijado
     no cambia, así que su árbol se pide una sola vez."""
-    if _guardado_valido(previo, ref, ref_sha) and "sha_ref" in previo:
+    if _guardado_valido(previo, ref, ref_sha, ruta) and "sha_ref" in previo:
         sha = previo["sha_ref"]
         if sha is None or sha_valido(sha):
             return True, sha
@@ -2071,11 +2073,11 @@ def _revisar_repo_catalogo(repo, piezas, gh, base, registro, evaluadas, degradad
         clave = f"pieza:{nombre}"
         try:
             previo = base.get(clave)
-            res = _resultado_guardado(previo, ref, ref_sha, head, ahora)
+            res = _resultado_guardado(previo, ref, ref_sha, head, ahora, ruta)
             if res is None and _es_prefijo_sha(ref_sha, head):
                 res = {"resultado": "al-dia"}  # fijada justo en el HEAD
             if res is None:
-                hay, sha_ref = _sha_ref_guardado(previo, ref, ref_sha)
+                hay, sha_ref = _sha_ref_guardado(previo, ref, ref_sha, ruta)
                 if not hay:
                     try:
                         if ruta is None:
@@ -2106,7 +2108,7 @@ def _revisar_repo_catalogo(repo, piezas, gh, base, registro, evaluadas, degradad
                     else:
                         res = {"resultado": "al-dia" if sha_head == sha_ref else "desactualizada", "sha_head": sha_head}
                     res["sha_ref"] = sha_ref
-                res.update({"v": ESQUEMA_PIEZA, "ref": ref, "ref_sha": ref_sha, "head": head, "fecha": ahora})
+                res.update({"v": ESQUEMA_PIEZA, "ref": ref, "ref_sha": ref_sha, "ruta": ruta, "head": head, "fecha": ahora})
                 base[clave] = res
             registro.resultado(nombre, repo, ruta, ref, res)
             evaluadas.add(nombre)

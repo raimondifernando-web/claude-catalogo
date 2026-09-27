@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.15.2 — 2026-09-27
+- Vigía: si corregís la ruta de origen de una pieza en tu catálogo, el aviso viejo se cierra en la corrida siguiente. Antes podía quedar colgado hasta 30 días.
+
 ## 0.15.1 — 2026-09-27
 - **El vigía ahora ve lo que antes se le escapaba.** Si mantenés un catálogo propio de herramientas (para la mayoría de los usuarios no aplica), compara cada pieza contra la versión exacta de la que salió, mirando solo su carpeta. Antes solo notaba los cambios entre una corrida y la siguiente: una copia que ya estaba atrasada cuando la vio por primera vez nunca aparecía, y avisaba por cambios del repositorio que no tocaban la pieza.
 - Lo que no declara de qué versión salió figura aparte, como «sin versión fijada», y no infla el número de novedades.

@@ -436,3 +436,10 @@ MIT del catálogo. El dueño del producto eligió retirarlas.
 | Causa raíz | `verificar-metadatos.sh` 4b: frena cualquier publicación con un archivo de licencia no comercial o no redistribuible dentro de `plugins/` (los CHANGELOG quedan excluidos porque nombran licencias). Probado: falla con las 2 adentro y pasa sin ellas |
 | Instalación limpia (HOME temporal) | rubro 0.14.3 = 24 skills, 0 pestel/storyboard |
 | Nombres de clientes / `verificar-metadatos.sh` | 0 · TODO COINCIDE |
+
+## catálogo — `metodo` 0.15.2 (vigía: la ruta entra en la llave del caché) — 2026-09-27 — PASS
+| Control | Resultado |
+|---|---|
+| Cambio | `_guardado_valido` compara también la `ruta`; lo guardado sin ruta se recalcula una vez. Sin red nueva ni cambios de validación |
+| Tests | 87 OK (3.12 y 3.9.6). Test nuevo con el caso real (ruta corregida); **control**: sin el arreglo, el test falla |
+| `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |
