@@ -75,6 +75,9 @@ for p in plugins/*/; do
   v=$(campo "$p.claude-plugin/plugin.json" version) || { rojo "$n: plugin.json ilegible"; continue; }
   vm=$(en_marketplace "$n")
   [ "$v" != "$vm" ] && rojo "$n: plugin.json=$v marketplace.json=$vm" || ok "$n: $v"
+  # README: la fila del plugin termina con su versión (se desactualizó dos veces el 2026-09-27).
+  vr=$(grep -E "^\| \`$n\` \|" README.md | grep -oE '[0-9]+\.[0-9]+\.[0-9]+ \|$' | grep -oE '[0-9.]+' | sed 's/\.$//')
+  [ "$vr" != "$v" ] && rojo "$n: README=${vr:-sin fila} plugin.json=$v" || ok "$n: README $v"
 done
 
 echo "== 5. Cada skill declarada tiene su SKILL.md"
