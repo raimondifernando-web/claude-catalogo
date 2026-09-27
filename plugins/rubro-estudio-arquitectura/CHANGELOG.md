@@ -1,5 +1,9 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.14.2 — 2026-09-27
+- **NotebookLM: las instrucciones ahora coinciden con la versión instalada (0.8.3).** Antes describían comandos de una versión muy anterior, así que Claude podía proponer algo que ya no existe. El bloque de uso seguro sigue arriba de todo, con una línea nueva: las opciones del autor que el protocolo prohíbe (sacar la sesión de tu navegador, el «master token», el re-login automático o instalar sin versión fija) siguen prohibidas.
+- `frontend-design`, `theme-factory` y `web-artifacts-builder` pasan a la versión nueva de sus autores. Se usan igual que antes.
+
 ## 0.14.1 — 2026-09-27
 - **`market-research-reports` arreglada y renovada.** La versión anterior mandaba a usar dos herramientas que este paquete no trae, así que parte de sus pasos no andaban. La nueva, del mismo autor, arma informes de mercado **con evidencia rastreable**: cada dato con su fuente, el tamaño de mercado con escenarios y qué supuesto mueve más el número. No depende de nada más.
 - **Opcional:** tiene 8 scripts de verificación que piden Python 3.11 o más nuevo. Sin eso la skill funciona igual; solo no corre esos chequeos. No hace falta instalar nada para empezar.

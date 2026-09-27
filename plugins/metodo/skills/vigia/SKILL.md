@@ -77,12 +77,15 @@ En `estado.json` marcá cada novedad así:
 - aplicada o «sí» → `aceptada`;
 - «no» → `descartada` + `motivo`: no vuelve a aparecer hasta que salga otra versión;
 - «más adelante» → `propuesta`.
+- `resuelta` la pone el detector cuando una novedad deja de aplicar (por ejemplo, la pieza ya está al día): la skill no la toca.
 
 ## 4. Aplicar
 | Tipo | Cómo |
 |---|---|
 | Plugin de un marketplace (`plugin-marketplace-terceros`) | `claude plugin marketplace update <marketplace>` → `claude plugin update <plugin>@<marketplace>` |
 | Plugin fijado por el catálogo | No se aplica: se reporta al consultor (ver paso 2) |
+| Pieza de un catálogo compartido que mantenés vos (`pieza-desactualizada`) | Leer el compare del enlace, volver a copiar la carpeta desde el sha nuevo y actualizar el `@sha` de su `origen:` |
+| `origen-sin-fijar` | No es una versión nueva: la pieza no declara de qué versión salió y no se puede comparar. Buscar su origen y fijarlo como `github:owner/repo//ruta@sha` |
 | Skill instalada con `npx skills` | `npx skills@<versión-auditada> update <skill>`: nunca `@latest` sin auditar |
 | MCP por `npx` | Fijar o subir `@versión` en el archivo de configuración de MCPs. Nunca leer ni mostrar `env` ni `headers` |
 | CLI | `npm i -g <paquete>@<versión>` · `pipx upgrade <x>` · `uv tool upgrade <x>` · `brew upgrade <x>` |

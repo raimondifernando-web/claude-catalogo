@@ -410,3 +410,17 @@ La v1.0 publicada dependía de dos skills que el paquete no trae. El dueño del 
 | Requisito | Python 3.11+ **opcional** para los scripts; declarado en `requisitos.md` y CHANGELOG. Sin él, la skill funciona igual |
 | Instalación limpia (HOME temporal) | rubro 0.14.1 con `market-research-reports` v1.3 y sus 8 scripts |
 | Nombres de clientes / `verificar-metadatos.sh` | 0 · TODO COINCIDE |
+
+## catálogo — `metodo` 0.15.1 (motor del vigía) · `base-segura` 0.13.1 · `escala-desarrollo` 0.12.2 · `rubro` 0.14.2 — 2026-09-27 — PASS
+Causa raíz: la fuente del catálogo compartido ignoraba el sha fijado, así que las copias atrasadas no se veían.
+
+| Control | Resultado |
+|---|---|
+| Motor (`vigia.py`, `aviso.py`) | Comparación por sha de árbol de la ruta en el ref fijado contra HEAD; tags verificados (`main`/`master`/`HEAD` y refs que no son tag → sin fijar); 404/422 del ref → `origen-perdido` guardado; rotación por antigüedad; cierre automático de lo que deja de aplicar; fusión concurrente por estado inicial. Sin hosts nuevos (solo `api.github.com`); rutas, refs y `owner/repo` en lista blanca; `quote` por segmento; `escapar_md` en todo lo que va a NOVEDADES.md |
+| Revisión | `critic` (Opus), 3 rondas: 1ª REVISE (2 MAJOR: rama tomada como pin, cupo) → 2ª REVISE (1 MAJOR: sha de commit contra sha de árbol en piezas sin ruta, verificado contra la API real) → 3ª **ACCEPT**, con 1 MINOR (422 de sha inexistente) corregido |
+| Tests | 86 OK en Python 3.12 y 3.9.6; los falsos de `git/trees` y `commits` imitan a GitHub (`.sha` = el pedido, 422 para sha inexistente) |
+| Prueba real | Catálogo del dueño: 48 piezas desactualizadas de verdad (3 verificadas a mano con `gh`), 0 falsos positivos en piezas sin ruta, media-use sigue detectada |
+| Piezas publicadas actualizadas | critic, planner, skill-creator, security-reviewer, knowledge-synthesizer, frontend-design, theme-factory, web-artifacts-builder: merge de 3 vías (versión vieja / copia del catálogo / versión nueva), 0 conflictos de texto, binarios sin cambios arriba. Auditor: los FAIL leídos contra el propósito son falsos positivos |
+| notebooklm | Alineada con el tag v0.8.3 de notebooklm-py (la copia era de v0.3.4); bloque de uso seguro conservado + línea que prohíbe browser-cookies, master-token, auth refresh e instalaciones sin versión |
+| Instalación limpia (HOME temporal) | base-segura 0.13.1 · escala-desarrollo 0.12.2 · metodo 0.15.1 · rubro 0.14.2, con el contenido nuevo presente |
+| Nombres de clientes / `verificar-metadatos.sh` | 0 · TODO COINCIDE |

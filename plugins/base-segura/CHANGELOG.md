@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.13.1 — 2026-09-27
+- Los agentes `critic` y `planner` y la skill `skill-creator` pasan a la versión nueva de sus autores. En los agentes, la mejora que se nota: la respuesta final siempre trae el veredicto completo, en vez de terminar con un «listo» vacío. Se usan igual que antes.
+
 ## 0.13.0 — 2026-09-27
 - **Nueva: `academy-guide`** (oficial de Anthropic). Cuando le preguntás a Claude cómo usar algo de Claude («¿cómo funcionan los proyectos?», «quiero aprender a usar skills»), te contesta y, si hay un curso o tutorial de Claude Academy que encaje bien, te sugiere uno o dos. Nunca inventa cursos: los toma del catálogo oficial y, si no encuentra uno bueno, no dice nada.
 - **Qué sale de tu computadora:** para sugerirte un curso descarga la lista pública de cursos de `academy.claude.com`. No manda nada tuyo.

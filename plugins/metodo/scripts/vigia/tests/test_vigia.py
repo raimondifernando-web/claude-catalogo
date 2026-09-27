@@ -92,6 +92,8 @@ class OpenerFalso:
             valor = self.respuestas[url]
             if isinstance(valor, Exception):
                 raise valor
+            if callable(valor):  # fábrica de errores: uno nuevo por pedido (el cuerpo se lee una vez)
+                raise valor(url)
             return RespuestaFalsa(valor)
         raise urllib.error.HTTPError(url, 404, "Not Found", {}, io.BytesIO(b"{}"))
 
@@ -655,6 +657,17 @@ class TestAviso(ConHomeTemporal):
         error = {"ultimo_error_lanzamiento": {"fecha": iso(n), "detalle": "OSError: x"}}
         self.assertIn("no se pudo lanzar", aviso.armar_mensaje(sano, n, n, error)[0])
 
+    def test_sin_fijar_no_infla_el_conteo(self):
+        n = ahora()
+        nov = {f"sin-fijar:s{i}": {"estado": "nueva", "tipo": "origen-sin-fijar"} for i in range(5)}
+        nov["pieza:x@abc1234"] = {"estado": "nueva", "tipo": "pieza-desactualizada"}
+        msg = aviso.armar_mensaje({"estado": "ok", "ultima_corrida": iso(n - timedelta(days=1)), "novedades": nov}, n, None, {})[0]
+        self.assertIn("1 novedad", msg)
+        self.assertIn("5 pieza(s) sin versión fijada", msg)
+        solo_sin_fijar = {k: v for k, v in nov.items() if k.startswith("sin-fijar")}
+        msg2 = aviso.armar_mensaje({"estado": "ok", "ultima_corrida": iso(n - timedelta(days=1)), "novedades": solo_sin_fijar}, n, None, {})
+        self.assertNotIn("sin revisar", msg2[0])
+
     def test_puerta_del_hook(self):
         n = ahora()
         self.assertTrue(aviso.debe_lanzar({}, n, None))
@@ -960,6 +973,394 @@ class TestAvisoCasosBorde(ConHomeTemporal):
         e = self.estado()
         self.assertNotEqual(e["estado"], "caido", e)
         self.assertIsNotNone(e["ultima_corrida"])
+
+
+# --------------------------------------------------------------------------- #
+# Fuente 6 — CATALOGO.yaml compartido (pieza por pieza contra el sha fijado)
+# --------------------------------------------------------------------------- #
+
+
+SHA_E = "e" * 40
+SHA_F = "f" * 40
+REPO = "autor/skills"
+T1, T2, T3 = "1" * 40, "2" * 40, "3" * 40
+T_RAIZ_H, T_RAIZ_R = "4" * 40, "5" * 40
+
+
+class TestCatalogoCompartido(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory(prefix="vigia catalogo ")
+        self.addCleanup(self._tmp.cleanup)
+        self.base = {}
+        self.novedades = {}
+
+    def correr_fuente(self, lineas, respuestas, cuando=None):
+        cuando = cuando or iso(ahora())
+        ruta = Path(self._tmp.name) / "CATALOGO.yaml"
+        ruta.write_text("piezas:\n" + "".join(f"  {l}\n" for l in lineas), encoding="utf-8")
+        opener = OpenerFalso(respuestas)
+        nuevas_ids, degradado = [], []
+        with mock.patch.object(vigia, "_OPENER", opener):
+            gh = vigia.ClienteGitHub(vigia.Red(), None)
+            vigia.fuente_catalogo_compartido(ruta, gh, self.base, self.novedades, nuevas_ids, degradado, cuando)
+        self.opener, self.nuevas_ids, self.degradado = opener, nuevas_ids, degradado
+        return opener
+
+    @staticmethod
+    def head(sha=SHA_F, raiz=T_RAIZ_H, repo=REPO):
+        return {GH + f"repos/{repo}/commits/HEAD": {
+            "sha": sha, "commit": {"tree": {"sha": raiz}, "committer": {"date": "2026-09-01T00:00:00Z"}}}}
+
+    @staticmethod
+    def arbol(ref, entradas, truncado=False, repo=REPO):
+        """Como GitHub: el `.sha` de `git/trees/{x}` es el sha pedido, no el del árbol raíz."""
+        tree = [{"path": p, "type": "blob" if p.endswith(".md") else "tree", "sha": s} for p, s in entradas.items()]
+        return {GH + f"repos/{repo}/git/trees/{ref}?recursive=1": {"sha": ref, "tree": tree, "truncated": truncado}}
+
+    @staticmethod
+    def commit(sha, raiz, repo=REPO):
+        return {GH + f"repos/{repo}/commits/{sha}": {
+            "sha": sha if len(sha) == 40 else sha + "0" * (40 - len(sha)),
+            "commit": {"tree": {"sha": raiz}, "committer": {"date": "2026-08-01T00:00:00Z"}}}}
+
+    @staticmethod
+    def tag(ref, sha=SHA_D, tipo="commit", repo=REPO):
+        return {GH + f"repos/{repo}/git/ref/tags/{ref}": {"ref": f"refs/tags/{ref}", "object": {"type": tipo, "sha": sha}}}
+
+    @staticmethod
+    def linea(nombre, origen, estado="si"):
+        return f'{nombre}: {{estado: {estado}, capa: L2, origen: "{origen}", nota: "x"}}'
+
+    def tipos(self):
+        return {k: v["tipo"] for k, v in self.novedades.items() if v.get("estado") == "nueva"}
+
+    def s1(self, ref=SHA_A):
+        return [self.linea("s1", f"github:{REPO}//skills/s1@{ref}")]
+
+    def test_al_dia_con_el_arbol_igual(self):
+        r = {**self.head(), **self.arbol(SHA_A, {"skills/s1": T1}), **self.arbol(SHA_F, {"skills/s1": T1})}
+        self.correr_fuente(self.s1(), r)
+        self.assertEqual(self.novedades, {})
+        self.assertEqual(self.degradado, [])
+        self.assertEqual(self.base["pieza:s1"]["resultado"], "al-dia")
+        self.assertEqual(len(self.opener.urls), 3)  # HEAD, árbol del ref, árbol de HEAD
+
+    def test_divergente_o_revertido_con_el_arbol_igual_es_al_dia(self):
+        """Muchos commits en el medio (o una rama que se reescribió), pero la carpeta quedó igual."""
+        r = {**self.head(SHA_E), **self.arbol(SHA_A[:7], {"skills/s1": T1, "otra": T2}),
+             **self.arbol(SHA_E, {"skills/s1": T1, "otra": T3})}
+        self.correr_fuente(self.s1(SHA_A[:7]), r)
+        self.assertEqual(self.novedades, {})
+        self.assertEqual(self.degradado, [])
+
+    def test_desactualizada_en_el_primer_avistaje(self):
+        """El bug: la primera corrida anotaba el HEAD y callaba aunque la copia estuviera atrás."""
+        r = {**self.head(), **self.arbol(SHA_A, {"skills/s1": T1}), **self.arbol(SHA_F, {"skills/s1": T2})}
+        self.correr_fuente(self.s1(), r)
+        id_ = f"pieza:s1@{T2[:7]}"
+        self.assertEqual(self.tipos(), {id_: "pieza-desactualizada"})
+        nov = self.novedades[id_]
+        self.assertIn(f"difiere del HEAD (el sha fijado {SHA_A[:7]} → HEAD {SHA_F[:7]})", nov["detalle"])
+        self.assertNotIn("commits", nov["detalle"])
+        self.assertEqual(nov["enlace"], f"https://github.com/{REPO}/compare/{SHA_A}...{SHA_F}")
+        md = vigia.generar_novedades_md(self.novedades, [], [], "ok", [], [], "hoy")
+        self.assertIn("## Actualizaciones", md)
+        self.assertIn("pieza-desactualizada", md)
+
+    def test_ruta_borrada_es_origen_perdido(self):
+        r = {**self.head(), **self.arbol(SHA_A, {"skills/s1": T1}), **self.arbol(SHA_F, {"skills/s2": T2})}
+        self.correr_fuente(self.s1(), r)
+        self.assertEqual(self.tipos(), {f"origen-perdido:pieza:s1@{SHA_A}": "origen-perdido"})
+        self.assertEqual(self.degradado, [])
+
+    def test_ref_tag_verificado(self):
+        r = {**self.head(), **self.tag("v1.0.2"), **self.arbol(SHA_D, {"skills/s1": T1}),
+             **self.arbol(SHA_F, {"skills/s1": T2})}
+        self.correr_fuente(self.s1("v1.0.2"), r)
+        id_ = f"pieza:s1@{T2[:7]}"
+        self.assertEqual(self.tipos(), {id_: "pieza-desactualizada"})
+        self.assertIn("la versión fijada v1.0.2", self.novedades[id_]["detalle"])
+        self.assertEqual(self.base[f"catalogo-repo:{REPO}"]["tags"]["v1.0.2"]["sha"], SHA_D)
+        self.assertEqual(self.novedades[id_]["enlace"], f"https://github.com/{REPO}/compare/v1.0.2...{SHA_F}")
+
+    def test_tag_anotado_con_barra(self):
+        r = {**self.head(), **self.tag("release/v2", sha=SHA_C, tipo="tag"),
+             GH + f"repos/{REPO}/git/tags/{SHA_C}": {"object": {"type": "commit", "sha": SHA_D}},
+             **self.arbol(SHA_D, {"skills/s1": T2}), **self.arbol(SHA_F, {"skills/s1": T2})}
+        self.correr_fuente(self.s1("release/v2"), r)
+        self.assertEqual(self.novedades, {})
+        self.assertEqual(self.degradado, [])
+        self.assertEqual(self.base["pieza:s1"]["ref_sha"], SHA_D)
+
+    def test_cache_de_tags_vence_a_los_30_dias(self):
+        r = {**self.head(), **self.tag("v1"), **self.arbol(SHA_D, {"skills/s1": T1}), **self.arbol(SHA_F, {"skills/s1": T1})}
+        self.correr_fuente(self.s1("v1"), r)
+        tag_url = GH + f"repos/{REPO}/git/ref/tags/v1"
+        self.assertIn(tag_url, self.opener.urls)
+        self.correr_fuente(self.s1("v1"), r)
+        self.assertNotIn(tag_url, self.opener.urls)
+        self.correr_fuente(self.s1("v1"), r, cuando=iso(ahora() + timedelta(days=31)))
+        self.assertIn(tag_url, self.opener.urls)
+
+    def test_fijado_a_una_rama_es_sin_fijar(self):
+        lineas = [self.linea("a", f"github:{REPO}//skills/a@main"), self.linea("b", f"github:{REPO}//skills/b@HEAD"),
+                  self.linea("c", f"github:{REPO}//skills/c@desarrollo")]
+        self.correr_fuente(lineas, {})  # «desarrollo» no es un tag: 404
+        self.assertEqual(self.tipos(), {f"sin-fijar:{n}": "origen-sin-fijar" for n in "abc"})
+        self.assertIn("rama", self.novedades["sin-fijar:a"]["detalle"])
+        self.assertIn("no es un tag del repo", self.novedades["sin-fijar:c"]["detalle"])
+        self.assertEqual(self.opener.urls, [GH + f"repos/{REPO}/git/ref/tags/desarrollo"])
+        self.correr_fuente(lineas, {})
+        self.assertEqual(self.opener.urls, [])  # la verificación del tag quedó guardada
+
+    def test_origen_sin_ref_avisa_sin_red(self):
+        self.correr_fuente(
+            [self.linea("s1", f"github:{REPO}//skills/s1"), self.linea("s2", "github:otro/repo")], {}
+        )
+        self.assertEqual(self.opener.urls, [])
+        self.assertEqual(self.tipos(), {"sin-fijar:s1": "origen-sin-fijar", "sin-fijar:s2": "origen-sin-fijar"})
+        md = vigia.generar_novedades_md(self.novedades, [], [], "ok", [], [], "hoy")
+        self.assertIn("## Sin sha fijado (el vigía no puede compararlas)", md)
+        self.assertNotIn("## Actualizaciones", md)
+        self.assertIn("**2** piezas sin sha fijado", md)
+
+    def test_ruta_que_es_un_archivo(self):
+        ruta = "agents/negocio/analista.md"
+        r = {**self.head(), **self.arbol(SHA_A, {ruta: T1, ruta + ".bak": T3}),
+             **self.arbol(SHA_F, {ruta: T2, ruta + ".bak": T3})}
+        self.correr_fuente([self.linea("analista", f"github:{REPO}//{ruta}@{SHA_A}")], r)
+        self.assertEqual(self.tipos(), {f"pieza:analista@{T2[:7]}": "pieza-desactualizada"})
+
+    def test_sin_ruta_compara_el_arbol_raiz_del_commit(self):
+        r = {**self.head(raiz=T2), **self.commit(SHA_A, T1)}
+        self.correr_fuente([self.linea("todo", f"github:{REPO}@{SHA_A}")], r)
+        self.assertEqual(self.tipos(), {f"pieza:todo@{T2[:7]}": "pieza-desactualizada"})
+        self.assertEqual(len(self.opener.urls), 2)  # HEAD + commit del ref, sin árboles recursivos
+
+    def test_sin_ruta_con_el_mismo_arbol_raiz_esta_al_dia(self):
+        r = {**self.head(raiz=T1), **self.commit(SHA_A[:7], T1)}
+        self.correr_fuente([self.linea("todo", f"github:{REPO}@{SHA_A[:7]}")], r)
+        self.assertEqual(self.novedades, {})
+        self.assertEqual(self.degradado, [])
+
+    def test_fijada_en_el_head_esta_al_dia_sin_mas_pedidos(self):
+        self.correr_fuente([self.linea("todo", f"github:{REPO}@{SHA_F[:7]}"), self.linea("s1", f"github:{REPO}//skills/s1@{SHA_F}")],
+                           self.head())
+        self.assertEqual(self.novedades, {})
+        self.assertEqual(self.opener.urls, [GH + f"repos/{REPO}/commits/HEAD"])
+
+    def test_lo_guardado_con_el_esquema_viejo_se_recalcula(self):
+        # la versión anterior guardaba como sha del ref el sha del COMMIT (el `.sha` de git/trees)
+        self.base["pieza:todo"] = {"ref": SHA_A, "head": SHA_F, "sha_ref": SHA_A, "resultado": "desactualizada",
+                                   "sha_head": T1, "fecha": "antes"}
+        r = {**self.head(raiz=T1), **self.commit(SHA_A, T1)}
+        self.correr_fuente([self.linea("todo", f"github:{REPO}@{SHA_A}")], r)
+        self.assertEqual(self.novedades, {})
+        self.assertEqual(self.base["pieza:todo"]["v"], vigia.ESQUEMA_PIEZA)
+
+    def test_arbol_truncado_degrada_sin_inventar_al_dia(self):
+        r = {**self.head(), **self.arbol(SHA_A, {"skills/s1": T1}), **self.arbol(SHA_F, {}, truncado=True)}
+        self.correr_fuente(self.s1(), r)
+        self.assertEqual(self.novedades, {})
+        self.assertEqual(len(self.degradado), 1)
+        self.assertIn("truncado", self.degradado[0])
+        self.assertNotIn("pieza:s1", self.base)
+
+    @staticmethod
+    def error_422(mensaje):
+        cuerpo = json.dumps({"message": mensaje, "status": "422"}).encode("utf-8")
+        return lambda url: urllib.error.HTTPError(url, 422, "Unprocessable Entity", {}, io.BytesIO(cuerpo))
+
+    def test_ref_que_ya_no_existe_es_origen_perdido_y_no_degrada(self):
+        # Como GitHub: un sha que no existe en el repo da 422 «Invalid object requested» en git/trees.
+        arbol_ref = GH + f"repos/{REPO}/git/trees/{SHA_A}?recursive=1"
+        r = {**self.head(), arbol_ref: self.error_422("Invalid object requested. SHA must identify a commit or a tree.")}
+        self.correr_fuente(self.s1(), r)
+        id_ = f"origen-perdido:pieza:s1@{SHA_A}"
+        self.assertEqual(self.tipos(), {id_: "origen-perdido"})
+        self.assertIn("ya no existe", self.novedades[id_]["detalle"])
+        self.assertEqual(self.degradado, [])
+        self.correr_fuente(self.s1(), {**r, **self.head(SHA_E)})
+        self.assertEqual(self.degradado, [])
+        self.assertEqual(self.opener.urls, [GH + f"repos/{REPO}/commits/HEAD"])
+        self.assertEqual(self.novedades[id_]["estado"], "nueva")
+        # a los 30 días se vuelve a verificar
+        self.correr_fuente(self.s1(), {**r, **self.head(SHA_E)}, cuando=iso(ahora() + timedelta(days=31)))
+        self.assertIn(arbol_ref, self.opener.urls)
+        self.assertEqual(self.degradado, [])
+
+    def test_sin_ruta_con_sha_inexistente_es_origen_perdido(self):
+        r = {**self.head(), GH + f"repos/{REPO}/commits/{SHA_A}": self.error_422(f"No commit found for SHA: {SHA_A}")}
+        self.correr_fuente([self.linea("todo", f"github:{REPO}@{SHA_A}")], r)
+        self.assertEqual(self.tipos(), {f"origen-perdido:pieza:todo@{SHA_A}": "origen-perdido"})
+        self.assertEqual(self.degradado, [])
+
+    def test_otro_422_no_se_toma_como_sha_inexistente(self):
+        arbol_ref = GH + f"repos/{REPO}/git/trees/{SHA_A}?recursive=1"
+        self.correr_fuente(self.s1(), {**self.head(), arbol_ref: self.error_422("Validation Failed")})
+        self.assertEqual(self.novedades, {})
+        self.assertEqual(len(self.degradado), 1)
+
+    def test_422_por_gh_tambien_es_sha_inexistente(self):
+        falso = subprocess.CompletedProcess([], 1, stdout="", stderr=f"gh: No commit found for SHA: {SHA_A} (HTTP 422)")
+        with mock.patch.object(vigia, "_run", return_value=falso):
+            gh = vigia.ClienteGitHub(vigia.Red(), "gh")
+            with self.assertRaises(vigia.ShaInexistente):
+                gh.api(f"repos/{REPO}/commits/{SHA_A}")
+        falso.stderr = "gh: Invalid object requested. SHA must identify a commit or a tree. (HTTP 422)"
+        with mock.patch.object(vigia, "_run", return_value=falso):
+            with self.assertRaises(vigia.ShaInexistente):
+                vigia.ClienteGitHub(vigia.Red(), "gh").api(f"repos/{REPO}/git/trees/{SHA_A}?recursive=1")
+        falso.stderr = "gh: Validation Failed (HTTP 422)"
+        with mock.patch.object(vigia, "_run", return_value=falso):
+            with self.assertRaises(RuntimeError) as ctx:
+                vigia.ClienteGitHub(vigia.Red(), "gh").api(f"repos/{REPO}/commits/{SHA_A}")
+        self.assertNotIsInstance(ctx.exception, vigia.NoEncontrado)
+
+    def test_estado_no_se_saltea(self):
+        self.correr_fuente([self.linea("s1", f"github:{REPO}//skills/s1@{SHA_A}", estado="no"),
+                            self.linea("s2", f"github:{REPO}//skills/s2", estado="no")], {})
+        self.assertEqual(self.opener.urls, [])
+        self.assertEqual(self.novedades, {})
+
+    def test_se_cierran_solas_cuando_dejan_de_aplicar(self):
+        self.correr_fuente([self.linea("s1", f"github:{REPO}//skills/s1")], {})
+        self.assertEqual(self.novedades["sin-fijar:s1"]["estado"], "nueva")
+        # se fija el ref, pero la copia está atrás
+        r = {**self.head(), **self.arbol(SHA_A, {"skills/s1": T1}), **self.arbol(SHA_F, {"skills/s1": T2})}
+        self.correr_fuente(self.s1(), r)
+        self.assertEqual(self.novedades["sin-fijar:s1"]["estado"], "resuelta")
+        self.assertTrue(self.novedades["sin-fijar:s1"]["motivo"])
+        id_ = f"pieza:s1@{T2[:7]}"
+        self.assertEqual(self.novedades[id_]["estado"], "nueva")
+        # se actualiza el ref al sha nuevo: la desactualizada se cierra
+        r = {**self.head(), **self.arbol(SHA_F, {"skills/s1": T2})}
+        self.correr_fuente(self.s1(SHA_F), r)
+        self.assertEqual(self.novedades[id_]["estado"], "resuelta")
+        self.assertEqual(self.tipos(), {})
+        n = ahora()
+        msg = aviso.armar_mensaje({"estado": "ok", "ultima_corrida": iso(n - timedelta(days=1)),
+                                   "novedades": self.novedades}, n, None, {})
+        self.assertTrue(msg is None or "Vigía" not in msg[0], msg)  # las resueltas no se cuentan
+        # una decisión de la skill no se pisa
+        self.novedades[id_]["estado"] = "descartada"
+        self.correr_fuente(self.s1(), {**self.head(SHA_E), **self.arbol(SHA_E, {"skills/s1": T2})})
+        self.assertEqual(self.novedades[id_]["estado"], "descartada")
+
+    def test_migracion_de_repo_catalogo_compartido(self):
+        self.novedades["repo:autor/skills@abc1234"] = {"estado": "nueva", "tipo": "repo-catalogo-compartido"}
+        self.novedades["repo:autor/skills@def5678"] = {"estado": "descartada", "tipo": "repo-catalogo-compartido"}
+        self.base[f"repo:{REPO}"] = {"visto": SHA_A, "fecha": "antes", "piezas": ["s1"]}
+        self.base["pieza:s1"] = "basura"
+        r = {**self.head(), **self.arbol(SHA_A, {"skills/s1": T1}), **self.arbol(SHA_F, {"skills/s1": T1})}
+        self.correr_fuente(self.s1(), r)
+        viejo = self.novedades["repo:autor/skills@abc1234"]
+        self.assertEqual((viejo["estado"], viejo["motivo"]), ("resuelta", "reemplazada por la revisión por pieza"))
+        self.assertEqual(self.novedades["repo:autor/skills@def5678"]["estado"], "descartada")
+        self.assertNotIn(f"repo:{REPO}", self.base)
+        self.assertEqual(self.base["pieza:s1"]["resultado"], "al-dia")
+        self.assertEqual(self.degradado, [])
+
+    def test_33_piezas_3_refs_como_mucho_5_pedidos(self):
+        refs = [SHA_A, SHA_B, SHA_C]
+        lineas, arbol_head = [], {}
+        arboles = {ref: {} for ref in refs}
+        for i in range(33):
+            ruta = f"skills/s{i}"
+            arboles[refs[i % 3]][ruta] = T1
+            arbol_head[ruta] = T1 if i % 2 else T2
+            lineas.append(self.linea(f"s{i}", f"github:{REPO}//{ruta}@{refs[i % 3]}"))
+        r = {**self.head(), **self.arbol(SHA_F, arbol_head)}
+        for ref in refs:
+            r.update(self.arbol(ref, arboles[ref]))
+        self.correr_fuente(lineas, r)
+        self.assertLessEqual(len(self.opener.urls), 5)
+        self.assertEqual(len(self.tipos()), 17)
+        self.assertEqual(self.degradado, [])
+
+    def test_reusa_lo_guardado(self):
+        r = {**self.head(), **self.arbol(SHA_A, {"skills/s1": T1}), **self.arbol(SHA_F, {"skills/s1": T2})}
+        self.correr_fuente(self.s1(), r)
+        self.assertEqual(len(self.opener.urls), 3)
+        self.novedades.clear()
+        self.correr_fuente(self.s1(), r)
+        self.assertEqual(self.opener.urls, [GH + f"repos/{REPO}/commits/HEAD"])  # HEAD igual: nada más
+        self.assertIn(f"pieza:s1@{T2[:7]}", self.novedades)
+        r2 = {**self.head(SHA_E), **self.arbol(SHA_E, {"skills/s1": T3})}
+        self.correr_fuente(self.s1(), r2)
+        self.assertEqual(len(self.opener.urls), 2)  # HEAD nuevo: su árbol sí, el del ref no (quedó guardado)
+        self.assertIn(f"pieza:s1@{T3[:7]}", self.novedades)
+
+    def test_repos_rotan_por_antiguedad(self):
+        self.base["catalogo-repo:a/viejo"] = {"fecha": "2026-01-01T00:00:00+00:00"}
+        self.base["catalogo-repo:a/nuevo"] = {"fecha": "2026-09-01T00:00:00+00:00"}
+        lineas = [self.linea("x", f"github:a/nuevo//x@{SHA_A}"), self.linea("y", f"github:a/viejo//y@{SHA_A}")]
+        self.correr_fuente(lineas, {})
+        self.assertTrue(self.opener.urls[0].startswith(GH + "repos/a/viejo/"))
+
+    def test_si_se_corta_conserva_los_conteos(self):
+        ruta = Path(self._tmp.name) / "CATALOGO.yaml"
+        ruta.write_text("piezas:\n  " + "\n  ".join(self.s1() + ['p: {estado: si, origen: "propia"}']) + "\n", encoding="utf-8")
+        with mock.patch.object(vigia, "_OPENER", OpenerFalso(self.head())):
+            gh = vigia.ClienteGitHub(vigia.Red(), None, limite=0)
+            with self.assertRaises(vigia.CupoAgotado) as ctx:
+                vigia.fuente_catalogo_compartido(ruta, gh, {}, {}, [], [], iso(ahora()))
+        self.assertEqual(ctx.exception.resultado_parcial["github"], 1)
+        self.assertEqual(ctx.exception.resultado_parcial["propia"], 1)
+
+    def test_origenes_invalidos_degradan_nombrando_la_pieza(self):
+        self.correr_fuente(
+            [self.linea("s1", f"github:{REPO}//skills/s1@a..b"), self.linea("s2", f"github:{REPO}//skills/s2@-x"),
+             self.linea("s3", f"github:{REPO}//../etc@{SHA_A}"), self.linea("s4", "github:autor/skills/una-barra")],
+            {},
+        )
+        self.assertEqual(self.opener.urls, [])
+        self.assertEqual(self.novedades, {})
+        self.assertEqual(len(self.degradado), 4)
+        self.assertIn("pieza:s4", self.degradado[-1])
+
+
+class TestFusionConcurrente(ConHomeTemporal):
+    def disco(self, novedades):
+        self.escribir(".claude/vigia/estado.json", {"novedades": novedades})
+        return self.dir_vigia / "estado.json"
+
+    def test_cierre_del_detector_gana_si_el_disco_no_cambio(self):
+        ruta = self.disco({"x": {"estado": "propuesta", "tipo": "pieza-desactualizada"}})
+        nuevo = {"novedades": {"x": {"estado": "resuelta", "motivo": "ya no aplica", "tipo": "pieza-desactualizada"}}}
+        e = vigia.fusionar_decisiones_concurrentes(nuevo, ruta, {"x": "propuesta"})
+        self.assertEqual(e["novedades"]["x"]["estado"], "resuelta")
+        self.assertEqual(e["novedades"]["x"]["motivo"], "ya no aplica")
+
+    def test_decision_tomada_durante_la_corrida_gana(self):
+        ruta = self.disco({"x": {"estado": "descartada", "motivo": "no me sirve", "tipo": "pieza-desactualizada"}})
+        nuevo = {"novedades": {"x": {"estado": "resuelta", "motivo": "ya no aplica", "resuelta": "hoy",
+                                      "tipo": "pieza-desactualizada"}}}
+        e = vigia.fusionar_decisiones_concurrentes(nuevo, ruta, {"x": "nueva"})
+        self.assertEqual((e["novedades"]["x"]["estado"], e["novedades"]["x"]["motivo"]), ("descartada", "no me sirve"))
+        self.assertNotIn("resuelta", e["novedades"]["x"])
+
+    def test_reabierta_no_hereda_el_motivo_del_cierre(self):
+        ruta = self.disco({"x": {"estado": "resuelta", "motivo": "ya no aplica", "resuelta": "antes",
+                                 "tipo": "origen-sin-fijar", "extra": 1}})
+        nuevo = {"novedades": {"x": {"estado": "nueva", "tipo": "origen-sin-fijar"}}}
+        e = vigia.fusionar_decisiones_concurrentes(nuevo, ruta, {"x": "resuelta"})
+        self.assertEqual(e["novedades"]["x"]["estado"], "nueva")
+        self.assertNotIn("motivo", e["novedades"]["x"])
+        self.assertNotIn("resuelta", e["novedades"]["x"])
+        self.assertEqual(e["novedades"]["x"]["extra"], 1)
+
+    def test_corrida_cortada_conserva_los_conteos_del_resumen(self):
+        cat = self.escribir("cat/CATALOGO.yaml", 'piezas:\n  s1: {estado: si, origen: "github:a/b//x@' + SHA_A + '"}\n'
+                            '  p: {estado: si, origen: "propia"}\n')
+        self.escribir(".claude/vigia/perfil.json", {"catalogo_compartido": str(cat)})
+        salida = io.StringIO()
+        with mock.patch("sys.stdout", salida):
+            self.correr(["--dry-run", "--sin-clis", "--limite-github", "0"], opener=OpenerFalso({}))
+        texto = salida.getvalue()
+        self.assertIn("'github': 1", texto)
+        self.assertIn("'propia': 1", texto)
+        self.assertIn("tope alcanzado", texto)
 
 
 def crear_uv_lento(bindir):

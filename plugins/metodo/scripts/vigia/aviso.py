@@ -192,9 +192,14 @@ def armar_mensaje(estado, ahora, intento, lanzamientos):
                     )
 
         novedades = estado.get("novedades") or {}
-        nuevas = [k for k, v in novedades.items() if isinstance(v, dict) and v.get("estado") == "nueva"]
-        if nuevas:
-            accionables.append("🔭 Vigía: {} novedad(es) sin revisar".format(len(nuevas)))
+        nuevas = [v for v in novedades.values() if isinstance(v, dict) and v.get("estado") == "nueva"]
+        # Las piezas sin sha fijado no son una versión nueva: se informan aparte para no inflar el conteo.
+        sin_fijar = [v for v in nuevas if v.get("tipo") == "origen-sin-fijar"]
+        reales = len(nuevas) - len(sin_fijar)
+        if reales:
+            accionables.append("🔭 Vigía: {} novedad(es) sin revisar".format(reales))
+        if sin_fijar:
+            informativos.append("🔭 Vigía: {} pieza(s) sin versión fijada (no se pueden comparar)".format(len(sin_fijar)))
         if estado.get("descubrimiento_pendiente") is True:
             accionables.append("🔭 Vigía: toca la búsqueda mensual de herramientas nuevas")
 

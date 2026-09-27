@@ -1,5 +1,8 @@
 # escala-desarrollo — qué cambia para vos
 
+## 0.12.2 — 2026-09-27
+- `security-reviewer` y `knowledge-synthesizer` pasan a la versión nueva de sus autores. El revisor de seguridad ahora siempre cierra con el informe completo (alcance, nivel de riesgo, hallazgos y checklist), aunque haya ido anotando cosas en el camino. Se usan igual que antes.
+
 ## 0.12.1 — 2026-09-23
 - **Nueva skill `research-deep-dive`**: para cuando necesitás una investigación a fondo sobre un tema, mercado, competidor o tecnología (no una consulta rápida). Coordina 3 agentes en cadena: uno busca y sintetiza, el segundo valida con fuentes primarias y datos duros, el tercero arma el informe final accionable. Pedilo con «investigación profunda sobre X».
 - Incluye los 3 agentes que usa: `research-analyst`, `data-researcher`, `knowledge-synthesizer`.

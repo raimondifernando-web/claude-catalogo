@@ -1,0 +1,4 @@
+origen: github:anthropics/skills//skills/frontend-design@3337550
+actualizado: 2026-09-27 desde 0075614 -> 3337550 (vigía, Mand. XVI; 3-way merge sin conflictos)
+auditoria-2026-09-27: skill-security-auditor PASS (0 hallazgos)
+parche local re-aplicado: línea sync: del frontmatter

@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.15.1 — 2026-09-27
+- **El vigía ahora ve lo que antes se le escapaba.** Si mantenés un catálogo propio de herramientas (para la mayoría de los usuarios no aplica), compara cada pieza contra la versión exacta de la que salió, mirando solo su carpeta. Antes solo notaba los cambios entre una corrida y la siguiente: una copia que ya estaba atrasada cuando la vio por primera vez nunca aparecía, y avisaba por cambios del repositorio que no tocaban la pieza.
+- Lo que no declara de qué versión salió figura aparte, como «sin versión fijada», y no infla el número de novedades.
+- Las novedades que dejan de aplicar (por ejemplo, porque ya actualizaste) se cierran solas.
+
 ## 0.15.0 — 2026-09-27
 - **El vigía ya no te pregunta por lo que es seguro.** Si una herramienta que tenés instalada saca una versión nueva, Claude la revisa. Si pasa la revisión y no rompe nada, la actualiza y te cuenta qué cambió y cómo volver atrás. **Te pregunta solo** si la versión nueva cambia nombres o comandos (y te dice qué tuyo se ve afectado), si es una herramienta nueva o si hay un riesgo real (claves, costo, datos que salen). Lo que fija tu consultor sigue sin moverse: se lo reportás.
 - Nuevo en la revisión: Claude compara lo que tenés instalado contra la versión nueva, no solo lo último que cambió. Así detecta cuando el autor renombró cosas en el medio.

@@ -151,6 +151,19 @@ class SinRed(Exception):
     """No hay conexión con un host (timeout, DNS, conexión rechazada)."""
 
 
+class NoEncontrado(RuntimeError):
+    """GitHub respondió 404: la ruta, el ref o el repo no existen (o no son públicos)."""
+
+
+class ShaInexistente(NoEncontrado):
+    """GitHub respondió 422 porque el sha pedido no existe en el repo («No commit found for
+    SHA», «Invalid object requested»): para el vigía es lo mismo que un 404."""
+
+
+# Mensajes de GitHub (422) que quieren decir «ese sha no existe en el repo».
+MENSAJES_SHA_INEXISTENTE = ("no commit found for sha", "invalid object requested")
+
+
 class HostNoPermitido(ValueError):
     """Se intentó hablar con un host que no está en HOSTS_PERMITIDOS."""
 
@@ -510,6 +523,10 @@ class ClienteGitHub:
                 self.red.hubo_sin_red = True
                 raise SinRed("gh api: sin conexión con GitHub")
             self.red.exitos += 1  # GitHub respondió (con un error propio)
+            if "http 404" in bajo:
+                raise NoEncontrado(truncar(texto))
+            if "http 422" in bajo and any(m in bajo for m in MENSAJES_SHA_INEXISTENTE):
+                raise ShaInexistente(truncar(texto))
             raise RuntimeError(truncar(texto))
         self.red.exitos += 1
         try:
@@ -528,6 +545,15 @@ class ClienteGitHub:
             restantes = (e.headers or {}).get("X-RateLimit-Remaining") if e.headers else None
             if e.code == 429 or (e.code == 403 and restantes == "0"):
                 raise CupoAgotado("límite de la API pública de GitHub (60 pedidos por hora sin gh)") from None
+            if e.code == 404:
+                raise NoEncontrado("GitHub respondió 404") from None
+            if e.code == 422:
+                try:
+                    cuerpo = e.read(4096).decode("utf-8", "replace").lower()
+                except Exception:  # noqa: BLE001
+                    cuerpo = ""
+                if any(m in cuerpo for m in MENSAJES_SHA_INEXISTENTE):
+                    raise ShaInexistente("GitHub respondió 422: el sha no existe en el repo") from None
             raise RuntimeError(f"GitHub respondió {e.code}") from None
 
     def repo_info(self, repo: str) -> dict | None:
@@ -848,9 +874,20 @@ def calcular_descubrimiento_pendiente(estado: dict, habilitado: bool, ahora: dat
     return ultimo is None or (ahora - ultimo) > timedelta(days=30)
 
 
-def fusionar_decisiones_concurrentes(estado_nuevo: dict, ruta_estado: Path) -> dict:
-    """Antes de escribir, relee estado.json: si la skill `vigia` cambió el estado de una
-    novedad mientras esta corrida estaba en marcha, esa decisión gana."""
+# Campos del ciclo de vida de una novedad: los decide quien cambió el estado.
+CAMPOS_DE_DECISION = ("estado", "motivo", "resuelta")
+
+
+def estados_de(novedades: dict) -> dict:
+    """{id: estado} tal como se cargaron al arrancar la corrida (para `fusionar_...`)."""
+    return {k: v.get("estado") for k, v in novedades.items() if isinstance(v, dict)}
+
+
+def fusionar_decisiones_concurrentes(estado_nuevo: dict, ruta_estado: Path, estados_iniciales: dict) -> dict:
+    """Antes de escribir, relee estado.json: si alguien (la skill `vigia`) cambió el estado de
+    una novedad mientras esta corrida estaba en marcha, esa decisión gana. Si en disco sigue
+    el estado que esta corrida cargó al arrancar, gana lo de esta corrida (un cierre o una
+    reapertura del detector)."""
     en_disco = leer_estado_crudo(ruta_estado)
     novedades_disco = en_disco.get("novedades")
     if isinstance(novedades_disco, dict):
@@ -859,11 +896,16 @@ def fusionar_decisiones_concurrentes(estado_nuevo: dict, ruta_estado: Path) -> d
                 continue
             if id_ in estado_nuevo["novedades"]:
                 dat_nuestro = estado_nuevo["novedades"][id_]
-                for campo in ("estado", "motivo"):
-                    if campo in dat_disco:
-                        dat_nuestro[campo] = dat_disco[campo]
+                cambio_en_disco = dat_disco.get("estado") != estados_iniciales.get(id_)
+                if cambio_en_disco:
+                    for campo in CAMPOS_DE_DECISION:
+                        if campo in dat_disco:
+                            dat_nuestro[campo] = dat_disco[campo]
+                        else:
+                            dat_nuestro.pop(campo, None)
                 for k, v in dat_disco.items():
-                    dat_nuestro.setdefault(k, v)
+                    if k not in CAMPOS_DE_DECISION:
+                        dat_nuestro.setdefault(k, v)
             else:
                 estado_nuevo["novedades"][id_] = dat_disco
     if en_disco.get("ultimo_descubrimiento"):
@@ -1778,9 +1820,31 @@ def fuente_clis(perfil, red, base, novedades, nuevas_ids, degradado, ahora) -> N
 # --------------------------------------------------------------------------- #
 
 # Sin PyYAML: una línea por pieza, del tipo
-#   `  <nombre>: {estado: .., ..., origen: "github:owner/repo//ruta@sha", nota: ".."}`
+#   `  <nombre>: {estado: .., ..., origen: "github:owner/repo//ruta@ref", nota: ".."}`
+# `ruta` (carpeta o archivo) y `@ref` (sha corto/largo o tag) son opcionales.
 PATRON_LINEA_CATALOGO = re.compile(r'^  ([a-z0-9._-]+):\s*\{.*?origen:\s*(?:"([^"]+)"|([^,}]+))')
-PATRON_ORIGEN_GITHUB = re.compile(r"^github:([^/]+/[^/@]+)(?://(.+?))?(?:@([0-9a-fA-F]{7,40}))?$")
+PATRON_ESTADO_CATALOGO = re.compile(r"[{,]\s*estado:\s*([A-Za-z0-9_-]+)")
+PATRON_ORIGEN_GITHUB = re.compile(r"^github:([^/]+/[^/@]+)(?://([^@]+))?(?:@(.*))?$")
+# Ref fijado (sha o tag): lista blanca, sin '..' (rompería el `base...head` de compare).
+PATRON_REF_SEGURO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$")
+# Nombres de rama que nunca son una versión (la rama por defecto del repo cae en la
+# verificación de tag: no es un tag).
+RAMAS_COMUNES = frozenset({"head", "main", "master"})
+TIPOS_PIEZA_CATALOGO = ("origen-sin-fijar", "pieza-desactualizada", "origen-perdido")
+RESULTADOS_PIEZA = ("al-dia", "desactualizada", "perdida", "ruta-sin-ref", "ref-perdido")
+# Versión del registro `pieza:*` en `base`: si cambia cómo se calcula, lo guardado se recalcula.
+ESQUEMA_PIEZA = 2
+# Cada cuánto se vuelve a verificar lo guardado que sí puede cambiar (un tag, un ref perdido).
+DIAS_VENCE_CACHE_CATALOGO = 30
+
+
+def ref_valido(ref: object) -> bool:
+    return (
+        isinstance(ref, str)
+        and bool(PATRON_REF_SEGURO.match(ref))
+        and ".." not in ref
+        and not ref.endswith((".", "/"))
+    )
 
 
 def conteos_vacios() -> dict:
@@ -1788,6 +1852,8 @@ def conteos_vacios() -> dict:
 
 
 def parsear_catalogo_yaml(ruta: Path) -> tuple:
+    """{nombre: (repo, ruta, ref, estado)} de las piezas github; None si el origen no tiene
+    una forma reconocible."""
     piezas_github: dict = {}
     conteos = conteos_vacios()
     with open(ruta, "r", encoding="utf-8") as f:
@@ -1802,8 +1868,8 @@ def parsear_catalogo_yaml(ruta: Path) -> tuple:
             if origen.startswith("github:"):
                 conteos["github"] += 1
                 mg = PATRON_ORIGEN_GITHUB.match(origen)
-                if mg:
-                    piezas_github[nombre] = mg.groups()
+                me = PATRON_ESTADO_CATALOGO.search(linea)
+                piezas_github[nombre] = mg.groups() + ((me.group(1) if me else None),) if mg else None
             elif origen.startswith("npm:"):
                 conteos["npm"] += 1
             elif origen.startswith("pypi:"):
@@ -1817,9 +1883,252 @@ def parsear_catalogo_yaml(ruta: Path) -> tuple:
     return piezas_github, conteos
 
 
+def _arbol(gh: ClienteGitHub, repo: str, sha_commit: str) -> tuple:
+    """({ruta: sha} de carpetas y archivos, truncado) del árbol recursivo de un commit.
+    Ojo: el `.sha` de esta respuesta es el sha pedido (el del commit), NO el del árbol raíz:
+    la raíz se saca de `commit_info(...)["tree_sha"]`."""
+    datos = gh.api(f"repos/{repo}/git/trees/{urllib.parse.quote(sha_commit, safe='')}?recursive=1")
+    if not isinstance(datos, dict) or not isinstance(datos.get("tree"), list):
+        raise RuntimeError("GitHub devolvió un árbol no válido")
+    mapa = {
+        e["path"]: e["sha"]
+        for e in datos["tree"]
+        if isinstance(e, dict) and e.get("type") in ("tree", "blob", "commit")
+        and ruta_valida(e.get("path")) and sha_valido(e.get("sha"))
+    }
+    return mapa, bool(datos.get("truncated", False))
+
+
+def _es_prefijo_sha(ref: str, sha: str) -> bool:
+    return sha_valido(ref) and sha_valido(sha) and sha.lower().startswith(ref.lower())
+
+
+def _reciente(fecha: object, ahora: str) -> bool:
+    """¿`fecha` tiene menos de DIAS_VENCE_CACHE_CATALOGO días? Sin fecha legible: no."""
+    f, a = parsear_fecha(fecha), parsear_fecha(ahora)
+    return bool(f and a) and timedelta(0) <= a - f < timedelta(days=DIAS_VENCE_CACHE_CATALOGO)
+
+
+def _resolver_tag(gh: ClienteGitHub, repo: str, ref: str):
+    """sha del commit al que apunta el tag `ref` (resolviendo tags anotados), o None si
+    `ref` no es un tag del repo."""
+    try:
+        datos = gh.api(f"repos/{repo}/git/ref/tags/{urllib.parse.quote(ref, safe='/')}")
+    except NoEncontrado:
+        return None
+    for _ in range(3):  # un tag anotado apunta a un objeto tag; se sigue hasta el commit
+        obj = datos.get("object") if isinstance(datos, dict) else None
+        tipo, sha = (obj.get("type"), obj.get("sha")) if isinstance(obj, dict) else (None, None)
+        if not sha_valido(sha):
+            break
+        if tipo == "commit":
+            return sha
+        if tipo != "tag":
+            break
+        datos = gh.api(f"repos/{repo}/git/tags/{sha}")
+    raise RuntimeError(f"el tag {ref} no apunta a un commit válido")
+
+
+def _describir_ref(ref: str) -> str:
+    return f"el sha fijado {ref[:7]}" if sha_valido(ref) else f"la versión fijada {ref}"
+
+
+def _pieza_de_id(id_: str):
+    if id_.startswith("sin-fijar:"):
+        return id_[len("sin-fijar:"):]
+    if id_.startswith("origen-perdido:pieza:"):
+        return id_[len("origen-perdido:pieza:"):].split("@", 1)[0]
+    if id_.startswith("pieza:"):
+        return id_[len("pieza:"):].split("@", 1)[0]
+    return None
+
+
+class _Registro:
+    """Anota las novedades vigentes de esta corrida; una que se había dado por resuelta
+    y vuelve a aplicar se reabre (limpia, sin el motivo del cierre)."""
+
+    def __init__(self, gh, novedades, nuevas_ids, ahora):
+        self.gh, self.novedades, self.nuevas_ids, self.ahora = gh, novedades, nuevas_ids, ahora
+        self.vigentes: set = set()
+
+    def __call__(self, id_, *, tipo, detalle, enlace, repo):
+        id_ = limpiar_texto(id_)[:200]
+        self.vigentes.add(id_)
+        previa = self.novedades.get(id_)
+        if isinstance(previa, dict) and previa.get("estado") == "resuelta":
+            del self.novedades[id_]
+        registrar_novedad(
+            self.novedades, self.nuevas_ids, id_, tipo=tipo, detalle=detalle, enlace=enlace,
+            confianza=_confianza_sin_forzar_llamada(self.gh, repo), desde=self.ahora,
+        )
+
+    def sin_fijar(self, nombre, repo, ruta, motivo):
+        self(
+            f"sin-fijar:{nombre}", tipo="origen-sin-fijar",
+            detalle=f"{nombre}: {repo}{'//' + ruta if ruta else ''} {motivo}",
+            enlace=f"https://github.com/{repo}", repo=repo,
+        )
+
+    def resultado(self, nombre, repo, ruta, ref, res):
+        r = res["resultado"]
+        perdido = f"origen-perdido:pieza:{nombre}@{ref}"
+        if r == "desactualizada":
+            # Sin compare no se sabe la dirección (el ref podría ser más nuevo que HEAD).
+            self(
+                f"pieza:{nombre}@{res['sha_head'][:7]}", tipo="pieza-desactualizada",
+                detalle=(
+                    f"{nombre}: {ruta or '(repo entero)'} en {repo} difiere del HEAD "
+                    f"({_describir_ref(ref)} → HEAD {res['head'][:7]})"
+                ),
+                enlace=f"https://github.com/{repo}/compare/{urllib.parse.quote(ref, safe='')}...{res['head']}",
+                repo=repo,
+            )
+        elif r == "perdida":
+            self(
+                perdido, tipo="origen-perdido",
+                detalle=f"{nombre}: la ruta '{ruta}' ya no está en {repo} (¿se movió, se renombró o se borró?)",
+                enlace=f"https://github.com/{repo}", repo=repo,
+            )
+        elif r == "ruta-sin-ref":
+            self(
+                perdido, tipo="origen-perdido",
+                detalle=f"{nombre}: la ruta '{ruta}' no existe en {_describir_ref(ref)} de {repo} (¿origen mal escrito?)",
+                enlace=f"https://github.com/{repo}", repo=repo,
+            )
+        elif r == "ref-perdido":
+            self(
+                perdido, tipo="origen-perdido",
+                detalle=f"{nombre}: el sha/tag fijado {ref} ya no existe en {repo}",
+                enlace=f"https://github.com/{repo}", repo=repo,
+            )
+
+
+def _guardado_valido(previo: object, ref: str, ref_sha: str) -> bool:
+    return (
+        isinstance(previo, dict) and previo.get("v") == ESQUEMA_PIEZA
+        and previo.get("ref") == ref and previo.get("ref_sha") == ref_sha
+    )
+
+
+def _resultado_guardado(previo: object, ref: str, ref_sha: str, head: str, ahora: str):
+    """El resultado de la corrida anterior, si sirve tal cual: mismo esquema, mismo ref y
+    mismo HEAD. Un ref que ya no existía se vuelve a verificar cada 30 días."""
+    if not _guardado_valido(previo, ref, ref_sha) or previo.get("resultado") not in RESULTADOS_PIEZA:
+        return None
+    if previo["resultado"] == "ref-perdido":
+        return previo if _reciente(previo.get("fecha"), ahora) else None
+    if previo.get("head") != head:
+        return None
+    if previo["resultado"] == "desactualizada" and not sha_valido(previo.get("sha_head")):
+        return None
+    return previo
+
+
+def _sha_ref_guardado(previo: object, ref: str, ref_sha: str):
+    """(hay_dato, sha) de la ruta en el ref fijado, de una corrida anterior: un ref fijado
+    no cambia, así que su árbol se pide una sola vez."""
+    if _guardado_valido(previo, ref, ref_sha) and "sha_ref" in previo:
+        sha = previo["sha_ref"]
+        if sha is None or sha_valido(sha):
+            return True, sha
+    return False, None
+
+
+def _revisar_repo_catalogo(repo, piezas, gh, base, registro, evaluadas, degradado, ahora) -> None:
+    clave_repo = f"catalogo-repo:{repo}"
+    estado_repo = base.get(clave_repo) if isinstance(base.get(clave_repo), dict) else {}
+    tags = dict(estado_repo.get("tags")) if isinstance(estado_repo.get("tags"), dict) else {}
+
+    # Un ref que no es sha tiene que ser un tag (una rama «estaría al día» siempre). Se
+    # resuelve al sha de su commit y se guarda 30 días.
+    fijadas = []
+    for nombre, ruta, ref in piezas:
+        if sha_valido(ref):
+            fijadas.append((nombre, ruta, ref, ref))
+            continue
+        guardado = tags.get(ref)
+        if not (
+            isinstance(guardado, dict) and _reciente(guardado.get("fecha"), ahora)
+            and (guardado.get("sha") is None or sha_valido(guardado.get("sha")))
+        ):
+            guardado = {"sha": _resolver_tag(gh, repo, ref), "fecha": ahora}
+            tags[ref] = guardado
+            base[clave_repo] = {**estado_repo, "tags": tags}
+        if guardado["sha"] is None:
+            registro.sin_fijar(nombre, repo, ruta, f"está fijado a «{ref}», que no es un tag del repo")
+            evaluadas.add(nombre)
+        else:
+            fijadas.append((nombre, ruta, ref, guardado["sha"]))
+    if not fijadas:
+        base[clave_repo] = {**estado_repo, "tags": tags, "fecha": ahora}
+        return
+
+    info_head = gh.commit_info(repo, "HEAD")
+    head, raiz_head = info_head["sha"], info_head["tree_sha"]
+    arbol_head = None
+    arboles_ref: dict = {}
+    for nombre, ruta, ref, ref_sha in fijadas:
+        clave = f"pieza:{nombre}"
+        try:
+            previo = base.get(clave)
+            res = _resultado_guardado(previo, ref, ref_sha, head, ahora)
+            if res is None and _es_prefijo_sha(ref_sha, head):
+                res = {"resultado": "al-dia"}  # fijada justo en el HEAD
+            if res is None:
+                hay, sha_ref = _sha_ref_guardado(previo, ref, ref_sha)
+                if not hay:
+                    try:
+                        if ruta is None:
+                            sha_ref = gh.commit_info(repo, ref_sha)["tree_sha"]
+                        else:
+                            if ref_sha not in arboles_ref:
+                                arboles_ref[ref_sha] = _arbol(gh, repo, ref_sha)
+                            mapa_ref, truncado = arboles_ref[ref_sha]
+                            sha_ref = mapa_ref.get(ruta)
+                            if sha_ref is None and truncado:
+                                raise RuntimeError(f"el árbol de {ref[:12]} vino truncado, no se puede comparar")
+                    except NoEncontrado:  # incluye ShaInexistente (422 de GitHub)
+                        res = {"resultado": "ref-perdido"}
+                if res is None and sha_ref is None:
+                    res = {"resultado": "ruta-sin-ref", "sha_ref": None}
+                if res is None:
+                    if ruta is None:
+                        sha_head = raiz_head
+                    else:
+                        if arbol_head is None:
+                            arbol_head = _arbol(gh, repo, head)
+                        mapa_head, truncado = arbol_head
+                        sha_head = mapa_head.get(ruta)
+                        if sha_head is None and truncado:
+                            raise RuntimeError("el árbol de HEAD vino truncado, no se puede comparar")
+                    if sha_head is None:
+                        res = {"resultado": "perdida"}
+                    else:
+                        res = {"resultado": "al-dia" if sha_head == sha_ref else "desactualizada", "sha_head": sha_head}
+                    res["sha_ref"] = sha_ref
+                res.update({"v": ESQUEMA_PIEZA, "ref": ref, "ref_sha": ref_sha, "head": head, "fecha": ahora})
+                base[clave] = res
+            registro.resultado(nombre, repo, ruta, ref, res)
+            evaluadas.add(nombre)
+        except CORTAN_FUENTE:
+            raise
+        except Exception as e:  # noqa: BLE001
+            degradado.append(f"CATALOGO.yaml {clave}: {truncar(str(e))}")
+    base[clave_repo] = {**estado_repo, "tags": tags, "head": head, "fecha": ahora}
+
+
 def fuente_catalogo_compartido(ruta_catalogo, gh, base, novedades, nuevas_ids, degradado, ahora) -> dict:
-    """A nivel repo (un pedido por repo): línea de base la primera vez, novedad si el
-    HEAD avanzó desde la corrida anterior."""
+    """Pieza por pieza: el sha del árbol de su ruta en el ref fijado (sha o tag) contra el
+    de HEAD. Por repo: 1 pedido por el HEAD, 1 por su árbol y 1 por cada ref fijado nuevo
+    (los árboles de un ref se guardan en `base`). Sin `@ref`, o fijada a una rama, no hay
+    con qué comparar: se avisa `origen-sin-fijar`, sin gastar pedidos de árbol."""
+    # La versión anterior avisaba por repo («avanzó desde la corrida anterior»).
+    for dat in novedades.values():
+        if isinstance(dat, dict) and dat.get("tipo") == "repo-catalogo-compartido" and dat.get("estado") == "nueva":
+            dat.update({"estado": "resuelta", "motivo": "reemplazada por la revisión por pieza", "resuelta": ahora})
+    for clave_vieja in [k for k in base if k.startswith("repo:")]:
+        del base[clave_vieja]
+
     if ruta_catalogo is None:
         return conteos_vacios()
     if not ruta_catalogo.exists():
@@ -1831,37 +2140,79 @@ def fuente_catalogo_compartido(ruta_catalogo, gh, base, novedades, nuevas_ids, d
         degradado.append(f"CATALOGO.yaml: {truncar(str(e))}")
         return conteos_vacios()
 
-    piezas_por_repo: dict = {}
-    for nombre, (repo, _ruta, _sha) in piezas_github.items():
-        piezas_por_repo.setdefault(repo, []).append(nombre)
-
-    for repo, piezas in sorted(piezas_por_repo.items()):
-        clave = f"repo:{repo}"
-        try:
-            if not owner_repo_valido(repo):
-                raise RuntimeError("el 'origen' no resolvió a owner/repo válido")
-            head_sha = gh.api(f"repos/{repo}/commits/HEAD").get("sha")
-            if not sha_valido(head_sha):
-                raise RuntimeError("la respuesta no trajo un sha de HEAD válido")
-        except CORTAN_FUENTE:
-            raise
-        except Exception as e:  # noqa: BLE001
-            degradado.append(f"CATALOGO.yaml {limpiar_texto(repo)[:80]}: {truncar(str(e))}")
+    registro = _Registro(gh, novedades, nuevas_ids, ahora)
+    evaluadas: set = set()
+    activas: set = set()
+    grupos: dict = {}
+    for nombre, datos in sorted(piezas_github.items()):
+        clave = f"pieza:{nombre}"
+        if datos is None:
+            degradado.append(f"CATALOGO.yaml {clave}: el 'origen' github no tiene la forma owner/repo//ruta@ref, se omite")
+            activas.add(nombre)
             continue
-        anterior = (base.get(clave) or {}).get("visto")
-        if anterior is not None and anterior != head_sha:
-            registrar_novedad(
-                novedades, nuevas_ids, f"{clave}@{head_sha[:7]}",
-                tipo="repo-catalogo-compartido",
-                detalle=(
-                    f"{repo} avanzó desde la corrida anterior ({str(anterior)[:7]} → {head_sha[:7]}); "
-                    "piezas que vienen de ahí: " + ", ".join(sorted(piezas))
-                ),
-                enlace=f"https://github.com/{repo}/commits",
-                confianza=_confianza_sin_forzar_llamada(gh, repo),
-                desde=ahora,
-            )
-        base[clave] = {"visto": head_sha, "fecha": ahora, "piezas": sorted(piezas)}
+        repo, ruta, ref, estado = datos
+        if estado == "no":
+            continue
+        activas.add(nombre)
+        ruta = (ruta or "").strip("/") or None
+        if not owner_repo_valido(repo):
+            degradado.append(f"CATALOGO.yaml {clave}: el 'origen' no resolvió a owner/repo válido, se omite")
+            continue
+        if ruta is not None and not ruta_valida(ruta):
+            degradado.append(f"CATALOGO.yaml {clave}: la ruta del 'origen' tiene caracteres no válidos, se omite")
+            continue
+        if ref is None:
+            registro.sin_fijar(nombre, repo, ruta, "no tiene sha fijado")
+            evaluadas.add(nombre)
+            continue
+        if not ref_valido(ref):
+            degradado.append(f"CATALOGO.yaml {clave}: el ref fijado no es un sha ni un tag válido, se omite")
+            continue
+        if ref.lower() in RAMAS_COMUNES:
+            registro.sin_fijar(nombre, repo, ruta, "está fijado a una rama, no a una versión")
+            evaluadas.add(nombre)
+            continue
+        grupos.setdefault(repo, []).append((nombre, ruta, ref))
+
+    def antiguedad(repo):  # primero los repos revisados hace más tiempo: si falta cupo, rota
+        dat = base.get(f"catalogo-repo:{repo}")
+        fecha = dat.get("fecha") if isinstance(dat, dict) else None
+        return (fecha if isinstance(fecha, str) else "", repo)
+
+    cortado = None
+    try:
+        for repo in sorted(grupos, key=antiguedad):
+            try:
+                _revisar_repo_catalogo(repo, grupos[repo], gh, base, registro, evaluadas, degradado, ahora)
+            except CORTAN_FUENTE:
+                raise
+            except Exception as e:  # noqa: BLE001
+                degradado.append(f"CATALOGO.yaml {repo}: {truncar(str(e))}")
+    except CORTAN_FUENTE as e:
+        cortado = e
+
+    # Lo que dejó de aplicar se cierra solo (sin borrarlo). Solo piezas revisadas en esta
+    # corrida, o que salieron del catálogo: una que quedó sin revisar no se toca.
+    for id_, dat in novedades.items():
+        if (
+            not isinstance(dat, dict) or id_ in registro.vigentes
+            or dat.get("tipo") not in TIPOS_PIEZA_CATALOGO or dat.get("estado") not in ("nueva", "propuesta")
+        ):
+            continue
+        nombre = _pieza_de_id(id_)
+        if nombre is None:
+            continue
+        if nombre in evaluadas:
+            motivo = "ya no aplica: la pieza está al día o cambió su ref fijado"
+        elif nombre not in activas:
+            motivo = "la pieza ya no está en el catálogo o quedó en estado no"
+        else:
+            continue
+        dat.update({"estado": "resuelta", "motivo": motivo, "resuelta": ahora})
+
+    if cortado is not None:
+        cortado.resultado_parcial = conteos  # el resumen conserva los conteos aunque se corte
+        raise cortado
     return conteos
 
 
@@ -1874,7 +2225,10 @@ def generar_novedades_md(novedades, sin_fijar, informativos, estado_corrida, deg
     nuevas = {k: v for k, v in novedades.items() if v.get("estado") == "nueva"}
     en_catalogo = {k: v for k, v in nuevas.items() if v.get("tipo") == "nuevo-en-catalogo"}
     mcp_sin_fijar = {k: v for k, v in nuevas.items() if v.get("tipo") == "mcp-sin-fijar"}
-    actualizaciones = {k: v for k, v in nuevas.items() if k not in en_catalogo and k not in mcp_sin_fijar}
+    origen_sin_fijar = {k: v for k, v in nuevas.items() if v.get("tipo") == "origen-sin-fijar"}
+    actualizaciones = {
+        k: v for k, v in nuevas.items() if k not in en_catalogo and k not in mcp_sin_fijar and k not in origen_sin_fijar
+    }
 
     lineas = [
         "<!-- generado por vigia.py — no editar a mano -->",
@@ -1895,7 +2249,8 @@ def generar_novedades_md(novedades, sin_fijar, informativos, estado_corrida, deg
     lineas += [
         "",
         f"**{len(actualizaciones)}** actualizaciones · **{len(en_catalogo)}** nuevas en catálogos · "
-        f"**{len(sin_fijar)}** MCP sin fijar · **{len(informativos)}** informativos",
+        f"**{len(sin_fijar)}** MCP sin fijar · **{len(origen_sin_fijar)}** piezas sin sha fijado · "
+        f"**{len(informativos)}** informativos",
         "",
     ]
 
@@ -1939,6 +2294,17 @@ def generar_novedades_md(novedades, sin_fijar, informativos, estado_corrida, deg
             lineas.append(f"| {escapar_md(s['nombre'])} | {escapar_md(s['paquete'])} | {escapar_md(s.get('ultima') or '?')} |")
         lineas.append("")
 
+    if origen_sin_fijar:
+        lineas += ["## Sin sha fijado (el vigía no puede compararlas)", ""]
+        por_repo: dict = {}
+        for id_, dat in origen_sin_fijar.items():
+            enlace = enlace_valido(dat.get("enlace"))
+            repo = enlace[len("https://github.com/"):] if enlace.startswith("https://github.com/") else "?"
+            por_repo.setdefault(repo, []).append(id_.split(":", 1)[-1])
+        for repo, nombres in sorted(por_repo.items()):
+            lineas.append(f"- {escapar_md(repo)} ({len(nombres)}): {escapar_md(', '.join(sorted(nombres)))}")
+        lineas.append("")
+
     if informativos:
         lineas += ["## Informativo (se actualizan solos, oficiales)", "", "| plugin | instalado | clon local |", "|---|---|---|"]
         for i in informativos:
@@ -1975,6 +2341,7 @@ def _correr(args, rutas: Rutas, log: Log) -> int:
     ahora = ahora_dt.isoformat(timespec="seconds")
 
     estado, error_carga = cargar_estado(rutas.estado_json, solo_lectura=args.dry_run)
+    estados_iniciales = estados_de(estado["novedades"])
     base: dict = estado["base"]
     novedades: dict = estado["novedades"]
     catalogos: dict = estado["catalogos"]
@@ -2004,8 +2371,10 @@ def _correr(args, rutas: Rutas, log: Log) -> int:
             return funcion(*a)
         except CupoAgotado as e:
             degradado.append(f"{nombre}: tope alcanzado ({truncar(str(e), 120)}); lo que faltaba se saltea")
+            return getattr(e, "resultado_parcial", None)
         except SinRed as e:
             degradado.append(f"{nombre}: sin red ({truncar(str(e), 120)}); se saltea")
+            return getattr(e, "resultado_parcial", None)
         except Exception as e:  # noqa: BLE001 — esto sí es un error del detector
             caidas.append(f"{nombre}: {type(e).__name__}: {truncar(str(e))}")
             log.escribir(f"fuente {nombre} cayó:\n{traceback.format_exc()}")
@@ -2065,7 +2434,12 @@ def _correr(args, rutas: Rutas, log: Log) -> int:
         "degradado": len(degradado),
         "errores": len(caidas),
         "novedades_nuevas_esta_corrida": len(nuevas_ids),
-        "novedades_sin_revisar": sum(1 for v in novedades.values() if v.get("estado") == "nueva"),
+        "novedades_sin_revisar": sum(
+            1 for v in novedades.values() if v.get("estado") == "nueva" and v.get("tipo") != "origen-sin-fijar"
+        ),
+        "piezas_sin_version_fijada": sum(
+            1 for v in novedades.values() if v.get("estado") == "nueva" and v.get("tipo") == "origen-sin-fijar"
+        ),
         "mcp_fijadas": len(fijadas),
         "mcp_sin_fijar": len(sin_fijar),
         "informativos_oficiales": len(informativos),
@@ -2087,7 +2461,7 @@ def _correr(args, rutas: Rutas, log: Log) -> int:
                     print(f"  - {linea}")
         return 0
 
-    estado = fusionar_decisiones_concurrentes(estado, rutas.estado_json)
+    estado = fusionar_decisiones_concurrentes(estado, rutas.estado_json, estados_iniciales)
     estado["descubrimiento_pendiente"] = calcular_descubrimiento_pendiente(
         estado, perfil["descubrimiento_mensual"], ahora_dt
     )
@@ -2109,8 +2483,10 @@ def _correr(args, rutas: Rutas, log: Log) -> int:
         for k, v in resumen.items():
             print(f"{k}: {v}")
 
-    if args.notify and (nuevas_ids or estado_corrida == "caido"):
-        notificar_macos("vigía caído" if estado_corrida == "caido" else f"{len(nuevas_ids)} novedad(es) nueva(s)")
+    # Una pieza sin versión fijada no es una versión nueva: no dispara la notificación.
+    nuevas_reales = [i for i in nuevas_ids if novedades.get(i, {}).get("tipo") != "origen-sin-fijar"]
+    if args.notify and (nuevas_reales or estado_corrida == "caido"):
+        notificar_macos("vigía caído" if estado_corrida == "caido" else f"{len(nuevas_reales)} novedad(es) nueva(s)")
     return 0
 
 
