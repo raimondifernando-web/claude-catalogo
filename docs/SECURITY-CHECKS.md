@@ -398,3 +398,15 @@ pedida por el dueño del producto; y el vigía aplica solo lo auditado que no ro
 | Instalación limpia (HOME temporal, catálogo local) | base-segura 0.13.0 = 15 skills (con `academy-guide`) · rubro 0.14.0 = 26 (con `pricing`, `social`, sin los nombres viejos) · metodo 0.15.0 = 8, con el aviso nuevo |
 | Nombres de clientes / secretos | `git grep` → 0 / 0 |
 | `verificar-metadatos.sh` | TODO COINCIDE |
+
+## catálogo — `rubro-estudio-arquitectura` 0.14.1 (`market-research-reports` v1.0 → v1.3) — 2026-09-27 — PASS
+La v1.0 publicada dependía de dos skills que el paquete no trae. El dueño del producto eligió actualizarla.
+
+| Control | Resultado |
+|---|---|
+| Origen | K-Dense-AI/scientific-agent-skills @49c6e97 · MIT · >5K★ · `ORIGEN.txt` + `LICENSE-origen.txt` |
+| Auditor de skills | PASS (0 críticos, 0 altos) |
+| Scripts (8) | Revisados a mano: solo librería estándar, sin red, sin `subprocess`, sin `eval`, sin llamadas a IA (lo declara el propio SKILL.md y se verificó) |
+| Requisito | Python 3.11+ **opcional** para los scripts; declarado en `requisitos.md` y CHANGELOG. Sin él, la skill funciona igual |
+| Instalación limpia (HOME temporal) | rubro 0.14.1 con `market-research-reports` v1.3 y sus 8 scripts |
+| Nombres de clientes / `verificar-metadatos.sh` | 0 · TODO COINCIDE |

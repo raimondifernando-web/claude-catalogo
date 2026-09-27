@@ -1,0 +1,4 @@
+origen: github:K-Dense-AI/scientific-agent-skills//skills/market-research-reports@49c6e97
+copiado: 2026-09-27 (re-copia fija; el autor reescribió la skill entera). Licencia MIT → LICENSE-origen.txt
+auditoria: 2026-09-27 skill-security-auditor PASS + revisión a mano (scripts sin red, sin subprocess, sin eval)
+modificado: SKILL.md solo agrega sync: cowork (Mand. II)

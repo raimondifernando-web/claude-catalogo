@@ -1,5 +1,9 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+## 0.14.1 — 2026-09-27
+- **`market-research-reports` arreglada y renovada.** La versión anterior mandaba a usar dos herramientas que este paquete no trae, así que parte de sus pasos no andaban. La nueva, del mismo autor, arma informes de mercado **con evidencia rastreable**: cada dato con su fuente, el tamaño de mercado con escenarios y qué supuesto mueve más el número. No depende de nada más.
+- **Opcional:** tiene 8 scripts de verificación que piden Python 3.11 o más nuevo. Sin eso la skill funciona igual; solo no corre esos chequeos. No hace falta instalar nada para empezar.
+
 
 ## 0.14.0 — 2026-09-27
 - ⚠️ **Dos skills cambian de nombre** porque el autor las renombró en su versión 2:
