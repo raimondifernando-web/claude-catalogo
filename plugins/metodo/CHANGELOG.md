@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.14.0 — 2026-09-27
+- **Nuevo: el vigía de actualizaciones (`/metodo:vigia`).** Cuando algo de lo que instalaste (plugins, conectores MCP, herramientas de línea de comandos) saca una versión nueva, nadie te avisa. Ahora sí: al abrir una sesión, Claude te dice «Vigía: N novedades». Le pedís «revisá las novedades del vigía» y te propone como mucho 5, con sí o no. **Nunca instala nada solo.** Si una pieza la fijó tu consultor, no la movés vos: se la reportás.
+- **Cómo funciona:** al abrir cada sesión corre un chequeo de menos de un segundo, que solo lee una fecha. La búsqueda de verdad se hace como mucho una vez por semana, en segundo plano, sin usar tu plan de Claude.
+- **Qué consulta:** solo GitHub, npm y PyPI, para saber la última versión. Esos sitios ven qué herramientas consultás, como en cualquier chequeo de actualizaciones. No manda datos a nadie más, no usa tus claves y no lee las claves de tus conectores.
+- **Viene prendido.** Para apagarlo: creá el archivo `~/.claude/vigia/apagado` (o `VIGIA_OFF=1`). Funciona en Mac, Linux y Windows. En Windows necesita Git for Windows y Python 3.9 o más nuevo: detalle en `requisitos.md`.
+
 ## 0.13.0 — 2026-09-26
 - **Nueva: `/metodo:darwin-skill`, para revisar y mejorar tus skills.** Evalúa cada skill con una rúbrica de 9 puntos, prueba una mejora por vez, la hace juzgar por agentes independientes (el que la escribió no la califica) y te pide confirmación antes de quedarse con el cambio. Si no mejora, lo deshace. Es de un autor externo (alchaincyf/darwin-skill, 6.1K★, MIT), copiada del commit auditado.
 - **Trae una regla de uso adentro:** guarda y deshace sus cambios con git, así que corre **siempre en una copia aparte** de tu carpeta. Si la usás donde trabajan otras sesiones, les cambiaría la rama o guardaría aparte el trabajo que no subieron. La regla está en la propia skill, así que viaja con ella.
