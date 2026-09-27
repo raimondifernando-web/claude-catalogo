@@ -369,3 +369,15 @@ Pedido de pm-consultoria-ia del 2026-09-26 (vigía genérico para clientes). Dec
 | Instalación limpia (HOME temporal, catálogo local) | `metodo` 0.14.0 con `hooks/hooks.json` y skill `vigia`; el hook lanza el detector y termina `ok` |
 | Nombres de clientes | `git grep -i -c <nombres del cliente>` → 0 |
 | `verificar-metadatos.sh` | TODO COINCIDE |
+
+## catálogo — `rubro-estudio-arquitectura` 0.13.1 (notebooklm-py 0.8.2 → 0.8.3) — 2026-09-27 — PASS
+Aplicado por el vigía con el sí del dueño («sí, con auditoría»).
+
+| Control | Resultado |
+|---|---|
+| Cadena de suministro | El wheel 0.8.3 coincide 1:1 con el tag v0.8.3 (53fc7c50), salvo los archivos que genera el build. PyPI Trusted Publishing (workflow `publish.yml`). sha256 del wheel `7e3e0205…2bfc`, en el protocolo |
+| Dependencias | Ninguna nueva en ejecución (solo ruff en dev) |
+| Red | Sin hosts nuevos: solo Google. 2 RPC nuevos de lectura (cuenta y cuota). Sin telemetría. TLS sin cambios |
+| Cookies | Escritura 0600 sin cambios; más redacción de credenciales en logs |
+| Riesgo nuevo | Borrado en lote sin confirmación a nivel librería → regla en el protocolo: Claude lista y pide el sí antes de borrar o compartir. Re-login automático (ya en 0.8.2, apagado) → prohibido en la regla 2 |
+| Instalación del dueño | `pip install --no-deps --require-hashes` 0.8.3 · `notebooklm auth check` = válido |

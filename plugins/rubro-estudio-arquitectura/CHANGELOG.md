@@ -1,5 +1,10 @@
 # rubro-estudio-arquitectura — qué cambia para vos
 
+
+## 0.13.1 — 2026-09-27
+- **NotebookLM: la versión revisada pasa a 0.8.3.** Tu consultor revisó el código completo de la versión nueva: sigue hablando solo con Google, guarda la sesión igual que antes y el paquete coincide con el publicado por el autor. Trae borrado y compartir en lote.
+- **Dos reglas más en `docs/NOTEBOOKLM-SEGURO.md`:** nada de re-login automático (se conectaría a tu Chrome de todos los días), y Claude te lista y te pide el sí antes de borrar o compartir algo.
+- Para actualizar: `python3 -m pip install --user 'notebooklm-py[browser]==0.8.3'`.
 ## 0.13.0 — 2026-09-26
 - **Sale el agente `designer`.** Era una copia vieja del diseñador de oh-my-claudecode, y si instalaste `oh-my-claudecode-fixed` tenías dos. Queda el del plugin, que está más actualizado. Los otros 4 agentes del rubro no cambian.
 

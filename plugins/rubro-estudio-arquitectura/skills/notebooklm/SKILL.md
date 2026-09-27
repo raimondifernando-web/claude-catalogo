@@ -8,7 +8,7 @@ sync: no
 
 ## Antes de usar esta skill — uso seguro (chequeo obligatorio)
 
-Esta skill usa **notebooklm-py**, una librería **no oficial** que entra a NotebookLM con la sesión (cookies) de una cuenta Google guardada en tu computadora. Tu navegador ya guarda esas cookies; el riesgo nuevo es la segunda copia en manos de un programa ajeno. Por eso hay **5 reglas obligatorias** (versión fija `==0.8.2`, login solo desde la ventana que abre la herramienta, carpeta `~/.notebooklm/` local, nunca leer/pegar ese archivo, saber revocar) y la cuenta Google dedicada es un **refuerzo opcional**. Protocolo completo: `docs/NOTEBOOKLM-SEGURO.md` del catálogo.
+Esta skill usa **notebooklm-py**, una librería **no oficial** que entra a NotebookLM con la sesión (cookies) de una cuenta Google guardada en tu computadora. Tu navegador ya guarda esas cookies; el riesgo nuevo es la segunda copia en manos de un programa ajeno. Por eso hay **5 reglas obligatorias** (versión fija `==0.8.3`, login solo desde la ventana que abre la herramienta, carpeta `~/.notebooklm/` local, nunca leer/pegar ese archivo, saber revocar) y la cuenta Google dedicada es un **refuerzo opcional**. Protocolo completo: `docs/NOTEBOOKLM-SEGURO.md` del catálogo.
 
 | Verificar | Cómo | Si falla, respondé |
 |---|---|---|

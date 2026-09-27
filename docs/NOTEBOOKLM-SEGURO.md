@@ -1,7 +1,7 @@
 # NotebookLM desde Claude — protocolo de uso seguro
 
 > Para la skill `notebooklm` (paquete `rubro-estudio-arquitectura`), que usa la librería no oficial `notebooklm-py`.
-> Revisado 2026-09-21 sobre el código de la versión 0.8.2: se conecta solo a dominios de Google, guarda las cookies
+> Revisado 2026-09-21 sobre el código de la versión 0.8.2 y de nuevo el 2026-09-27 sobre 0.8.3 (diff completo; el paquete coincide con el tag de GitHub y tiene publicación verificada): se conecta solo a dominios de Google, guarda las cookies
 > en tu computadora con permisos de solo-tu-usuario y no manda datos al autor. **El riesgo no es el código: es la
 > llave.** La librería funciona con la sesión (cookies) de una cuenta Google. Quien tenga ese archivo, tiene esa cuenta.
 
@@ -14,11 +14,13 @@ Con eso se puede usar con tu cuenta de siempre. **Las 5 reglas de abajo son obli
 más gente, no la controlás vos, o preferís que la llave valga poco. Si la usás, compartí los cuadernos entre las dos cuentas.
 
 ## Las 5 reglas (obligatorias)
-1. **Versión fija y revisada.** `python3 -m pip install --user 'notebooklm-py[browser]==0.8.2'` y `python3 -m playwright install chromium`.
-   No se actualiza "a la última": cada versión nueva la revisa tu consultor antes.
+1. **Versión fija y revisada.** `python3 -m pip install --user 'notebooklm-py[browser]==0.8.3'` y `python3 -m playwright install chromium`.
+   No se actualiza "a la última": cada versión nueva la revisa tu consultor antes. Huella del paquete 0.8.3 (wheel), para
+   verificar que es el revisado: `sha256:7e3e02057b3acf354d3dbc337c08869d2a4954c9c324f3271e272236cfcc2bfc`.
 2. **Iniciar sesión solo desde la ventana que abre la herramienta**: `notebooklm login` → se abre un navegador → entrás con tu cuenta.
    ⛔ Nunca `notebooklm login --browser-cookies …` (copia la sesión de tu Chrome de todos los días) ni ninguna opción con
-   "master token" (una llave que no vence).
+   "master token" (una llave que no vence). ⛔ Tampoco el re-login automático: nunca `NOTEBOOKLM_HEADLESS_REAUTH` ni
+   `NOTEBOOKLM_HEADLESS_REAUTH_CDP_URL` (se conecta a tu Chrome de todos los días, lo mismo que `--browser-cookies`).
 3. **La carpeta `~/.notebooklm/` se queda en tu máquina.** No en Drive/iCloud, no en un backup que comparta más gente. Cifrado del
    disco (FileVault) encendido y sesión de la Mac con contraseña.
 4. **Nunca pegar, mandar ni leer ese archivo** en un chat, mail o issue. Claude tampoco lo lee: solo corre `notebooklm auth check`.
@@ -34,6 +36,13 @@ más gente, no la controlás vos, o preferís que la llave valga poco. Si la us�
   la skill `notebooklm-preparar` te deja todo listo para pegarlo a mano en notebooklm.google.com.
 - Automatizar un servicio sin API va contra la letra de los términos de Google. El riesgo práctico es bajo y lo asumís vos, informado;
   tu consultor lo deja por escrito.
+
+## Lo que Claude nunca hace sin tu sí (desde 0.8.3)
+- **Borrar** (una fuente, una nota o varias en lote): primero te lista qué va a borrar y espera tu sí.
+- **Compartir** un cuaderno, hacerlo público o sumar a otra persona: mismo trato. Nunca comparte con cuentas que no sean tuyas
+  o que no hayas nombrado vos.
+- Si se usa el servidor MCP de la herramienta: `NOTEBOOKLM_MCP_ALLOWED_ROOTS` apunta solo a una carpeta de trabajo, nunca a
+  Documentos entero ni a tu carpeta personal.
 
 ## Chequeo rápido (para Claude, antes de usar la skill)
 | Verificar | Cómo | Si falla |
