@@ -1,0 +1,9 @@
+origen: github:alchaincyf/huashu-design@0830494 (MIT, LICENSE)
+auditoría: 2026-09-27 (ver docs/SECURITY-CHECKS.md).
+modificado:
+- scripts/cloud/ai-review-video.py lee HUASHU_ARK_URL y HUASHU_ARK_MODEL. El original fija el servidor de Beijing (Volcano Ark), que exige identidad china; con esto se puede usar BytePlus ModelArk (Singapur).
+- demos/voiceover-demo/: el demo se renombró a que-es-un-token.html (el nombre original usa caracteres chinos, que el verificador del catálogo no admite en rutas). Nada lo referencia.
+quitado:
+- el archivo local de claves de la instalación original (queda solo el ejemplo, sin valores).
+medios: la música (assets/bgm-*.mp3) y los efectos (assets/sfx/) van tal cual los publica el autor, bajo la MIT del repo.
+nube: la revisión de video con IA y el TTS (scripts/cloud/) no funcionan hasta que cargues una clave propia del servicio. Además piden confirmación (--yes o HUASHU_CLOUD_OK=1). Suben el video o el texto a un tercero: no usar con material confidencial.

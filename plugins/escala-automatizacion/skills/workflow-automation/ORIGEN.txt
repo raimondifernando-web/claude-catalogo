@@ -1,0 +1,2 @@
+origen: github:vibeforge1111/vibeship-spawner-skills//ai-agents/workflow-automation@9135c70 (Apache-2.0 declarada por el autor, LICENSE-origen.txt)
+modificado: adaptación y traducción al castellano (obra derivada, Apache-2.0 §4b). Los cambios respecto del original son la traducción y la adaptación del texto.

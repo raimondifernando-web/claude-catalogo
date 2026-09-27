@@ -1,0 +1,2 @@
+origen: github:nolly-studio/cult-ui//.agents/skills/components-build@32fb1ad (MIT, LICENSE-origen.txt)
+copia idéntica al origen (2026-09-27). Nota: el sitio components.build de Vercel publica otra skill (building-components, Apache-2.0); esta es la de cult-ui.

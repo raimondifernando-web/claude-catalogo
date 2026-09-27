@@ -1,0 +1,1 @@
+origen: propia de claude-catalogo (MIT). Usa como fuente los DESIGN.md de github:VoltAgent/awesome-design-md@f6961238d5cddcf8042a74a70fc400ec67181abb (MIT); no los copia: los baja cuando se usa.

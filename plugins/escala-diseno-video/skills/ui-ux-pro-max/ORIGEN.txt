@@ -1,0 +1,4 @@
+origen: github:nextlevelbuilder/ui-ux-pro-max-skill//.claude/skills/ui-ux-pro-max@09170ee
+copiado: 2026-09-27 (copia fija; reemplaza la copia del 2026-05-24, que no tenía origen registrado). Licencia MIT → LICENSE-origen.txt
+auditoria: 2026-09-27 skill-security-auditor WARN (1 HIGH falso positivo: os.unlink del temporal propio en _write_persisted_file) + revisión a mano: sin red, subprocess ni eval en scripts; SKILL.md sin comandos de instalación.
+actualizar: la avisa el vigía; se re-copia desde un sha auditado. Sin modificaciones locales.

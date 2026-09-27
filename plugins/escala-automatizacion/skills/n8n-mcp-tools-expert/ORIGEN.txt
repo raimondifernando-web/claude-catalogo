@@ -1,0 +1,4 @@
+origen: github:czlonkowski/n8n-skills//skills/n8n-mcp-tools-expert@19cd793
+actualizado: 2026-09-27 desde 2ee34c0 -> 19cd793 (vigía, Mand. XVI; 3-way merge sin conflictos)
+auditoria-2026-09-27: skill-security-auditor FAIL (2 hallazgos) leídos contra propósito = sin riesgo (falsos positivos)
+parche local re-aplicado: línea sync: del frontmatter

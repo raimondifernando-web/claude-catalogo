@@ -1,0 +1,2 @@
+origen: github:addyosmani/agent-skills//skills/ci-cd-and-automation@fea75b1 (MIT, LICENSE-origen.txt)
+modificado: parche local menor (atribución al pie). Hooks del repo NO incluidos.

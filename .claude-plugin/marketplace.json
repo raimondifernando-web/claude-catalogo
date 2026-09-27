@@ -60,6 +60,34 @@
       ]
     },
     {
+      "name": "escala-diseno-video",
+      "source": "./plugins/escala-diseno-video",
+      "description": "Escala de diseño y video (L4): presentaciones, animaciones y videos cortos, prototipos de pantallas, infografías y arte generativo. huashu-design te muestra 3 direcciones antes de hacer nada; el set de video de HyperFrames viene con la telemetría apagada y sin actualizaciones solas. 19 skills. Recomendado junto con base-segura.",
+      "version": "0.1.0",
+      "category": "design",
+      "tags": [
+        "l4",
+        "diseno",
+        "video",
+        "presentaciones",
+        "es"
+      ]
+    },
+    {
+      "name": "escala-automatizacion",
+      "source": "./plugins/escala-automatizacion",
+      "description": "Escala de automatización (L4): flujos con n8n, Make, Zapier y ManyChat, pipelines de datos, CI/CD, apps en Microsoft Entra y conectores MCP propios. 13 skills + 3 agentes (automation-architect, data-engineer, deployment-engineer). Recomendado junto con base-segura.",
+      "version": "0.1.0",
+      "category": "automation",
+      "tags": [
+        "l4",
+        "automatizacion",
+        "n8n",
+        "integraciones",
+        "es"
+      ]
+    },
+    {
       "name": "oh-my-claudecode-fixed",
       "source": {
         "source": "github",

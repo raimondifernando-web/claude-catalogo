@@ -1,0 +1,6 @@
+origen: github:anthropics/skills//skills/mcp-builder@3337550 (último commit de la ruta: b9e19e6)
+copiado: 2026-09-27 reemplazo por HEAD. La copia anterior era la versión de oct-2025 del autor (83291af, ruta mcp-builder/) + `sync: no`, sin contenido propio (verificado archivo por archivo contra el historial). Licencia Apache-2.0 → LICENSE.txt.
+cambios que trae: SKILL.md reescrito por el autor (más corto: diseño moderno, TypeScript + Streamable HTTP recomendado, outputSchema/structuredContent); mcp_best_practices.md condensado (915→249 líneas); guías Python/TS sin SSE (deprecado) y con registerTool/Streamable HTTP; LICENSE con el copyright completado. scripts/ sin cambios.
+auditoria-2026-09-27: skill-security-auditor PASS (la copia vieja daba FAIL 1).
+modificado: solo `sync: no` en el frontmatter.
+actualizar: la avisa el vigía; se re-copia desde un sha auditado y se re-agrega `sync: no`.

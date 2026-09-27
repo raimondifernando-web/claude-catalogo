@@ -1,0 +1,11 @@
+{
+  "name": "escala-automatizacion",
+  "version": "0.1.0",
+  "description": "Capa L4, para automatizar procesos con n8n, Make, Zapier o ManyChat y conectar herramientas: 13 skills (las 7 de n8n de czlonkowski, ManyChat en n8n, patrones de Zapier/Make y de automatización, CI/CD, registrar apps en Microsoft Entra, construir servidores MCP) y 3 agentes (automation-architect, que diseña el flujo; data-engineer, que arma los pipelines de datos; deployment-engineer, para publicar). Pedile a Claude: «automatizá que cuando entra X pase Y».",
+  "author": {
+    "name": "Fernando Raimondi"
+  },
+  "homepage": "https://github.com/raimondifernando-web/claude-catalogo",
+  "repository": "https://github.com/raimondifernando-web/claude-catalogo",
+  "license": "MIT"
+}

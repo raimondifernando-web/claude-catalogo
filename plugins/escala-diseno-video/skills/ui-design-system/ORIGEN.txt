@@ -1,0 +1,2 @@
+origen: github:davila7/claude-code-templates//cli-tool/components/skills/creative-design/ui-design-system@af0b992 (MIT, LICENSE-origen.txt)
+copia idéntica al origen (2026-09-27).

@@ -1,0 +1,2 @@
+origen: github:microsoft/azure-skills//skills/entra-app-registration@9cd2049 (MIT, LICENSE-origen.txt)
+copia idéntica al origen (2026-09-27).

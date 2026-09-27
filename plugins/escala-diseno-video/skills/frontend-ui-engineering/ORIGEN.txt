@@ -1,0 +1,4 @@
+origen: github:addyosmani/agent-skills//skills/frontend-ui-engineering@2686b62
+actualizado: 2026-09-27 desde cea2f38 -> 2686b62 (vigía, Mand. XVI; 3-way merge sin conflictos)
+auditoria-2026-09-27: skill-security-auditor PASS (0 hallazgos)
+parche local re-aplicado: línea sync: del frontmatter; pie *Origen:* (addyosmani, MIT)

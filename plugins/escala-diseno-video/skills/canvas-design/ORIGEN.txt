@@ -1,0 +1,2 @@
+origen: github:anthropics/skills//skills/canvas-design@b9e19e6 (Apache-2.0, LICENSE.txt; fuentes con su licencia OFL en canvas-fonts/)
+copia idéntica al origen (2026-09-27). Los emails que aparecen en canvas-fonts/*-OFL.txt son de los autores de las fuentes.

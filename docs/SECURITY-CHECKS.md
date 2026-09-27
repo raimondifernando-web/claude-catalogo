@@ -443,3 +443,17 @@ MIT del catálogo. El dueño del producto eligió retirarlas.
 | Cambio | `_guardado_valido` compara también la `ruta`; lo guardado sin ruta se recalcula una vez. Sin red nueva ni cambios de validación |
 | Tests | 87 OK (3.12 y 3.9.6). Test nuevo con el caso real (ruta corregida); **control**: sin el arreglo, el test falla |
 | `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |
+
+## catálogo — `escala-diseno-video` 0.1.0 + `escala-automatizacion` 0.1.0 (paquetes nuevos, F3) — 2026-09-27 — PASS
+Composición pedida por el dueño del producto tras auditar el origen de 40 piezas. 32 skills + 3 agentes.
+
+| Control | Resultado |
+|---|---|
+| Licencias verificadas con `gh api` | figma **fuera** (hoy son los Figma Developer Terms, propietarios). workflow-automation y zapier-make-patterns: el autor declara Apache-2.0 en `package.json` y en el README; el repo no trae archivo LICENSE → se adjunta el texto estándar con la cita. components-build: origen `nolly-studio/cult-ui` (MIT), no `vercel/components.build` (Apache-2.0, otra skill). Cada pieza externa lleva su `LICENSE-origen.txt` o `LICENSE.txt` bajado al commit fijado, y su `ORIGEN.txt` |
+| Medios | huashu-design: música y efectos incluidos bajo la MIT del repo (el autor la declara para todo el repo; no hay licencia aparte que la contradiga — distinto de pestel/storyboard, cuya licencia decía no comercial). Decisión del dueño, 2026-09-27. media-use: los efectos de sonido se quedan: `CREDITS.md` los atribuye a Pixabay (Content License: uso comercial sin atribución; prohíbe la redistribución suelta, acá van dentro de la herramienta, igual que en el repo de HeyGen). Fuentes de canvas-design: OFL, cada una con su archivo |
+| Datos propios | 3 piezas propias sin datos del dueño (n8n-manychat, automation-architect, data-engineer): secciones de la empresa, IDs de cuenta, dominios, rutas y variables fuera. Los agentes ya no fijan `tools:` con nombres de MCP del dueño: heredan los del cliente. Parches de HyperFrames/media-use y pies de atribución: sin referencias a la doctrina interna. grep de nombres, rutas, IDs, emails = 0 (los emails que quedan son de autores de fuentes en archivos OFL) |
+| Claves | El archivo local de claves de huashu-design no se copia (rsync con lista de exclusión). 0 archivos de entorno en la caché instalada |
+| Nube | huashu-design: la revisión de video con IA y el TTS no funcionan sin una clave propia y piden confirmación; parche local para usar BytePlus fuera de China. HyperFrames: telemetría apagada por variables que el cliente carga en el portal; sin auto-update; render en la nube y subidas a HeyGen, solo con el OK del usuario |
+| `skill-security-auditor` | 23 PASS · 1 WARN (ui-ux-pro-max, ya auditada) · 8 FAIL leídos contra el propósito, todos falsos positivos: HyperFrames/media-use (execFileSync/spawn sin shell, regex.exec: revisados por security-reviewer Opus el mismo día), huashu-design (auditada el mismo día), algorithmic-art (regex.exec sobre un color hex), n8n-mcp-tools-expert (documentación de la API de credenciales, texto) |
+| Instalación limpia (HOME temporal) | escala-diseno-video 0.1.0 = 19 skills, 19 ORIGEN.txt, 0 archivos de claves · escala-automatizacion 0.1.0 = 13 skills + 3 agentes |
+| Nombres de clientes / `verificar-metadatos.sh` | 0 · TODO COINCIDE |
