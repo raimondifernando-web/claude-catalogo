@@ -1,0 +1,3 @@
+origen: github:alirezarezvani/claude-skills//engineering/skills/skill-security-auditor@43e9d39
+actualizado: 2026-09-28 desde 1851c8f -> 43e9d39 (vigía, Mand. XVI; merge de 3 vías). Suma references/threat-model.md, que faltaba en la copia.
+modificado: scripts/skill_security_auditor.py: la exención «noqa: SEC-AUDITOR» / «auditor:ignore-line» (d4ea125) vale solo para los archivos del propio auditor; en una skill ajena se informa como hallazgo HIGH SELF-SUPPRESSION y la línea se revisa igual (función _suppressed). Probado: con una skill trampa, el original da PASS y el parcheado da FAIL. RE-APLICAR en cada actualización.

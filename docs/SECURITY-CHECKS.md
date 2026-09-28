@@ -497,3 +497,10 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Diff del autor en las 10 skills | Una línea de «Plugin installs» en cada SKILL.md; guía nueva `plugin-installation.md` + `plugin-cli.mjs` (lanzador del modo plugin: fija la versión del CLI y apaga las auto-actualizaciones; sin red propia, `spawnSync` sin shell); `media-use`: transcripción por el Parakeet del CLI y mejores errores; `resolve.mjs` delega al CLI solo en modo plugin |
 | Merge de 3 vías sobre las copias parcheadas | Conflictos solo en el bloque «Regla de uso local»: se conservan los dos textos; parches de `bgm.mjs` y `heygen.mjs` intactos |
 | Organización | heygen-com (fabricante) · Apache-2.0 · sin dependencias nuevas |
+
+### 2026-09-28 · base-segura 0.13.3 (skill-security-auditor 1851c8f → 43e9d39 + parche)
+| Revisión | Resultado |
+|---|---|
+| Diff del autor | Marcas `noqa: SEC-AUDITOR` en sus propios patrones, exención por línea en los 3 escáneres, stdout UTF-8 (Windows), `.mcp.json` fuera de FS-HIDDEN, `references/threat-model.md` (docs) |
+| Riesgo encontrado | Con la exención del autor, una skill ajena se eximía sola: una skill trampa (`os.system` + «ignore previous instructions», ambas marcadas) daba **PASS con 0 hallazgos** |
+| Parche propio | La exención vale solo dentro de la carpeta del auditor; en otra skill → hallazgo HIGH `SELF-SUPPRESSION` y la línea se escanea igual. Skill trampa: **FAIL, 4 hallazgos**. Auto-escaneo del auditor: PASS, 0 |
