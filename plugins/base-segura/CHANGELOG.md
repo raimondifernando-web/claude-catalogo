@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.13.4 — 2026-09-28
+- Cuando `markitdown` usa OpenRouter para describir imágenes o documentos, pide el modo sin retención si el modelo lo tiene, y avisa si no.
+
 ## 0.13.3 — 2026-09-28
 - **`skill-security-auditor` más estricto.** La versión nueva del autor dejaba que una skill se eximiera sola del control poniendo una marca en su propio código. Acá esa marca ya no sirve: el auditor la muestra como hallazgo y revisa la línea igual. Probado con una skill trampa: la versión del autor la aprobaba, la de este paquete la frena.
 - Además: arreglos del autor (acentos en Windows, archivos `.mcp.json` que no son riesgo) y la guía de amenazas `references/threat-model.md`.

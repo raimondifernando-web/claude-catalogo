@@ -521,3 +521,12 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Dueño del producto | Decidió «pregunta, no automático» (con clientes nunca se infiere el sí) |
 | Prueba en HOME temporal | Instala 0.16.4; la skill trae la pregunta y su encabezado YAML es válido |
 | `verificar-metadatos.sh` / validate / clientes | TODO COINCIDE · PASS · 0 |
+
+## catálogo — `base-segura` 0.13.4 + `rubro-estudio-arquitectura` 0.14.4 — 2026-09-28 — PASS
+| Control | Resultado |
+|---|---|
+| Cambio | `generate-image` y `markitdown`: piden retención cero (ZDR) a OpenRouter solo si el modelo tiene endpoint ZDR (lista pública, sin clave, caché 10 min) y avisan si no; `generate-image` usa el Gemini estable por defecto y lee la clave también de la variable de entorno. Parche local sobre copias de terceros, anotado en `ORIGEN.txt` |
+| `skill-security-auditor` (comparado contra la versión publicada) | FAIL por patrón, sin riesgo real nuevo: 3 HIGH `NET-EXFIL` = GET a la URL fija y pública `openrouter.ai/api/v1/endpoints/zdr` (solo header Accept, no envía datos ni clave); 1 CRITICAL `CRED-HARVEST` = lectura de la clave propia de la skill desde el entorno, usada solo en la llamada que ya existía (mismo patrón que `markitdown` ya publicado). El resto, idéntico a la versión anterior |
+| Dueño del producto | Aprobado (leyó el diff; eligió versiones y changelog) |
+| Prueba | 17/17 con llamadas simuladas + markitdown real; lectura de la clave desde el entorno verificada; instalación en HOME temporal: 0.13.4 y 0.14.4 con `openrouter_zdr.py` en caché |
+| `verificar-metadatos.sh` / validate / clientes | TODO COINCIDE · PASS · 0 |
