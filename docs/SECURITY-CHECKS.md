@@ -473,3 +473,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Qué sale de la máquina | Solo las skills marcadas `sync: cowork`, a un repositorio privado del usuario (`gh repo create --private`, verificado antes de subir). No copia archivos de entorno (salvo `.example`), `.git`, `node_modules`, entornos ni `.omc`; frena si hay algo con forma de clave |
 | Prueba en HOME temporal | sin configuración · preparar · skill mal formada omitida · frenado por clave sin ensuciar el repo · archivo de entorno no copiado · versión sube sola · sin PyYAML · push a remoto: OK. Se encontraron y corrigieron 2 fallas antes de publicar (la limpieza tras un frenado borraba el esqueleto; al subir la versión se vaciaba `marketplace.json`) |
 | `claude plugin validate` / clientes | PASS · 0 |
+
+## catálogo — `metodo` 0.16.1 — 2026-09-27 — PASS
+| Control | Resultado |
+|---|---|
+| Origen | 3 hallazgos del dueño del producto al bajar 0.16.0: versión del marketplace desalineada (0.15.2), la llave acotada no puede crear repos, no veía skills de la carpeta de proyecto |
+| Cambios | `agregar-carpeta` (skills de `<proyecto>/.claude/skills`; nombre repetido en dos carpetas = no se sube) · camino «el repo ya existe» como normal en la skill · versión alineada |
+| Prueba en HOME temporal | casos de 0.16.0 + carpeta de proyecto + nombre repetido + clon vacío existente: OK |
+| `verificar-metadatos.sh` / validate / clientes | TODO COINCIDE (0.16.0 salió sin correrlo: ese fue el error) · PASS · 0 |

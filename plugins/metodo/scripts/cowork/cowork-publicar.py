@@ -6,12 +6,14 @@ Cowork instala plugins desde un repositorio de GitHub (marketplace). Este script
 Claude Code queda como la única fuente: si cambiás la skill en Code y volvés a publicar, Cowork recibe la nueva.
 
 Uso (lo corre Claude a pedido, con /metodo:cowork):
-  cowork-publicar.py preparar <carpeta> <nombre-plugin>   arma el repo local la primera vez
+  cowork-publicar.py preparar <carpeta> <nombre-plugin>   arma el repo local la primera vez (sirve con un clon vacío)
+  cowork-publicar.py agregar-carpeta <carpeta-proyecto>    suma las skills de <carpeta-proyecto>/.claude/skills
   cowork-publicar.py                                       arma, verifica y sube si cambió algo
   cowork-publicar.py --dry-run                             arma y verifica, no sube
   cowork-publicar.py --revisar                             solo lista qué skills pasan y cuáles no
 
-Configuración: <CLAUDE_CONFIG_DIR o ~/.claude>/cowork/config.json  {"repo": "<carpeta local>", "plugin": "<nombre>"}
+Configuración: <CLAUDE_CONFIG_DIR o ~/.claude>/cowork/config.json  {"repo", "plugin", "carpetas": [...]}
+Busca skills en ~/.claude/skills y en cada carpeta de proyecto agregada.
 Nunca sube archivos de entorno ni carpetas de estado, y frena si encuentra algo con forma de clave.
 """
 import glob, json, os, re, shutil, subprocess, sys, time
@@ -61,13 +63,23 @@ def encabezado(txt):
         return d or None
 
 
-def skills_cowork():
-    if not os.path.isdir(SKILLS):
-        return
-    for n in sorted(os.listdir(SKILLS)):
-        p = os.path.join(SKILLS, n, "SKILL.md")
-        if not n.startswith(("_", ".")) and os.path.isfile(p) and re.search(r"^sync:\s*cowork\s*$", cabecera(leer(p)), re.M):
-            yield n
+def skills_cowork(carpetas):
+    """{nombre: carpeta de la skill} de las marcadas `sync: cowork`, en ~/.claude/skills y en las carpetas de proyecto
+    agregadas. Si el mismo nombre está en dos lugares, no se sube ninguna: no hay forma segura de elegir."""
+    vistas, dobles = {}, set()
+    for base in [SKILLS] + carpetas:
+        if not os.path.isdir(base):
+            continue
+        for n in sorted(os.listdir(base)):
+            p = os.path.join(base, n, "SKILL.md")
+            if not n.startswith(("_", ".")) and os.path.isfile(p) and re.search(r"^sync:\s*cowork\s*$", cabecera(leer(p)), re.M):
+                if n in vistas and os.path.realpath(vistas[n]) != os.path.realpath(os.path.dirname(p)):
+                    dobles.add(n)
+                vistas.setdefault(n, os.path.dirname(p))
+    for n in sorted(dobles):
+        log(f"OMITIDA {n}: está en dos carpetas ({vistas[n]} y otra); dejá una sola o sacale sync: cowork a la otra")
+        del vistas[n]
+    return vistas
 
 
 def nativas_de_cowork():
@@ -82,10 +94,10 @@ def nativas_de_cowork():
         return set()
 
 
-def problemas(n):
+def problemas(n, ruta):
     """Reglas de claude.ai para skills de plugin. UNA skill que no cumple hace fallar la sincronización de TODO el
     marketplace, por eso la que no cumple se saltea y se avisa."""
-    txt = leer(os.path.join(SKILLS, n, "SKILL.md"))
+    txt = leer(os.path.join(ruta, "SKILL.md"))
     try:
         d = encabezado(txt)
     except Exception as e:
@@ -153,28 +165,55 @@ def preparar(carpeta, plugin):
     if git(carpeta, "status", "--porcelain").stdout.strip():
         git(carpeta, "commit", "-q", "-m", "esqueleto del marketplace de Cowork")
     os.makedirs(DIR, exist_ok=True)
-    json.dump({"repo": carpeta, "plugin": plugin}, open(CONFIG, "w", encoding="utf-8"), indent=2)
+    cfg = {}
+    if os.path.exists(CONFIG):
+        try:
+            cfg = json.load(open(CONFIG, encoding="utf-8"))
+        except Exception:
+            cfg = {}
+    cfg.update({"repo": carpeta, "plugin": plugin}); cfg.setdefault("carpetas", [])
+    json.dump(cfg, open(CONFIG, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
     log(f"preparado {carpeta} (plugin {plugin})")
     return 0
 
 
+def agregar_carpeta(ruta):
+    ruta = os.path.abspath(os.path.expanduser(ruta))
+    if os.path.basename(ruta) != "skills":
+        ruta = os.path.join(ruta, ".claude", "skills")
+    if not os.path.isdir(ruta):
+        print(f"No existe {ruta}"); return 1
+    try:
+        cfg = json.load(open(CONFIG, encoding="utf-8"))
+    except Exception:
+        print("Primero: cowork-publicar.py preparar <carpeta> <nombre-plugin>"); return 1
+    if ruta not in cfg.setdefault("carpetas", []):
+        cfg["carpetas"].append(ruta)
+    json.dump(cfg, open(CONFIG, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+    log(f"carpeta de skills agregada: {ruta}")
+    return 0
+
+
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == "agregar-carpeta":
+        return agregar_carpeta(sys.argv[2])
     if len(sys.argv) >= 2 and sys.argv[1] == "preparar":
         if len(sys.argv) != 4:
             print(__doc__); return 1
         return preparar(sys.argv[2], sys.argv[3])
     try:
         cfg = json.load(open(CONFIG, encoding="utf-8"))
-        repo, plugin = cfg["repo"], cfg["plugin"]
+        repo, plugin, carpetas = cfg["repo"], cfg["plugin"], cfg.get("carpetas", [])
     except Exception:
         print(f"Falta la configuración ({CONFIG}). Primero: cowork-publicar.py preparar <carpeta> <nombre-plugin>")
         return 1
     nativas = nativas_de_cowork()
     nombres, omitidas = [], []
-    for n in skills_cowork():
+    rutas = skills_cowork(carpetas)
+    for n, ruta in rutas.items():
         if n in nativas:
             log(f"omitida {n}: Cowork ya la trae de fábrica"); continue
-        prob = problemas(n)
+        prob = problemas(n, ruta)
         (omitidas.append(f"{n}: {'; '.join(prob)}") if prob else nombres.append(n))
     for o in omitidas:
         log(f"OMITIDA {o}")
@@ -196,7 +235,7 @@ def main():
         destino = os.path.join(repo, "plugins", plugin, "skills")
         shutil.rmtree(destino, ignore_errors=True)
         for n in nombres:
-            copiar(os.path.join(SKILLS, n), os.path.join(destino, n))
+            copiar(rutas[n], os.path.join(destino, n))
         sospechosos = []
         for raiz, _, archivos in os.walk(destino):
             for a in archivos:

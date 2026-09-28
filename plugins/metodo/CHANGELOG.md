@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.16.1 — 2026-09-27
+- `/metodo:cowork` ahora encuentra también las skills que creás en la carpeta de tu proyecto (`<proyecto>/.claude/skills`), no solo en `~/.claude/skills`. Se suma una vez, a pedido. Si la misma skill está en las dos carpetas, no la sube hasta que quede una sola.
+- Si tu llave de GitHub solo abre repositorios elegidos, no puede crear uno nuevo. Ahora el camino normal es: creás el repositorio vacío y privado desde la web, y Claude lo conecta.
+- Corrección: el catálogo seguía anunciando la versión anterior de `metodo`, y la actualización podía no llegarte. Ya coincide.
+
 ## 0.16.0 — 2026-09-27
 - **Nueva: `/metodo:cowork`, para usar tus skills propias en Cowork sin subirlas a mano.** Si subías una skill desde la web de Claude, quedaba como una copia suelta: la cambiabas en Claude Code y Cowork seguía con la vieja. Ahora le pedís a Claude «publicá mi skill en Cowork» y él la copia a un repositorio privado tuyo en GitHub, la revisa y la sube. Cowork la toma de ahí, siempre en la última versión.
 - **Te cuida de dos errores:** si una skill está mal armada, no la sube y te dice qué tiene (una sola mal armada hacía fallar todas en Cowork). Si encuentra algo con forma de clave, no sube nada.

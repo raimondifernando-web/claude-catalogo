@@ -21,22 +21,38 @@ no toca la terminal.
    (lo hace él: es su cuenta).
 2. **Nombre del repositorio.** Proponé `cowork-skills-<nombre corto del usuario o la empresa>`. Tiene que ser
    **privado** y **solo para esto**: Cowork lee el repositorio entero, así que no se mezcla con un proyecto de trabajo.
-3. **Armalo:**
-   ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cowork/cowork-publicar.py" preparar ~/cowork-skills-<nombre> skills-<nombre>
-   gh repo create cowork-skills-<nombre> --private --source ~/cowork-skills-<nombre> --remote origin
-   ```
-   Verificá que quedó privado: `gh repo view cowork-skills-<nombre> --json visibility` → `PRIVATE`. Si no, pará.
-4. **Primera publicación:** marcá las skills (paso de abajo) y corré el script sin argumentos.
-5. **El paso en Cowork lo hace el usuario** (vos no tenés acceso): Personalizar → Plugins → Añadir → Añadir
+3. **Armalo.** Primero preguntá si el repositorio **ya existe** (es lo normal si su llave de GitHub es acotada:
+   una llave que abre solo repos elegidos no puede crear repos nuevos; entonces el usuario lo crea vacío y privado
+   desde la web y vos solo lo conectás).
+   - **Ya existe (camino normal):**
+     ```bash
+     gh repo clone <cuenta>/cowork-skills-<nombre> ~/cowork-skills-<nombre>
+     python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cowork/cowork-publicar.py" preparar ~/cowork-skills-<nombre> skills-<nombre>
+     ```
+   - **No existe y su `gh` puede crear repos:**
+     ```bash
+     python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cowork/cowork-publicar.py" preparar ~/cowork-skills-<nombre> skills-<nombre>
+     gh repo create cowork-skills-<nombre> --private --source ~/cowork-skills-<nombre> --remote origin
+     ```
+     Si `gh repo create` falla por permisos, no insistas: pedile que lo cree vacío y privado desde la web y seguí por el
+     camino de arriba.
+
+   En los dos casos verificá que es privado: `gh repo view <cuenta>/cowork-skills-<nombre> --json visibility` →
+   `PRIVATE`. Si no, pará. Si el repo ya tenía archivos que no son de esto, pará también: tiene que ser solo para Cowork.
+4. **¿Dónde están sus skills?** El script busca en `~/.claude/skills`. Si las crea en la carpeta del proyecto
+   (`<proyecto>/.claude/skills`, la que se guarda en su repo de trabajo), sumala una vez:
+   `python3 .../cowork-publicar.py agregar-carpeta <proyecto>`. Si una skill con el mismo nombre está en las dos
+   carpetas, no se sube ninguna hasta que quede una sola.
+5. **Primera publicación:** marcá las skills (paso de abajo) y corré el script sin argumentos.
+6. **El paso en Cowork lo hace el usuario** (vos no tenés acceso): Personalizar → Plugins → Añadir → Añadir
    marketplace → Añadir desde un repositorio → pegar la dirección del repositorio → activar la sincronización
    automática → instalar el plugin `skills-<nombre>`. Dale la dirección exacta (`gh repo view --json url -q .url`).
-6. Si antes había subido skills a mano en Cowork, que las **desactive** (no las elimine: eliminar no tiene vuelta
+7. Si antes había subido skills a mano en Cowork, que las **desactive** (no las elimine: eliminar no tiene vuelta
    atrás) para que no queden dos copias.
 
 ## Cada vez que publica
 
-1. **Marcar la skill:** agregá `sync: cowork` en el encabezado de `~/.claude/skills/<skill>/SKILL.md`, entre los `---`.
+1. **Marcar la skill:** agregá `sync: cowork` en el encabezado de su `SKILL.md` (en `~/.claude/skills/` o en la carpeta de proyecto agregada), entre los `---`.
    Solo skills propias del usuario; las de un plugin ya llegan a Cowork por su propio marketplace.
 2. **Revisar antes de subir:** `python3 .../cowork-publicar.py --revisar`. Si alguna sale **OMITIDA**, explicale en
    criollo qué tiene y arreglalo con él. Una sola skill mal formada hace fallar la sincronización de **todas** en
