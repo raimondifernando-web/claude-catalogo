@@ -251,6 +251,14 @@ def main():
             return 2
         git(repo, "add", "-A", "plugins")
         if not git(repo, "status", "--porcelain").stdout.strip():
+            # Sin cambios, pero puede faltar subir lo ya guardado (p. ej. el esqueleto de `preparar` con cero skills):
+            # sin eso Cowork no puede agregar el repositorio.
+            if tiene_remoto and "--dry-run" not in sys.argv and (
+                    git(repo, "rev-parse", "@{u}").returncode != 0
+                    or git(repo, "rev-list", "--count", "@{u}..HEAD").stdout.strip() not in ("", "0")):
+                r = git(repo, "push", "-q", "-u", "origin", "HEAD")
+                log(f"subido lo pendiente ({len(nombres)} skills)" if r.returncode == 0 else f"ERROR al subir: {r.stderr.strip()[:200]}")
+                return r.returncode
             log(f"sin cambios ({len(nombres)} skills)"); return 0
         # Cowork exige versión para aceptar el marketplace: sube sola en cada publicación.
         v = int(git(repo, "rev-list", "--count", "HEAD").stdout.strip() or "0") + 1

@@ -43,7 +43,7 @@ no toca la terminal.
    (`<proyecto>/.claude/skills`, la que se guarda en su repo de trabajo), sumala una vez:
    `python3 .../cowork-publicar.py agregar-carpeta <proyecto>`. Si una skill con el mismo nombre está en las dos
    carpetas, no se sube ninguna hasta que quede una sola.
-5. **Primera publicación:** marcá las skills (paso de abajo) y corré el script sin argumentos.
+5. **Primera publicación:** marcá las skills (paso de abajo) y corré el script sin argumentos. Aunque todavía no haya ninguna marcada, correlo igual: sube la estructura vacía, que Cowork necesita para poder agregar el repositorio.
 6. **El paso en Cowork lo hace el usuario** (vos no tenés acceso): Personalizar → Plugins → Añadir → Añadir
    marketplace → Añadir desde un repositorio → pegar la dirección del repositorio → activar la sincronización
    automática → instalar el plugin `skills-<nombre>`. Dale la dirección exacta (`gh repo view --json url -q .url`).

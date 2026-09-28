@@ -488,4 +488,5 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Cambio | Solo encabezado, sin tocar qué hacen: `excel-analysis` (name), `planning-with-files`, `hyperframes-audio`, `crear-agente` (sin `<`/`>` en la description) |
 | Piezas externas | Parche anotado para re-aplicar al actualizar: `ORIGEN.txt` (hyperframes-audio) y `nota:` en `CATALOGO.yaml` (excel-analysis, planning-with-files) |
 | Todo el catálogo contra las reglas de claude.ai | 0 skills fuera de formato |
+| `/metodo:cowork` (hallazgo 4 del dueño del producto) | Con cero skills sube el esqueleto pendiente; probado con remoto vacío: sube y la corrida siguiente da «sin cambios» |
 | `verificar-metadatos.sh` / validate / clientes | TODO COINCIDE · PASS · 0 |
