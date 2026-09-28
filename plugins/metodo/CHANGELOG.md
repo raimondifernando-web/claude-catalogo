@@ -1,6 +1,6 @@
 # metodo — qué cambia para vos
 
-## Sin publicar (sale en la próxima versión)
+## 0.16.3 — 2026-09-28
 - `/metodo:arrancar` le pone número a la sesión nueva en la app de escritorio. Si la anterior del mismo grupo se llamaba «Ventas 7», la nueva pasa a «Ventas 8». No toca un nombre que ya pusiste vos, y fuera de la app de escritorio no hace nada.
 
 ## 0.16.2 — 2026-09-27

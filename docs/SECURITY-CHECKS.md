@@ -504,3 +504,12 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Diff del autor | Marcas `noqa: SEC-AUDITOR` en sus propios patrones, exención por línea en los 3 escáneres, stdout UTF-8 (Windows), `.mcp.json` fuera de FS-HIDDEN, `references/threat-model.md` (docs) |
 | Riesgo encontrado | Con la exención del autor, una skill ajena se eximía sola: una skill trampa (`os.system` + «ignore previous instructions», ambas marcadas) daba **PASS con 0 hallazgos** |
 | Parche propio | La exención vale solo dentro de la carpeta del auditor; en otra skill → hallazgo HIGH `SELF-SUPPRESSION` y la línea se escanea igual. Skill trampa: **FAIL, 4 hallazgos**. Auto-escaneo del auditor: PASS, 0 |
+
+## catálogo — `metodo` 0.16.3 — 2026-09-28 — PASS
+| Control | Resultado |
+|---|---|
+| Cambio | `/metodo:arrancar` paso «3 bis»: en la app de escritorio renombra solo la sesión propia (`set_session_title("self")`) con el número siguiente de su grupo; no toca un título que ya termina en número, no archiva ni toca otras sesiones; fuera de la app no hace nada |
+| Prueba real | En el entorno del autor: sesión nueva «Arrancar» → «<base> 40» tomando la anterior (archivada incluida, misma carpeta) |
+| Prueba en HOME temporal | Instala 0.16.3 desde el marketplace local; la skill trae el paso y su encabezado YAML es válido |
+| Dueño del producto | Aprobado (leyó el diff) |
+| `verificar-metadatos.sh` / validate / clientes | TODO COINCIDE · PASS · 0 |
