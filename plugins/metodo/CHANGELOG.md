@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.16.4 — 2026-09-28
+- `/metodo:arrancar`: si quedaron abiertas sesiones anteriores del mismo grupo (por ejemplo «Ventas 6» y «Ventas 7» cuando abrís la 8), te pregunta en una línea si las archiva. Solo las archiva si decís que sí, se pueden recuperar cuando quieras y nunca se borran.
+
 ## 0.16.3 — 2026-09-28
 - `/metodo:arrancar` le pone número a la sesión nueva en la app de escritorio. Si la anterior del mismo grupo se llamaba «Ventas 7», la nueva pasa a «Ventas 8». No toca un nombre que ya pusiste vos, y fuera de la app de escritorio no hace nada.
 

@@ -513,3 +513,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Prueba en HOME temporal | Instala 0.16.3 desde el marketplace local; la skill trae el paso y su encabezado YAML es válido |
 | Dueño del producto | Aprobado (leyó el diff) |
 | `verificar-metadatos.sh` / validate / clientes | TODO COINCIDE · PASS · 0 |
+
+## catálogo — `metodo` 0.16.4 — 2026-09-28 — PASS
+| Control | Resultado |
+|---|---|
+| Cambio | `/metodo:arrancar` paso «3 bis»: ofrece archivar las sesiones anteriores de la misma serie que no estén corriendo; archiva solo con un sí explícito, sin respuesta no toca nada, nunca elimina |
+| Dueño del producto | Decidió «pregunta, no automático» (con clientes nunca se infiere el sí) |
+| Prueba en HOME temporal | Instala 0.16.4; la skill trae la pregunta y su encabezado YAML es válido |
+| `verificar-metadatos.sh` / validate / clientes | TODO COINCIDE · PASS · 0 |

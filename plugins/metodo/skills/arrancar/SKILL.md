@@ -55,6 +55,11 @@ la anterior subiéndole el número («Ventas 7» → «Ventas 8»). Eso lo hace 
   carpeta (`cwd`)** —en un grupo pueden convivir series de carpetas distintas— y título `<base> <n>`.
 - Tomá la de `n` más alto y `set_session_title("self", "<base> <n+1>")`. Si no hay ninguna con número, no
   inventes una serie. Mencioná el nombre nuevo en la confirmación del paso 4 (una línea).
+- **Sesiones anteriores abiertas:** si en la misma serie (mismo grupo, misma carpeta, número menor) quedan
+  sesiones sin archivar que **no están corriendo**, sumá una sola línea a la confirmación del paso 4:
+  «Hay N sesiones anteriores de "<base>" abiertas (<n1>, <n2>…). ¿Las archivo? Se pueden recuperar cuando
+  quieras.» Archivá (`archive_session`) **solo si el usuario dice que sí**; sin respuesta no toques nada.
+  Nunca elimines una sesión. Esto vale también si el título ya tenía número.
 
 ### 4. Confirmar y arrancar
 Confirmale al usuario en 2-3 líneas: **"Leí el estado. El próximo paso es [X]. ¿Arrancamos?"**
