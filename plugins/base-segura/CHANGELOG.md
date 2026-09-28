@@ -1,5 +1,8 @@
 # base-segura — qué cambia para vos
 
+## 0.13.2 — 2026-09-27
+- Formato: `excel-analysis` y `planning-with-files` ahora cumplen las reglas de nombre y descripción de claude.ai (hacen lo mismo que antes). Así también se pueden usar en Cowork.
+
 ## 0.13.1 — 2026-09-27
 - Los agentes `critic` y `planner` y la skill `skill-creator` pasan a la versión nueva de sus autores. En los agentes, la mejora que se nota: la respuesta final siempre trae el veredicto completo, en vez de terminar con un «listo» vacío. Se usan igual que antes.
 

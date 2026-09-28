@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.16.2 — 2026-09-27
+- Formato: la descripción de `/metodo:crear-agente` cumple las reglas de claude.ai (hace lo mismo que antes).
+
 ## 0.16.1 — 2026-09-27
 - `/metodo:cowork` ahora encuentra también las skills que creás en la carpeta de tu proyecto (`<proyecto>/.claude/skills`), no solo en `~/.claude/skills`. Se suma una vez, a pedido. Si la misma skill está en las dos carpetas, no la sube hasta que quede una sola.
 - Si tu llave de GitHub solo abre repositorios elegidos, no puede crear uno nuevo. Ahora el camino normal es: creás el repositorio vacío y privado desde la web, y Claude lo conecta.

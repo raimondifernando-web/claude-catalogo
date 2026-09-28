@@ -1,5 +1,8 @@
 # escala-diseno-video — qué cambia para vos
 
+## 0.1.2 — 2026-09-27
+- Formato: la descripción de `hyperframes-audio` cumple las reglas de claude.ai (hace lo mismo que antes). Así también se puede usar en Cowork.
+
 ## 0.1.1 — 2026-09-27
 - **Corrección:** la 0.1.0 decía que HyperFrames venía con la telemetría apagada. No es así: se apaga cuando cargás `HYPERFRAMES_NO_TELEMETRY=1` y `DO_NOT_TRACK=1` en el bloque `env` de tu `~/.claude/settings.json` (paso del portal; detalle en `requisitos.md`).
 - **Nueva skill `video-content-strategist`:** estrategia de video para redes y YouTube (qué publicar, guiones, ganchos, formatos). No necesita nada extra.

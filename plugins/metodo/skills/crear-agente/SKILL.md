@@ -1,6 +1,6 @@
 ---
 name: crear-agente
-description: "Crea, modifica o archiva agentes en ~/.claude/agents/ (o en .claude/agents/ de la carpeta de trabajo). Usala cuando el usuario diga 'quiero un agente para X', 'creá un PM para mi empresa', 'un especialista en X', 'modificá el agente Y', o cuando una tarea se repite y siempre necesita el mismo rol y contexto. Usala TAMBIÉN cuando la pregunta sea qué modelo lleva un agente: 'qué modelo le pongo', '¿opus o sonnet?', 'está bien el modelo de este agente', 'qué modelo usan mis agentes', 'esto necesita opus', 'conviene fable acá' — el criterio está en templates/RUTEO-DE-MODELOS.md y no se contesta de memoria. Trae la plantilla de PM de empresa (pm-<empresa>) y la de especialista. Antes de crear, busca si ya existe."
+description: "Crea, modifica o archiva agentes en ~/.claude/agents/ (o en .claude/agents/ de la carpeta de trabajo). Usala cuando el usuario diga 'quiero un agente para X', 'creá un PM para mi empresa', 'un especialista en X', 'modificá el agente Y', o cuando una tarea se repite y siempre necesita el mismo rol y contexto. Usala TAMBIÉN cuando la pregunta sea qué modelo lleva un agente: 'qué modelo le pongo', '¿opus o sonnet?', 'está bien el modelo de este agente', 'qué modelo usan mis agentes', 'esto necesita opus', 'conviene fable acá' — el criterio está en templates/RUTEO-DE-MODELOS.md y no se contesta de memoria. Trae la plantilla de PM de empresa (pm-EMPRESA) y la de especialista. Antes de crear, busca si ya existe."
 ---
 
 # /metodo:crear-agente — Un agente por rol, no por capricho

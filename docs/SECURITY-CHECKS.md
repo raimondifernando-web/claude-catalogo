@@ -481,3 +481,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Cambios | `agregar-carpeta` (skills de `<proyecto>/.claude/skills`; nombre repetido en dos carpetas = no se sube) · camino «el repo ya existe» como normal en la skill · versión alineada |
 | Prueba en HOME temporal | casos de 0.16.0 + carpeta de proyecto + nombre repetido + clon vacío existente: OK |
 | `verificar-metadatos.sh` / validate / clientes | TODO COINCIDE (0.16.0 salió sin correrlo: ese fue el error) · PASS · 0 |
+
+## catálogo — formato de 4 skills: `base-segura` 0.13.2 · `escala-diseno-video` 0.1.2 · `metodo` 0.16.2 — 2026-09-27 — PASS
+| Control | Resultado |
+|---|---|
+| Cambio | Solo encabezado, sin tocar qué hacen: `excel-analysis` (name), `planning-with-files`, `hyperframes-audio`, `crear-agente` (sin `<`/`>` en la description) |
+| Piezas externas | Parche anotado para re-aplicar al actualizar: `ORIGEN.txt` (hyperframes-audio) y `nota:` en `CATALOGO.yaml` (excel-analysis, planning-with-files) |
+| Todo el catálogo contra las reglas de claude.ai | 0 skills fuera de formato |
+| `verificar-metadatos.sh` / validate / clientes | TODO COINCIDE · PASS · 0 |
