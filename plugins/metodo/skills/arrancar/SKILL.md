@@ -44,6 +44,18 @@ dejó. Este protocolo cuesta dos minutos y evita todo eso.
 - ¿Las herramientas que voy a usar están disponibles (plugins, conectores)? Si no: avisar, no simular.
 - Cualquier número que vayas a usar ("hay N archivos", "son N clientes") se cuenta ahora, no se recuerda.
 
+### 3 bis. Numerar la sesión (solo en la app de escritorio)
+Quien abre cada sesión nueva desde el «+» de un grupo de la barra lateral suele copiar a mano el nombre de
+la anterior subiéndole el número («Ventas 7» → «Ventas 8»). Eso lo hace este paso:
+- Si no están las herramientas de sesiones de la app (`ccd_session_mgmt`: terminal, Cowork, otra máquina) →
+  saltá este paso sin avisar.
+- `get_session("self")` → si el título YA termina en número, alguien lo nombró: no lo toques.
+- `list_sessions` con `group` = el grupo de esta sesión, `include_archived: true`, `limit: 50` (la anterior
+  casi siempre está archivada; sin eso la numeración vuelve atrás). Quedate con las que tienen **la misma
+  carpeta (`cwd`)** —en un grupo pueden convivir series de carpetas distintas— y título `<base> <n>`.
+- Tomá la de `n` más alto y `set_session_title("self", "<base> <n+1>")`. Si no hay ninguna con número, no
+  inventes una serie. Mencioná el nombre nuevo en la confirmación del paso 4 (una línea).
+
 ### 4. Confirmar y arrancar
 Confirmale al usuario en 2-3 líneas: **"Leí el estado. El próximo paso es [X]. ¿Arrancamos?"**
 Si el prompt ya trae el próximo paso definido y contexto suficiente, arrancá directo: la confirmación es
