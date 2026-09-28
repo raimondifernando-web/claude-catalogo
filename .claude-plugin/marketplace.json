@@ -63,7 +63,7 @@
       "name": "escala-diseno-video",
       "source": "./plugins/escala-diseno-video",
       "description": "Escala de diseño y video (L4): presentaciones, animaciones y videos cortos, prototipos de pantallas, infografías y arte generativo. huashu-design te muestra 3 direcciones antes de hacer nada; el set de video de HyperFrames viene sin actualizaciones solas (la telemetría se apaga con dos variables). 20 skills. Recomendado junto con base-segura.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "design",
       "tags": [
         "l4",

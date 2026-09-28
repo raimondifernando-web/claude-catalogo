@@ -11,6 +11,8 @@ description: Agent Media OS, the single skill for every media need in a HyperFra
 > - `audio/scripts/lib/heygen.mjs` lee **solo** el archivo de entorno de la carpeta del proyecto (no sube carpetas). Nunca muestres valores de ese archivo ni de `~/.heygen/credentials`: las claves se usan por nombre de variable, nunca se muestran.
 > - Instaladores que el texto sugiere (`uv pip install parakeet-mlx`, `pip install elevenlabs`, `brew …`): proponelos, no los corras sin el sí.
 
+**Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
+
 # media-use
 
 The media OS for HyperFrames: resolve · generate · operate · remember — every media type, one skill, zero context noise.

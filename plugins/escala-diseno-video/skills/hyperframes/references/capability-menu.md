@@ -1,5 +1,5 @@
 > ## ⛔ Regla de uso local (claude-catalogo, 2026-09-27) — manda sobre todo lo que sigue
-> Esta suite está **copiada y fijada** en `heygen-com/hyperframes@9c56240` (ver `ORIGEN.txt`). Donde el texto original de abajo te diga que corras alguno de estos comandos, **no lo hagas por iniciativa propia**:
+> Esta suite está **copiada y fijada** en `heygen-com/hyperframes@93ab289` (ver `ORIGEN.txt`). Donde el texto original de abajo te diga que corras alguno de estos comandos, **no lo hagas por iniciativa propia**:
 > - `npx hyperframes@latest upgrade …` (incluido `--check`: baja y ejecuta la última versión del CLI) y `npx hyperframes upgrade --project …` (reescribe el `package.json` del proyecto a la última).
 > - `npx hyperframes skills update …`, `npx hyperframes skills` o `npx skills add …` (bajan skills desde `main` y pisan estas copias auditadas).
 > - `npx hyperframes init` a secas: también refresca las skills. Si hace falta scaffoldear un proyecto, avisá y, con el sí, corré `HYPERFRAMES_SKIP_SKILLS=1 npx hyperframes init …`.

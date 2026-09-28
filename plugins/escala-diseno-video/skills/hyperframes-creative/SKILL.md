@@ -6,6 +6,8 @@ description: Non-animation creative direction for HyperFrames videos. Use for de
 > ## ⛔ Regla de uso local (claude-catalogo, 2026-09-27)
 > Copia fijada (ver `ORIGEN.txt`). Cuando una referencia diga `python3 -m http.server <puerto>` (p. ej. `references/design-picker.md`), corrélo **siempre con `--bind 127.0.0.1`** para no exponer la carpeta del proyecto a la red local: `python3 -m http.server 8723 --bind 127.0.0.1`. `scripts/package-loader.mjs` pide confirmación antes de bajar paquetes npm fijados: no setees `HYPERFRAMES_SKILL_BOOTSTRAP_DEPS=1` por tu cuenta.
 
+**Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
+
 # HyperFrames Creative
 
 Brand, pacing, style, narration, and composition direction. Use after the technical contract from `hyperframes-core` is in place.

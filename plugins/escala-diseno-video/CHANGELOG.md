@@ -1,5 +1,9 @@
 # escala-diseno-video — qué cambia para vos
 
+## 0.1.3 — 2026-09-28
+- **Set de video de HyperFrames al día** con la versión nueva del autor (`93ab289`). Lo que cambia para vos: la transcripción de audio (`media-use`) avisa mejor cuando falla y puede usar el modelo Parakeet del propio CLI si lo instalás (son unos 640 MB, te lo pregunta antes). Las demás skills solo suman una nota para un modo nuevo, «plugin», que este paquete no usa.
+- Siguen igual las reglas propias: no se actualizan solas, lo local va primero y te pregunta antes de mandar algo a un servicio en la nube.
+
 ## 0.1.2 — 2026-09-27
 - Formato: la descripción de `hyperframes-audio` cumple las reglas de claude.ai (hace lo mismo que antes). Así también se puede usar en Cowork.
 

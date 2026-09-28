@@ -6,6 +6,8 @@ description: "All animation knowledge for HyperFrames — atomic motion rules, m
 > ## ⛔ Regla de uso local (claude-catalogo, 2026-09-27)
 > Copia fijada (ver `ORIGEN.txt`). `adapters/animate-text.md` manda instalar `pixel-point/animate-text`: **es de terceros y no está auditada — no se instala sin auditoría** (skill-security-auditor) y el OK del usuario. Sin ella, usá las reglas y blueprints de esta skill. `scripts/package-loader.mjs` pide confirmación antes de bajar paquetes npm fijados: no setees `HYPERFRAMES_SKILL_BOOTSTRAP_DEPS=1` por tu cuenta.
 
+**Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
+
 # HyperFrames Animation
 
 All motion knowledge in one skill: **rules** (atomic recipes), **blueprints** (multi-phase scene templates), **transitions** (scene-to-scene), **techniques** (broader motion-design patterns), and **adapters** (per-runtime APIs).

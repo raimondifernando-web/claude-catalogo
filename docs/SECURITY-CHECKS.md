@@ -490,3 +490,10 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Todo el catálogo contra las reglas de claude.ai | 0 skills fuera de formato |
 | `/metodo:cowork` (hallazgo 4 del dueño del producto) | Con cero skills sube el esqueleto pendiente; probado con remoto vacío: sube y la corrida siguiente da «sin cambios» |
 | `verificar-metadatos.sh` / validate / clientes | TODO COINCIDE · PASS · 0 |
+
+### 2026-09-28 · escala-diseno-video 0.1.3 (HyperFrames 9c56240/627e947 → 93ab289)
+| Revisión | Resultado |
+|---|---|
+| Diff del autor en las 10 skills | Una línea de «Plugin installs» en cada SKILL.md; guía nueva `plugin-installation.md` + `plugin-cli.mjs` (lanzador del modo plugin: fija la versión del CLI y apaga las auto-actualizaciones; sin red propia, `spawnSync` sin shell); `media-use`: transcripción por el Parakeet del CLI y mejores errores; `resolve.mjs` delega al CLI solo en modo plugin |
+| Merge de 3 vías sobre las copias parcheadas | Conflictos solo en el bloque «Regla de uso local»: se conservan los dos textos; parches de `bgm.mjs` y `heygen.mjs` intactos |
+| Organización | heygen-com (fabricante) · Apache-2.0 · sin dependencias nuevas |
