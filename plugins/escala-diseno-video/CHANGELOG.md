@@ -1,5 +1,8 @@
 # escala-diseno-video — qué cambia para vos
 
+## 0.1.4 — 2026-09-28
+- **Corrección importante:** para apagar la telemetría de HyperFrames alcanza con `HYPERFRAMES_NO_TELEMETRY=1`. La versión anterior pedía además `DO_NOT_TRACK=1`, pero Claude Code también lee esa variable, y con ella deja de funcionar **Remote Control**: no ves ni manejás tus sesiones desde el celular. **Si la cargaste, sacala** del bloque `env` de `~/.claude/settings.json` y reabrí la app.
+
 ## 0.1.3 — 2026-09-28
 - **Set de video de HyperFrames al día** con la versión nueva del autor (`93ab289`). Lo que cambia para vos: la transcripción de audio (`media-use`) avisa mejor cuando falla y puede usar el modelo Parakeet del propio CLI si lo instalás (son unos 640 MB, te lo pregunta antes). Las demás skills solo suman una nota para un modo nuevo, «plugin», que este paquete no usa.
 - Siguen igual las reglas propias: no se actualizan solas, lo local va primero y te pregunta antes de mandar algo a un servicio en la nube.
