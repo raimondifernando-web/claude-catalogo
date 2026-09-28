@@ -36,7 +36,7 @@
     {
       "name": "metodo",
       "source": "./plugins/metodo",
-      "description": "Método de trabajo (L3): /metodo:arrancar, /metodo:planear, /metodo:criticar (sin adular), /metodo:cerrar (handoff + prompt de reanudación + sube el avance en un solo gesto), /metodo:crear-agente (PM de empresa y especialistas, con el criterio para elegir el modelo de cada uno), /metodo:otra-sesion (dos sesiones a la vez sin pisarse), /metodo:darwin-skill (revisa y mejora tus skills; siempre en una copia aparte), /metodo:vigia (avisa al abrir la sesión si hay versiones nuevas de lo instalado; aplica lo revisado que no rompe, pregunta lo demás; se apaga en un paso) + 15 reglas. /cerrar deja REANUDAR.md y /arrancar lo levanta solo (sin pegar el texto de arranque). El .gitignore de fábrica ignora .omc/ (estado de oh-my-claudecode-fixed).",
+      "description": "Método de trabajo (L3): /metodo:arrancar, /metodo:planear, /metodo:criticar (sin adular), /metodo:cerrar (handoff + prompt de reanudación + sube el avance en un solo gesto), /metodo:crear-agente (PM de empresa y especialistas, con el criterio para elegir el modelo de cada uno), /metodo:otra-sesion (dos sesiones a la vez sin pisarse), /metodo:darwin-skill (revisa y mejora tus skills; siempre en una copia aparte), /metodo:vigia (avisa al abrir la sesión si hay versiones nuevas de lo instalado; aplica lo revisado que no rompe, pregunta lo demás; se apaga en un paso), /metodo:cowork (tus skills propias en Cowork sin subirlas a mano) + 15 reglas. /cerrar deja REANUDAR.md y /arrancar lo levanta solo (sin pegar el texto de arranque). El .gitignore de fábrica ignora .omc/ (estado de oh-my-claudecode-fixed).",
       "version": "0.15.2",
       "category": "productivity",
       "tags": [

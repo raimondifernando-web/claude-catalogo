@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.16.0 — 2026-09-27
+- **Nueva: `/metodo:cowork`, para usar tus skills propias en Cowork sin subirlas a mano.** Si subías una skill desde la web de Claude, quedaba como una copia suelta: la cambiabas en Claude Code y Cowork seguía con la vieja. Ahora le pedís a Claude «publicá mi skill en Cowork» y él la copia a un repositorio privado tuyo en GitHub, la revisa y la sube. Cowork la toma de ahí, siempre en la última versión.
+- **Te cuida de dos errores:** si una skill está mal armada, no la sube y te dice qué tiene (una sola mal armada hacía fallar todas en Cowork). Si encuentra algo con forma de clave, no sube nada.
+- **La primera vez hay un paso tuyo en Cowork:** agregar el repositorio como marketplace. Claude te da la dirección exacta. Necesita `gh` (la herramienta de GitHub) con tu sesión iniciada: detalle en `requisitos.md`.
+
 ## 0.15.2 — 2026-09-27
 - Vigía: si corregís la ruta de origen de una pieza en tu catálogo, el aviso viejo se cierra en la corrida siguiente. Antes podía quedar colgado hasta 30 días.
 

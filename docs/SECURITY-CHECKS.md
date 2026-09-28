@@ -465,3 +465,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Pieza nueva | `video-content-strategist` (alirezarezvani/claude-skills@19392f7, MIT, 26.6k★): `skill-security-auditor` PASS, 0 hallazgos; sin datos propios |
 | Fuera, con motivo | `lottie` (borrada por el autor, reemplazada por el Core Set) · `remotion-to-hyperframes` (el autor la pasó a flujo de trabajo, no es skill) |
 | Instalación limpia / `verificar-metadatos.sh` / clientes | 20 skills · TODO COINCIDE · 0 |
+
+## catálogo — `metodo` 0.16.0 (`/metodo:cowork`) — 2026-09-27 — PASS
+| Control | Resultado |
+|---|---|
+| Pieza nueva | `skills/cowork` + `scripts/cowork/cowork-publicar.py`: propios, versión genérica del sincronizador que usa el mantenedor; sin rutas ni cuentas propias |
+| Qué sale de la máquina | Solo las skills marcadas `sync: cowork`, a un repositorio privado del usuario (`gh repo create --private`, verificado antes de subir). No copia archivos de entorno (salvo `.example`), `.git`, `node_modules`, entornos ni `.omc`; frena si hay algo con forma de clave |
+| Prueba en HOME temporal | sin configuración · preparar · skill mal formada omitida · frenado por clave sin ensuciar el repo · archivo de entorno no copiado · versión sube sola · sin PyYAML · push a remoto: OK. Se encontraron y corrigieron 2 fallas antes de publicar (la limpieza tras un frenado borraba el esqueleto; al subir la versión se vaciaba `marketplace.json`) |
+| `claude plugin validate` / clientes | PASS · 0 |

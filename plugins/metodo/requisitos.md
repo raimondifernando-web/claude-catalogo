@@ -1,12 +1,14 @@
 # metodo — qué necesita tu computadora
 
-**Casi nada.** Las 8 skills (`/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar`, `/metodo:cerrar`, `/metodo:crear-agente`, `/metodo:otra-sesion`, `/metodo:darwin-skill`, `/metodo:vigia`) funcionan con Claude Code, sin claves. La única pieza que corre sola es el **vigía de actualizaciones** (abajo), y necesita Python 3.
+**Casi nada.** Las 9 skills (`/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar`, `/metodo:cerrar`, `/metodo:crear-agente`, `/metodo:otra-sesion`, `/metodo:darwin-skill`, `/metodo:vigia`, `/metodo:cowork`) funcionan con Claude Code, sin claves. La única pieza que corre sola es el **vigía de actualizaciones** (abajo), y necesita Python 3.
 
 `/metodo:darwin-skill` usa **git** para guardar o deshacer cada mejora, y trabaja **siempre en una copia aparte** (`git worktree`), nunca en la carpeta que usan tus otras sesiones. Tiene un script opcional que arma una imagen con el resultado: solo corre si tenés Playwright (`npm install -g playwright-core`). Sin eso, todo lo demás funciona igual.
 
 Lo único que usan `/metodo:cerrar` (guardar y subir el avance) y `/metodo:otra-sesion` (segunda sesión en su propia copia) es **git**, que viene con las herramientas de desarrollo de Apple que ya instalaste para `base-segura`. El chequeo del catálogo lo verifica. Plantilla `templates/gitignore-estudio`: qué NO sube al repositorio por defecto (claves, documentos de clientes, archivos pesados).
 
 Atajos: si no tenés otras skills con esos nombres, `/arrancar` y `/cerrar` a secas también funcionan. `/cerrar` deja `REANUDAR.md` en tu carpeta de trabajo y `/arrancar` lo lee solo: no hace falta pegar el texto de arranque.
+
+`/metodo:cowork` (publicar tus skills en Cowork) necesita **Python 3**, **git** y **`gh`** (la herramienta de GitHub, `brew install gh`) con tu sesión iniciada (`gh auth login`, lo hacés vos). Crea un repositorio **privado** en tu cuenta de GitHub, solo para esto: tus skills salen de tu computadora hacia ese repositorio y hacia Cowork, nada más. Sin `gh`, lo demás funciona igual.
 
 Si igual querés ver el estado de tu equipo, corré el chequeo del catálogo (`docs/CHEQUEO.md`).
 
