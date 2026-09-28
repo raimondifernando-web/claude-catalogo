@@ -69,10 +69,10 @@ The script will automatically detect the `.env` file and provide clear error mes
 
 ## Model Selection
 
-**Default model**: `google/gemini-3-pro-image-preview` (high quality, recommended)
+**Default model**: `google/gemini-3-pro-image` (high quality, recommended)
 
 **Available models for generation and editing**:
-- `google/gemini-3-pro-image-preview` - High quality, supports generation + editing
+- `google/gemini-3-pro-image` - High quality, supports generation + editing
 - `black-forest-labs/flux.2-pro` - Fast, high quality, supports generation + editing
 
 **Generation only**:
@@ -126,7 +126,7 @@ python scripts/generate_image.py "Image 2 description" --output image2.png
 
 - `prompt` (required): Text description of the image to generate, or editing instructions
 - `--input` or `-i`: Input image path for editing (enables edit mode)
-- `--model` or `-m`: OpenRouter model ID (default: google/gemini-3-pro-image-preview)
+- `--model` or `-m`: OpenRouter model ID (default: google/gemini-3-pro-image)
 - `--output` or `-o`: Output file path (default: generated_image.png)
 - `--api-key`: OpenRouter API key (overrides .env file)
 
@@ -172,6 +172,7 @@ If the script fails, read the error message and address the issue before retryin
 ## Notes
 
 - Images are returned as base64-encoded data URLs and automatically saved as PNG files
+- Retención cero (parche local, ver `ORIGEN.txt`): el script pide `provider.zdr` a OpenRouter cuando el modelo tiene endpoint ZDR (lista pública https://openrouter.ai/api/v1/endpoints/zdr). Si no lo tiene, genera igual e imprime una línea «Aviso: …»; pasásela al usuario tal cual.
 - The script supports both `images` and `content` response formats from different OpenRouter models
 - Generation time varies by model (typically 5-30 seconds)
 - For image editing, the input image is encoded as base64 and sent to the model

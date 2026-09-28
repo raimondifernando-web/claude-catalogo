@@ -3,7 +3,7 @@
 Generate and edit images using OpenRouter API with various image generation models.
 
 Supports models like:
-- google/gemini-3-pro-image-preview (generation and editing)
+- google/gemini-3-pro-image (generation and editing)
 - black-forest-labs/flux.2-pro (generation and editing)
 - black-forest-labs/flux.2-flex (generation)
 - And more image generation models available on OpenRouter
@@ -11,6 +11,7 @@ Supports models like:
 For image editing, provide an input image along with an editing prompt.
 """
 
+import os
 import sys
 import json
 import base64
@@ -18,9 +19,15 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # parche local ZDR (ver ORIGEN.txt)
+from openrouter_zdr import provider_for  # noqa: E402  parche local ZDR
+
 
 def check_env_file() -> Optional[str]:
     """Check if .env file exists and contains OPENROUTER_API_KEY."""
+    env_key = os.environ.get("OPENROUTER_API_KEY", "").strip()  # parche local: variable de entorno (ver ORIGEN.txt)
+    if env_key:
+        return env_key
     # Look for .env in current directory and parent directories
     current_dir = Path.cwd()
     for parent in [current_dir] + list(current_dir.parents):
@@ -74,7 +81,7 @@ def save_base64_image(base64_data: str, output_path: str) -> None:
 
 def generate_image(
     prompt: str,
-    model: str = "google/gemini-3-pro-image-preview",
+    model: str = "google/gemini-3-pro-image",
     output_path: str = "generated_image.png",
     api_key: Optional[str] = None,
     input_image: Optional[str] = None
@@ -84,7 +91,7 @@ def generate_image(
 
     Args:
         prompt: Text description of the image to generate, or editing instructions
-        model: OpenRouter model ID (default: google/gemini-3-pro-image-preview)
+        model: OpenRouter model ID (default: google/gemini-3-pro-image)
         output_path: Path to save the generated image
         api_key: OpenRouter API key (will check .env if not provided)
         input_image: Path to an input image for editing (optional)
@@ -140,6 +147,8 @@ def generate_image(
         print(f"📝 Prompt: {prompt}")
         message_content = prompt
 
+    provider = provider_for(model)  # parche local ZDR (ver ORIGEN.txt)
+
     # Make API request
     response = requests.post(
         url="https://openrouter.ai/api/v1/chat/completions",
@@ -155,7 +164,8 @@ def generate_image(
                     "content": message_content
                 }
             ],
-            "modalities": ["image", "text"]
+            "modalities": ["image", "text"],
+            **({"provider": provider} if provider else {}),  # parche local ZDR
         }
     )
 
@@ -212,7 +222,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Generate with default model (Gemini 3 Pro Image Preview)
+  # Generate with default model (Gemini 3 Pro Image)
   python generate_image.py "A beautiful sunset over mountains"
 
   # Use a specific model
@@ -228,7 +238,7 @@ Examples:
   python generate_image.py "Add a hat to the person" --input portrait.png -m "black-forest-labs/flux.2-pro"
 
 Popular image models:
-  - google/gemini-3-pro-image-preview (default, high quality, generation + editing)
+  - google/gemini-3-pro-image (default, high quality, generation + editing)
   - black-forest-labs/flux.2-pro (fast, high quality, generation + editing)
   - black-forest-labs/flux.2-flex (development version)
         """
@@ -243,8 +253,8 @@ Popular image models:
     parser.add_argument(
         "--model", "-m",
         type=str,
-        default="google/gemini-3-pro-image-preview",
-        help="OpenRouter model ID (default: google/gemini-3-pro-image-preview)"
+        default="google/gemini-3-pro-image",
+        help="OpenRouter model ID (default: google/gemini-3-pro-image)"
     )
 
     parser.add_argument(

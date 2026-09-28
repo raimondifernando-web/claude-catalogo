@@ -13,6 +13,9 @@ from pathlib import Path
 from markitdown import MarkItDown
 from openai import OpenAI
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # parche local ZDR (ver ORIGEN.txt)
+from openrouter_zdr import with_zdr  # noqa: E402  parche local ZDR
+
 
 # Predefined prompts for different use cases
 PROMPTS = {
@@ -95,6 +98,7 @@ def convert_with_ai(
             api_key=api_key,
             base_url="https://openrouter.ai/api/v1"
         )
+        client = with_zdr(client, model)  # parche local ZDR (ver ORIGEN.txt)
         
         # Select prompt
         if custom_prompt:

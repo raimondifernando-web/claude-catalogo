@@ -167,6 +167,8 @@ result = md.convert("presentation.pptx")
 print(result.text_content)
 ```
 
+> Retención cero (parche local, ver `ORIGEN.txt`): preferí `scripts/convert_with_ai.py`, que pide `provider.zdr` a OpenRouter cuando el modelo tiene endpoint ZDR y, si no, avisa en una línea «Aviso: …» (pasásela al usuario). Si armás el cliente a mano, envolvelo: `from openrouter_zdr import with_zdr; client = with_zdr(client, modelo)`.
+
 ### 2. Azure Document Intelligence
 
 For enhanced PDF conversion with Microsoft Document Intelligence:

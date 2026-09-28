@@ -1,0 +1,21 @@
+origen: github:davila7/claude-code-templates//cli-tool/components/skills/scientific/generate-image@2fe0cfa
+copiado: 2026-09-27 (copia fija). En claude-catalogo el SKILL.md lleva además el bloque «Antes de usar esta skill» del catálogo.
+parche local 2026-09-28 (pedido de Consultoría IA, retención cero de OpenRouter). Re-aplicar cuando el vigía traiga una versión nueva:
+  1. Archivo nuevo, propio: scripts/openrouter_zdr.py (idéntico al de markitdown). Consulta https://openrouter.ai/api/v1/endpoints/zdr
+     (pública, sin clave) una vez por ejecución, con caché de 10 min en ~/.cache/openrouter-zdr/ y tolerante a caídas de red.
+  2. scripts/generate_image.py, 3 enganches marcados «parche local ZDR»:
+     - tras los imports: sys.path.insert(...) + from openrouter_zdr import provider_for
+     - antes de «# Make API request»: provider = provider_for(model)
+     - en el json del POST: **({"provider": provider} if provider else {})
+     Efecto: si el modelo tiene endpoint ZDR va provider {"zdr": true} (doc: https://openrouter.ai/docs/guides/features/zdr);
+     si no, sale igual que antes y se imprime «Aviso: este modelo (X) no tiene modo sin retención; …».
+     No se manda zdr a un modelo sin endpoint ZDR porque OpenRouter lo filtra y responde 404 en vez de caer a otro.
+  3. Modelo por defecto: google/gemini-3-pro-image-preview → google/gemini-3-pro-image en script y SKILL.md
+     (reemplazo global del id y de «Gemini 3 Pro Image Preview»). El -preview (2025-11-20) sigue listado pero solo en
+     Google AI Studio, sin ZDR; el GA (canonical gemini-3-pro-image-20260528) tiene endpoint ZDR en Vertex.
+  4. SKILL.md: una línea en «Notes» que explica el aviso.
+licencia: MIT (repo de origen).
+
+- 2026-09-28 · `scripts/generate_image.py`, `check_env_file()`: lee también `OPENROUTER_API_KEY` de la variable de entorno
+  antes de buscar `.env` (el chequeo de requisitos del catálogo acepta la variable; sin esto el script fallaba igual).
+  Re-aplicar si el origen no lo trae. + `import os`.

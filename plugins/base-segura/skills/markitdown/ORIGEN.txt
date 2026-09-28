@@ -1,0 +1,14 @@
+origen: github:davila7/claude-code-templates//cli-tool/components/skills/scientific/markitdown@2fe0cfa
+copiado: 2026-09-27 (copia fija). En claude-catalogo el SKILL.md lleva además el bloque «Antes de usar esta skill» del catálogo.
+parche local 2026-09-28 (pedido de Consultoría IA, retención cero de OpenRouter). Re-aplicar cuando el vigía traiga una versión nueva:
+  1. Archivo nuevo, propio: scripts/openrouter_zdr.py (idéntico al de generate-image). Consulta https://openrouter.ai/api/v1/endpoints/zdr
+     (pública, sin clave) una vez por ejecución, con caché de 10 min en ~/.cache/openrouter-zdr/ y tolerante a caídas de red.
+  2. scripts/convert_with_ai.py, 2 enganches marcados «parche local ZDR»:
+     - tras los imports: sys.path.insert(...) + from openrouter_zdr import with_zdr
+     - después de crear el cliente OpenAI: client = with_zdr(client, model)
+     with_zdr envuelve el cliente para que cada chat.completions.create que hace MarkItDown lleve extra_body
+     {"provider": {"zdr": true}} si el modelo tiene endpoint ZDR (doc: https://openrouter.ai/docs/guides/features/zdr);
+     si no, devuelve el cliente sin tocar y se imprime «Aviso: este modelo (X) no tiene modo sin retención; …».
+  3. SKILL.md: una línea después del ejemplo «AI-Enhanced Image Descriptions» (usar el script o envolver el cliente).
+  batch_convert.py y convert_literature.py no llaman a OpenRouter: sin cambios.
+licencia: MIT (repo de origen).
