@@ -211,6 +211,33 @@ if [ -n "$BUZON" ]; then
   fi
 fi
 
+# 6c. Lista de repos del chequeo de seguridad mensual (paquete metodo): se arma sola, sin pasos a mano.
+#     Suma los repos de GitHub que están en la carpeta personal (un nivel) y en ~/Proyectos, más el del buzón.
+#     No mira Documentos, Escritorio ni Descargas (macOS pediría permiso). Solo agrega; nunca saca ni cambia lo que hay.
+local SP; SP=$(ls -d "$CC"/plugins/cache/claude-catalogo/metodo/*/scripts/seguridad.py 2>/dev/null | sort -V | tail -1)
+if [ -n "$SP" ] && xcode-select -p >/dev/null 2>&1; then
+  local cand=() d u
+  for d in "$HOME"/*/ "$HOME"/Proyectos/*/; do
+    case "$d" in "$HOME/Documents/"|"$HOME/Desktop/"|"$HOME/Downloads/"|"$HOME/Library/"|"$HOME/Pictures/"|"$HOME/Movies/"|"$HOME/Music/") continue;; esac
+    [ -d "$d/.git" ] || continue
+    u=$(git -C "$d" config --get remote.origin.url 2>/dev/null)
+    case "$u" in https://github.com/*|git@github.com:*) cand+=("${d%/}");; esac
+  done
+  local BJ="$CC/metodo/buzon.json" bc
+  [ -f "$BJ" ] && bc=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("carpeta",""))' "$BJ" 2>/dev/null) && [ -n "$bc" ] && [ -d "$bc/.git" ] && cand+=("$bc")
+  for d in ${cand[@]+"${cand[@]}"}; do
+    /usr/bin/python3 - "$CC/metodo/seguridad.json" "$d" <<'PY' >/dev/null 2>&1 && /usr/bin/python3 "$SP" agregar "$d" >/dev/null 2>&1
+import json, os, sys
+from pathlib import Path
+cfg, ruta = Path(sys.argv[1]), Path(sys.argv[2]).resolve()
+if not cfg.is_file(): sys.exit(0)                      # no hay lista: agregar
+try: repos = json.load(open(cfg)).get("repos", [])
+except Exception: sys.exit(1)                         # lista rota: no tocar
+sys.exit(1 if any(Path(os.path.expanduser(str(r.get("ruta","")))).resolve() == ruta for r in repos) else 0)
+PY
+  done
+fi
+
 # 7. Una sola línea final (también queda guardada para el aviso al abrir sesión)
 echo
 if [ ${#falta[@]} -eq 0 ]; then

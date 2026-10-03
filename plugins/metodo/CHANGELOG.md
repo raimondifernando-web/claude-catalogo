@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.19.0 — 2026-10-03
+- Regla 19: una pieza por función; antes de crear una skill o un agente, Claude se fija si ya existe uno que haga lo mismo. Nunca borra skills para hacer lugar. Te llega sola a tu ficha, sin tocar lo tuyo.
+- **Nuevo: el mapa de tu código, a pedido.** Parado en un proyecto, le decís a Claude «mapeá este repo» y arma el mapa de Graphify en el orden seguro: el mapa nunca se sube, no toca la configuración general de tu computadora y guarda solo `.gitignore` y `CLAUDE.md`. Es el modo gratis (solo código, sin IA). Necesita Graphify 0.9.65, la versión revisada; si falta o tenés otra, te dice en una línea el comando para ponerla.
+- **Nuevo: chequeo de seguridad mensual de tus repositorios.** Una vez por mes, en segundo plano, revisa los repos que anotaste: claves con permisos abiertos o guardadas en el repositorio, `.gitignore`, repositorio público, flujos de GitHub sin fijar. Solo mira, no cambia nada, y nunca muestra el valor de una clave. Si algo falla, al abrir Claude te aparece una línea: avisale a quien te acompaña. Para sumar un repo: «sumá este repo al chequeo de seguridad». Sin lista, no hace nada.
+- El radar se actualiza solo cuando cambian las fuentes públicas, con controles: solo cambia la lista, pasa las pruebas antes y, si algo no cierra, espera a que lo revise una persona.
+
 ## 0.18.1 — 2026-10-03
 - **El radar suma fuentes** (Design Arena, EQ-Bench, Open ASR y más pruebas de Artificial Analysis). Programar y escritura ya tienen el orden respaldado por dos rankings independientes. Cambia el orden donde los datos lo pedían: para transcribir, primero ElevenLabs; para documentos largos, primero Claude.
 

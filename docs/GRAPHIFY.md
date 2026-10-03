@@ -66,9 +66,19 @@ rehace solo en segundo plano (se corta solo a los 10 minutos, no se queda colgad
 Se saca entero: `graphify uninstall` deja la configuración y los enganches como estaban; `graphify uninstall
 --purge` borra además el mapa; y `uv tool uninstall graphifyy` saca el programa.
 
-## Instalar
+## Lo más fácil: «mapeá este repo»
+Con el paquete `metodo` (0.19.0 o más), parado en tu proyecto le pedís a Claude **«mapeá este repo»** y corre
+`metodo/scripts/graphify-en-repo`: hace los pasos de abajo en el orden seguro (regla en el `.gitignore` del proyecto,
+comprobación, instalación en la carpeta, mapa gratis, enganches a `settings.local.json`) y guarda solo `.gitignore` y
+`CLAUDE.md`, por nombre. No toca la configuración general de git de tu computadora y no sube nada. Exige Graphify
+**0.9.65**, la versión revisada acá: con otra, para y te dice el comando para ponerla. Termina en una línea («Listo ✓» o
+«Falta: … ✗»).
+Lo que queda fijado es Graphify; las librerías que trae adentro las elige el instalador (`uv`) al instalar. Es un riesgo
+aceptado y anotado (revisión de seguridad de `metodo` 0.19.0): el código revisado es el de Graphify 0.9.65.
+
+## Instalar a mano
 ```
-uv tool install graphifyy          # una sola vez en la computadora
+uv tool install graphifyy==0.9.65  # una sola vez en la computadora (la versión revisada)
 cd <tu proyecto>
 # regla 1, antes que nada: si tu .gitignore no es el de fábrica del kit, copiale el bloque «Graphify»
 git check-ignore -v graphify-out/x .claude/settings.local.json

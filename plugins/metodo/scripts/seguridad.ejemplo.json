@@ -1,0 +1,6 @@
+{
+  "repos": [
+    {"ruta": "~/mi-repo", "claves": ["NOMBRE_DE_LA_CLAVE"]},
+    {"ruta": "~/otro-repo", "publico": true, "distribucion": true}
+  ]
+}

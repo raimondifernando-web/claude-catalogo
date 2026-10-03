@@ -1,7 +1,7 @@
 {
   "name": "escala-desarrollo",
-  "version": "0.13.0",
-  "description": "Capa L4, para cuando empezás a desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive, investigación profunda en 3 etapas) y 13 agentes. Revisores: code-reviewer y security-reviewer, que revisan tu app entera antes de usarla con clientes y explican en castellano qué puede pasar y en qué orden arreglarlo. Para construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer y documentation-engineer. Para decidir: product-manager y technology-scout (¿lo hago o lo compro?). Investigación: research-analyst, data-researcher y knowledge-synthesizer, que arman research-deep-dive. Pedile a Claude: «revisá mi app con los dos revisores» o «investigación profunda sobre X».",
+  "version": "0.14.0",
+  "description": "Capa L4, para cuando empezás a desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive, investigación profunda en 3 etapas) y 14 agentes. Revisores: code-reviewer y security-reviewer, que revisan tu app entera antes de usarla con clientes y explican en castellano qué puede pasar y en qué orden arreglarlo. Para construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer y documentation-engineer. Para decidir: product-manager y technology-scout (¿lo hago o lo compro?). Investigación: research-analyst, data-researcher y knowledge-synthesizer, que arman research-deep-dive, y scientific-literature-researcher para estudios publicados. Pedile a Claude: «revisá mi app con los dos revisores» o «investigación profunda sobre X».",
   "author": {
     "name": "Fernando Raimondi"
   },
