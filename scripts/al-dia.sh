@@ -6,6 +6,9 @@
 main() {
 set -u
 local CAT=claude-catalogo REPO=raimondifernando-web/claude-catalogo
+local BUZON=""
+while [ $# -gt 0 ]; do case "$1" in --buzon) BUZON="${2:-}"; shift; [ $# -gt 0 ] && shift;; *) shift;; esac; done
+if [ -n "$BUZON" ] && ! [[ $BUZON =~ ^[A-Za-z0-9-]+/[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; then echo "✗ El nombre del buzón no es válido. Mandale esta captura a Fernando."; return 1; fi
 local falta=() paquetes=()
 N=""; T=""
 trap 'rm -f "${N:-}" "${T:-}"' EXIT
@@ -62,9 +65,10 @@ done
 #     markitdown pide Python 3.10 o más: va con uv (Astral), en su propio Python, sin contraseña.
 local PY=/usr/bin/python3 UVV=0.12.19 MDV=0.1.8 UV="$HOME/.local/bin/uv"
 grep -qsF '$HOME/.local/bin' ~/.zshrc || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH";; esac
 if ! xcode-select -p >/dev/null 2>&1; then
   xcode-select --install >/dev/null 2>&1
-  falta+=("herramientas de Apple: en la ventana que se abrió tocá Instalar, esperá a que termine y volvé a pegar este comando")
+  falta+=("⟳ herramientas de Apple: en la ventana que se abrió tocá Instalar y esperá a que termine")
 else
   "$PY" -m pip install --user --quiet --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
     pandas==2.3.3 openpyxl==3.1.5 requests==2.32.5 openai==2.48.0 >/dev/null 2>&1
@@ -75,6 +79,43 @@ else
     "$UV" tool list 2>/dev/null | grep -qx "markitdown v$MDV" || "$UV" tool install --force --quiet --python 3.12 "markitdown[all]==$MDV" >/dev/null 2>&1
     "$UV" tool list 2>/dev/null | grep -qx "markitdown v$MDV" || falta+=("markitdown")
   else falta+=("markitdown (no pude instalar uv)"); fi
+fi
+
+# 5e. Node.js en tu carpeta de usuario (sin contraseña): descarga oficial de nodejs.org, versión fija, huella verificada
+local NODEV=v24.21.0 NA ND NT NSHA NPMG="$HOME/.local/share/npm-global"
+case "$(uname -m)" in
+  arm64) NA=arm64; NSHA=bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057;;
+  *)     NA=x64;   NSHA=1462cb3b3046b815cf8ea436d3da450ec1a9f11dac7e5a46b0ada5305d7e8097;;
+esac
+ND="$HOME/.local/share/node-$NODEV-darwin-$NA"
+if ! command -v node >/dev/null 2>&1; then
+  if [ ! -x "$ND/bin/node" ]; then
+    NT=$(mktemp -d)
+    if curl -fsSL -o "$NT/n.tgz" "https://nodejs.org/dist/$NODEV/node-$NODEV-darwin-$NA.tar.gz" \
+       && [ "$(shasum -a 256 "$NT/n.tgz" | cut -d' ' -f1)" = "$NSHA" ]; then
+      mkdir -p "$HOME/.local/share" && tar -xzf "$NT/n.tgz" -C "$HOME/.local/share"
+    fi
+    rm -rf "$NT"
+  fi
+  if [ -x "$ND/bin/node" ]; then
+    mkdir -p "$HOME/.local/bin"
+    for b in node npm npx; do ln -sf "$ND/bin/$b" "$HOME/.local/bin/$b"; done
+  fi
+fi
+command -v node >/dev/null 2>&1 || falta+=("Node.js (no pude instalarlo solo)")
+
+# 5f. Codex de OpenAI (la misma versión que usa Fernando). Lo que le pases sale a OpenAI con TU cuenta de ChatGPT.
+local CXV=0.158.0
+if command -v node >/dev/null 2>&1; then
+  if [ "$(codex --version 2>/dev/null)" != "codex-cli $CXV" ]; then
+    npm install -g --silent --prefix "$NPMG" "@openai/codex@$CXV" >/dev/null 2>&1
+    if [ -x "$NPMG/bin/codex" ] && { [ ! -e "$HOME/.local/bin/codex" ] || [ "$(readlink "$HOME/.local/bin/codex")" = "$NPMG/bin/codex" ]; }; then
+      ln -sf "$NPMG/bin/codex" "$HOME/.local/bin/codex"
+    fi
+  fi
+  if [ "$(codex --version 2>/dev/null)" = "codex-cli $CXV" ]; then
+    codex login status >/dev/null 2>&1 || echo "· Codex instalado. Para usarlo, una vez: en la Terminal escribí  codex login  (con tu cuenta de ChatGPT). Lo que le pases sale a OpenAI."
+  else falta+=("Codex"); fi
 fi
 
 # 5c. Datos de uso de HyperFrames: apagados (solo esa variable; nunca una general como DO_NOT_TRACK)
@@ -121,14 +162,32 @@ if [ -f "$F" ]; then
   fi
 else falta+=("reglas del método (no llegó el paquete metodo)"); fi
 
+# 6b. Buzón con Fernando (solo si el comando trae --buzon dueño/repo)
+if [ -n "$BUZON" ]; then
+  local BD="$HOME/${BUZON#*/}" BP
+  [ -d "$BD/.git" ] || GIT_TERMINAL_PROMPT=0 git clone -q "https://github.com/$BUZON.git" "$BD" >/dev/null 2>&1
+  if [ -d "$BD/.git" ] && [ "$(git -C "$BD" config --get remote.origin.url 2>/dev/null)" != "https://github.com/$BUZON.git" ]; then
+    falta+=("buzón: la carpeta ~/${BUZON#*/} ya existe y es otro repositorio")
+  elif [ -d "$BD/.git" ]; then
+    BP=$(find "$HOME/.claude/plugins/cache/claude-catalogo/metodo" -name buzon.py 2>/dev/null | sort -V | tail -1)
+    if [ -n "$BP" ] && GIT_TERMINAL_PROMPT=0 /usr/bin/python3 "$BP" configurar --carpeta "$BD" --yo cliente >/dev/null 2>&1; then :
+    else falta+=("configurar el buzón"); fi
+  else
+    falta+=("⟳ buzón: aceptá en GitHub el repositorio ${BUZON#*/} (te llegó un mail), sumalo a tu llave e invitá a Fernando")
+  fi
+fi
+
 # 7. Una sola línea final
 echo
 if [ ${#falta[@]} -eq 0 ]; then
-  echo "Todo al día ✓  ($okp paquetes · $R reglas del método · Python y librerías · actualización automática prendida)"
+  echo "Todo al día ✓  ($okp paquetes · $R reglas del método · Python, Node y Codex · actualización automática prendida)"
   echo "Cerrá Claude Code y volvé a abrirlo para que tome lo nuevo."
 else
-  printf 'Falta: %s ✗\n' "$(printf '%s, ' "${falta[@]}" | sed 's/, $//')"
-  echo "Mandale esta captura a Fernando. No lo repitas hasta que te conteste."
+  local x rep=1
+  for x in "${falta[@]}"; do [ "${x#⟳}" != "$x" ] || rep=0; done
+  printf 'Falta: %s ✗\n' "$(printf '%s, ' "${falta[@]}" | sed 's/⟳ //g; s/, $//')"
+  if [ $rep -eq 1 ]; then echo "Cuando lo hagas, pegá este mismo comando otra vez."
+  else echo "Mandale esta captura a Fernando. No lo repitas hasta que te conteste."; fi
 fi
 }
 main "$@"

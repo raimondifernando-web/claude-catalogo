@@ -565,3 +565,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Regla 17 | Texto del dueño del producto (un solo comando para lo que se le pide a otro) |
 | `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |
 | Buzón (`/metodo:buzon`, mismo 0.16.6) | Programado en sesión Nube según `docs/specs/BUZON.md`; revisado por Orquesta: 24 tests OK también en macOS, `subprocess` solo con listas (sin shell), sin red salvo `git fetch` con tope de 3 s, escaneo de claves antes de cada commit (frena sin mostrar el valor), lo recibido se muestra como dato y cada acción pide «sí». `skill-security-auditor` PASS. Falta: prueba real con repo privado y dos cuentas (primer cliente) |
+
+### 2026-10-03 · `al-dia.sh` v3 (Node, Codex, buzón)
+| Ítem | Resultado |
+|---|---|
+| Suma | Node v24.21.0 desde nodejs.org en la carpeta del usuario, sin contraseña, con huella SHA-256 fija (Orquesta la comparó con `SHASUMS256.txt` oficial: coincide arm64 y x64) · Codex CLI 0.158.0 por npm en prefijo propio, no pisa un `codex` existente, avisa que lo que se le pasa sale a OpenAI · alta del buzón con `--buzon dueño/repo` (validado por regex; el nombre del cliente va en su portal, no en el catálogo); clona por HTTPS sin pedir contraseña y exige que el `origin` coincida |
+| Revisión | Dueño del producto: 0 críticos/altos, 5 hallazgos arreglados. Orquesta leyó el diff entero |
+| A verificar | Que la app de escritorio del cliente vea `~/.local/bin` en el PATH (hooks del plugin codex) |
+| OK | Fernando (decisión «Codex sí, buzón opción 1; Orquesta la publica») |
