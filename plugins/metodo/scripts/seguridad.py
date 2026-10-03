@@ -70,10 +70,10 @@ def es_archivo_de_claves(nombre):
     return nombre == ".env" or nombre.startswith(".env.") or nombre.endswith(".env")
 
 
-def archivos_env(raiz):
+def archivos_env(raiz, saltear=SALTEAR):
     hallados = []
     for carpeta, subcarpetas, archivos in os.walk(str(raiz), followlinks=False):
-        subcarpetas[:] = [d for d in subcarpetas if d not in SALTEAR]
+        subcarpetas[:] = [d for d in subcarpetas if d not in saltear]
         for a in archivos:
             p = Path(carpeta) / a
             if es_archivo_de_claves(a) and p.is_file() and not p.is_symlink():
@@ -112,11 +112,14 @@ def claves_por_nombre(archivos, nombres):
 
 
 def gitignore_env(raiz):
-    p = raiz / ".gitignore"
-    if not p.is_file():
+    if not (raiz / ".gitignore").is_file():
         return item("GIT-001", "FLAG", "no hay .gitignore")
-    lineas = {l.strip().lstrip("/") for l in p.read_text(errors="ignore").splitlines()}
-    ok = bool(lineas & {".env", ".env*", "*.env", ".env.*", "**/.env", "**/.env*"})
+    # le pregunta a git (respeta «!» y comodines); solo vale una regla de un .gitignore del proyecto
+    r = git(raiz, "check-ignore", "-v", "--no-index", "--", ".env")
+    salida = r.stdout.decode("utf-8", "replace") if r.returncode == 0 else ""
+    regla = salida.split("\t", 1)[0]
+    fuente, patron = regla.split(":", 1)[0], regla.split(":", 2)[-1]
+    ok = bool(salida) and fuente.endswith(".gitignore") and not fuente.startswith("/") and not patron.startswith("!")
     return item("GIT-001", "PASS" if ok else "FLAG", "regla para .env presente" if ok else "sin regla para .env")
 
 
@@ -141,10 +144,10 @@ def github(raiz, publico_a_proposito):
     if re.search(r"(?i)^https?://[^/\s]*@", url):
         return item("GH-001", "FLAG", "la dirección del repositorio lleva usuario o clave incrustados")
     m = re.search(r"github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$", url, re.IGNORECASE)
-    if not m:
+    if not m or not re.match(r"[A-Za-z0-9]", m.group(1)):
         return item("GH-001", "NA", "el repositorio no está en GitHub")
     try:
-        p = subprocess.run(["gh", "repo", "view", m.group(1), "--json", "isPrivate"], stdout=subprocess.PIPE,
+        p = subprocess.run(["gh", "repo", "view", "--json", "isPrivate", "--", m.group(1)], stdout=subprocess.PIPE,
                            stderr=subprocess.DEVNULL, timeout=30, check=False,
                            env=dict(os.environ, GH_PROMPT_DISABLED="1", GH_NO_UPDATE_NOTIFIER="1"))
         privado = json.loads(p.stdout.decode() or "{}").get("isPrivate") if p.returncode == 0 else None
@@ -185,7 +188,8 @@ def revisar_repo(spec):
     items = [item("REPO-001", "PASS", "repositorio encontrado"), permisos_env(env), claves_por_nombre(env, claves),
              gitignore_env(raiz), guardados_sensibles(raiz), github(raiz, bool(spec.get("publico"))), *flujos(raiz)]
     if spec.get("distribucion"):
-        items.append(item("DIST-001", "FLAG" if env else "PASS", "{} archivo(s) .env".format(len(env))))
+        todos = archivos_env(raiz, saltear={".git", "node_modules"})   # dist/ y build/ son justo lo que se reparte
+        items.append(item("DIST-001", "FLAG" if todos else "PASS", "{} archivo(s) .env".format(len(todos))))
     return {"nombre": nombre, "items": items}
 
 
@@ -252,7 +256,7 @@ def correr(cfg, salida):
     escribir(carpeta / "resumen.json", json.dumps({"fecha": fecha, "repos": revisados}, ensure_ascii=False, indent=2) + "\n")
     fallas = [(r["nombre"], i["id"]) for r in revisados for i in r["items"] if i["estado"] == "FLAG"]
     if fallas:
-        detalle = "; ".join("{}: {}".format(n, QUE_ES.get(cid, cid)) for n, cid in fallas[:3])
+        detalle = "; ".join("{}: {}".format(nombre_seguro(n)[:40], QUE_ES.get(cid, cid)) for n, cid in fallas[:3])
         mas = " y {} más".format(len(fallas) - 3) if len(fallas) > 3 else ""
         linea = "{} ✗ ({}{}). Informe: {}".format(len(fallas), detalle, mas, carpeta)
     else:

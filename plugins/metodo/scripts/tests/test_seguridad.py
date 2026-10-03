@@ -140,6 +140,18 @@ class SeguridadPyTest(Base):
         res = (self.metodo / "seguridad.resultado").read_text()
         self.assertIn("1 ✗ (no-existe: no encontré la carpeta", res)
 
+    def test_negacion_en_gitignore_y_env_dentro_de_dist(self):
+        r = self.repo_limpio("mi-repo")
+        (r / ".gitignore").write_text(".env\n!.env\n")
+        (r / "dist").mkdir()
+        (r / "dist" / ".env").write_text("X=1\n")
+        self.lista([{"ruta": "~/mi-repo", "distribucion": True}])
+        self.py("correr")
+        resumen = next((self.metodo / "seguridad").glob("*/resumen.json"))
+        estados = {i["id"]: i["estado"] for i in json.loads(resumen.read_text())["repos"][0]["items"]}
+        self.assertEqual(estados["GIT-001"], "FLAG")
+        self.assertEqual(estados["DIST-001"], "FLAG")
+
     def test_lista_rota_deja_aviso(self):
         (self.metodo / "seguridad.json").write_text("{ esto no es json")
         rc, out = self.py("correr")

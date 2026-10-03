@@ -73,6 +73,8 @@ comprobación, instalación en la carpeta, mapa gratis, enganches a `settings.lo
 `CLAUDE.md`, por nombre. No toca la configuración general de git de tu computadora y no sube nada. Exige Graphify
 **0.9.65**, la versión revisada acá: con otra, para y te dice el comando para ponerla. Termina en una línea («Listo ✓» o
 «Falta: … ✗»).
+Lo que queda fijado es Graphify; las librerías que trae adentro las elige el instalador (`uv`) al instalar. Es un riesgo
+aceptado y anotado (revisión de seguridad de `metodo` 0.19.0): el código revisado es el de Graphify 0.9.65.
 
 ## Instalar a mano
 ```

@@ -53,6 +53,7 @@ ignorado_por_el_repo() {
 }
 
 # 1. La regla en el .gitignore del proyecto
+[ -L .gitignore ] && falta ".gitignore es un enlace a otro lado; no lo toco"
 [ -f .gitignore ] && [ -n "$(tail -c1 .gitignore)" ] && echo >> .gitignore
 if ! grep -qxF 'graphify-out/' .gitignore 2>/dev/null; then
   printf '\n# Graphify: mapa local del código. Nunca se sube (contiene textos sacados del código).\ngraphify-out/\n.graphifyignore\n.claude/skills/graphify/\n*.graphify-bak\n' >> .gitignore
