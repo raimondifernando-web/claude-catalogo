@@ -1,6 +1,6 @@
 {
   "name": "rubro-finanzas-legal",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pack de rubro (L2): finanzas y legal en Argentina — CFO para pymes, finanzas personales en pesos y dólares, trámites del auto, y guía de compraventa de empresas (M&A) con marco argentino (4 skills). Orientativo: no reemplaza a un contador ni a un abogado. Requiere base-segura.",
   "author": {
     "name": "Fernando Raimondi"

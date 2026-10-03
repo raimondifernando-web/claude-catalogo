@@ -324,7 +324,7 @@
       "name": "rubro-conocimiento",
       "source": "./plugins/rubro-conocimiento",
       "description": "Pack de rubro (L2): gestión del conocimiento — capturar y organizar notas, reuniones e investigaciones en Notion y en Obsidian (bases, CLI y markdown) (6 skills). Requiere base-segura.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "productivity",
       "tags": [
         "l2",
@@ -336,7 +336,7 @@
       "name": "rubro-finanzas-legal",
       "source": "./plugins/rubro-finanzas-legal",
       "description": "Pack de rubro (L2): finanzas y legal en Argentina — CFO para pymes, finanzas personales en pesos y dólares, trámites del auto, y guía de compraventa de empresas (M&A) con marco argentino (4 skills). Orientativo: no reemplaza a un contador ni a un abogado. Requiere base-segura.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "productivity",
       "tags": [
         "l2",
@@ -348,7 +348,7 @@
       "name": "rubro-marketing",
       "source": "./plugins/rubro-marketing",
       "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (37 skills). Requiere base-segura.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "productivity",
       "tags": [
         "l2",
