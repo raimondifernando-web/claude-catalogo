@@ -578,3 +578,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Ítem | Resultado |
 |---|---|
 | Radar (`/metodo:radar`, metodo 0.17.0) | Revisión final Opus (critic): seguridad sin hallazgos que frenen (workflow con permisos mínimos, inputs validados y por `env`, acciones fijadas por sha verificado con `git ls-remote`; claves solo por nombre). Bloqueos de imparcialidad corregidos: orden provisorio salvo que cada plan cite 2 fuentes independientes; retiros «no antes de» ya no se pierden; PR automático en rama fija `radar/auto` con tests antes de abrirlo; caché escrita en forma atómica. 62 tests OK · verificar-metadatos TODO COINCIDE · clientes 0 |
+
+### 2026-10-03 · escala-desarrollo 0.13.0 + rubro-marketing 0.2.0 (9 agentes para el cliente)
+| Ítem | Resultado |
+|---|---|
+| Origen | 7 de VoltAgent/awesome-claude-code-subagents (MIT, 25.4K★, activo) · 2 de rohitg00/awesome-claude-code-toolkit (Apache-2.0, 2.6K★): Orquesta los leyó enteros, puro texto (Mand. XVI, tercer camino) |
+| Cambios | Sin datos propios; `marketing-analyst` sin `mcp__memory`; las skills que nombran están en el catálogo |
+| Fuera | `scientific-literature-researcher`: depende del MCP de bgpt.pro (tercero no auditado) |
+| `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |

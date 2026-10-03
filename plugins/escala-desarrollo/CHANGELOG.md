@@ -1,5 +1,8 @@
 # escala-desarrollo
 
+## 0.13.0 — 2026-10-03
+- **8 agentes nuevos.** Para construir: `python-pro`, `javascript-pro`, `sql-pro`, `data-analyst`, `prompt-engineer` y `documentation-engineer`. Para decidir: `product-manager` (qué hacer primero) y `technology-scout` (¿lo hago o lo compro?, qué herramienta conviene). Los llamás pidiéndoselo a Claude, por ejemplo «que python-pro arme el script» o «technology-scout: ¿qué uso para X?».
+
 ## 0.12.3 — 2026-10-03
 - Sincronizadas skills desde ~/.claude/skills.
 
