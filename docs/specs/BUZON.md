@@ -38,4 +38,4 @@ ida y vuelta, mensaje con clave falsa → frena, sin config → no hace nada, ho
 ## Entregable
 Rama `orquesta/buzon` con skill + script + tests verdes + plantilla de consentimiento + `docs/BUZON.md` para el usuario
 (en castellano, sin jerga) + entrada en CHANGELOG de metodo (versión la fija el dueño). **Sin push a main.**
-`scripts/verificar-metadatos.sh` en verde; `git grep -i -c -E 'ebras|\bdani\b'` = 0.
+`scripts/verificar-metadatos.sh` en verde; el chequeo de nombres de clientes da 0.
