@@ -18,7 +18,7 @@ Rama `orquesta/radar-modelos`, sin publicar. Spec: `RADAR-SPEC.md`. Datos inicia
   Versión del plugin sin tocar. `vigia-tests.yml` ahora también corre ante cambios del radar.
 
 ## Pruebas
-- `test_radar.py`: 32 tests, sin red. Con `test_buzon.py`: 59 en `plugins/metodo/scripts/tests`, todos verdes. Vigía: 87 verdes.
+- `test_radar.py`: 35 tests, sin red. Con `test_buzon.py`: 59 en `plugins/metodo/scripts/tests`, todos verdes. Vigía: 87 verdes.
 - Cubre: A agotado → B, `--sensible` salta el gratis, modelo retirado y prueba vencida, sin red usa caché, JSON válido,
   `probar` sin imprimir la clave, análisis de fuentes (sin novedad no toca nada, #1, retiro, precio +20%/+10%, tabla),
   el programa principal solo escribe ante cambio, y el workflow (sha fijados, permisos, no mergea).
