@@ -1,6 +1,6 @@
 # metodo — qué necesita tu computadora
 
-**Casi nada.** Las 9 skills (`/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar`, `/metodo:cerrar`, `/metodo:crear-agente`, `/metodo:otra-sesion`, `/metodo:darwin-skill`, `/metodo:vigia`, `/metodo:cowork`) funcionan con Claude Code, sin claves. La única pieza que corre sola es el **vigía de actualizaciones** (abajo), y necesita Python 3.
+**Casi nada.** Las 10 skills (`/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar`, `/metodo:cerrar`, `/metodo:crear-agente`, `/metodo:otra-sesion`, `/metodo:darwin-skill`, `/metodo:vigia`, `/metodo:cowork`, `/metodo:buzon`) funcionan con Claude Code, sin claves. Lo que corre solo al abrir la sesión es el **vigía de actualizaciones** (abajo), que necesita Python 3, y, solo si lo configuraste, el aviso del **buzón**.
 
 `/metodo:darwin-skill` usa **git** para guardar o deshacer cada mejora, y trabaja **siempre en una copia aparte** (`git worktree`), nunca en la carpeta que usan tus otras sesiones. Tiene un script opcional que arma una imagen con el resultado: solo corre si tenés Playwright (`npm install -g playwright-core`). Sin eso, todo lo demás funciona igual.
 
@@ -9,6 +9,10 @@ Lo único que usan `/metodo:cerrar` (guardar y subir el avance) y `/metodo:otra-
 Atajos: si no tenés otras skills con esos nombres, `/arrancar` y `/cerrar` a secas también funcionan. `/cerrar` deja `REANUDAR.md` en tu carpeta de trabajo y `/arrancar` lo lee solo: no hace falta pegar el texto de arranque.
 
 `/metodo:cowork` (publicar tus skills en Cowork) necesita **Python 3**, **git** y **`gh`** (la herramienta de GitHub, `brew install gh`) con tu sesión iniciada (`gh auth login`, lo hacés vos). Crea un repositorio **privado** en tu cuenta de GitHub, solo para esto: tus skills salen de tu computadora hacia ese repositorio y hacia Cowork, nada más. Sin `gh`, lo demás funciona igual.
+
+`/metodo:buzon` (el buzón con quien te acompaña) es opcional y necesita **Python 3**, **git** y una **cuenta de GitHub**
+con acceso al repositorio privado del buzón (te invita quien te acompaña). `gh` ayuda a clonarlo, pero no es
+obligatorio. Sin configurarlo no hace nada: ni red ni git. Qué viaja y qué no: `docs/BUZON.md` del catálogo.
 
 Si igual querés ver el estado de tu equipo, corré el chequeo del catálogo (`docs/CHEQUEO.md`).
 

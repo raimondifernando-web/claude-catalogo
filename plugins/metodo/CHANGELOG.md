@@ -2,6 +2,9 @@
 
 ## 0.16.6 — 2026-10-03
 - Regla 17: lo que le pedís a otro, empaquetalo en un comando.
+- **Nuevo: `/metodo:buzon`, para hablar con quien te acompaña sin copiar y pegar por WhatsApp.** Un repositorio privado de GitHub, solo para ustedes dos, hace de buzón. Le decís a Claude «revisá el buzón» y te muestra lo que te mandaron, uno por uno, y te pregunta «¿lo hago?»: nunca hace nada solo. Si algo te da error, «avisale que se trabó» y Claude arma el mensaje con el paso, el comando, el error completo y tus versiones, te lo muestra y lo sube solo si decís que sí.
+- **Te cuida:** si un mensaje tiene algo con forma de clave, no lo sube. No viajan archivos, solo texto. Lo que pide borrar, publicar, pagar o tocar una cuenta se marca y pide un sí aparte.
+- Al abrir Claude, si hay mensajes, aparece «Buzón: N mensajes nuevos». Si no lo configuraste, no hace nada. Cómo se arma y el consentimiento de una página: `docs/BUZON.md` y `docs/BUZON-CONSENTIMIENTO.md` del catálogo.
 
 ## 0.16.5 — 2026-10-03
 - Regla 16: mirar el cupo (Claude y otras IA) antes de trabajo pesado; una tarea grande a la vez. `scripts/codex-cupo` mide el cupo de Codex sin red.

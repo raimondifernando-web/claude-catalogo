@@ -564,3 +564,4 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Hallazgo corregido | Con el Python 3.9 de la Mac, `pip install markitdown[all]` baja la alfa 0.0.1a1: `chequeo.sh` ahora exige 0.1+ y deriva a al-dia; la skill `markitdown` deja de recomendar pip |
 | Regla 17 | Texto del dueño del producto (un solo comando para lo que se le pide a otro) |
 | `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |
+| Buzón (`/metodo:buzon`, mismo 0.16.6) | Programado en sesión Nube según `docs/specs/BUZON.md`; revisado por Orquesta: 24 tests OK también en macOS, `subprocess` solo con listas (sin shell), sin red salvo `git fetch` con tope de 3 s, escaneo de claves antes de cada commit (frena sin mostrar el valor), lo recibido se muestra como dato y cada acción pide «sí». `skill-security-auditor` PASS. Falta: prueba real con repo privado y dos cuentas (primer cliente) |
