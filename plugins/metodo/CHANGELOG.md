@@ -3,7 +3,7 @@
 ## 0.17.0 — 2026-10-03
 - **Nuevo: `/metodo:radar`, qué IA conviene usar para cada cosa, con plan B y C.** Programar, revisar código, diseño, escribir en castellano, investigar en la web, documentos largos, imágenes, video, transcripción, voz, planillas, tareas baratas y agentes de tarea larga: cada una con un plan A, un B y un C. Le decís a Claude «¿qué uso para esto?» y te da el primero que esté disponible: si el A tiene el cupo de Codex agotado, el modelo ya se retiró o no admite datos privados, pasa al B y te avisa por qué.
 - Regla 18: para elegir qué IA usar, consultá el radar; nunca de memoria.
-- Un PR automático del catálogo mira fuentes públicas (rankings, precios y retiros) y propone cambios al radar; una persona los aprueba, nunca se aplican solos. Al arrancar, `/metodo:arrancar` avisa en una línea si el radar tiene más de 14 días o se acerca el retiro de un modelo que usamos.
+- Cada tanto, el catálogo revisa fuentes públicas (rankings, precios y retiros de modelos) y propone cambios al radar; una persona los aprueba, nunca se aplican solos. Al arrancar, `/metodo:arrancar` avisa en una línea si el radar tiene más de 14 días o se acerca el retiro de un modelo que usamos.
 - **Imparcial:** el orden no sale de preguntarle a una IA ni de lo que dice cada fabricante, sino de rankings de terceros. Mientras una categoría no tenga al menos 2 que lo respalden, te avisa «orden provisorio».
 - Lo marcado «[a verificar]» viene de una investigación que todavía no se leyó de primera mano: sirve para decidir, no para citar como cifra.
 
