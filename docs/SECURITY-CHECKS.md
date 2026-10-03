@@ -547,3 +547,12 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Cambio | Regla 16 del método (mirar el cupo antes de trabajo pesado; una tarea grande a la vez) + `metodo/scripts/codex-cupo` (lee los registros locales de Codex, sin red, sin claves). `requisitos.md` reales en los 3 rubros nuevos (observación del dueño del producto) |
 | Código nuevo | `codex-cupo`: bash, solo lee `~/.codex/sessions/*.jsonl` y busca un porcentaje; no imprime contenido ni claves |
 | `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |
+
+### 2026-10-03 · `scripts/al-dia.sh` (comando único del cliente)
+| Ítem | Resultado |
+|---|---|
+| Qué es | Un comando que deja al cliente al día: catálogo, actualización automática (con copia de settings), todos los paquetes, reglas del método entre marcas (copia con fecha; si no coincide, no toca). Idempotente, todo dentro de `main()` |
+| Revisión | `security-reviewer` (dueño del producto): 0 críticos, medios y bajos arreglados. Orquesta lo leyó entero antes de publicar |
+| A saber | Cambia `url.https://github.com/.insteadOf` global de git solo si no hay SSH, y lo avisa con cómo deshacerlo. Instala los 22 paquetes del marketplace (13 de terceros fijados por commit) |
+| Pendiente (ALTO, del catálogo) | `main` sin protección de rama + actualización automática: decisión de Fernando aparte |
+| Dueño del producto | Pedido (`2026-10-03-consultoria-pedido-al-dia-sh.md`); OK de Fernando en el chat |
