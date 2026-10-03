@@ -48,3 +48,15 @@ el ranking top 5 y los avisos de retiro. Hasta que exista M4: `radar.py html` ge
 Tests con fuentes simuladas (sin red): elegir salta A agotado → B; `--sensible` salta el gratis; sin red usa caché;
 json válido; el workflow arma el PR solo ante cambios relevantes. `verificar-metadatos.sh` verde; 0 nombres de clientes.
 Rama `orquesta/radar-modelos`, sin publicar.
+
+## 7. Imparcialidad (pedido del dueño, 2026-10-03: «debe ser imparcial; si le preguntás a Claude te va a decir que es el mejor, lo mismo a Gemini»)
+1. **Ningún modelo opina el orden.** El A/B/C sale de datos de terceros, nunca de preguntarle a una IA (tampoco a la
+   que arma o revisa el radar). El script ordena con reglas fijas y reproducibles sobre esos datos.
+2. **Datos del fabricante no cuentan para el orden** (blogs, model cards, anuncios propios). Solo sirven para
+   precios, ids y fechas de retiro. Campo `tipo_fuente: independiente | fabricante`; el orden usa solo independientes.
+3. **Mínimo dos fuentes independientes por categoría.** Con una sola, el plan queda `verificado: false` y lo dice.
+4. **Conflictos de interés declarados** por fuente (ej. Arena vende evaluaciones a los labs que rankea; Scale le da datos
+   a los labs) en la tabla de fuentes.
+5. **La evidencia propia pesa más** cuando exista (el Cerebro mide costo, éxito y tiempo en tareas reales del usuario).
+6. Revisión cruzada: los datos los confirma alguien distinto de quien los cargó, comparando contra la fuente (link y fecha
+   por dato).
