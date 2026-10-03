@@ -1,7 +1,12 @@
 # Radar de modelos: lee fuentes PÚBLICAS (sin claves, sin IA) y, solo si hay un cambio relevante, abre un PR con el diff
-# de plugins/metodo/radar/RADAR.yaml. NUNCA mergea: lo aprueba una persona.
+# de plugins/metodo/radar/RADAR.yaml y lo publica solo (decisión del dueño, 2026-10-03: «automático, de forma segura»).
 #   - diario  (retiros y precios): LiteLLM, OpenRouter, models.dev y las tablas de las páginas de retiros
 #   - semanal (rankings): dataset de Arena en Hugging Face
+# Se publica solo si TODO esto se cumple; si algo falla, el PR queda abierto para una persona:
+#   1. el commit toca únicamente RADAR.yaml y RADAR.md (datos, nunca programas; los clientes los leen con un lector
+#      propio que no ejecuta nada) · 2. radar.py los lee y los tests pasan · 3. el cambio no borra más de la mitad del
+#      archivo · 4. la credencial de escritura existe solo en el último paso (no mientras se leen páginas de terceros).
+# El orden A/B/C de cada categoría NO lo toca este robot: se escribe a mano (spec §7).
 # Requiere, en Settings > Actions > General, «Allow GitHub Actions to create and approve pull requests».
 name: radar
 
@@ -30,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: true   # hace falta para empujar la rama del PR
+          persist-credentials: false  # la credencial se pone recién en el último paso
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
@@ -70,10 +75,30 @@ jobs:
           git checkout -B "$rama"
           git add plugins/metodo/radar/RADAR.yaml plugins/metodo/radar/RADAR.md
           git commit -m "radar: actualización automática de fuentes públicas"
-          git push --force origin "$rama"
+
+          # Guardias para publicar solo (si alguna falla, el PR se abre igual y queda para una persona).
+          publicar=si
+          fuera="$(git diff --name-only HEAD~1 HEAD | grep -v -x -E 'plugins/metodo/radar/RADAR\.(yaml|md)' || true)"
+          if [ -n "$fuera" ]; then
+            publicar=no; echo "::warning::el cambio toca archivos que no son datos del radar; queda para revisión"
+          fi
+          antes=$(git show HEAD~1:plugins/metodo/radar/RADAR.yaml | wc -l)
+          ahora=$(wc -l < plugins/metodo/radar/RADAR.yaml)
+          if [ "$ahora" -lt $((antes / 2)) ]; then
+            publicar=no; echo "::warning::RADAR.yaml pasa de $antes a $ahora líneas; queda para revisión"
+          fi
+
+          # Recién acá existe la credencial de escritura (no mientras se leyeron páginas de terceros).
+          gh auth setup-git
+          git push --force "https://github.com/${GITHUB_REPOSITORY}.git" "$rama"
           if gh pr view "$rama" --json state --jq .state 2>/dev/null | grep -qx OPEN; then
             gh pr edit "$rama" --body-file "$RUNNER_TEMP/motivo.md"
           else
             gh pr create --base "$BASE" --head "$rama" \
               --title "radar: cambios en las fuentes públicas" --body-file "$RUNNER_TEMP/motivo.md"
+          fi
+          if [ "$publicar" = si ]; then
+            # Si main cambió mientras tanto y no se puede unir limpio, falla sin publicar y el PR queda abierto.
+            gh pr merge "$rama" --squash \
+              || echo "::warning::no se pudo publicar solo; el PR queda abierto para una persona"
           fi

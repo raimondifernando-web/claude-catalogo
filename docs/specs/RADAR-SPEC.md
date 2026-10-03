@@ -32,7 +32,7 @@ Nunca falla el arranque; sin red, usa lo último guardado.
 `.github/workflows/radar.yml` + `scripts/radar-fuentes.py`: semanal (rankings) y diario (retiros/precios), SOLO fuentes
 públicas sin clave (dataset de Arena en HF, CSV de Epoch, JSON de LiteLLM, models.dev, OpenRouter /models, páginas de
 retiros). Si cambia el #1 de una categoría, se anuncia el retiro de un modelo nombrado o un precio sube >20% → abre un
-PR con el diff de `RADAR.yaml` y el motivo. **Nunca mergea solo.** Sin IA, sin claves.
+PR con el diff de `RADAR.yaml` y el motivo, y lo publica solo si pasa las guardias (solo datos del radar, tests OK, no borra más de la mitad; credencial de escritura solo en el último paso). Si una falla, el PR queda para una persona. Decisión del dueño 2026-10-03: «automático con protecciones». Sin IA, sin claves.
 
 ## 4. Lo que leen las sesiones
 - Regla 18 del método (texto corto): «Para elegir qué IA usar, consultá `radar.py elegir <categoría>`; si el plan A no
