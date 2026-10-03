@@ -66,7 +66,7 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
 ## Cuando elegís qué IA usar (regla 18)
 
 18. **Para elegir qué IA usar, consultá el radar; nunca de memoria.** Corré
-    `python3 "$(find ~/.claude/plugins/cache/claude-catalogo/metodo -name radar.py | sort -V | tail -1)" elegir <categoría>`
+    `python3 "$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name radar.py | sort -V | tail -1)" elegir <categoría>`
     (con `--sensible` si hay datos privados). Te devuelve el primer plan disponible: si el A no está (cupo agotado, modelo
     retirado o no disponible para tu cuenta), usá el B o el C que te indica. `ver` muestra todas las categorías con sus
     planes A, B y C.

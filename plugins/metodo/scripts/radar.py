@@ -40,11 +40,12 @@ RADAR_EMPAQUETADO = AQUI.parent / "radar" / "RADAR.yaml"
 CODEX_CUPO = AQUI / "codex-cupo"
 URL_PUBLICADO = "https://raw.githubusercontent.com/raimondifernando-web/claude-catalogo/main/plugins/metodo/radar/RADAR.yaml"
 DIAS_VIEJO = 14
+DIAS_SIN_CAMBIOS = 30   # datos publicados sin moverse en un mes: el actualizador automático puede estar roto
 MIN_INDEPENDIENTES = 2   # spec §7.3: con menos, el orden A/B/C de la categoría es provisorio
 DIAS_RETIRO_AVISO = 45
 DIAS_PRUEBA_VALIDA = 30
 TIMEOUT_RED = 20
-MAX_BYTES = 8 * 1024 * 1024
+MAX_BYTES = 32 * 1024 * 1024   # models.dev ya pesa ~5 MB
 
 # Claves por referencia: solo el NOMBRE de la variable de entorno. El valor nunca se imprime ni se guarda.
 CLAVES = {"Anthropic": "ANTHROPIC_API_KEY", "OpenAI": "OPENAI_API_KEY", "Google": "GEMINI_API_KEY"}
@@ -392,13 +393,20 @@ def respaldo(c):
     """Cuántas fuentes independientes respaldan el orden A/B/C de la categoría (spec §7.2-3). Las del fabricante
     (`tipo: fabricante`) no cuentan: sirven para precios, ids y retiros, nunca para el orden."""
     indep = [ev for ev in c.get("evidencia") or [] if str(ev.get("tipo", "")).strip() == "independiente"]
-    return len(indep), len(indep) >= MIN_INDEPENDIENTES
+    nombres = {str(ev.get("fuente", "")).strip() for ev in indep}
+    # §7.1: el A/B/C todavía se escribe a mano. Para no ser provisorio, CADA plan tiene que citar en `respaldo`
+    # alguna evidencia independiente de la categoría; contar fuentes sueltas no alcanza.
+    planes = c.get("planes") or []
+    citados = all(any(str(x).strip() in nombres for x in (p.get("respaldo") or [])) for p in planes) if planes else False
+    return len(indep), len(indep) >= MIN_INDEPENDIENTES and citados
 
 
 def texto_respaldo(c):
     n, ok = respaldo(c)
     if ok:
         return "Orden respaldado por %d fuentes independientes." % n
+    if n >= MIN_INDEPENDIENTES:
+        return "Orden PROVISORIO: hay %d fuentes independientes, pero no todos los planes se apoyan en ellas." % n
     return "Orden PROVISORIO: %d de %d fuentes independientes." % (n, MIN_INDEPENDIENTES)
 
 
@@ -457,10 +465,13 @@ def aviso_linea(radar):
     partes = []
     # Viejo = nadie lo comprobó en DIAS_VIEJO días. Si los datos no cambiaron pero `actualizar` confirmó que es lo
     # último publicado, no es viejo: sin esto, cualquier quincena tranquila disparaba el aviso para siempre.
-    f = max((x for x in (a_fecha(radar.get("actualizado")), ultima_comprobacion()) if x), default=None)
+    datos = a_fecha(radar.get("actualizado"))
+    f = max((x for x in (datos, ultima_comprobacion()) if x), default=None)
     if f is None or (hoy() - f).days > DIAS_VIEJO:
         partes.append("el radar de modelos tiene %s (corré «radar.py actualizar»)" % (
             "fecha desconocida" if f is None else "%d días" % (hoy() - f).days))
+    elif datos and (hoy() - datos).days > DIAS_SIN_CAMBIOS:
+        partes.append("los datos del radar no cambian hace %d días: tomalo con cuidado" % (hoy() - datos).days)
     prox = retiros_proximos(radar)
     if prox:
         r, donde = prox[0]
@@ -559,7 +570,10 @@ def actualizar(abrir_url=None):
         if not (isinstance(nuevo, dict) and nuevo.get("categorias")):
             raise ValueError("el archivo bajado no tiene categorías")
         destino.parent.mkdir(parents=True, exist_ok=True)
-        destino.write_text(cuerpo.decode("utf-8"), encoding="utf-8")
+        # escritura atómica: otra sesión en paralelo nunca lee el archivo a medias
+        tmp = destino.with_name(".RADAR.yaml.%d.tmp" % os.getpid())
+        tmp.write_text(cuerpo.decode("utf-8"), encoding="utf-8")
+        os.replace(tmp, destino)
         (destino.parent / "comprobado").write_text(hoy().isoformat(), encoding="utf-8")
         return True, "Radar actualizado (datos del %s)." % nuevo.get("actualizado", "?")
     except Exception as ex:
@@ -611,11 +625,13 @@ def probar(radar, abrir_url=None, entorno=None):
                           {"x-goog-api-key": entorno[CLAVES[prov]], "Content-Type": "application/json"},
                           json.dumps({"contents": [{"parts": [{"text": "hola"}]}]}).encode())
             except urllib.error.HTTPError as ex:
-                if ex.code == 404:
-                    resultado[m] = {"disponible": False, "motivo": "404: no disponible para cuentas nuevas", "fecha": fecha}
-                    continue
-            except Exception:
-                pass
+                # solo el 404 prueba que no está; cualquier otro error (401, 403, 429…) no prueba nada, ni que anda
+                motivo = "404: no disponible para cuentas nuevas" if ex.code == 404 else "error %d al probarlo" % ex.code
+                resultado[m] = {"disponible": False if ex.code == 404 else None, "motivo": motivo, "fecha": fecha}
+                continue
+            except Exception as ex:
+                resultado[m] = {"disponible": None, "motivo": "no pude probarlo (%s)" % type(ex).__name__, "fecha": fecha}
+                continue
         resultado[m] = {"disponible": True, "motivo": "ok", "fecha": fecha}
     return resultado
 

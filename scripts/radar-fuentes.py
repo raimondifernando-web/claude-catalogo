@@ -156,7 +156,12 @@ def analizar(radar, fuentes, hoy_f=None):
                     retiros.append({"modelo": modelo, "proveedor": prov, "fecha": f, "tipo": "apagado",
                                     "nota": "Detectado por %s." % fuente, "fuente": fuente, "verificado": False})
                     motivos.append("Retiro anunciado de %s: se apaga el %s (%s)." % (modelo, f, fuente))
-                elif actual.get("fecha") != f and actual.get("tipo", "apagado") == "apagado":
+                elif actual.get("tipo", "apagado") != "apagado":
+                    # teníamos solo «no antes de»: ahora hay fecha de apagado anunciada
+                    motivos.append("Se anunció el apagado de %s: el %s (antes: %s %s) (%s)." % (
+                        modelo, f, actual.get("tipo"), actual.get("fecha"), fuente))
+                    actual.update({"tipo": "apagado", "fecha": f, "fuente": fuente, "verificado": False})
+                elif actual.get("fecha") != f:
                     motivos.append("Cambió la fecha de retiro de %s: %s → %s (%s)." % (modelo, actual.get("fecha"), f, fuente))
                     actual["fecha"], actual["fuente"] = f, fuente
             ent, sal = info.get("entrada"), info.get("salida")

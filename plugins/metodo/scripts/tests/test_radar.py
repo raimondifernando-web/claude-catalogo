@@ -239,7 +239,11 @@ class TestComandos(Base):
         self.assertIn("días", R.aviso_linea(radar))
         ok, _ = R.actualizar(lambda url, *a, **k: (200, YAML_REAL.read_bytes()))
         self.assertTrue(ok)
-        self.assertEqual(R.aviso_linea(radar), "")
+        linea = R.aviso_linea(radar)
+        self.assertNotIn("corré", linea)
+        # pero si los datos publicados no se mueven hace más de un mes, igual avisa
+        self.assertIn("no cambian hace 39 días", linea)
+        self.assertEqual(R.aviso_linea(radar_de_prueba(actualizado="2026-09-20")), "")
 
     def test_fabricante_no_cuenta_para_el_orden(self):
         c = {"evidencia": [{"fuente": "blog propio", "tipo": "fabricante"},
@@ -247,6 +251,9 @@ class TestComandos(Base):
         self.assertEqual(R.respaldo(c), (1, False))
         self.assertIn("PROVISORIO", R.texto_respaldo(c))
         c["evidencia"].append({"fuente": "ranking B", "tipo": "independiente"})
+        c["planes"] = [{"plan": "A", "respaldo": ["ranking A"]}, {"plan": "B", "respaldo": ["blog propio"]}]
+        self.assertEqual(R.respaldo(c), (2, False))   # B se apoya solo en el fabricante
+        c["planes"][1]["respaldo"] = ["ranking B"]
         self.assertEqual(R.respaldo(c), (2, True))
         self.assertEqual(R.respaldo({}), (0, False))
 
@@ -376,6 +383,13 @@ class TestFuentes(Base):
         self.assertIn("20%", motivos[0])
         _, motivos = FU.analizar(radar_de_prueba(), self.fuentes(litellm={"modelo-c": {"retiro": None, "entrada": 11.9, "salida": 40}}))
         self.assertEqual(motivos, [])
+
+    def test_no_antes_pasa_a_apagado_cuando_se_anuncia(self):
+        radar = radar_de_prueba(retiros=[{"modelo": "modelo-c", "fecha": "2026-10-15", "tipo": "no_antes"}])
+        nuevo, motivos = FU.analizar(radar, self.fuentes(litellm={"modelo-c": {"retiro": "2026-12-01", "entrada": None, "salida": None}}))
+        self.assertTrue(any("apagado de modelo-c" in m for m in motivos), motivos)
+        r = next(r for r in nuevo["retiros"] if r["modelo"] == "modelo-c")
+        self.assertEqual((r["tipo"], r["fecha"]), ("apagado", "2026-12-01"))
 
     def test_cambio_en_la_tabla_de_retiros(self):
         nuevo, motivos = FU.analizar(radar_de_prueba(), self.fuentes(paginas={"anthropic": "otro"}))

@@ -51,18 +51,29 @@ jobs:
       - name: Leer las fuentes y actualizar RADAR.yaml
         id: radar
         run: python3 scripts/radar-fuentes.py --modo "${{ steps.modo.outputs.modo }}" --motivo "$RUNNER_TEMP/motivo.md"
-      - name: Abrir el PR (solo si hubo un cambio relevante)
+      - name: Probar el radar nuevo (los PR que abre el bot no disparan otros workflows)
+        if: steps.radar.outputs.hay_cambios == 'true'
+        run: |
+          python3 plugins/metodo/scripts/radar.py ver >/dev/null
+          python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_radar.py' -q
+      - name: Abrir o actualizar el PR (solo si hubo un cambio relevante)
         if: steps.radar.outputs.hay_cambios == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          rama="radar/auto-$(date -u +%Y%m%d-%H%M)"
+          # Rama fija: mientras el PR no se apruebe, cada corrida lo actualiza en vez de abrir uno nuevo.
+          rama="radar/auto"
           git config user.name "radar-bot"
           git config user.email "radar-bot@users.noreply.github.com"
-          git checkout -b "$rama"
+          git checkout -B "$rama"
           git add plugins/metodo/radar/RADAR.yaml plugins/metodo/radar/RADAR.md
           git commit -m "radar: actualización automática de fuentes públicas"
-          git push origin "$rama"
-          gh pr create --base "${{ github.event.repository.default_branch }}" --head "$rama" \
-            --title "radar: cambios en las fuentes públicas" --body-file "$RUNNER_TEMP/motivo.md"
+          git push --force origin "$rama"
+          if gh pr view "$rama" --json state --jq .state 2>/dev/null | grep -qx OPEN; then
+            gh pr edit "$rama" --body-file "$RUNNER_TEMP/motivo.md"
+          else
+            gh pr create --base "$BASE" --head "$rama" \
+              --title "radar: cambios en las fuentes públicas" --body-file "$RUNNER_TEMP/motivo.md"
+          fi

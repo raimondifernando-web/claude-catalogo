@@ -51,9 +51,11 @@ Rama `orquesta/radar-modelos`, sin publicar.
 
 ## 7. Imparcialidad (pedido del dueño, 2026-10-03: «debe ser imparcial; si le preguntás a Claude te va a decir que es el mejor, lo mismo a Gemini»)
 1. **Ningún modelo opina el orden.** El A/B/C sale de datos de terceros, nunca de preguntarle a una IA (tampoco a la
-   que arma o revisa el radar). El script ordena con reglas fijas y reproducibles sobre esos datos.
+   que arma o revisa el radar). Meta: el script ordena con reglas fijas sobre esos datos. **Hoy (2026-10-03) el A/B/C
+   se escribe a mano**, así que una categoría sale de «provisorio» solo si cada plan cita en `respaldo:` una evidencia
+   independiente de la categoría (lo controla `respaldo()` en `radar.py`).
 2. **Datos del fabricante no cuentan para el orden** (blogs, model cards, anuncios propios). Solo sirven para
-   precios, ids y fechas de retiro. Campo `tipo_fuente: independiente | fabricante`; el orden usa solo independientes.
+   precios, ids y fechas de retiro. Campo `tipo: independiente | fabricante` en cada `evidencia`; el orden usa solo independientes.
 3. **Mínimo dos fuentes independientes por categoría.** Con una sola, el plan queda `verificado: false` y lo dice.
 4. **Conflictos de interés declarados** por fuente (ej. Arena vende evaluaciones a los labs que rankea; Scale le da datos
    a los labs) en la tabla de fuentes.

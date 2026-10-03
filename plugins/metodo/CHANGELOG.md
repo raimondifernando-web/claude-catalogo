@@ -1,6 +1,6 @@
 # metodo — qué cambia para vos
 
-## Sin publicar
+## 0.17.0 — 2026-10-03
 - **Nuevo: `/metodo:radar`, qué IA conviene usar para cada cosa, con plan B y C.** Programar, revisar código, diseño, escribir en castellano, investigar en la web, documentos largos, imágenes, video, transcripción, voz, planillas, tareas baratas y agentes de tarea larga: cada una con un plan A, un B y un C. Le decís a Claude «¿qué uso para esto?» y te da el primero que esté disponible: si el A tiene el cupo de Codex agotado, el modelo ya se retiró o no admite datos privados, pasa al B y te avisa por qué.
 - Regla 18: para elegir qué IA usar, consultá el radar; nunca de memoria.
 - Un PR automático del catálogo mira fuentes públicas (rankings, precios y retiros) y propone cambios al radar; una persona los aprueba, nunca se aplican solos. Al arrancar, `/metodo:arrancar` avisa en una línea si el radar tiene más de 14 días o se acerca el retiro de un modelo que usamos.

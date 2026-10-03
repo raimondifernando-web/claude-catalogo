@@ -7,7 +7,7 @@ Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B
 
 ## Desarrollo (programar)
 
-Orden respaldado por 2 fuentes independientes.
+Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoyan en ellas.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
@@ -73,7 +73,7 @@ Ranking (MRCR v2 a 1M (llm-stats), 2026-09-30): 1. Gemini 3.7 Flash
 
 ## Imágenes (generar y editar)
 
-Orden respaldado por 2 fuentes independientes.
+Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoyan en ellas.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
@@ -93,7 +93,7 @@ Orden PROVISORIO: 1 de 2 fuentes independientes.
 
 ## Video
 
-Orden respaldado por 2 fuentes independientes.
+Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoyan en ellas.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
@@ -145,7 +145,7 @@ Orden PROVISORIO: 1 de 2 fuentes independientes.
 
 ## Agentes de tarea larga
 
-Orden respaldado por 2 fuentes independientes.
+Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoyan en ellas.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
