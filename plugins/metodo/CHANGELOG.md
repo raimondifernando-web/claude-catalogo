@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.18.0 — 2026-10-03
+- **Todo te llega solo.** Al abrir Claude Code, tus reglas del método se ponen al día solas. Una vez por día, sin que hagas nada y sin demorar el arranque, Claude instala los paquetes nuevos de Fernando y pone al día el resto. Si algo no se pudo, al abrir te aparece una sola línea con qué falta: mandásela a Fernando. «Poner todo al día» queda para la primera vez.
+
 ## 0.17.0 — 2026-10-03
 - **Nuevo: `/metodo:radar`, qué IA conviene usar para cada cosa, con plan B y C.** Programar, revisar código, diseño, escribir en castellano, investigar en la web, documentos largos, imágenes, video, transcripción, voz, planillas, tareas baratas y agentes de tarea larga: cada una con un plan A, un B y un C. Le decís a Claude «¿qué uso para esto?» y te da el primero que esté disponible: si el A tiene el cupo de Codex agotado, el modelo ya se retiró o no admite datos privados, pasa al B y te avisa por qué.
 - Regla 18: para elegir qué IA usar, consultá el radar; nunca de memoria.

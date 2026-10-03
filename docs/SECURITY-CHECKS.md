@@ -586,3 +586,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Cambios | Sin datos propios; `marketing-analyst` sin `mcp__memory`; las skills que nombran están en el catálogo |
 | Fuera | `scientific-literature-researcher`: depende del MCP de bgpt.pro (tercero no auditado) |
 | `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |
+
+### 2026-10-03 · metodo 0.18.0 («todo solo»: reglas y al-dia automáticos)
+| Ítem | Resultado |
+|---|---|
+| Piezas | `reglas.py` (bloque entre marcas, candado `flock`, escritura atómica, respaldo, nunca traba el arranque) · `al-dia-auto.sh` (una vez cada 20 h, proceso aparte sin terminal, candado con PID, tope 30 min, se apaga con `al-dia.apagado`, no corre sin herramientas de Apple) · `al-dia.sh --auto` (sin ventanas, `GIT_TERMINAL_PROMPT=0`, insteadOf solo de la corrida, uv con huella fija) |
+| Revisión | security-reviewer de Consultoría (3 ALTO / 4 MEDIO arreglados) + Orquesta leyó las tres piezas enteras y pidió 2 arreglos (xcode-select en el lanzador, `CLAUDE_CONFIG_DIR`), hechos |
+| Decisión del dueño | `AUTO_NUEVOS=1` (paquetes nuevos también solos), con verificación en dos pasos en GitHub y `main` protegida (sin force-push ni borrado, también para admins), verificado por API |
+| Prueba de Orquesta | `reglas.py` en carpeta de prueba con `CLAUDE_CONFIG_DIR`: agrega el bloque (18 reglas, incluye la del radar) sin tocar lo propio; segunda corrida no hace nada |
