@@ -1,4 +1,4 @@
-# Las 15 reglas del método
+# Las 16 reglas del método
 
 > Agregá este bloque al final de tu `~/.claude/CLAUDE.md` (o reemplazá las reglas que ya tenías por estas).
 > Son las que hacen que Claude trabaje con criterio y no como un asistente que dice a todo que sí.
@@ -46,3 +46,12 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     `find ~/.claude/plugins/cache/claude-catalogo/metodo -name verificar-copia.py | sort -V | tail -1`. Solo lee; sale en
     rojo si una pieza queda bajo el 85% o si hay archivos que no pudo medir (PDF, Word, Excel: pasalos antes a texto
     con la skill `markitdown`). Lo corre quien verifica, no el mismo agente que hizo la copia.
+
+## Antes de lanzar trabajo pesado (regla 16)
+
+16. **Mirá el cupo antes de gastarlo.** Antes de un trabajo grande (programar algo entero, revisar un repo, varios
+    agentes a la vez) mirá cuánto te queda: el de Claude en `/usage` (o el panel de uso de la app) y el de cualquier otra
+    IA a la que le delegues trabajo. Si usás Codex, el kit trae la medición:
+    `bash "$(find ~/.claude/plugins/cache/claude-catalogo/metodo -name codex-cupo | sort -V | tail -1)"`.
+    Con **70% o más**, solo tareas chicas y avisás; con **90% o más**, no lanzás y avisás. **Una tarea grande a la vez**:
+    varias en paralelo se comen el cupo antes de que alguna termine. Estimá la tarea antes de lanzarla, no después.

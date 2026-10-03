@@ -1,0 +1,13 @@
+#!/bin/bash
+# Cupo de Codex (ventana de 30 días) leído de sus propios registros, sin red ni IA. Correr ANTES de lanzar `codex exec`.
+# Regla (regla 16 del método): >=70% → no lanzar trabajo grande; >=90% → no lanzar nada.
+f=$(ls -t "$HOME"/.codex/sessions/*/*/*/*.jsonl 2>/dev/null | head -20)
+[ -z "$f" ] && { echo "Codex: sin registros"; exit 0; }
+p=""; for x in $f; do  # el dato más nuevo = última línea del archivo más reciente que lo tenga
+  p=$(grep -o '"used_percent":[0-9.]*,"window_minutes":43200' "$x" 2>/dev/null | tail -1 | grep -o '[0-9.]*' | head -1)
+  [ -n "$p" ] && break; done
+[ -z "$p" ] && { echo "Codex: cupo desconocido (sin dato en los registros recientes)"; exit 0; }
+p=${p%.*}
+if [ "$p" -ge 90 ]; then echo "Codex: ${p}% del cupo mensual — NO lanzar"; exit 2
+elif [ "$p" -ge 70 ]; then echo "Codex: ${p}% del cupo mensual — solo tareas chicas"; exit 1
+else echo "Codex: ${p}% del cupo mensual — OK"; fi

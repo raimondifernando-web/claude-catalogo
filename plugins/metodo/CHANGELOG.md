@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.16.5 — 2026-10-03
+- Regla 16: mirar el cupo (Claude y otras IA) antes de trabajo pesado; una tarea grande a la vez. `scripts/codex-cupo` mide el cupo de Codex sin red.
+
 ## 0.16.4 — 2026-09-28
 - `/metodo:arrancar`: si quedaron abiertas sesiones anteriores del mismo grupo (por ejemplo «Ventas 6» y «Ventas 7» cuando abrís la 8), te pregunta en una línea si las archiva. Solo las archiva si decís que sí, se pueden recuperar cuando quieras y nunca se borran.
 
