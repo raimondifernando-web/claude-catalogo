@@ -1,0 +1,4 @@
+origen: github:kepano/obsidian-skills//skills/obsidian-markdown@3ccff53
+actualizado: 2026-09-27 desde 5a557ce -> 3ccff53 (vigía, Mand. XVI; 3-way merge sin conflictos)
+auditoria-2026-09-27: skill-security-auditor PASS (0 hallazgos)
+parche local re-aplicado: ninguno (la copia era idéntica al origen)

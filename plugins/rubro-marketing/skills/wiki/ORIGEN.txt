@@ -1,0 +1,4 @@
+origen: github:Yeachan-Heo/oh-my-claudecode//skills/wiki@9fd35ec
+actualizado: 2026-09-27 desde 9a485d0 -> 9fd35ec (vigía, Mand. XVI; 3-way merge sin conflictos)
+auditoria-2026-09-27: skill-security-auditor PASS (0 hallazgos)
+parche local re-aplicado: línea sync: del frontmatter

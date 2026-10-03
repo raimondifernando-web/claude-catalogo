@@ -1,4 +1,8 @@
-# escala-desarrollo — qué cambia para vos
+# escala-desarrollo
+
+## 0.12.3 — 2026-10-03
+- Sincronizadas skills desde ~/.claude/skills.
+
 
 ## 0.12.2 — 2026-09-27
 - `security-reviewer` y `knowledge-synthesizer` pasan a la versión nueva de sus autores. El revisor de seguridad ahora siempre cierra con el informe completo (alcance, nivel de riesgo, hallazgos y checklist), aunque haya ido anotando cosas en el camino. Se usan igual que antes.

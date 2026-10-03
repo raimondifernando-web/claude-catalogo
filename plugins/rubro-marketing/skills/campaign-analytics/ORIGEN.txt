@@ -1,0 +1,4 @@
+origen: github:alirezarezvani/claude-skills//marketing-skill/skills/campaign-analytics@19392f7
+copiado: 2026-09-27 (re-copia fija; la copia anterior tenía solo SKILL.md y le faltaban references/scripts/assets). Licencia MIT → LICENSE-origen.txt
+auditoria: 2026-09-27 skill-security-auditor PASS + scripts revisados a mano (sin red ni subprocess).
+modificado: SKILL.md solo agrega el campo sync: no (Mand. II).
