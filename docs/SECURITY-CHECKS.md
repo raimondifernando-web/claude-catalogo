@@ -606,3 +606,10 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Pruebas | `test_reglas.py` (4, con `CLAUDE_CONFIG_DIR` temporal: el bloque pasa de 18 a 19 sin tocar lo propio, segunda corrida no hace nada) · `test_graphify_en_repo.py` (8, Graphify de mentira, HOME y git general temporales) · `test_seguridad.py` (14, incluye lanzador en segundo plano, candado, apagado y que ningún valor aparezca en salida ni informes). Con Python del sistema (3.9) y 3.1x. Corrida aparte con el Graphify real (0.9.71 presentado como 0.9.65) en HOME temporal: mapa, enganches a `settings.local.json`, commit de 3 archivos, segunda corrida sin cambios |
 | A verificar | Corrida con Graphify 0.9.65 real (en la Mac de prueba hay 0.9.71) · ventana de permisos de macOS si un repo de la lista está en Documentos/Escritorio (el chequeo corre en segundo plano) · `seguridad.py` sobre repos Windows (el lanzador es solo Mac) |
 | `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |
+
+### 2026-10-03 · escala-desarrollo 0.14.0 + radar automático
+| Ítem | Resultado |
+|---|---|
+| `scientific-literature-researcher` | Origen VoltAgent (MIT, fijado `8509956`), puro texto, leído entero por Orquesta. Parche local: sin la mención a un servicio de búsqueda de terceros (nunca estuvo configurado); busca con WebSearch/WebFetch. Sin datos propios (grep → 0) |
+| Radar automático (`radar.yml`, en `main` desde `5b13020`) | Decisión del dueño: publica solo si el commit toca únicamente `RADAR.yaml/md`, pasan `radar.py ver` y los tests, y no borra más de la mitad del archivo; si no, el PR espera a una persona. Credencial de escritura solo en el último paso (`persist-credentials: false`). Política del repo: acciones con sha obligatorio. `test_radar` actualizado para exigir esas guardias (el anterior exigía que nunca mergee y hacía fallar el robot) |
+| Tests / metadatos / clientes | 88 OK (python3 y 3.9) · TODO COINCIDE · 0 |
