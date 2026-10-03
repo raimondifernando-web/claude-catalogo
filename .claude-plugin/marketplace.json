@@ -48,8 +48,8 @@
     {
       "name": "escala-desarrollo",
       "source": "./plugins/escala-desarrollo",
-      "description": "Escala de desarrollo (L4): para cuando hacés tus propias herramientas con Claude (vibe coding). code-reviewer + security-reviewer revisan tu app entera antes de usarla con clientes y te explican en castellano qué puede pasar y qué arreglar primero. Incluye research-deep-dive (investigación profunda en 3 etapas) con sus 3 agentes — 5 agentes en total. Recomendado junto con base-segura.",
-      "version": "0.12.3",
+      "description": "Capa L4, para cuando empezás a desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive, investigación profunda en 3 etapas) y 13 agentes. Revisores: code-reviewer y security-reviewer, que revisan tu app entera antes de usarla con clientes y explican en castellano qué puede pasar y en qué orden arreglarlo. Para construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer y documentation-engineer. Para decidir: product-manager y technology-scout (¿lo hago o lo compro?). Investigación: research-analyst, data-researcher y knowledge-synthesizer, que arman research-deep-dive. Pedile a Claude: «revisá mi app con los dos revisores» o «investigación profunda sobre X».",
+      "version": "0.13.0",
       "category": "development",
       "tags": [
         "l4",
@@ -347,8 +347,8 @@
     {
       "name": "rubro-marketing",
       "source": "./plugins/rubro-marketing",
-      "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (37 skills). Requiere base-segura.",
-      "version": "0.1.1",
+      "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (37 skills y 1 agente: marketing-analyst, que mide qué canal trae clientes y cuánto cuestan). Requiere base-segura.",
+      "version": "0.2.0",
       "category": "productivity",
       "tags": [
         "l2",
