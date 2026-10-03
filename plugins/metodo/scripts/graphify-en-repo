@@ -1,0 +1,129 @@
+#!/bin/bash
+# graphify-en-repo — arma el mapa de tu código (Graphify) en el repositorio donde estás parado, en el único
+# orden seguro. Es lo que corre Claude cuando le pedís «mapeá este repo». Detalle: docs/GRAPHIFY.md del catálogo.
+#
+# Uso, parado dentro del proyecto:
+#   bash "$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name graphify-en-repo | sort -V | tail -1)"
+#
+# Qué hace, en orden (si un paso falla, para ahí y no sigue):
+#   1. pone la regla de ignorar el mapa en el .gitignore DEL PROYECTO (viaja con el proyecto; nunca toca la
+#      configuración general de git de tu computadora)
+#   2. comprueba que el proyecto la ignore por sí solo; si no, para antes de generar nada
+#   3. graphify install --project   (toca solo esta carpeta)
+#   4. graphify update .            (el modo gratis: solo código, sin IA, sin costo)
+#   5. muda los enganches de Graphify a .claude/settings.local.json (settings.json viaja con el proyecto)
+#   6. guarda (commit) SOLO .gitignore y CLAUDE.md, por nombre; nunca «todo». No sube nada (no hace push).
+# Termina con una línea: «Listo ✓ …» o «Falta: … ✗».
+# Versión de Graphify fijada: la revisada en docs/GRAPHIFY.md. Con otra versión no corre.
+
+VERSION=0.9.65
+
+main() {
+set -uo pipefail
+falta() { echo "Falta: $1 ✗"; exit 1; }
+
+command -v git >/dev/null 2>&1 || falta "git (viene con las herramientas de Apple: xcode-select --install)"
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+  || falta "esta carpeta no es un repositorio. Pedíselo a Claude parado dentro del proyecto"
+cd "$(git rev-parse --show-toplevel)" || falta "no pude entrar a la carpeta del proyecto"
+
+if ! command -v graphify >/dev/null 2>&1; then
+  falta "Graphify no está instalado. Una sola vez, en la Terminal: uv tool install graphifyy==$VERSION"
+fi
+local v
+v=$(graphify --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+[ "$v" = "$VERSION" ] || falta "Graphify $VERSION, la versión revisada (tenés ${v:-una que no reconozco}). En la Terminal: uv tool install --force graphifyy==$VERSION"
+
+# Lo que este programa guarda no puede tener cambios tuyos sin guardar: se mezclarían en el mismo commit.
+local f sucios=()
+for f in .gitignore CLAUDE.md .claude/CLAUDE.md; do
+  [ -n "$(git status --porcelain -- "$f" 2>/dev/null)" ] && sucios+=("$f")
+done
+[ ${#sucios[@]} -eq 0 ] || falta "guardá primero tus cambios en ${sucios[*]} (o pedile a Claude que los guarde) y repetí"
+
+# ¿El proyecto ignora $1 POR SÍ SOLO? Se mira de dónde sale la regla: vale solo un .gitignore dentro del
+# proyecto, no la configuración general ni .git/info/exclude (no viajan), y nunca una negación («!»).
+ignorado_por_el_repo() {
+  local linea fuente patron
+  linea=$(git check-ignore -v -- "$1" 2>/dev/null | head -1 | cut -f1) || return 1
+  [ -n "$linea" ] || return 1
+  fuente=${linea%%:*}; patron=${linea#*:}; patron=${patron#*:}
+  case "$fuente" in /*|.git/*) return 1;; esac
+  [ "${fuente##*/}" = .gitignore ] && [ "${patron#!}" = "$patron" ]
+}
+
+# 1. La regla en el .gitignore del proyecto
+[ -f .gitignore ] && [ -n "$(tail -c1 .gitignore)" ] && echo >> .gitignore
+if ! grep -qxF 'graphify-out/' .gitignore 2>/dev/null; then
+  printf '\n# Graphify: mapa local del código. Nunca se sube (contiene textos sacados del código).\ngraphify-out/\n.graphifyignore\n.claude/skills/graphify/\n*.graphify-bak\n' >> .gitignore
+else
+  grep -qxF '*.graphify-bak' .gitignore || printf '*.graphify-bak\n' >> .gitignore
+fi
+ignorado_por_el_repo .claude/settings.local.json \
+  || printf '# Configuración de Claude de ESTA computadora (incluye los enganches de Graphify): no viaja\n.claude/settings.local.json\n' >> .gitignore
+
+# 2. Comprobación por la fuente: si falla, no se genera nada
+for f in graphify-out/graph.json .claude/settings.local.json; do
+  ignorado_por_el_repo "$f" || falta "el proyecto no ignora $f por sí solo (revisá si tu .gitignore tiene una línea con «!»). No generé nada"
+done
+
+# 3-4. Instalar en esta carpeta y generar el mapa gratis
+graphify install --project >/dev/null 2>&1 || falta "graphify install --project dio error. No seguí"
+graphify update . >/dev/null 2>&1 || falta "graphify update . dio error (el mapa no se armó)"
+
+# 5. Enganches de Graphify: de settings.json (viaja) a settings.local.json (de esta computadora)
+if [ -f .claude/settings.json ] && grep -q graphify .claude/settings.json; then
+  /usr/bin/env python3 - .claude/settings.json .claude/settings.local.json <<'PY' || falta "no pude mudar los enganches de Graphify (.claude/settings.json no se puede leer)"
+import json, os, sys, tempfile
+src, dst = sys.argv[1], sys.argv[2]
+def guardar(ruta, datos):
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(ruta) or ".", prefix=".graphify-")
+    with os.fdopen(fd, "w") as f:
+        json.dump(datos, f, indent=2); f.write("\n")
+    os.replace(tmp, ruta)
+s = json.load(open(src))
+pre = s.get("hooks", {}).get("PreToolUse", [])
+g = [h for h in pre if "graphify" in json.dumps(h)]
+if g:
+    d = json.load(open(dst)) if os.path.exists(dst) else {}
+    dp = d.setdefault("hooks", {}).setdefault("PreToolUse", [])
+    dp += [h for h in g if h not in dp]
+    guardar(dst, d)                       # primero el destino...
+    s["hooks"]["PreToolUse"] = [h for h in pre if h not in g]
+    if not s["hooks"]["PreToolUse"]: del s["hooks"]["PreToolUse"]
+    if not s["hooks"]: del s["hooks"]
+    guardar(src, s)                       # ...recién después se saca del origen
+PY
+fi
+if [ -f .claude/settings.json ] && grep -q graphify .claude/settings.json; then
+  falta "quedaron enganches de Graphify en .claude/settings.json (viajarían con el proyecto). No guardé nada"
+fi
+if [ -f .claude/settings.json ]; then
+  if git ls-files --error-unmatch .claude/settings.json >/dev/null 2>&1; then
+    # si el contenido quedó igual al guardado (solo cambió el formato), se devuelve tal cual estaba
+    git show HEAD:.claude/settings.json 2>/dev/null | /usr/bin/env python3 -c \
+      'import json,sys;sys.exit(0 if json.load(sys.stdin)==json.load(open(".claude/settings.json")) else 1)' 2>/dev/null \
+      && git checkout -q -- .claude/settings.json
+  elif [ "$(/usr/bin/env python3 -c 'import json;print(len(json.load(open(".claude/settings.json"))))' 2>/dev/null)" = 0 ]; then
+    # vacío y nunca guardado = lo creó Graphify: a la Papelera, no se borra
+    if [ -d "$HOME/.Trash" ]; then
+      mv .claude/settings.json "$HOME/.Trash/settings.json.graphify-$(date +%s)"
+    fi
+  fi
+fi
+
+# 6. Guardar SOLO .gitignore y CLAUDE.md, por nombre (lo que ya tenías preparado para guardar no entra)
+local cambios=()
+for f in .gitignore CLAUDE.md .claude/CLAUDE.md; do
+  [ -e "$f" ] && [ -n "$(git status --porcelain -- "$f")" ] && cambios+=("$f")
+done
+local guardado="sin cambios para guardar"
+if [ ${#cambios[@]} -gt 0 ]; then
+  git add -- "${cambios[@]}" || falta "no pude preparar ${cambios[*]} para guardar"
+  git commit -q -m "graphify: el mapa no se sube (.gitignore) + instrucciones para Claude (CLAUDE.md)" -- "${cambios[@]}" \
+    || falta "no pude guardar ${cambios[*]} (¿git sin nombre y mail configurados?)"
+  local rama; rama=$(git branch --show-current 2>/dev/null); guardado="guardé ${cambios[*]} en la rama ${rama:-actual}; subilo con tu cierre habitual"
+fi
+echo "Listo ✓ mapa de código en graphify-out/ (gratis, no se sube) · $guardado"
+}
+main "$@"
