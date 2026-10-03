@@ -540,3 +540,10 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Términos propios / claves | 0 nombres propios ni del cliente en las skills; 0 patrones de clave |
 | Dueño del producto | Aprobado (kit del cliente = los 3 paquetes; clasificó las 24 diferencias) |
 | `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |
+
+### 2026-10-03 · metodo 0.16.5 + rubro-marketing / rubro-finanzas-legal / rubro-conocimiento 0.1.1
+| Ítem | Resultado |
+|---|---|
+| Cambio | Regla 16 del método (mirar el cupo antes de trabajo pesado; una tarea grande a la vez) + `metodo/scripts/codex-cupo` (lee los registros locales de Codex, sin red, sin claves). `requisitos.md` reales en los 3 rubros nuevos (observación del dueño del producto) |
+| Código nuevo | `codex-cupo`: bash, solo lee `~/.codex/sessions/*.jsonl` y busca un porcentaje; no imprime contenido ni claves |
+| `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |

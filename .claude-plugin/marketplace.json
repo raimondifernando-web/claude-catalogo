@@ -36,8 +36,8 @@
     {
       "name": "metodo",
       "source": "./plugins/metodo",
-      "description": "Método de trabajo (L3): /metodo:arrancar, /metodo:planear, /metodo:criticar (sin adular), /metodo:cerrar (handoff + prompt de reanudación + sube el avance en un solo gesto), /metodo:crear-agente (PM de empresa y especialistas, con el criterio para elegir el modelo de cada uno), /metodo:otra-sesion (dos sesiones a la vez sin pisarse), /metodo:darwin-skill (revisa y mejora tus skills; siempre en una copia aparte), /metodo:vigia (avisa al abrir la sesión si hay versiones nuevas de lo instalado; aplica lo revisado que no rompe, pregunta lo demás; se apaga en un paso), /metodo:cowork (tus skills propias en Cowork sin subirlas a mano) + 15 reglas. /cerrar deja REANUDAR.md y /arrancar lo levanta solo (sin pegar el texto de arranque). El .gitignore de fábrica ignora .omc/ (estado de oh-my-claudecode-fixed).",
-      "version": "0.16.4",
+      "description": "Método de trabajo (L3): /metodo:arrancar, /metodo:planear, /metodo:criticar (sin adular), /metodo:cerrar (handoff + prompt de reanudación + sube el avance en un solo gesto), /metodo:crear-agente (PM de empresa y especialistas, con el criterio para elegir el modelo de cada uno), /metodo:otra-sesion (dos sesiones a la vez sin pisarse), /metodo:darwin-skill (revisa y mejora tus skills; siempre en una copia aparte), /metodo:vigia (avisa al abrir la sesión si hay versiones nuevas de lo instalado; aplica lo revisado que no rompe, pregunta lo demás; se apaga en un paso), /metodo:cowork (tus skills propias en Cowork sin subirlas a mano) + 16 reglas. /cerrar deja REANUDAR.md y /arrancar lo levanta solo (sin pegar el texto de arranque). El .gitignore de fábrica ignora .omc/ (estado de oh-my-claudecode-fixed).",
+      "version": "0.16.5",
       "category": "productivity",
       "tags": [
         "l3",
@@ -324,7 +324,7 @@
       "name": "rubro-conocimiento",
       "source": "./plugins/rubro-conocimiento",
       "description": "Pack de rubro (L2): gestión del conocimiento — capturar y organizar notas, reuniones e investigaciones en Notion y en Obsidian (bases, CLI y markdown) (6 skills). Requiere base-segura.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "productivity",
       "tags": [
         "l2",
@@ -336,7 +336,7 @@
       "name": "rubro-finanzas-legal",
       "source": "./plugins/rubro-finanzas-legal",
       "description": "Pack de rubro (L2): finanzas y legal en Argentina — CFO para pymes, finanzas personales en pesos y dólares, trámites del auto, y guía de compraventa de empresas (M&A) con marco argentino (4 skills). Orientativo: no reemplaza a un contador ni a un abogado. Requiere base-segura.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "productivity",
       "tags": [
         "l2",
@@ -348,7 +348,7 @@
       "name": "rubro-marketing",
       "source": "./plugins/rubro-marketing",
       "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (37 skills). Requiere base-segura.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "productivity",
       "tags": [
         "l2",
