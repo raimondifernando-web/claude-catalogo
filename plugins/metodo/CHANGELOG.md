@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.16.6 — 2026-10-03
+- Regla 17: lo que le pedís a otro, empaquetalo en un comando.
+
 ## 0.16.5 — 2026-10-03
 - Regla 16: mirar el cupo (Claude y otras IA) antes de trabajo pesado; una tarea grande a la vez. `scripts/codex-cupo` mide el cupo de Codex sin red.
 

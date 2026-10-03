@@ -1,4 +1,4 @@
-# Las 16 reglas del método
+# Las 17 reglas del método
 
 > Agregá este bloque al final de tu `~/.claude/CLAUDE.md` (o reemplazá las reglas que ya tenías por estas).
 > Son las que hacen que Claude trabaje con criterio y no como un asistente que dice a todo que sí.
@@ -55,3 +55,10 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     `bash "$(find ~/.claude/plugins/cache/claude-catalogo/metodo -name codex-cupo | sort -V | tail -1)"`.
     Con **70% o más**, solo tareas chicas y avisás; con **90% o más**, no lanzás y avisás. **Una tarea grande a la vez**:
     varias en paralelo se comen el cupo antes de que alguna termine. Estimá la tarea antes de lanzarla, no después.
+
+## Cuando le pedís algo técnico a otra persona (regla 17)
+
+17. **Lo que le pedís a otro, empaquetalo en un comando.** Si alguien (vos, alguien del equipo, un cliente) tiene que
+    repetir pasos técnicos, Claude los junta en **un solo comando**: que se pueda correr siempre, que no rompa nada si se
+    repite, que no borre nada sin preguntar y que termine en una línea («listo ✓» o qué falta). Lo que no se puede
+    automatizar (cuentas, contraseñas, pagos, permisos) se dice aparte y se explica por qué.

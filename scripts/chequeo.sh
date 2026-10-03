@@ -33,7 +33,7 @@ echo
 echo "2) Herramientas de base (las usan varias skills)"
 if have python3 && python3 -c 'import sys; sys.exit(0 if sys.version_info>=(3,9) else 1)'; then r OK "python3" "$(python3 --version 2>&1)"; else r FALTA "python3" "Python 3 — lo usan markitdown, excel-analysis, transcribe, generate-image" "xcode-select --install   (Mac: instala las Herramientas de línea de comandos de Apple)"; fi
 if have python3 && python3 -m pip --version >/dev/null 2>&1; then r OK "pip" "instalador de librerías de Python"; else r FALTA "pip" "instalador de librerías de Python" "python3 -m ensurepip --user"; fi
-if have markitdown || py markitdown; then r OK "markitdown" "leer PDF/Word/Excel/PowerPoint (base-segura)"; else r FALTA "markitdown" "leer PDF/Word/Excel/PowerPoint (base-segura)" "python3 -m pip install --user 'markitdown[all]'"; fi
+if have markitdown && markitdown --version 2>/dev/null | grep -qE '(^|[^0-9])0\.(1|[2-9])|(^|[^0-9])[1-9]\.'; then r OK "markitdown" "leer PDF/Word/Excel/PowerPoint (base-segura)"; else r FALTA "markitdown" "leer PDF/Word/Excel/PowerPoint (base-segura) — 0.1 o más nueva (con el Python 3.9 de la Mac, pip baja una alfa vieja)" "pegá el comando «Poner todo al día»: lo instala con uv en su propio Python"; fi
 if py pandas && py openpyxl; then r OK "pandas+openpyxl" "analizar Excel (base-segura)"; else r FALTA "pandas+openpyxl" "analizar Excel (base-segura)" "python3 -m pip install --user pandas openpyxl"; fi
 echo
 

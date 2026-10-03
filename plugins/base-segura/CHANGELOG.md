@@ -1,5 +1,8 @@
 # base-segura
 
+## 0.13.6 — 2026-10-03
+- markitdown: se instala con uv (comando «Poner todo al día»); aviso de que pip con el Python 3.9 de la Mac baja una alfa vieja.
+
 ## 0.13.5 — 2026-10-03
 - Sincronizadas skills desde ~/.claude/skills.
 
