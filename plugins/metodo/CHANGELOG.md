@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.18.1 — 2026-10-03
+- **El radar suma fuentes** (Design Arena, EQ-Bench, Open ASR y más pruebas de Artificial Analysis). Programar y escritura ya tienen el orden respaldado por dos rankings independientes. Cambia el orden donde los datos lo pedían: para transcribir, primero ElevenLabs; para documentos largos, primero Claude.
+
 ## 0.18.0 — 2026-10-03
 - **Todo te llega solo.** Al abrir Claude Code, tus reglas del método se ponen al día solas. Una vez por día, sin que hagas nada y sin demorar el arranque, Claude instala los paquetes nuevos de Fernando y pone al día el resto. Si algo no se pudo, al abrir te aparece una sola línea con qué falta: mandásela a Fernando. «Poner todo al día» queda para la primera vez.
 

@@ -7,13 +7,13 @@ Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B
 
 ## Desarrollo (programar)
 
-Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoyan en ellas.
+Orden respaldado por 2 fuentes independientes.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
 | A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Primero en el índice de agentes de programación de Artificial Analysis (Claude Code). Sonnet 5.5 para lo rutinario: en ese índice rinde igual. | sí |  |
-| B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Segundo mejor para programar y el modelo por defecto de Codex; otro modelo encuentra otros errores. | sí | Con cuenta gratis, revisá la privacidad de la cuenta antes de mandar código privado. |
-| C | Antigravity (Google, Gemini 3.8 Flash) [a verificar] | Gratis y alcanza para tareas acotadas. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
+| B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Codex con GPT-6 Astra es el 1° de Terminal-Bench (58,2%) y Codex con GPT-6.1 Sol queda 4° en el índice de Artificial Analysis (63): otro modelo encuentra otros errores. | sí | Con cuenta gratis, revisá la privacidad de la cuenta antes de mandar código privado. |
+| C | Antigravity (Google, Gemini 3.8 Flash) [a verificar] | Gratis, pero en Terminal-Bench rinde mucho menos (Gemini 3.8 Flash: 19,1%): solo tareas acotadas. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
 ## Revisión de código y seguridad
 
@@ -27,23 +27,23 @@ Orden PROVISORIO: 0 de 2 fuentes independientes.
 
 ## Diseño (UI web, presentaciones)
 
-Orden PROVISORIO: 1 de 2 fuentes independientes.
+Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoyan en ellas.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Primero en Arena WebDev; con la skill de diseño del plugin que corresponda. | sí |  |
-| B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Segundo en Arena WebDev con GPT-6 Astra (a verificar); sirve para una segunda propuesta. | sí |  |
+| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Primero en Arena WebDev y en Design Arena; con la skill de diseño del plugin que corresponda. | sí |  |
+| B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | GPT-6.1 Sol es 4° en Arena WebDev; GPT-6 Astra (también en Codex) es 2° en Arena WebDev y en Design Arena: sirve para una segunda propuesta. | sí |  |
 | C | Antigravity (Google, Gemini 3.8 Flash) [a verificar] | Gratis para bocetos; no para material de clientes. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
 ## Escritura en castellano
 
-Orden PROVISORIO: 1 de 2 fuentes independientes.
+Orden respaldado por 2 fuentes independientes.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Primero en Arena texto según el posteo oficial (hay una lectura del dataset que dice otra cosa); Sonnet 5.5 para volumen. Sin dato del filtro «Spanish». | sí |  |
-| B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Alternativa sólida en texto. | sí |  |
-| C | app web de Gemini (Google, Gemini 3.8 Flash) [a verificar] | Para borradores sin datos sensibles. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
+| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Claude está en el grupo de arriba en las dos: Arena texto 4° (empate técnico con el 1°, Gemini 4 Argon) y EQ-Bench 7° con Opus 5.5 (Fable 5.1 es 2° si el texto lo vale). Sin dato del filtro en castellano. | sí |  |
+| B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | GPT-6 Astra es el 1° de EQ-Bench y GPT-6 Sol el 4°: buena segunda voz. | sí |  |
+| C | app web de Gemini (Google, Gemini 3.8 Flash) [a verificar] | Gratis, pero en EQ-Bench queda bastante más abajo (1748 contra 2050 de Opus 5.5): para borradores sin datos sensibles. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
 Ranking (Arena texto (contradictorio: a verificar), 2026-09-25): 1. Claude Opus 5.5 (High)
 
@@ -61,12 +61,12 @@ Ranking (BrowseComp (README de steel-dev), 2026-10-03): 1. GPT-5.6 Sol; 2. GPT-6
 
 ## Documentos largos
 
-Orden PROVISORIO: 1 de 2 fuentes independientes.
+Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoyan en ellas.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | API / app web de Gemini (Google, Gemini 3.8 Flash) [a verificar] | 1M de contexto y barato (US$0,75/3,75 por millón): sirve para cargar el material. | no | Plan gratis: Google usa los datos. Con la API paga, mirá los términos (a verificar). |
-| B | Claude Code (Anthropic, Opus 5.5) [a verificar] | 1M de contexto para analizar dentro de Claude Code. | sí |  |
+| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Los 5 primeros de Arena documentos son Claude (Opus 5 y Fable 5.1 arriba); Opus 5.5 lee hasta 1M de tokens. | sí |  |
+| B | API / app web de Gemini (Google, Gemini 3.8 Flash) [a verificar] | 1M de contexto y barato (US$0,75/3,75 por millón): sirve para cargar el material. | no | Plan gratis: Google usa los datos. Con la API paga, mirá los términos (a verificar). |
 | C | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | 1M de contexto. | sí |  |
 
 Ranking (MRCR v2 a 1M (llm-stats), 2026-09-30): 1. Gemini 3.7 Flash
@@ -83,11 +83,11 @@ Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoy
 
 ## Imágenes (entender)
 
-Orden PROVISORIO: 1 de 2 fuentes independientes.
+Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoyan en ellas.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Arena visión: primero Claude Fable 5; Opus 5.5 entiende imágenes dentro de Claude Code. | sí |  |
+| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Primero en MMMU-Pro (88%) y Claude arriba en Arena visión (Fable 5 1°): entiende imágenes dentro de Claude Code. | sí |  |
 | B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Alternativa. | sí |  |
 | C | Antigravity (Google, Gemini 3.8 Flash) [a verificar] | Alternativa gratis. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
@@ -97,19 +97,19 @@ Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoy
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | app web de Gemini (Google, Gemini Omni Flash) [a verificar] | Sin dato en la investigación: pendiente de cargar desde el ranking de video de Arena. | no | Pendiente de verificar. |
+| A | app web de Gemini (Google, Gemini Omni Flash) [a verificar] | Gemini Omni es 1° en Arena texto a video y 3° en imagen a video de Artificial Analysis (Wan 3.0 y MiniMax H3 encabezan ahí, pero no están en apps que usamos). | no | Pendiente de verificar. |
 | B | app web (Sora) (OpenAI, Sora (a verificar)) [a verificar] | Sin dato en la investigación. | no | Pendiente de verificar. |
 | C | Adobe Express (conector) (Adobe) [a verificar] | Cortes rápidos y redimensionado con el conector de Adobe (a verificar). | sí | Pendiente de verificar. |
 
 ## Transcripción de audio
 
-Orden PROVISORIO: 1 de 2 fuentes independientes.
+Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoyan en ellas.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | API de Gemini (Google, Gemini 3.5 Transcribe) [a verificar] | 2,6% de error por palabra en inglés (Artificial Analysis); sin dato propio en castellano. | no | Plan gratis: Google usa los datos; con audios de clientes usá la API paga. |
-| B | API de OpenAI (OpenAI, GPT Transcribe) [a verificar] | 3,3% de error. Ojo: los gpt-4o-*transcribe se apagan el 2027-02-26. | sí |  |
-| C | API de ElevenLabs (ElevenLabs, Scribe v2) [a verificar] | El mejor de las APIs comerciales (2,2%), pero es un proveedor aparte. | sí |  |
+| A | API de ElevenLabs (ElevenLabs, Scribe v2) [a verificar] | Menos errores que Gemini y OpenAI en las dos fuentes (Scribe v2: 2,2% en Artificial Analysis, 6° en Open ASR). | sí |  |
+| B | API de Gemini (Google, Gemini 3.5 Transcribe) [a verificar] | Muy cerca de Scribe (2,6% de error en Artificial Analysis) y más barato si ya usás Gemini. | no | Plan gratis: Google usa los datos; con audios de clientes usá la API paga. |
+| C | API de OpenAI (OpenAI, GPT Transcribe) [a verificar] | 3,3% de error. Ojo: los gpt-4o-*transcribe se apagan el 2027-02-26. | sí |  |
 
 Ranking (Artificial Analysis, speech to text (a verificar), 2026-09-30): 1. ElevenLabs Scribe v2; 2. Gemini 3.5 Transcribe; 3. GPT Transcribe
 
@@ -119,18 +119,18 @@ Orden PROVISORIO: 1 de 2 fuentes independientes.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | API de ElevenLabs (ElevenLabs) [a verificar] | Sin dato en la investigación: es la herramienta de voz conectada hoy (a verificar contra el ranking de TTS de Arena). | sí | Pendiente de verificar. |
+| A | API de ElevenLabs (ElevenLabs) [a verificar] | Eleven v4 es el 1° del ranking de voz de Artificial Analysis. | sí | Pendiente de verificar. |
 | B | API de OpenAI (OpenAI) [a verificar] | Sin dato en la investigación. | sí | Pendiente de verificar. |
-| C | API de Gemini (Google) [a verificar] | Sin dato en la investigación. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
+| C | API de Gemini (Google) [a verificar] | Gemini 3.8 Flash TTS es 4° en Artificial Analysis. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
 ## Datos y planillas
 
-Orden PROVISORIO: 0 de 2 fuentes independientes.
+Orden PROVISORIO: 1 de 2 fuentes independientes.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | Claude Code (Anthropic, Sonnet 5.5) [a verificar] | Alcanza para planillas y análisis; Opus 5.5 si el cálculo es delicado. Sin dato de ranking propio (a verificar). | sí |  |
-| B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Alternativa. | sí |  |
+| A | Claude Code (Anthropic, Sonnet 5.5) [a verificar] | Sonnet 5.5 es 2° en el test de análisis de datos de Artificial Analysis (57,5%); Opus 5.5 si el cálculo es delicado. | sí |  |
+| B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | GPT-6.1 Sol es 2° leyendo documentos con números (GDP.pdf, 32%). | sí |  |
 | C | API / app web de Gemini (Google, Gemini 3.8 Flash) [a verificar] | Barato para volumen. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
 ## Tareas mecánicas baratas
@@ -150,7 +150,7 @@ Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoy
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
 | A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Claude arriba en Arena Agent; Fable 5.1 (más caro) es el primero si la tarea lo vale. | sí |  |
-| B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Agente de consola con sandbox; buen segundo. | sí |  |
+| B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | GPT-6.1 Sol es 5° en Arena Agent; Codex con GPT-6 Astra es 1° en Terminal-Bench. | sí |  |
 | C | Antigravity (Google, Gemini 3.1 Pro) [a verificar] | Alternativa gratis para tareas acotadas. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
 ## Retiros
