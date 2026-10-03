@@ -8,6 +8,9 @@ on:
       - "plugins/metodo/scripts/vigia/**"
       - "plugins/metodo/hooks/**"
       - "plugins/metodo/scripts/buzon.py"
+      - "plugins/metodo/scripts/radar.py"
+      - "plugins/metodo/radar/**"
+      - "scripts/radar-fuentes.py"
       - "plugins/metodo/scripts/tests/**"
       - ".github/workflows/vigia-tests.yml"
   pull_request:
@@ -15,6 +18,9 @@ on:
       - "plugins/metodo/scripts/vigia/**"
       - "plugins/metodo/hooks/**"
       - "plugins/metodo/scripts/buzon.py"
+      - "plugins/metodo/scripts/radar.py"
+      - "plugins/metodo/radar/**"
+      - "scripts/radar-fuentes.py"
       - "plugins/metodo/scripts/tests/**"
       - ".github/workflows/vigia-tests.yml"
   workflow_dispatch:
@@ -41,7 +47,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: unittest
         run: python -m unittest discover -s plugins/metodo/scripts/vigia/tests -v
-      - name: unittest del buzón
+      - name: unittest del buzón y del radar
         run: python -m unittest discover -s plugins/metodo/scripts/tests -v
 
   hook-bash:

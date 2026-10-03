@@ -573,3 +573,8 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Revisión | Dueño del producto: 0 críticos/altos, 5 hallazgos arreglados. Orquesta leyó el diff entero |
 | A verificar | Que la app de escritorio del cliente vea `~/.local/bin` en el PATH (hooks del plugin codex) |
 | OK | Fernando (decisión «Codex sí, buzón opción 1; Orquesta la publica») |
+
+### 2026-10-03 · metodo 0.17.0 (`/metodo:radar`)
+| Ítem | Resultado |
+|---|---|
+| Radar (`/metodo:radar`, metodo 0.17.0) | Revisión final Opus (critic): seguridad sin hallazgos que frenen (workflow con permisos mínimos, inputs validados y por `env`, acciones fijadas por sha verificado con `git ls-remote`; claves solo por nombre). Bloqueos de imparcialidad corregidos: orden provisorio salvo que cada plan cite 2 fuentes independientes; retiros «no antes de» ya no se pierden; PR automático en rama fija `radar/auto` con tests antes de abrirlo; caché escrita en forma atómica. 62 tests OK · verificar-metadatos TODO COINCIDE · clientes 0 |

@@ -1,0 +1,902 @@
+# RADAR.yaml — qué IA usar para cada cosa, con plan A, B y C. Lo lee `scripts/radar.py`.
+# Lo mantiene un PR automático (.github/workflows/radar.yml) que una persona aprueba; el RADAR.md se genera con `radar.py md`.
+actualizado: 2026-10-03
+nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual."
+categorias:
+  - id: desarrollo
+    nombre: "Desarrollo (programar)"
+    evidencia:
+      - fuente: "Artificial Analysis Coding Agent Index v1.5"
+        url: "https://artificialanalysis.ai/agents/coding-agents"
+        tipo: independiente
+        dice: "Claude Code+Sonnet 5.5 68, Claude Code+Opus 5.5 66, Antigravity+Gemini 4 Argon 64, Codex+GPT-6.1 Sol 63"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
+      - fuente: "Terminal-Bench 4.0 (tabla oficial)"
+        url: "https://www.tbench.ai/"
+        tipo: independiente
+        dice: "Codex+GPT-6 Astra 58,2%, Claude Code+Fable 5.1 57,9%, Claude Code+Opus 5 53,9%; Opus 5.5 sin envío"
+        conflicto: "Terminal-Bench: muchos envíos los hace el fabricante; se lee la tabla oficial"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: Claude Code
+        proveedor: Anthropic
+        modelo: Opus 5.5
+        modelo_api: claude-opus-5-5
+        por_que: "Primero en el índice de agentes de programación de Artificial Analysis (Claude Code). Sonnet 5.5 para lo rutinario: en ese índice rinde igual."
+        fuente: "evidencia de la categoría"
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: /usage en Claude Code
+        cupo: claude
+        verificado: false
+      - plan: B
+        herramienta: Codex
+        proveedor: OpenAI
+        modelo: GPT-6.1 Sol
+        modelo_api: gpt-6.1-sol
+        por_que: "Segundo mejor para programar y el modelo por defecto de Codex; otro modelo encuentra otros errores."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: "Con cuenta gratis, revisá la privacidad de la cuenta antes de mandar código privado."
+        como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
+        cupo: codex
+        verificado: false
+      - plan: C
+        herramienta: Antigravity
+        proveedor: Google
+        modelo: Gemini 3.8 Flash
+        modelo_api: gemini-3.8-flash
+        por_que: Gratis y alcanza para tareas acotadas.
+        fuente: "https://antigravity.google/docs/plans"
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: /usage en Antigravity CLI
+        cupo: antigravity
+        verificado: false
+    ranking:
+      fuente: "sin ranking cargado todavía"
+      fecha: null
+      verificado: false
+      items: []
+    arena:
+      config: webdev
+      split: latest
+      verificado: false
+  - id: revision
+    nombre: "Revisión de código y seguridad"
+    planes:
+      - plan: A
+        herramienta: Claude Code
+        proveedor: Anthropic
+        modelo: Opus 5.5
+        modelo_api: claude-opus-5-5
+        por_que: "/code-review y /security-review con Opus 5.5; CR-bench: Claude Code 32,1% contra Codex 20,1% (a verificar)."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: /usage en Claude Code
+        cupo: claude
+        verificado: false
+      - plan: B
+        herramienta: Codex
+        proveedor: OpenAI
+        modelo: GPT-6.1 Sol
+        modelo_api: gpt-6.1-sol
+        por_que: "Segunda revisión con un modelo distinto: `codex exec --sandbox read-only`. Encuentra errores que el primero no ve."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
+        cupo: codex
+        verificado: false
+      - plan: C
+        herramienta: Antigravity
+        proveedor: Google
+        modelo: Gemini 3.1 Pro
+        modelo_api: gemini-3.1-pro-preview
+        por_que: "Revisión estática sin ejecutar nada: `agy --mode plan -p=...`."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: /usage en Antigravity CLI
+        cupo: antigravity
+        verificado: false
+    ranking:
+      fuente: "sin ranking cargado todavía"
+      fecha: null
+      verificado: false
+      items: []
+  - id: diseno
+    nombre: "Diseño (UI web, presentaciones)"
+    evidencia:
+      - fuente: "Arena WebDev"
+        url: "https://arena.ai/leaderboard/code/webdev"
+        tipo: independiente
+        dice: "1 claude-opus-5.5-max 1815, 2 gpt-6-astra-max 1788, 3 claude-sonnet-5.5-xhigh 1786"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: Claude Code
+        proveedor: Anthropic
+        modelo: Opus 5.5
+        modelo_api: claude-opus-5-5
+        por_que: "Primero en Arena WebDev; con la skill de diseño del plugin que corresponda."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: /usage en Claude Code
+        cupo: claude
+        verificado: false
+      - plan: B
+        herramienta: Codex
+        proveedor: OpenAI
+        modelo: GPT-6.1 Sol
+        modelo_api: gpt-6.1-sol
+        por_que: "Segundo en Arena WebDev con GPT-6 Astra (a verificar); sirve para una segunda propuesta."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
+        cupo: codex
+        verificado: false
+      - plan: C
+        herramienta: Antigravity
+        proveedor: Google
+        modelo: Gemini 3.8 Flash
+        modelo_api: gemini-3.8-flash
+        por_que: "Gratis para bocetos; no para material de clientes."
+        fuente: "https://antigravity.google/docs/plans"
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: /usage en Antigravity CLI
+        cupo: antigravity
+        verificado: false
+    ranking:
+      fuente: "sin ranking cargado todavía"
+      fecha: null
+      verificado: false
+      items: []
+    arena:
+      config: webdev
+      split: latest
+      verificado: false
+  - id: escritura
+    nombre: Escritura en castellano
+    evidencia:
+      - fuente: "Arena texto"
+        url: "https://arena.ai/leaderboard/text"
+        tipo: independiente
+        dice: "1 gemini-4-argon-high 1525 (preliminar), 4 claude-opus-5.5-high 1504; diferencia dentro del margen"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: Claude Code
+        proveedor: Anthropic
+        modelo: Opus 5.5
+        modelo_api: claude-opus-5-5
+        por_que: "Primero en Arena texto según el posteo oficial (hay una lectura del dataset que dice otra cosa); Sonnet 5.5 para volumen. Sin dato del filtro «Spanish»."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: /usage en Claude Code
+        cupo: claude
+        verificado: false
+      - plan: B
+        herramienta: Codex
+        proveedor: OpenAI
+        modelo: GPT-6.1 Sol
+        modelo_api: gpt-6.1-sol
+        por_que: "Alternativa sólida en texto."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
+        cupo: codex
+        verificado: false
+      - plan: C
+        herramienta: app web de Gemini
+        proveedor: Google
+        modelo: Gemini 3.8 Flash
+        modelo_api: gemini-3.8-flash
+        por_que: Para borradores sin datos sensibles.
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: "AI Studio: aistudio.google.com/usage"
+        cupo: none
+        verificado: false
+    ranking:
+      fuente: "Arena texto (contradictorio: a verificar)"
+      fecha: 2026-09-25
+      verificado: false
+      items:
+        - puesto: 1
+          modelo: "Claude Opus 5.5 (High)"
+          puntaje: 1509
+    arena:
+      config: text
+      split: latest
+      verificado: false
+  - id: investigacion_web
+    nombre: "Investigación web"
+    evidencia:
+      - fuente: "Arena búsqueda"
+        url: "https://arena.ai/leaderboard/search"
+        tipo: independiente
+        dice: "1 gpt-5.6-sol-xhigh 1257, 2 claude-opus-4-6-search 1253; sin modelos de septiembre"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: "app web (ChatGPT deep research)"
+        proveedor: OpenAI
+        modelo: GPT-6 Astra
+        modelo_api: gpt-6-astra
+        por_que: "BrowseComp: casi empatado con Sonnet/Opus (92,2 / 91,5 / 90,8): elegir por el cupo que quede."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: panel de uso de ChatGPT
+        cupo: none
+        verificado: false
+      - plan: B
+        herramienta: Codex
+        proveedor: OpenAI
+        modelo: GPT-6.1 Sol
+        modelo_api: gpt-6.1-sol
+        por_que: "Por consola: `codex --search exec --sandbox read-only`. Es lo que se puede automatizar desde una sesión."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
+        cupo: codex
+        verificado: false
+      - plan: C
+        herramienta: "app web (Gemini Deep Research)"
+        proveedor: Google
+        modelo: Gemini 3.8 Flash
+        modelo_api: gemini-3.8-flash
+        por_que: 5 informes gratis por mes.
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: "AI Studio: aistudio.google.com/usage"
+        cupo: none
+        verificado: false
+    ranking:
+      fuente: "BrowseComp (README de steel-dev)"
+      fecha: 2026-10-03
+      verificado: false
+      items:
+        - puesto: 1
+          modelo: GPT-5.6 Sol
+          puntaje: "92,2%"
+        - puesto: 2
+          modelo: GPT-6 Astra
+          puntaje: "91,5%"
+        - puesto: 3
+          modelo: Claude Opus 5
+          puntaje: "90,8%"
+  - id: documentos_largos
+    nombre: Documentos largos
+    evidencia:
+      - fuente: "Arena documentos"
+        url: "https://arena.ai/leaderboard/document"
+        tipo: independiente
+        dice: "1 claude-opus-5-high 1516, 2 claude-fable-5.1-max 1513; los 5 primeros son Claude. Contradice el plan A"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: API / app web de Gemini
+        proveedor: Google
+        modelo: Gemini 3.8 Flash
+        modelo_api: gemini-3.8-flash
+        por_que: "1M de contexto y barato (US$0,75/3,75 por millón): sirve para cargar el material."
+        fuente: "https://ai.google.dev/gemini-api/docs/pricing"
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "Plan gratis: Google usa los datos. Con la API paga, mirá los términos (a verificar)."
+        como_ver_cupo: "AI Studio: aistudio.google.com/usage"
+        cupo: none
+        verificado: false
+      - plan: B
+        herramienta: Claude Code
+        proveedor: Anthropic
+        modelo: Opus 5.5
+        modelo_api: claude-opus-5-5
+        por_que: 1M de contexto para analizar dentro de Claude Code.
+        fuente: "https://platform.claude.com/docs/en/about-claude/models/overview"
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: /usage en Claude Code
+        cupo: claude
+        verificado: false
+      - plan: C
+        herramienta: Codex
+        proveedor: OpenAI
+        modelo: GPT-6.1 Sol
+        modelo_api: gpt-6.1-sol
+        por_que: 1M de contexto.
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
+        cupo: codex
+        verificado: false
+    ranking:
+      fuente: "MRCR v2 a 1M (llm-stats)"
+      fecha: 2026-09-30
+      verificado: false
+      items:
+        - puesto: 1
+          modelo: Gemini 3.7 Flash
+          puntaje: "97%"
+  - id: imagenes_generar
+    nombre: "Imágenes (generar y editar)"
+    evidencia:
+      - fuente: "Arena texto a imagen y edición"
+        url: "https://arena.ai/leaderboard/text-to-image"
+        tipo: independiente
+        dice: "1 gpt-image-2.5-sunburst en las dos tablas (1424 y 1522)"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
+      - fuente: "Artificial Analysis Image Arena"
+        url: "https://artificialanalysis.ai/image/leaderboard/text-to-image"
+        tipo: independiente
+        dice: "1 GPT Image 2.5 Sunburst 1197 y 1 en edición 1182"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: "app web (ChatGPT Images)"
+        proveedor: OpenAI
+        modelo: gpt-image-2.5
+        modelo_api: gpt-image-2.5
+        por_que: "Primero en Arena y en Artificial Analysis, texto a imagen y edición. Claude no genera imágenes."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: No subas fotos de personas ni de clientes sin permiso.
+        como_ver_cupo: panel de uso de ChatGPT
+        cupo: none
+        verificado: false
+      - plan: B
+        herramienta: app web de Gemini
+        proveedor: Google
+        modelo: "Nano Banana 2 (Gemini 3.1 Flash Image)"
+        modelo_api: null
+        por_que: Gratis en la app de Gemini.
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: app de Gemini
+        cupo: none
+        verificado: false
+      - plan: C
+        herramienta: "Adobe Firefly / Express (conector)"
+        proveedor: Adobe
+        modelo: null
+        modelo_api: null
+        por_que: "Sin dato en la investigación: alternativa con licencia comercial clara (a verificar)."
+        fuente: "https://www.adobe.com/products/firefly.html"
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: "A completar en la próxima revisión."
+        como_ver_cupo: cuenta de Adobe
+        cupo: none
+        verificado: false
+    ranking:
+      fuente: "sin ranking cargado todavía"
+      fecha: null
+      verificado: false
+      items: []
+    arena:
+      config: text-to-image
+      split: latest
+      verificado: false
+  - id: imagenes_entender
+    nombre: "Imágenes (entender)"
+    evidencia:
+      - fuente: "Arena visión"
+        url: "https://arena.ai/leaderboard/vision"
+        tipo: independiente
+        dice: "1 claude-fable-5-high 1309, 2 qwen3.8-max 1301"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: Claude Code
+        proveedor: Anthropic
+        modelo: Opus 5.5
+        modelo_api: claude-opus-5-5
+        por_que: "Arena visión: primero Claude Fable 5; Opus 5.5 entiende imágenes dentro de Claude Code."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: /usage en Claude Code
+        cupo: claude
+        verificado: false
+      - plan: B
+        herramienta: Codex
+        proveedor: OpenAI
+        modelo: GPT-6.1 Sol
+        modelo_api: gpt-6.1-sol
+        por_que: Alternativa.
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
+        cupo: codex
+        verificado: false
+      - plan: C
+        herramienta: Antigravity
+        proveedor: Google
+        modelo: Gemini 3.8 Flash
+        modelo_api: gemini-3.8-flash
+        por_que: Alternativa gratis.
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: /usage en Antigravity CLI
+        cupo: antigravity
+        verificado: false
+    ranking:
+      fuente: "sin ranking cargado todavía"
+      fecha: null
+      verificado: false
+      items: []
+    arena:
+      config: vision
+      split: latest
+      verificado: false
+  - id: video
+    nombre: Video
+    evidencia:
+      - fuente: "Arena texto a video"
+        url: "https://arena.ai/leaderboard/text-to-video"
+        tipo: independiente
+        dice: "1 gemini-omni-1.1-flash 1516, 2 gemini-omni-flash 1513"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
+      - fuente: "Artificial Analysis Video Arena"
+        url: "https://artificialanalysis.ai/video/leaderboard/text-to-video"
+        tipo: independiente
+        dice: "1 Wan 3.0 1157; en imagen a video 1 MiniMax H3 Max, 3 Gemini Omni Flash. No coincide con Arena"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: app web de Gemini
+        proveedor: Google
+        modelo: "Gemini Omni Flash"
+        modelo_api: null
+        por_que: "Sin dato en la investigación: pendiente de cargar desde el ranking de video de Arena."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: Pendiente de verificar.
+        como_ver_cupo: app de Gemini
+        cupo: none
+        verificado: false
+      - plan: B
+        herramienta: "app web (Sora)"
+        proveedor: OpenAI
+        modelo: "Sora (a verificar)"
+        modelo_api: null
+        por_que: "Sin dato en la investigación."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: Pendiente de verificar.
+        como_ver_cupo: panel de uso de ChatGPT
+        cupo: none
+        verificado: false
+      - plan: C
+        herramienta: "Adobe Express (conector)"
+        proveedor: Adobe
+        modelo: null
+        modelo_api: null
+        por_que: "Cortes rápidos y redimensionado con el conector de Adobe (a verificar)."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: Pendiente de verificar.
+        como_ver_cupo: cuenta de Adobe
+        cupo: none
+        verificado: false
+    ranking:
+      fuente: "sin ranking cargado todavía"
+      fecha: null
+      verificado: false
+      items: []
+    arena:
+      config: text-to-video
+      split: latest
+      verificado: false
+  - id: transcripcion
+    nombre: "Transcripción de audio"
+    evidencia:
+      - fuente: "Artificial Analysis Speech to Text"
+        url: "https://artificialanalysis.ai/speech-to-text"
+        tipo: independiente
+        dice: "error por palabra: Scribe v2 2,2%, Gemini 3.5 Transcribe 2,6%; GPT Transcribe fuera de los 8 primeros"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: API de Gemini
+        proveedor: Google
+        modelo: Gemini 3.5 Transcribe
+        modelo_api: gemini-3.5-transcribe
+        por_que: "2,6% de error por palabra en inglés (Artificial Analysis); sin dato propio en castellano."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "Plan gratis: Google usa los datos; con audios de clientes usá la API paga."
+        como_ver_cupo: "AI Studio: aistudio.google.com/usage"
+        cupo: none
+        verificado: false
+      - plan: B
+        herramienta: API de OpenAI
+        proveedor: OpenAI
+        modelo: GPT Transcribe
+        modelo_api: gpt-4o-transcribe
+        por_que: "3,3% de error. Ojo: los gpt-4o-*transcribe se apagan el 2027-02-26."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: panel de uso de la API de OpenAI
+        cupo: none
+        verificado: false
+      - plan: C
+        herramienta: API de ElevenLabs
+        proveedor: ElevenLabs
+        modelo: Scribe v2
+        modelo_api: null
+        por_que: "El mejor de las APIs comerciales (2,2%), pero es un proveedor aparte."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: panel de ElevenLabs
+        cupo: none
+        verificado: false
+    ranking:
+      fuente: "Artificial Analysis, speech to text (a verificar)"
+      fecha: 2026-09-30
+      verificado: false
+      items:
+        - puesto: 1
+          modelo: ElevenLabs Scribe v2
+          puntaje: "2,2%"
+        - puesto: 2
+          modelo: Gemini 3.5 Transcribe
+          puntaje: "2,6%"
+        - puesto: 3
+          modelo: GPT Transcribe
+          puntaje: "3,3%"
+  - id: voz_tts
+    nombre: "Voz (texto a voz)"
+    evidencia:
+      - fuente: "Artificial Analysis Text to Speech"
+        url: "https://artificialanalysis.ai/text-to-speech/leaderboard"
+        tipo: independiente
+        dice: "1 Eleven v4 1321, 4 Gemini 3.8 Flash TTS 1275"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: API de ElevenLabs
+        proveedor: ElevenLabs
+        modelo: null
+        modelo_api: null
+        por_que: "Sin dato en la investigación: es la herramienta de voz conectada hoy (a verificar contra el ranking de TTS de Arena)."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: Pendiente de verificar.
+        como_ver_cupo: panel de ElevenLabs
+        cupo: none
+        verificado: false
+      - plan: B
+        herramienta: API de OpenAI
+        proveedor: OpenAI
+        modelo: null
+        modelo_api: null
+        por_que: "Sin dato en la investigación."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: Pendiente de verificar.
+        como_ver_cupo: panel de la API de OpenAI
+        cupo: none
+        verificado: false
+      - plan: C
+        herramienta: API de Gemini
+        proveedor: Google
+        modelo: null
+        modelo_api: null
+        por_que: "Sin dato en la investigación."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: "AI Studio: aistudio.google.com/usage"
+        cupo: none
+        verificado: false
+    ranking:
+      fuente: "sin ranking cargado todavía"
+      fecha: null
+      verificado: false
+      items: []
+  - id: datos_planillas
+    nombre: Datos y planillas
+    planes:
+      - plan: A
+        herramienta: Claude Code
+        proveedor: Anthropic
+        modelo: Sonnet 5.5
+        modelo_api: claude-sonnet-5-5
+        por_que: "Alcanza para planillas y análisis; Opus 5.5 si el cálculo es delicado. Sin dato de ranking propio (a verificar)."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: /usage en Claude Code
+        cupo: claude
+        verificado: false
+      - plan: B
+        herramienta: Codex
+        proveedor: OpenAI
+        modelo: GPT-6.1 Sol
+        modelo_api: gpt-6.1-sol
+        por_que: Alternativa.
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
+        cupo: codex
+        verificado: false
+      - plan: C
+        herramienta: API / app web de Gemini
+        proveedor: Google
+        modelo: Gemini 3.8 Flash
+        modelo_api: gemini-3.8-flash
+        por_que: Barato para volumen.
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: "AI Studio: aistudio.google.com/usage"
+        cupo: none
+        verificado: false
+    ranking:
+      fuente: "sin ranking cargado todavía"
+      fecha: null
+      verificado: false
+      items: []
+  - id: tareas_baratas
+    nombre: "Tareas mecánicas baratas"
+    evidencia:
+      - fuente: "Artificial Analysis LLM Leaderboard"
+        url: "https://artificialanalysis.ai/leaderboards/models"
+        tipo: independiente
+        dice: "índice ≥38 más barato por tarea: GPT-6 Luna 38 a 0,07 US$; GPT-6.1 Sol low 42 a 0,13 US$"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: API de OpenAI
+        proveedor: OpenAI
+        modelo: GPT-6 Luna
+        modelo_api: gpt-6-luna
+        por_que: "US$0,10/0,50 por millón: lo más barato."
+        fuente: "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: panel de la API de OpenAI
+        cupo: none
+        verificado: false
+      - plan: B
+        herramienta: API de Gemini
+        proveedor: Google
+        modelo: Gemini Flash-Lite
+        modelo_api: gemini-3.5-flash-lite
+        por_que: "Con plan gratis (pero ver la condición)."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: "AI Studio: aistudio.google.com/usage"
+        cupo: none
+        verificado: false
+      - plan: C
+        herramienta: Claude Code
+        proveedor: Anthropic
+        modelo: Haiku 4.5
+        modelo_api: claude-haiku-4-5-20251001
+        por_que: "Si tiene que quedar dentro de Claude Code. Ojo: no se retira antes del 2026-10-15."
+        fuente: "https://platform.claude.com/docs/en/about-claude/model-deprecations"
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: /usage en Claude Code
+        cupo: claude
+        verificado: false
+    ranking:
+      fuente: "sin ranking cargado todavía"
+      fecha: null
+      verificado: false
+      items: []
+  - id: agentes_largos
+    nombre: Agentes de tarea larga
+    evidencia:
+      - fuente: "Arena Agent"
+        url: "https://arena.ai/leaderboard/agent"
+        tipo: independiente
+        dice: "1 Claude Fable 5.1, 2 Claude Opus 5.5, 3 Claude Sonnet 5.5, 4 GPT 6 Astra"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
+      - fuente: "Terminal-Bench 4.0 (tabla oficial)"
+        url: "https://www.tbench.ai/"
+        tipo: independiente
+        dice: "Codex+GPT-6 Astra 58,2%, Claude Code+Fable 5.1 57,9%; METR no sirve hoy (último modelo medido en mayo)"
+        conflicto: "Terminal-Bench: muchos envíos los hace el fabricante; se lee la tabla oficial"
+        fecha: 2026-10-03
+    planes:
+      - plan: A
+        herramienta: Claude Code
+        proveedor: Anthropic
+        modelo: Opus 5.5
+        modelo_api: claude-opus-5-5
+        por_que: "Claude arriba en Arena Agent; Fable 5.1 (más caro) es el primero si la tarea lo vale."
+        fuente: "evidencia de la categoría"
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: /usage en Claude Code
+        cupo: claude
+        verificado: false
+      - plan: B
+        herramienta: Codex
+        proveedor: OpenAI
+        modelo: GPT-6.1 Sol
+        modelo_api: gpt-6.1-sol
+        por_que: "Agente de consola con sandbox; buen segundo."
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: true
+        condiciones: ""
+        como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
+        cupo: codex
+        verificado: false
+      - plan: C
+        herramienta: Antigravity
+        proveedor: Google
+        modelo: Gemini 3.1 Pro
+        modelo_api: gemini-3.1-pro-preview
+        por_que: Alternativa gratis para tareas acotadas.
+        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
+        fecha: 2026-10-03
+        datos_privados: false
+        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: /usage en Antigravity CLI
+        cupo: antigravity
+        verificado: false
+    ranking:
+      fuente: "sin ranking cargado todavía"
+      fecha: null
+      verificado: false
+      items: []
+retiros:
+  - modelo: claude-sonnet-4-5-20250929
+    proveedor: Anthropic
+    fecha: 2026-11-30
+    tipo: apagado
+    nota: "Reemplazo: Sonnet 5.5."
+    fuente: "https://platform.claude.com/docs/en/about-claude/model-deprecations"
+    verificado: true
+  - modelo: claude-opus-4-5-20251101
+    proveedor: Anthropic
+    fecha: 2026-11-24
+    tipo: no_antes
+    nota: No se retira antes de esta fecha.
+    fuente: "https://platform.claude.com/docs/en/about-claude/model-deprecations"
+    verificado: true
+  - modelo: claude-haiku-4-5-20251001
+    proveedor: Anthropic
+    fecha: 2026-10-15
+    tipo: no_antes
+    nota: "No se retira antes de esta fecha; no figura como deprecado."
+    fuente: "https://platform.claude.com/docs/en/about-claude/model-deprecations"
+    verificado: true
+  - modelo: gpt-5-2025-08-07
+    proveedor: OpenAI
+    fecha: 2026-12-11
+    tipo: apagado
+    nota: "También gpt-5-mini, gpt-5-nano, gpt-5-pro, o3 y o3-pro. El reemplazo figura distinto según la fuente."
+    fuente: "https://developers.openai.com/api/docs/deprecations"
+    verificado: false
+  - modelo: gpt-4o-transcribe
+    proveedor: OpenAI
+    fecha: 2027-02-26
+    tipo: apagado
+    nota: "También whisper-1 y los demás gpt-4o-*transcribe."
+    fuente: "https://developers.openai.com/api/docs/deprecations"
+    verificado: false
+  - modelo: gemini-2.5-pro
+    proveedor: Google
+    fecha: 2026-10-20
+    tipo: restringido
+    nota: "Vertex: se apaga el 2026-10-20. En la Developer API ya no está disponible para cuentas nuevas (error 404) sin estar deprecado: solo lo detecta `radar.py probar`."
+    fuente: "https://ai.google.dev/gemini-api/docs/deprecations"
+    verificado: false
+precios_usd_por_millon:
+  claude-opus-5-5:
+    entrada: 4
+    salida: 20
+    fecha: 2026-10-03
+  claude-sonnet-5-5:
+    entrada: 2
+    salida: 10
+    fecha: 2026-10-03
+  claude-haiku-4-5-20251001:
+    entrada: 1
+    salida: 5
+    fecha: 2026-10-03
+  gemini-3.8-flash:
+    entrada: 0.75
+    salida: 3.75
+    fecha: 2026-10-03
+  gpt-6-luna:
+    entrada: 0.1
+    salida: 0.5
+    fecha: 2026-10-03
+  gpt-6.1-sol:
+    entrada: 2
+    salida: 10
+    fecha: 2026-10-03
+fuentes_auto:
+  litellm: "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
+  openrouter: "https://openrouter.ai/api/v1/models"
+  modelsdev: "https://models.dev/api.json"
+  arena: "https://datasets-server.huggingface.co/rows?dataset=lmarena-ai%2Fleaderboard-dataset&offset=0&length=100"
+  paginas_retiros:
+    anthropic:
+      url: "https://platform.claude.com/docs/en/about-claude/model-deprecations"
+      hash: null
+    openai:
+      url: "https://developers.openai.com/api/docs/deprecations"
+      hash: null
+    google:
+      url: "https://ai.google.dev/gemini-api/docs/deprecations"
+      hash: null

@@ -1,4 +1,4 @@
-# Las 17 reglas del método
+# Las 18 reglas del método
 
 > Agregá este bloque al final de tu `~/.claude/CLAUDE.md` (o reemplazá las reglas que ya tenías por estas).
 > Son las que hacen que Claude trabaje con criterio y no como un asistente que dice a todo que sí.
@@ -62,3 +62,11 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     repetir pasos técnicos, Claude los junta en **un solo comando**: que se pueda correr siempre, que no rompa nada si se
     repite, que no borre nada sin preguntar y que termine en una línea («listo ✓» o qué falta). Lo que no se puede
     automatizar (cuentas, contraseñas, pagos, permisos) se dice aparte y se explica por qué.
+
+## Cuando elegís qué IA usar (regla 18)
+
+18. **Para elegir qué IA usar, consultá el radar; nunca de memoria.** Corré
+    `python3 "$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name radar.py | sort -V | tail -1)" elegir <categoría>`
+    (con `--sensible` si hay datos privados). Te devuelve el primer plan disponible: si el A no está (cupo agotado, modelo
+    retirado o no disponible para tu cuenta), usá el B o el C que te indica. `ver` muestra todas las categorías con sus
+    planes A, B y C.
