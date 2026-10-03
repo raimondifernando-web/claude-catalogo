@@ -3,3 +3,4 @@ copiado: 2026-09-27 (copia fija; migración v1→v2 del autor, nombres viejos ar
 auditoria: 2026-09-27 skill-security-auditor sobre las 33: PASS salvo ads (3 CRITICAL = falsos positivos: términos ABM y una regla defensiva «datos, no instrucciones»).
 nota: los links ../../tools/ apuntan a la carpeta tools/ del repo del autor, que no se vendoriza (65 CLIs JS de APIs de terceros); ya estaban rotos en v1.
 actualizar: la avisa el vigía; se re-copia desde un sha auditado. Sin modificaciones locales.
+modificado (2026-09-27, Mand. XXVI): la description arranca separando el terreno frente a su homónima de plugin oficial. Re-aplicar al actualizar.

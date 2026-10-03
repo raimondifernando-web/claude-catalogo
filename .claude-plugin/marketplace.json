@@ -22,7 +22,7 @@
       "name": "rubro-estudio-arquitectura",
       "source": "./plugins/rubro-estudio-arquitectura",
       "description": "Pack de rubro (L2): propuestas y honorarios, pliegos, informes de visita, adicionales, punch list, revisión de presupuestos, normativa argentina (sobre PDFs oficiales), plan semanal + ficha A3, identidad visual del estudio (tu marca en cada pieza), investigación de mercado, contenido y diseño para estudios de arquitectura y profesiones similares. Requiere base-segura.",
-      "version": "0.14.4",
+      "version": "0.14.5",
       "category": "productivity",
       "tags": [
         "arquitectura",

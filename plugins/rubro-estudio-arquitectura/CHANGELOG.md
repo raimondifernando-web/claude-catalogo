@@ -1,4 +1,8 @@
-# rubro-estudio-arquitectura — qué cambia para vos
+# rubro-estudio-arquitectura
+
+## 0.14.5 — 2026-10-03
+- Sincronizadas skills desde ~/.claude/skills.
+
 
 ## 0.14.4 — 2026-09-28
 - Si generás imágenes con OpenRouter, las que se hacen con Gemini (el modelo de siempre) ya no quedan guardadas por el proveedor. Si pedís un modelo que no tiene esa opción (FLUX), te avisamos antes, en una línea. Además la herramienta ahora encuentra tu clave de OpenRouter aunque esté guardada como variable de tu Mac.
