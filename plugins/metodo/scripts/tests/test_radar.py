@@ -469,10 +469,16 @@ class TestWorkflow(unittest.TestCase):
         permisos = dict(re.findall(r"^\s+([\w-]+):\s*(\w+)", bloque, re.M))
         self.assertEqual(permisos, {"contents": "write", "pull-requests": "write"})
 
-    def test_sin_claves_ni_secretos_propios_y_nunca_mergea(self):
+    def test_sin_claves_ni_secretos_propios_y_publica_solo_con_guardias(self):
+        # Decisión del dueño 2026-10-03: se publica solo, pero únicamente si pasan las guardias.
         self.assertNotRegex(self.texto, r"secrets\.(?!GITHUB_TOKEN)")
-        self.assertNotIn("gh pr merge", self.texto)
         self.assertNotIn("--auto", self.texto)
+        self.assertIn("persist-credentials: false", self.texto)  # la credencial no está mientras se leen terceros
+        self.assertIn("RADAR\\.(yaml|md)", self.texto)  # guardia: solo datos del radar
+        self.assertIn("antes / 2", self.texto)  # guardia: no borra más de la mitad
+        merge = self.texto.index("gh pr merge")
+        self.assertLess(self.texto.index('if [ "$publicar" = si ]'), merge)  # solo publica con las guardias en verde
+        self.assertLess(self.texto.index("unittest discover"), merge)  # y después de los tests
         self.assertIn("hay_cambios == 'true'", self.texto)  # el PR solo se arma ante un cambio relevante
         self.assertIn("43 6 * * 1", self.texto)  # semanal
         self.assertIn("17 6 * * *", self.texto)  # diario
