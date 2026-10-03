@@ -530,3 +530,13 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Dueño del producto | Aprobado (leyó el diff; eligió versiones y changelog) |
 | Prueba | 17/17 con llamadas simuladas + markitdown real; lectura de la clave desde el entorno verificada; instalación en HOME temporal: 0.13.4 y 0.14.4 con `openrouter_zdr.py` en caché |
 | `verificar-metadatos.sh` / validate / clientes | TODO COINCIDE · PASS · 0 |
+
+### 2026-10-03 · tanda 1 de `catalogo-sync` (base-segura 0.13.5 · escala-desarrollo 0.12.3 · rubro-estudio-arquitectura 0.14.5 · rubro-marketing 0.1.0 · rubro-finanzas-legal 0.1.0 · rubro-conocimiento 0.1.0)
+| Ítem | Resultado |
+|---|---|
+| Cambio | Regla nueva del dueño: todo lo instalado en el ecosistema de origen le llega al cliente salvo lo personal. 3 paquetes L2 nuevos (37 + 4 + 6 skills), 4 skills en escala-desarrollo, `i-have-adhd` en base-segura (MIT, 53K★, solo texto), 2 skills actualizadas en el rubro |
+| Frenada | `meta-ads-analyzer`: guarda token y app secret en texto plano y corre un paquete npm de terceros sin versión fija → no sale hasta reescribirla |
+| Código nuevo | Solo `webapp-testing` (oficial de Anthropic) abre un servidor local y procesos para pruebas, por diseño; scripts de cálculo y análisis sin red |
+| Términos propios / claves | 0 nombres propios ni del cliente en las skills; 0 patrones de clave |
+| Dueño del producto | Aprobado (kit del cliente = los 3 paquetes; clasificó las 24 diferencias) |
+| `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |
