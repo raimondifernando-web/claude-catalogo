@@ -1,4 +1,4 @@
-# Las 18 reglas del método
+# Las 19 reglas del método
 
 > Agregá este bloque al final de tu `~/.claude/CLAUDE.md` (o reemplazá las reglas que ya tenías por estas).
 > Son las que hacen que Claude trabaje con criterio y no como un asistente que dice a todo que sí.
@@ -70,3 +70,11 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     (con `--sensible` si hay datos privados). Te devuelve el primer plan disponible: si el A no está (cupo agotado, modelo
     retirado o no disponible para tu cuenta), usá el B o el C que te indica. `ver` muestra todas las categorías con sus
     planes A, B y C.
+
+## Cuando se crean o suman skills y agentes (regla 19)
+
+19. **Una pieza por función; buscar antes de crear.** Antes de crear una skill o un agente, Claude se fija si ya existe
+    uno que haga lo mismo (en tus paquetes o en el catálogo de Fernando). Nunca le pone a una skill del proyecto el mismo
+    nombre que a una general: gana la general y la del proyecto queda muda sin avisar. Si dos hacen lo mismo, queda
+    prendida una (gana la del fabricante, después la de Anthropic, después la de un repositorio de confianza y al final la
+    propia) y la otra se apaga, no se borra. Nunca borra skills para hacer lugar: si la conversación se llena, usa `/compact`.
