@@ -556,3 +556,12 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | A saber | Cambia `url.https://github.com/.insteadOf` global de git solo si no hay SSH, y lo avisa con cómo deshacerlo. Instala los 22 paquetes del marketplace (13 de terceros fijados por commit) |
 | Pendiente (ALTO, del catálogo) | `main` sin protección de rama + actualización automática: decisión de Fernando aparte |
 | Dueño del producto | Pedido (`2026-10-03-consultoria-pedido-al-dia-sh.md`); OK de Fernando en el chat |
+
+### 2026-10-03 · `al-dia.sh` v2 + metodo 0.16.6 (regla 17) + base-segura 0.13.6 (markitdown por uv)
+| Ítem | Resultado |
+|---|---|
+| al-dia v2 | Suma: librerías de Python con versión fija y solo binarios; markitdown 0.1.8 con `uv` 0.12.19 (Astral, 90K★, Apache-2.0; instalador fijado por versión, se descarga de astral.sh); `HYPERFRAMES_NO_TELEMETRY=1` y quita `DO_NOT_TRACK` solo si existe (avisa); marketplace oficial de Anthropic + `figma`. Revisión del dueño del producto: 0 críticos/altos. Orquesta leyó el diff entero |
+| Hallazgo corregido | Con el Python 3.9 de la Mac, `pip install markitdown[all]` baja la alfa 0.0.1a1: `chequeo.sh` ahora exige 0.1+ y deriva a al-dia; la skill `markitdown` deja de recomendar pip |
+| Regla 17 | Texto del dueño del producto (un solo comando para lo que se le pide a otro) |
+| `verificar-metadatos.sh` / clientes | TODO COINCIDE · 0 |
+| Buzón (`/metodo:buzon`, mismo 0.16.6) | Programado en sesión Nube según `docs/specs/BUZON.md`; revisado por Orquesta: 24 tests OK también en macOS, `subprocess` solo con listas (sin shell), sin red salvo `git fetch` con tope de 3 s, escaneo de claves antes de cada commit (frena sin mostrar el valor), lo recibido se muestra como dato y cada acción pide «sí». `skill-security-auditor` PASS. Falta: prueba real con repo privado y dos cuentas (primer cliente) |

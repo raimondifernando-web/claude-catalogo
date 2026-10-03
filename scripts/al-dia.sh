@@ -58,6 +58,40 @@ for p in ${paquetes[@]+"${paquetes[@]}"}; do
   if printf '%s\n' "$lista" | grep -A3 -E "❯ $p@$CAT[[:space:]]*$" | grep -q "✔ enabled"; then okp=$((okp+1)); else falta+=("$p"); fi
 done
 
+# 5b. Herramientas de Apple (traen Python) y librerías de las skills de documentos e imágenes, con versiones fijas
+#     markitdown pide Python 3.10 o más: va con uv (Astral), en su propio Python, sin contraseña.
+local PY=/usr/bin/python3 UVV=0.12.19 MDV=0.1.8 UV="$HOME/.local/bin/uv"
+grep -qsF '$HOME/.local/bin' ~/.zshrc || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+if ! xcode-select -p >/dev/null 2>&1; then
+  xcode-select --install >/dev/null 2>&1
+  falta+=("herramientas de Apple: en la ventana que se abrió tocá Instalar, esperá a que termine y volvé a pegar este comando")
+else
+  "$PY" -m pip install --user --quiet --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
+    pandas==2.3.3 openpyxl==3.1.5 requests==2.32.5 openai==2.48.0 >/dev/null 2>&1
+  "$PY" -c 'import importlib.metadata as m,sys; q={"pandas":"2.3.3","openpyxl":"3.1.5","requests":"2.32.5","openai":"2.48.0"}; sys.exit(any(m.version(k)!=v for k,v in q.items()))' 2>/dev/null \
+    || falta+=("librerías de Python")
+  [ -x "$UV" ] || curl -LsSf "https://astral.sh/uv/$UVV/install.sh" | env UV_NO_MODIFY_PATH=1 sh >/dev/null 2>&1
+  if [ -x "$UV" ]; then
+    "$UV" tool list 2>/dev/null | grep -qx "markitdown v$MDV" || "$UV" tool install --force --quiet --python 3.12 "markitdown[all]==$MDV" >/dev/null 2>&1
+    "$UV" tool list 2>/dev/null | grep -qx "markitdown v$MDV" || falta+=("markitdown")
+  else falta+=("markitdown (no pude instalar uv)"); fi
+fi
+
+# 5c. Datos de uso de HyperFrames: apagados (solo esa variable; nunca una general como DO_NOT_TRACK)
+if [ -f "$S" ]; then
+  plutil -extract env json -o /dev/null "$S" >/dev/null 2>&1 || plutil -insert env -dictionary "$S" 2>/dev/null
+  plutil -replace env.HYPERFRAMES_NO_TELEMETRY -string 1 "$S" 2>/dev/null
+  if plutil -extract env.DO_NOT_TRACK raw "$S" >/dev/null 2>&1; then
+    plutil -remove env.DO_NOT_TRACK "$S" && echo "· Quité DO_NOT_TRACK de tu configuración (cortaba Remote Control). Copia en settings.json.antes-al-dia"
+  fi
+  [ "$(plutil -extract env.HYPERFRAMES_NO_TELEMETRY raw "$S" 2>/dev/null)" = "1" ] || falta+=("apagar datos de uso de HyperFrames")
+fi
+
+# 5d. Figma oficial de Anthropic (la conexión con tu cuenta se hace aparte, con /mcp)
+claude plugin marketplace list 2>/dev/null | grep -qF claude-plugins-official || claude plugin marketplace add anthropics/claude-plugins-official >/dev/null 2>&1
+claude plugin list 2>/dev/null | grep -qE "❯ figma@claude-plugins-official[[:space:]]*$" || claude plugin install figma@claude-plugins-official >/dev/null 2>&1
+claude plugin list 2>/dev/null | grep -A3 -E "❯ figma@claude-plugins-official[[:space:]]*$" | grep -q "✔ enabled" || falta+=("figma")
+
 # 6. Reglas del método en la ficha global (entre marcas; lo tuyo no se toca)
 local F="$M/plugins/metodo/templates/REGLAS-DEL-METODO.md" G="$HOME/.claude/CLAUDE.md"
 local I='<!-- reglas-del-metodo:inicio -->' E='<!-- reglas-del-metodo:fin -->' R="?" C L Z
@@ -90,7 +124,7 @@ else falta+=("reglas del método (no llegó el paquete metodo)"); fi
 # 7. Una sola línea final
 echo
 if [ ${#falta[@]} -eq 0 ]; then
-  echo "Todo al día ✓  ($okp paquetes · $R reglas del método · actualización automática prendida)"
+  echo "Todo al día ✓  ($okp paquetes · $R reglas del método · Python y librerías · actualización automática prendida)"
   echo "Cerrá Claude Code y volvé a abrirlo para que tome lo nuevo."
 else
   printf 'Falta: %s ✗\n' "$(printf '%s, ' "${falta[@]}" | sed 's/, $//')"

@@ -1,4 +1,4 @@
-# Tests del vigía de actualizaciones (plugin metodo) en Mac, Linux y Windows.
+# Tests del vigía de actualizaciones y del buzón (plugin metodo) en Mac, Linux y Windows.
 # Sin secretos, sin red real (los tests simulan GitHub/npm/PyPI) y con permisos de solo lectura.
 name: vigia-tests
 
@@ -7,11 +7,15 @@ on:
     paths:
       - "plugins/metodo/scripts/vigia/**"
       - "plugins/metodo/hooks/**"
+      - "plugins/metodo/scripts/buzon.py"
+      - "plugins/metodo/scripts/tests/**"
       - ".github/workflows/vigia-tests.yml"
   pull_request:
     paths:
       - "plugins/metodo/scripts/vigia/**"
       - "plugins/metodo/hooks/**"
+      - "plugins/metodo/scripts/buzon.py"
+      - "plugins/metodo/scripts/tests/**"
       - ".github/workflows/vigia-tests.yml"
   workflow_dispatch:
 
@@ -37,6 +41,8 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: unittest
         run: python -m unittest discover -s plugins/metodo/scripts/vigia/tests -v
+      - name: unittest del buzón
+        run: python -m unittest discover -s plugins/metodo/scripts/tests -v
 
   hook-bash:
     # El comando REAL de hooks/hooks.json, corrido con bash (en Windows, Git Bash) desde
