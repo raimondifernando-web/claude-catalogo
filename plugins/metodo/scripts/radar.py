@@ -40,6 +40,7 @@ RADAR_EMPAQUETADO = AQUI.parent / "radar" / "RADAR.yaml"
 CODEX_CUPO = AQUI / "codex-cupo"
 URL_PUBLICADO = "https://raw.githubusercontent.com/raimondifernando-web/claude-catalogo/main/plugins/metodo/radar/RADAR.yaml"
 DIAS_VIEJO = 14
+MIN_INDEPENDIENTES = 2   # spec §7.3: con menos, el orden A/B/C de la categoría es provisorio
 DIAS_RETIRO_AVISO = 45
 DIAS_PRUEBA_VALIDA = 30
 TIMEOUT_RED = 20
@@ -387,8 +388,22 @@ def marca(p):
     return "" if p.get("verificado") else " [a verificar]"
 
 
+def respaldo(c):
+    """Cuántas fuentes independientes respaldan el orden A/B/C de la categoría (spec §7.2-3). Las del fabricante
+    (`tipo: fabricante`) no cuentan: sirven para precios, ids y retiros, nunca para el orden."""
+    indep = [ev for ev in c.get("evidencia") or [] if str(ev.get("tipo", "")).strip() == "independiente"]
+    return len(indep), len(indep) >= MIN_INDEPENDIENTES
+
+
+def texto_respaldo(c):
+    n, ok = respaldo(c)
+    if ok:
+        return "Orden respaldado por %d fuentes independientes." % n
+    return "Orden PROVISORIO: %d de %d fuentes independientes." % (n, MIN_INDEPENDIENTES)
+
+
 def texto_categoria(c):
-    out = ["%s (%s)" % (c.get("nombre", c.get("id")), c.get("id"))]
+    out = ["%s (%s)" % (c.get("nombre", c.get("id")), c.get("id")), "  " + texto_respaldo(c)]
     for p in c.get("planes") or []:
         out.append("  %s  %s%s" % (p.get("plan", "?"), _nombre_plan(p), marca(p)))
         if p.get("por_que"):
@@ -400,6 +415,10 @@ def texto_categoria(c):
             out.append("      ver cupo: " + p["como_ver_cupo"])
         if p.get("fuente"):
             out.append("      fuente: %s (%s)" % (p["fuente"], p.get("fecha", "sin fecha")))
+    for ev in c.get("evidencia") or []:
+        out.append("  evidencia (%s): %s — %s (%s)%s" % (
+            ev.get("tipo", "?"), ev.get("fuente", "?"), ev.get("dice", ""), ev.get("fecha", "sin fecha"),
+            "; conflicto: " + ev["conflicto"] if ev.get("conflicto") else ""))
     rk = c.get("ranking") or {}
     if rk.get("items"):
         out.append("  Ranking (%s, %s)%s:" % (rk.get("fuente", "?"), rk.get("fecha", "?"), "" if rk.get("verificado") else " [a verificar]"))
@@ -426,9 +445,19 @@ def retiros_proximos(radar, dias=DIAS_RETIRO_AVISO):
     return out
 
 
+def ultima_comprobacion():
+    """Fecha en que `actualizar` bajó bien el radar publicado (aunque no trajera cambios), o None."""
+    try:
+        return a_fecha((carpeta_metodo() / "radar" / "comprobado").read_text(encoding="utf-8").strip())
+    except Exception:
+        return None
+
+
 def aviso_linea(radar):
     partes = []
-    f = a_fecha(radar.get("actualizado"))
+    # Viejo = nadie lo comprobó en DIAS_VIEJO días. Si los datos no cambiaron pero `actualizar` confirmó que es lo
+    # último publicado, no es viejo: sin esto, cualquier quincena tranquila disparaba el aviso para siempre.
+    f = max((x for x in (a_fecha(radar.get("actualizado")), ultima_comprobacion()) if x), default=None)
     if f is None or (hoy() - f).days > DIAS_VIEJO:
         partes.append("el radar de modelos tiene %s (corré «radar.py actualizar»)" % (
             "fecha desconocida" if f is None else "%d días" % (hoy() - f).days))
@@ -451,6 +480,8 @@ def a_json(radar):
             "id": c.get("id"), "nombre": c.get("nombre"),
             "planes": [{k: p.get(k) for k in campos} for p in c.get("planes") or []],
             "ranking": c.get("ranking") or {},
+            "evidencia": c.get("evidencia") or [],
+            "respaldado": respaldo(c)[1],
         } for c in radar.get("categorias") or []],
         "retiros": radar.get("retiros") or [],
         "avisos": [aviso] if aviso else [],
@@ -467,7 +498,7 @@ def a_markdown(radar):
            "> `[a verificar]` = dato de la investigación que todavía no se leyó de primera mano.", "",
            "Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B o el C.", ""]
     for c in radar.get("categorias") or []:
-        out += ["## %s" % c.get("nombre", c.get("id")), "", "| Plan | Herramienta | Por qué | Datos privados | Condiciones |",
+        out += ["## %s" % c.get("nombre", c.get("id")), "", texto_respaldo(c), "", "| Plan | Herramienta | Por qué | Datos privados | Condiciones |",
                 "|---|---|---|---|---|"]
         for p in c.get("planes") or []:
             out.append("| %s | %s%s | %s | %s | %s |" % (
@@ -497,7 +528,8 @@ def a_html(radar):
         rk = c.get("ranking") or {}
         top = "".join("<li>%s</li>" % e(str(i.get("modelo"))) for i in (rk.get("items") or [])[:5])
         extra = "<p><small>Ranking: %s</small></p><ol>%s</ol>" % (e(str(rk.get("fuente", "?"))), top) if top else ""
-        tarjetas.append("<section><h2>%s</h2><ol type=\"A\">%s</ol>%s</section>" % (e(str(c.get("nombre", c.get("id")))), filas, extra))
+        tarjetas.append("<section><h2>%s</h2><p><small>%s</small></p><ol type=\"A\">%s</ol>%s</section>" % (
+            e(str(c.get("nombre", c.get("id")))), e(texto_respaldo(c)), filas, extra))
     ret = "".join("<li>%s — %s (%s)</li>" % (e(str(r.get("modelo"))), e(str(r.get("fecha"))), e(str(r.get("tipo", "apagado"))))
                   for r in radar.get("retiros") or [])
     aviso = aviso_linea(radar)
@@ -528,6 +560,7 @@ def actualizar(abrir_url=None):
             raise ValueError("el archivo bajado no tiene categorías")
         destino.parent.mkdir(parents=True, exist_ok=True)
         destino.write_text(cuerpo.decode("utf-8"), encoding="utf-8")
+        (destino.parent / "comprobado").write_text(hoy().isoformat(), encoding="utf-8")
         return True, "Radar actualizado (datos del %s)." % nuevo.get("actualizado", "?")
     except Exception as ex:
         return False, "Sin red o sin archivo nuevo (%s): sigo con lo último guardado." % type(ex).__name__
@@ -627,7 +660,7 @@ def cmd_elegir(a):
         return 2
     plan, saltados, cache = elegir(radar, c, a.sensible)
     if a.json:
-        print(json.dumps({"categoria": c["id"], "plan": plan, "saltados": [{"plan": p.get("plan"), "motivo": m} for p, m in saltados]},
+        print(json.dumps({"categoria": c["id"], "plan": plan, "respaldado": respaldo(c)[1], "saltados": [{"plan": p.get("plan"), "motivo": m} for p, m in saltados]},
                          ensure_ascii=False))
         return 0 if plan else 1
     if plan is None:
@@ -637,6 +670,8 @@ def cmd_elegir(a):
     print("Usá el plan %s para «%s»: %s%s. %s" % (plan.get("plan"), c["nombre"], _nombre_plan(plan), marca(plan), plan.get("por_que", "")))
     if saltados:
         print("Saltó: " + "; ".join("%s (%s): %s" % (p.get("plan"), p.get("herramienta"), m) for p, m in saltados) + ".")
+    if not respaldo(c)[1]:
+        print(texto_respaldo(c))
     if plan.get("condiciones"):
         print("Condiciones: " + plan["condiciones"])
     if plan.get("cupo") == "codex" and cache.get("codex") and cache["codex"][0] == "alto":

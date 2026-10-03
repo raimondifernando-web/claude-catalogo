@@ -7,13 +7,17 @@ Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B
 
 ## Desarrollo (programar)
 
+Orden respaldado por 2 fuentes independientes.
+
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | El mejor en Terminal-Bench 4.0 (66,4% contra 57,9% de GPT-6 Astra; dato del fabricante). Sonnet 5.5 para lo rutinario. | sí |  |
+| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Primero en el índice de agentes de programación de Artificial Analysis (Claude Code). Sonnet 5.5 para lo rutinario: en ese índice rinde igual. | sí |  |
 | B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Segundo mejor para programar y el modelo por defecto de Codex; otro modelo encuentra otros errores. | sí | Con cuenta gratis, revisá la privacidad de la cuenta antes de mandar código privado. |
 | C | Antigravity (Google, Gemini 3.8 Flash) [a verificar] | Gratis y alcanza para tareas acotadas. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
 ## Revisión de código y seguridad
+
+Orden PROVISORIO: 0 de 2 fuentes independientes.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
@@ -23,13 +27,17 @@ Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B
 
 ## Diseño (UI web, presentaciones)
 
+Orden PROVISORIO: 1 de 2 fuentes independientes.
+
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Primero en Arena WebDev (a verificar); con la skill de diseño del plugin que corresponda. | sí |  |
+| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Primero en Arena WebDev; con la skill de diseño del plugin que corresponda. | sí |  |
 | B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Segundo en Arena WebDev con GPT-6 Astra (a verificar); sirve para una segunda propuesta. | sí |  |
 | C | Antigravity (Google, Gemini 3.8 Flash) [a verificar] | Gratis para bocetos; no para material de clientes. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
 ## Escritura en castellano
+
+Orden PROVISORIO: 1 de 2 fuentes independientes.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
@@ -41,6 +49,8 @@ Ranking (Arena texto (contradictorio: a verificar), 2026-09-25): 1. Claude Opus 
 
 ## Investigación web
 
+Orden PROVISORIO: 1 de 2 fuentes independientes.
+
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
 | A | app web (ChatGPT deep research) (OpenAI, GPT-6 Astra) [a verificar] | BrowseComp: casi empatado con Sonnet/Opus (92,2 / 91,5 / 90,8): elegir por el cupo que quede. | sí |  |
@@ -50,6 +60,8 @@ Ranking (Arena texto (contradictorio: a verificar), 2026-09-25): 1. Claude Opus 
 Ranking (BrowseComp (README de steel-dev), 2026-10-03): 1. GPT-5.6 Sol; 2. GPT-6 Astra; 3. Claude Opus 5
 
 ## Documentos largos
+
+Orden PROVISORIO: 1 de 2 fuentes independientes.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
@@ -61,29 +73,37 @@ Ranking (MRCR v2 a 1M (llm-stats), 2026-09-30): 1. Gemini 3.7 Flash
 
 ## Imágenes (generar y editar)
 
+Orden respaldado por 2 fuentes independientes.
+
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | app web (ChatGPT Images) (OpenAI, gpt-image-2.5) [a verificar] | Primero en Arena texto-a-imagen y edición (a verificar). Claude no genera imágenes. | sí | No subas fotos de personas ni de clientes sin permiso. |
+| A | app web (ChatGPT Images) (OpenAI, gpt-image-2.5) [a verificar] | Primero en Arena y en Artificial Analysis, texto a imagen y edición. Claude no genera imágenes. | sí | No subas fotos de personas ni de clientes sin permiso. |
 | B | app web de Gemini (Google, Nano Banana 2 (Gemini 3.1 Flash Image)) [a verificar] | Gratis en la app de Gemini. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 | C | Adobe Firefly / Express (conector) (Adobe) [a verificar] | Sin dato en la investigación: alternativa con licencia comercial clara (a verificar). | sí | A completar en la próxima revisión. |
 
 ## Imágenes (entender)
 
+Orden PROVISORIO: 1 de 2 fuentes independientes.
+
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Primero en Arena visión con Claude Fable 5 (a verificar); Opus 5.5 entiende imágenes dentro de Claude Code. | sí |  |
+| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Arena visión: primero Claude Fable 5; Opus 5.5 entiende imágenes dentro de Claude Code. | sí |  |
 | B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Alternativa. | sí |  |
 | C | Antigravity (Google, Gemini 3.8 Flash) [a verificar] | Alternativa gratis. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
 ## Video
 
+Orden respaldado por 2 fuentes independientes.
+
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | app web de Gemini (Google, Veo (a verificar)) [a verificar] | Sin dato en la investigación: pendiente de cargar desde el ranking de video de Arena. | no | Pendiente de verificar. |
+| A | app web de Gemini (Google, Gemini Omni Flash) [a verificar] | Sin dato en la investigación: pendiente de cargar desde el ranking de video de Arena. | no | Pendiente de verificar. |
 | B | app web (Sora) (OpenAI, Sora (a verificar)) [a verificar] | Sin dato en la investigación. | no | Pendiente de verificar. |
 | C | Adobe Express (conector) (Adobe) [a verificar] | Cortes rápidos y redimensionado con el conector de Adobe (a verificar). | sí | Pendiente de verificar. |
 
 ## Transcripción de audio
+
+Orden PROVISORIO: 1 de 2 fuentes independientes.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
@@ -95,6 +115,8 @@ Ranking (Artificial Analysis, speech to text (a verificar), 2026-09-30): 1. Elev
 
 ## Voz (texto a voz)
 
+Orden PROVISORIO: 1 de 2 fuentes independientes.
+
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
 | A | API de ElevenLabs (ElevenLabs) [a verificar] | Sin dato en la investigación: es la herramienta de voz conectada hoy (a verificar contra el ranking de TTS de Arena). | sí | Pendiente de verificar. |
@@ -102,6 +124,8 @@ Ranking (Artificial Analysis, speech to text (a verificar), 2026-09-30): 1. Elev
 | C | API de Gemini (Google) [a verificar] | Sin dato en la investigación. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
 ## Datos y planillas
+
+Orden PROVISORIO: 0 de 2 fuentes independientes.
 
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
@@ -111,6 +135,8 @@ Ranking (Artificial Analysis, speech to text (a verificar), 2026-09-30): 1. Elev
 
 ## Tareas mecánicas baratas
 
+Orden PROVISORIO: 1 de 2 fuentes independientes.
+
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
 | A | API de OpenAI (OpenAI, GPT-6 Luna) [a verificar] | US$0,10/0,50 por millón: lo más barato. | sí |  |
@@ -119,9 +145,11 @@ Ranking (Artificial Analysis, speech to text (a verificar), 2026-09-30): 1. Elev
 
 ## Agentes de tarea larga
 
+Orden respaldado por 2 fuentes independientes.
+
 | Plan | Herramienta | Por qué | Datos privados | Condiciones |
 |---|---|---|---|---|
-| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Mejor en Terminal-Bench 4.0; para tareas de horas conviene METR time horizon (a verificar). | sí |  |
+| A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Claude arriba en Arena Agent; Fable 5.1 (más caro) es el primero si la tarea lo vale. | sí |  |
 | B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Agente de consola con sandbox; buen segundo. | sí |  |
 | C | Antigravity (Google, Gemini 3.1 Pro) [a verificar] | Alternativa gratis para tareas acotadas. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 

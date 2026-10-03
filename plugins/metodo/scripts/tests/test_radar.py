@@ -234,6 +234,22 @@ class TestComandos(Base):
         radar = radar_de_prueba(actualizado="2026-10-09")
         self.assertEqual(R.aviso_linea(radar), "")
 
+    def test_aviso_no_envejece_si_actualizar_confirmo(self):
+        radar = radar_de_prueba(actualizado="2026-09-01")
+        self.assertIn("días", R.aviso_linea(radar))
+        ok, _ = R.actualizar(lambda url, *a, **k: (200, YAML_REAL.read_bytes()))
+        self.assertTrue(ok)
+        self.assertEqual(R.aviso_linea(radar), "")
+
+    def test_fabricante_no_cuenta_para_el_orden(self):
+        c = {"evidencia": [{"fuente": "blog propio", "tipo": "fabricante"},
+                           {"fuente": "ranking A", "tipo": "independiente"}]}
+        self.assertEqual(R.respaldo(c), (1, False))
+        self.assertIn("PROVISORIO", R.texto_respaldo(c))
+        c["evidencia"].append({"fuente": "ranking B", "tipo": "independiente"})
+        self.assertEqual(R.respaldo(c), (2, True))
+        self.assertEqual(R.respaldo({}), (0, False))
+
     def test_aviso_nunca_falla(self):
         carpeta = self.tmp / "config" / "metodo" / "radar"
         carpeta.mkdir(parents=True)

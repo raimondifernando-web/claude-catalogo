@@ -5,14 +5,27 @@ nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marca
 categorias:
   - id: desarrollo
     nombre: "Desarrollo (programar)"
+    evidencia:
+      - fuente: "Artificial Analysis Coding Agent Index v1.5"
+        url: "https://artificialanalysis.ai/agents/coding-agents"
+        tipo: independiente
+        dice: "Claude Code+Sonnet 5.5 68, Claude Code+Opus 5.5 66, Antigravity+Gemini 4 Argon 64, Codex+GPT-6.1 Sol 63"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
+      - fuente: "Terminal-Bench 4.0 (tabla oficial)"
+        url: "https://www.tbench.ai/"
+        tipo: independiente
+        dice: "Codex+GPT-6 Astra 58,2%, Claude Code+Fable 5.1 57,9%, Claude Code+Opus 5 53,9%; Opus 5.5 sin envío"
+        conflicto: "Terminal-Bench: muchos envíos los hace el fabricante; se lee la tabla oficial"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: Claude Code
         proveedor: Anthropic
         modelo: Opus 5.5
         modelo_api: claude-opus-5-5
-        por_que: "El mejor en Terminal-Bench 4.0 (66,4% contra 57,9% de GPT-6 Astra; dato del fabricante). Sonnet 5.5 para lo rutinario."
-        fuente: "https://www.anthropic.com/news/claude-opus-5-5"
+        por_que: "Primero en el índice de agentes de programación de Artificial Analysis (Claude Code). Sonnet 5.5 para lo rutinario: en ese índice rinde igual."
+        fuente: "evidencia de la categoría"
         fecha: 2026-10-03
         datos_privados: true
         condiciones: ""
@@ -103,13 +116,20 @@ categorias:
       items: []
   - id: diseno
     nombre: "Diseño (UI web, presentaciones)"
+    evidencia:
+      - fuente: "Arena WebDev"
+        url: "https://arena.ai/leaderboard/code/webdev"
+        tipo: independiente
+        dice: "1 claude-opus-5.5-max 1815, 2 gpt-6-astra-max 1788, 3 claude-sonnet-5.5-xhigh 1786"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: Claude Code
         proveedor: Anthropic
         modelo: Opus 5.5
         modelo_api: claude-opus-5-5
-        por_que: "Primero en Arena WebDev (a verificar); con la skill de diseño del plugin que corresponda."
+        por_que: "Primero en Arena WebDev; con la skill de diseño del plugin que corresponda."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
         fecha: 2026-10-03
         datos_privados: true
@@ -154,6 +174,13 @@ categorias:
       verificado: false
   - id: escritura
     nombre: Escritura en castellano
+    evidencia:
+      - fuente: "Arena texto"
+        url: "https://arena.ai/leaderboard/text"
+        tipo: independiente
+        dice: "1 gemini-4-argon-high 1525 (preliminar), 4 claude-opus-5.5-high 1504; diferencia dentro del margen"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: Claude Code
@@ -208,6 +235,13 @@ categorias:
       verificado: false
   - id: investigacion_web
     nombre: "Investigación web"
+    evidencia:
+      - fuente: "Arena búsqueda"
+        url: "https://arena.ai/leaderboard/search"
+        tipo: independiente
+        dice: "1 gpt-5.6-sol-xhigh 1257, 2 claude-opus-4-6-search 1253; sin modelos de septiembre"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: "app web (ChatGPT deep research)"
@@ -264,6 +298,13 @@ categorias:
           puntaje: "90,8%"
   - id: documentos_largos
     nombre: Documentos largos
+    evidencia:
+      - fuente: "Arena documentos"
+        url: "https://arena.ai/leaderboard/document"
+        tipo: independiente
+        dice: "1 claude-opus-5-high 1516, 2 claude-fable-5.1-max 1513; los 5 primeros son Claude. Contradice el plan A"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: API / app web de Gemini
@@ -314,13 +355,26 @@ categorias:
           puntaje: "97%"
   - id: imagenes_generar
     nombre: "Imágenes (generar y editar)"
+    evidencia:
+      - fuente: "Arena texto a imagen y edición"
+        url: "https://arena.ai/leaderboard/text-to-image"
+        tipo: independiente
+        dice: "1 gpt-image-2.5-sunburst en las dos tablas (1424 y 1522)"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
+      - fuente: "Artificial Analysis Image Arena"
+        url: "https://artificialanalysis.ai/image/leaderboard/text-to-image"
+        tipo: independiente
+        dice: "1 GPT Image 2.5 Sunburst 1197 y 1 en edición 1182"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: "app web (ChatGPT Images)"
         proveedor: OpenAI
         modelo: gpt-image-2.5
         modelo_api: gpt-image-2.5
-        por_que: "Primero en Arena texto-a-imagen y edición (a verificar). Claude no genera imágenes."
+        por_que: "Primero en Arena y en Artificial Analysis, texto a imagen y edición. Claude no genera imágenes."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
         fecha: 2026-10-03
         datos_privados: true
@@ -365,13 +419,20 @@ categorias:
       verificado: false
   - id: imagenes_entender
     nombre: "Imágenes (entender)"
+    evidencia:
+      - fuente: "Arena visión"
+        url: "https://arena.ai/leaderboard/vision"
+        tipo: independiente
+        dice: "1 claude-fable-5-high 1309, 2 qwen3.8-max 1301"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: Claude Code
         proveedor: Anthropic
         modelo: Opus 5.5
         modelo_api: claude-opus-5-5
-        por_que: "Primero en Arena visión con Claude Fable 5 (a verificar); Opus 5.5 entiende imágenes dentro de Claude Code."
+        por_que: "Arena visión: primero Claude Fable 5; Opus 5.5 entiende imágenes dentro de Claude Code."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
         fecha: 2026-10-03
         datos_privados: true
@@ -416,11 +477,24 @@ categorias:
       verificado: false
   - id: video
     nombre: Video
+    evidencia:
+      - fuente: "Arena texto a video"
+        url: "https://arena.ai/leaderboard/text-to-video"
+        tipo: independiente
+        dice: "1 gemini-omni-1.1-flash 1516, 2 gemini-omni-flash 1513"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
+      - fuente: "Artificial Analysis Video Arena"
+        url: "https://artificialanalysis.ai/video/leaderboard/text-to-video"
+        tipo: independiente
+        dice: "1 Wan 3.0 1157; en imagen a video 1 MiniMax H3 Max, 3 Gemini Omni Flash. No coincide con Arena"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: app web de Gemini
         proveedor: Google
-        modelo: "Veo (a verificar)"
+        modelo: "Gemini Omni Flash"
         modelo_api: null
         por_que: "Sin dato en la investigación: pendiente de cargar desde el ranking de video de Arena."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
@@ -467,6 +541,13 @@ categorias:
       verificado: false
   - id: transcripcion
     nombre: "Transcripción de audio"
+    evidencia:
+      - fuente: "Artificial Analysis Speech to Text"
+        url: "https://artificialanalysis.ai/speech-to-text"
+        tipo: independiente
+        dice: "error por palabra: Scribe v2 2,2%, Gemini 3.5 Transcribe 2,6%; GPT Transcribe fuera de los 8 primeros"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: API de Gemini
@@ -523,6 +604,13 @@ categorias:
           puntaje: "3,3%"
   - id: voz_tts
     nombre: "Voz (texto a voz)"
+    evidencia:
+      - fuente: "Artificial Analysis Text to Speech"
+        url: "https://artificialanalysis.ai/text-to-speech/leaderboard"
+        tipo: independiente
+        dice: "1 Eleven v4 1321, 4 Gemini 3.8 Flash TTS 1275"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: API de ElevenLabs
@@ -617,6 +705,13 @@ categorias:
       items: []
   - id: tareas_baratas
     nombre: "Tareas mecánicas baratas"
+    evidencia:
+      - fuente: "Artificial Analysis LLM Leaderboard"
+        url: "https://artificialanalysis.ai/leaderboards/models"
+        tipo: independiente
+        dice: "índice ≥38 más barato por tarea: GPT-6 Luna 38 a 0,07 US$; GPT-6.1 Sol low 42 a 0,13 US$"
+        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: API de OpenAI
@@ -664,14 +759,27 @@ categorias:
       items: []
   - id: agentes_largos
     nombre: Agentes de tarea larga
+    evidencia:
+      - fuente: "Arena Agent"
+        url: "https://arena.ai/leaderboard/agent"
+        tipo: independiente
+        dice: "1 Claude Fable 5.1, 2 Claude Opus 5.5, 3 Claude Sonnet 5.5, 4 GPT 6 Astra"
+        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
+        fecha: 2026-10-03
+      - fuente: "Terminal-Bench 4.0 (tabla oficial)"
+        url: "https://www.tbench.ai/"
+        tipo: independiente
+        dice: "Codex+GPT-6 Astra 58,2%, Claude Code+Fable 5.1 57,9%; METR no sirve hoy (último modelo medido en mayo)"
+        conflicto: "Terminal-Bench: muchos envíos los hace el fabricante; se lee la tabla oficial"
+        fecha: 2026-10-03
     planes:
       - plan: A
         herramienta: Claude Code
         proveedor: Anthropic
         modelo: Opus 5.5
         modelo_api: claude-opus-5-5
-        por_que: "Mejor en Terminal-Bench 4.0; para tareas de horas conviene METR time horizon (a verificar)."
-        fuente: "https://www.anthropic.com/news/claude-opus-5-5"
+        por_que: "Claude arriba en Arena Agent; Fable 5.1 (más caro) es el primero si la tarea lo vale."
+        fuente: "evidencia de la categoría"
         fecha: 2026-10-03
         datos_privados: true
         condiciones: ""
