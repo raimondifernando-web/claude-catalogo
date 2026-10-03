@@ -51,7 +51,7 @@ sube.
 | `scripts/verificar-metadatos.sh` | TODO COINCIDE |
 | `claude plugin validate` (metodo y marketplace) | PASS · PASS |
 | `skill-security-auditor` (skill + script + tests + hooks) | PASS, 0 hallazgos |
-| `git grep -i -c -E 'ebras\|\bdani\b'` | **1, en `docs/specs/BUZON.md`**: es el propio comando de la spec, que contiene el patrón. Fuera de la spec, 0 |
+| El `git grep` de nombres de la spec (última línea de `BUZON.md`) | **1, en `docs/specs/BUZON.md`**: es el propio comando de la spec, que contiene el patrón. Fuera de la spec, 0 |
 
 Los tests corren solo en Linux (Python 3.11, git 2.43). Mac y Windows quedan a cargo del CI (`vigia-tests`), que se
 dispara con el push a esta rama. Dos tests usan un `git` falso de shell y se saltean en Windows.
