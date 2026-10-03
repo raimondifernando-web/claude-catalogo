@@ -61,6 +61,11 @@ la anterior subiéndole el número («Ventas 7» → «Ventas 8»). Eso lo hace 
   quieras.» Archivá (`archive_session`) **solo si el usuario dice que sí**; sin respuesta no toques nada.
   Nunca elimines una sesión. Esto vale también si el título ya tenía número.
 
+### 3 ter. Radar de modelos (una línea, solo si hay algo)
+Corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/radar.py" aviso` (en Windows, `py -3`). Si imprime una línea («Radar: el radar
+de modelos tiene N días…» o «se retira X el …»), sumala tal cual a la confirmación del paso 4. Si no imprime nada, no
+digas nada. Nunca falla ni espera la red: si da error, seguí sin avisar.
+
 ### 4. Confirmar y arrancar
 Confirmale al usuario en 2-3 líneas: **"Leí el estado. El próximo paso es [X]. ¿Arrancamos?"**
 Si el prompt ya trae el próximo paso definido y contexto suficiente, arrancá directo: la confirmación es
