@@ -1,0 +1,11 @@
+{
+  "name": "rubro-conocimiento",
+  "version": "0.1.0",
+  "description": "Pack de rubro (L2): gestión del conocimiento — capturar y organizar notas, reuniones e investigaciones en Notion y en Obsidian (bases, CLI y markdown) (6 skills). Requiere base-segura.",
+  "author": {
+    "name": "Fernando Raimondi"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/raimondifernando-web/claude-catalogo",
+  "repository": "https://github.com/raimondifernando-web/claude-catalogo"
+}

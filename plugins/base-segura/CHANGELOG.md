@@ -1,4 +1,8 @@
-# base-segura — qué cambia para vos
+# base-segura
+
+## 0.13.5 — 2026-10-03
+- Sincronizadas skills desde ~/.claude/skills.
+
 
 ## 0.13.4 — 2026-09-28
 - Cuando `markitdown` usa OpenRouter para describir imágenes o documentos, pide el modo sin retención si el modelo lo tiene, y avisa si no.

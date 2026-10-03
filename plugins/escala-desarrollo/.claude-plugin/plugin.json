@@ -1,8 +1,10 @@
 {
   "name": "escala-desarrollo",
-  "version": "0.12.2",
+  "version": "0.12.3",
   "description": "Capa L4, para cuando empezás a desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive, investigación profunda en 3 etapas) y 5 agentes (code-reviewer y security-reviewer, que revisan tu app entera antes de usarla con clientes; research-analyst, data-researcher y knowledge-synthesizer, que arman research-deep-dive). Los revisores explican en castellano qué puede pasar y en qué orden arreglarlo. Pedile a Claude: «revisá mi app con los dos revisores» o «investigación profunda sobre X».",
-  "author": { "name": "Fernando Raimondi" },
+  "author": {
+    "name": "Fernando Raimondi"
+  },
   "homepage": "https://github.com/raimondifernando-web/claude-catalogo",
   "repository": "https://github.com/raimondifernando-web/claude-catalogo",
   "license": "MIT"
