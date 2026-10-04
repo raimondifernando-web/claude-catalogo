@@ -1,6 +1,6 @@
 # Radar de modelos
 
-> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-10-03**.
+> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-10-04**.
 > `[a verificar]` = dato de la investigación que todavía no se leyó de primera mano.
 
 Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B o el C.
@@ -163,3 +163,4 @@ Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoy
 | gpt-5-2025-08-07 | OpenAI | 2026-12-11 | apagado | También gpt-5-mini, gpt-5-nano, gpt-5-pro, o3 y o3-pro. El reemplazo figura distinto según la fuente. |
 | gpt-4o-transcribe | OpenAI | 2027-02-26 | apagado | También whisper-1 y los demás gpt-4o-*transcribe. |
 | gemini-2.5-pro | Google | 2026-10-20 | restringido | Vertex: se apaga el 2026-10-20. En la Developer API ya no está disponible para cuentas nuevas (error 404) sin estar deprecado: solo lo detecta `radar.py probar`. |
+| gemini-3.5-flash-lite | Google | 2027-07-21 | apagado | Detectado por litellm. |

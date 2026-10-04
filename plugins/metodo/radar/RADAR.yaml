@@ -1,6 +1,6 @@
 # RADAR.yaml — qué IA usar para cada cosa, con plan A, B y C. Lo lee `scripts/radar.py`.
 # Lo mantiene un PR automático (.github/workflows/radar.yml) que una persona aprueba; el RADAR.md se genera con `radar.py md`.
-actualizado: 2026-10-03
+actualizado: 2026-10-04
 nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual."
 categorias:
   - id: desarrollo
@@ -945,6 +945,13 @@ retiros:
     nota: "Vertex: se apaga el 2026-10-20. En la Developer API ya no está disponible para cuentas nuevas (error 404) sin estar deprecado: solo lo detecta `radar.py probar`."
     fuente: "https://ai.google.dev/gemini-api/docs/deprecations"
     verificado: false
+  - modelo: gemini-3.5-flash-lite
+    proveedor: Google
+    fecha: 2027-07-21
+    tipo: apagado
+    nota: Detectado por litellm.
+    fuente: litellm
+    verificado: false
 precios_usd_por_millon:
   claude-opus-5-5:
     entrada: 4
@@ -978,10 +985,10 @@ fuentes_auto:
   paginas_retiros:
     anthropic:
       url: "https://platform.claude.com/docs/en/about-claude/model-deprecations"
-      hash: null
+      hash: 6fe2c7826f67c5e9
     openai:
       url: "https://developers.openai.com/api/docs/deprecations"
-      hash: null
+      hash: 6f8205f4f93024d4
     google:
       url: "https://ai.google.dev/gemini-api/docs/deprecations"
-      hash: null
+      hash: 621f84c1f3fa18cb
