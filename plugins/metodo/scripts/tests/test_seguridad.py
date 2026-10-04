@@ -17,6 +17,7 @@ VALOR = "valor-super-secreto-que-nunca-debe-aparecer-123"
 URL_CON_CLAVE = "https://usuario:otro-secreto-de-la-url@github.com/alguien/mi-repo.git"
 
 
+@unittest.skipIf(os.name == "nt", "el chequeo de seguridad lo lanza el aviso de Mac")
 class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -225,6 +226,7 @@ class SeguridadAutoTest(Base):
         (self.metodo / "seguridad.resultado").write_text("ok 2026-10-03\n")
         self.assertEqual(self.auto(), [])
 
+    @unittest.skipUnless(sys.platform == "darwin", "sin xcode-select el lanzador no corre")
     def test_candado_de_un_proceso_muerto_se_libera(self):
         self.repo_limpio("mi-repo")
         self.lista([{"ruta": "~/mi-repo"}])

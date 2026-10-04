@@ -34,6 +34,7 @@ esac
 """
 
 
+@unittest.skipIf(os.name == "nt", "graphify-en-repo es un script de bash")
 class GraphifyEnRepoTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

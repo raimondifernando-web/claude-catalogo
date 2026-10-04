@@ -14,7 +14,9 @@ SCRIPT = AQUI.parent / "reglas.py"
 PLANTILLA = AQUI.parent.parent / "templates" / "REGLAS-DEL-METODO.md"
 
 sys.path.insert(0, str(AQUI.parent))
-import reglas  # noqa: E402
+ES_WINDOWS = os.name == "nt"
+if not ES_WINDOWS:   # reglas.py usa fcntl: el aviso que lo llama es solo para Mac
+    import reglas  # noqa: E402
 
 
 def correr(config_dir):
@@ -24,6 +26,7 @@ def correr(config_dir):
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
 
 
+@unittest.skipIf(ES_WINDOWS, "reglas.py es para Mac")
 class ReglasTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
