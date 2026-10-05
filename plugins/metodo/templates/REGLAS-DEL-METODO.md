@@ -70,6 +70,11 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     (con `--sensible` si hay datos privados). Te devuelve el primer plan disponible: si el A no está (cupo agotado, modelo
     retirado o no disponible para tu cuenta), usá el B o el C que te indica. `ver` muestra todas las categorías con sus
     planes A, B y C.
+    **Para mandar el trabajo a otra IA, no elijas vos: usá `delegar.py`** (está junto a `radar.py`):
+    `python3 "$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name delegar.py | sort -V | tail -1)" <categoría> <carpeta-del-repo> <pedido.txt>`
+    (con `--revisar` solo lee y te devuelve un informe). Mide el cupo de Claude, Codex y Antigravity, manda lo acotado a
+    la IA que tenga cupo —dejando a Claude como coordinador— y te deja el cambio sin commitear para que corras los
+    tests y lo revises. Un cupo sin usar es plata tirada: no lo dejes dormido mientras Claude se gasta.
 
 ## Cuando se crean o suman skills y agentes (regla 19)
 
