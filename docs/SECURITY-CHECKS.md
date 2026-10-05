@@ -651,3 +651,12 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Superficie nueva | Solo comprueba que exista el archivo de sesión de Codex (no lo abre ni lo lee). Ningún camino nuevo de ejecución |
 | Revisión | Sin `security-reviewer` aparte: cambio de tres condiciones, leído entero por Orquesta y cubierto por pruebas (210 en el plugin) |
 | Metadatos / clientes | verificar-metadatos y grep de clientes los corre el script de publicación |
+
+### 2026-10-05 · metodo 0.21.2 («Poner todo al día» instala Antigravity)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Bloque 5g de `al-dia.sh`: si no hay `agy`, baja el instalador oficial de Google, lo corre solo si su sha256 es el fijado (sin sudo, `~/.local/bin`, tope de 5 min) y en cada corrida verifica con `codesign` que el programa esté firmado por Google (TeamIdentifier `EQHXZ8M8AV`) |
+| Revisión | `security-reviewer` (Sonnet) sobre el bloque: 0 críticos, 0 altos, 3 medios, el resto bajos. Medios: el aviso de datos a Google solo sale en la corrida manual; «sin conexión» no sugiere repetir; si Google cambia el instalador el mensaje queda en «falta» en cada corrida. Bajos: `codesign` verifica el primer `agy` del PATH y no el de `~/.local/bin`; endurecer la firma con `-R` (anchor apple generic); `kill -9` al vencer el tope; `curl --proto =https`; avisar que falta entrar con la cuenta de Google |
+| Qué se hizo con eso | Publicado tal cual está en Consultoría (`cmp` contra el commit fijado): el script es de Consultoría IA y no se divergió en silencio. Los hallazgos se les devolvieron por escrito para una versión siguiente |
+| Límites | No se leyó el instalador de Google dentro de esta revisión; lo leyó Consultoría y su huella queda fijada. El instalador baja y puede ejecutar el binario antes de que `codesign` lo compruebe |
+| Metadatos / clientes | verificar-metadatos y grep de clientes los corre el script de publicación |

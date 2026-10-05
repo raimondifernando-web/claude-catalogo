@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.21.2 — 2026-10-05
+- **«Poner todo al día» instala Antigravity (Gemini) de Google.** Va a tu carpeta de usuario, sin contraseña, con el instalador oficial de Google, que solo se corre si es exactamente el que revisamos (si Google lo cambia, no se corre y el mensaje te dice que le avises a Fernando). Cada día se vuelve a comprobar que el programa esté firmado por Google. Lo que le pases a Gemini sale a Google con tu cuenta y, en el plan gratis, Google puede usarlo para mejorar sus modelos: al instalarlo te lo avisa. Entrar con tu cuenta de Google se hace una vez, aparte.
+
 ## 0.21.1 — 2026-10-05
 - **El radar y `delegar.py` saltean la IA que no está instalada o no tiene cuenta.** Antes, en una computadora sin Antigravity (`agy`) o con Codex instalado pero sin haber iniciado sesión (`codex login`), el radar decía «cupo desconocido», no la salteaba, `delegar.py` la elegía y fallaba. Ahora esa IA se salta igual que una con el cupo agotado, y la salida dice por qué («Antigravity: no está instalada», «Codex: sin sesión iniciada»). Si no queda ninguna otra, `delegar.py` te dice que lo hagas en la sesión de Claude.
 
