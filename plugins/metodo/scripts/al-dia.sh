@@ -216,24 +216,30 @@ fi
 #     carpeta de usuario. Se fija la huella del INSTALADOR (si Google lo cambia, no se corre: avisá a Fernando); el programa
 #     baja la última versión, verifica su huella y después se actualiza solo. Entrar con tu cuenta de Google se hace aparte.
 local AGYI=62966c07365423bd4dc209355060744058fb30d60f5323e2d360e39de64e5042 AGB AP AS
-if [ ! -x "$HOME/.local/bin/agy" ] && ! command -v agy >/dev/null 2>&1; then
+# Solo en la corrida a mano: el instalador ejecuta agy y eso puede abrir el navegador; en segundo plano, nunca.
+if [ $AUTO -eq 0 ] && [ ! -x "$HOME/.local/bin/agy" ] && ! command -v agy >/dev/null 2>&1; then
   T=$(mktemp)   # T: lo borra el trap de salida
-  if ! curl -fsSL --max-time 60 -o "$T" https://antigravity.google/cli/install.sh; then
-    falta+=("Antigravity (sin conexión)")
+  if ! curl -fsSL --proto '=https' --proto-redir '=https' --max-time 60 -o "$T" https://antigravity.google/cli/install.sh; then
+    falta+=("⟳ Antigravity (sin conexión)")
   elif [ "$(shasum -a 256 "$T" | cut -d' ' -f1)" = "$AGYI" ]; then
     /bin/bash "$T" </dev/null >/dev/null 2>&1 & AP=$! AS=0      # tope propio de 5 minutos: si se cuelga, sigue lo demás
     while kill -0 "$AP" 2>/dev/null && [ $AS -lt 300 ]; do sleep 2; AS=$((AS+2)); done
-    pkill -P "$AP" 2>/dev/null; kill "$AP" 2>/dev/null; wait "$AP" 2>/dev/null
-    [ -x "$HOME/.local/bin/agy" ] && echo "· Antigravity instalado. Lo que le pases sale a Google con tu cuenta; en el plan gratis Google puede usarlo para mejorar sus modelos."
-  else falta+=("Antigravity (cambió su instalador: avisale a Fernando)"); fi
+    if kill -0 "$AP" 2>/dev/null; then pkill -9 -P "$AP" 2>/dev/null; kill -9 "$AP" 2>/dev/null; fi
+    wait "$AP" 2>/dev/null
+    if [ -x "$HOME/.local/bin/agy" ]; then echo "· Antigravity instalado. Lo que le pases sale a Google con tu cuenta; en el plan gratis Google puede usarlo para mejorar sus modelos."
+    else falta+=("⟳ Antigravity (no terminó de instalarse)"); fi
+  else   # es opcional: no frena el «Todo al día»; lo avisa el vigía a Fernando
+    echo "· Antigravity no se instaló: Google cambió su instalador y Fernando tiene que revisarlo antes."
+  fi
   rm -f "$T"; T=""
 fi
 # En cada corrida: el programa (y cada actualización que se baja solo) tiene que estar firmado por Google ante Apple.
-AGB=$(command -v agy 2>/dev/null || echo "$HOME/.local/bin/agy")
-if [ -x "$AGB" ]; then
-  { codesign --verify --strict "$AGB" 2>/dev/null && codesign -dv "$AGB" 2>&1 | grep -qx 'TeamIdentifier=EQHXZ8M8AV'; } \
+AGB="$HOME/.local/bin/agy"; [ -x "$AGB" ] || AGB=$(command -v agy 2>/dev/null)
+if [ -n "$AGB" ] && [ -x "$AGB" ]; then
+  # Solo se mira la firma: NO se ejecuta agy acá (sin sesión abre el navegador para entrar). Entrar es el paso 24.
+  codesign --verify --strict -R='anchor apple generic and certificate leaf[subject.OU] = "EQHXZ8M8AV"' "$AGB" 2>/dev/null \
     || falta+=("Antigravity (la firma no es de Google: no lo uses y avisale a Fernando)")
-elif ! printf '%s\n' "${falta[@]+"${falta[@]}"}" | grep -q Antigravity; then falta+=("Antigravity"); fi
+fi
 
 # 5c. Datos de uso de HyperFrames: apagados (solo esa variable; nunca una general como DO_NOT_TRACK)
 if [ -f "$S" ]; then
