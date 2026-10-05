@@ -660,3 +660,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Qué se hizo con eso | Publicado tal cual está en Consultoría (`cmp` contra el commit fijado): el script es de Consultoría IA y no se divergió en silencio. Los hallazgos se les devolvieron por escrito para una versión siguiente |
 | Límites | No se leyó el instalador de Google dentro de esta revisión; lo leyó Consultoría y su huella queda fijada. El instalador baja y puede ejecutar el binario antes de que `codesign` lo compruebe |
 | Metadatos / clientes | verificar-metadatos y grep de clientes los corre el script de publicación |
+
+### 2026-10-05 · metodo 0.21.3 (al-dia v6.3: Antigravity sin ejecutarse y sin instalarse en segundo plano)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Bloque 5g de `al-dia.sh`: nunca ejecuta `agy` (sin sesión abre el navegador), solo `codesign --verify --strict -R` con cadena Apple + TeamIdentifier de Google; el instalador solo corre en la corrida a mano (el instalador ejecuta `agy install`), nunca con `--auto`; `curl --proto =https`; `kill -9` al vencer el tope; mensajes con ⟳ para repetir; instalador cambiado = aviso sin frenar el «Todo al día» |
+| Revisión | Los 7 hallazgos de la 0.21.2 aplicados por Consultoría. `security-reviewer` (Sonnet) sobre la v6.3: 0 críticos, 0 altos, 0 medios. Orquesta probó la firma estricta contra un `agy` real ya instalado (sin ejecutarlo): pasa con el equipo de Google y falla con otro |
+| Límites | Probado con `agy` y `curl` falsos. El instalador cambiado en `--auto` no puede avisar por sí mismo: depende de que el vigía lo mire (pendiente, 0.21.4). El instalador sigue bajando y ejecutando el binario antes de la comprobación de firma |
+| Metadatos / clientes | verificar-metadatos y grep de clientes los corre el script de publicación |

@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.21.3 — 2026-10-05
+- **Antigravity ya no se abre solo.** En la 0.21.2, probar el estado de Antigravity sin tener sesión iniciada podía abrir el navegador pidiéndote entrar con tu cuenta de Google. Ahora «Poner todo al día» no ejecuta Antigravity nunca: solo comprueba que esté firmado por Google (con la cadena de Apple completa). Y lo instala solamente cuando lo corrés a mano, nunca en la actualización automática de fondo. Si Google cambia su instalador, no se instala y lo dice, sin frenar el «Todo al día». Si se corta la instalación o la conexión, queda marcado con ⟳ para repetir el comando.
+
 ## 0.21.2 — 2026-10-05
 - **«Poner todo al día» instala Antigravity (Gemini) de Google.** Va a tu carpeta de usuario, sin contraseña, con el instalador oficial de Google, que solo se corre si es exactamente el que revisamos (si Google lo cambia, no se corre y el mensaje te dice que le avises a Fernando). Cada día se vuelve a comprobar que el programa esté firmado por Google. Lo que le pases a Gemini sale a Google con tu cuenta y, en el plan gratis, Google puede usarlo para mejorar sus modelos: al instalarlo te lo avisa. Entrar con tu cuenta de Google se hace una vez, aparte.
 
