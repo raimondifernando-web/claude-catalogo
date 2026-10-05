@@ -13,8 +13,14 @@ Cómo decide:
   - Solo avance rápido: `estable` se mueve únicamente a un commit que desciende de su valor actual Y es ancestro de `main`
     (`git merge-base --is-ancestor`, con el historial completo). Si no, no se mueve y el trabajo termina en rojo.
   - El push es normal, sin forzar: si `estable` cambió mientras tanto, git lo rechaza.
+  - En automático, no avanza si algún commit que entraría a `estable` fue revertido después en `main` («This reverts commit
+    <sha>» en `candidato..main`): espera a que el revert también cumpla las 48 h. Así no se queda entre el malo y su revert.
+  - Alarma de atraso: si algún commit de `main` lleva más de 4 días (96 h) sin entrar a `estable`, la corrida sale en rojo.
+  - Este script corre desde el checkout de la propia rama `estable` (ver el workflow): el código que decide ya esperó 48 h.
+    Trae `main` por su cuenta.
 
-Qué NO hace: no borra, no retrocede, no crea la rama (la crea `.claude/publicar-estable.sh`, con `--arranque`).
+Qué NO hace: no borra, no retrocede, no crea la rama (la crea `.claude/publicar-estable.sh`, en el commit recién publicado).
+`--arranque` queda como herramienta suelta (imprime el commit de ≥ 48 h); el publicador ya no lo usa: ese commit es viejo.
 
 PROCEDIMIENTO DE EMERGENCIA (si entró algo malo a `main`):
   1. Frenar el avance al instante:   gh workflow disable estable.yml
@@ -29,7 +35,8 @@ PROCEDIMIENTO DE EMERGENCIA (si entró algo malo a `main`):
 Uso:
     estable-avanzar.py [--repo dueño/repo] [--sha SHA40] [--horas 48] [--remoto origin] [--sin-push]
     estable-avanzar.py --arranque          # imprime el commit inicial para crear `estable` (no empuja nada)
-Salida: 0 = movió o no había nada que mover; 1 = no pudo decidir o algo no cuadra (no se mueve nada); 2 = uso incorrecto.
+Salida: 0 = movió o no había nada que mover (incluye esperar por un revert); 1 = no pudo decidir, algo no cuadra o hay atraso
+de más de 4 días (no se mueve nada); 2 = uso incorrecto.
 En GitHub Actions escribe el resumen en $GITHUB_STEP_SUMMARY y `movido`/`sha` en $GITHUB_OUTPUT.
 Python 3.9+. Solo biblioteca estándar.
 """
@@ -52,6 +59,8 @@ ESTABLE = "estable"
 PATRON_SHA = re.compile(r"^[0-9a-f]{40}$")
 PATRON_REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 PATRON_REMOTO = re.compile(r"^[A-Za-z0-9_.-]+$")
+PATRON_REVERT = re.compile(r"This reverts commit ([0-9a-f]{40})")
+HORAS_ATRASO = 96   # 4 días: si algo de main espera más que eso y estable no lo tomó, la corrida sale en rojo
 CEROS = "0" * 40
 # Solo eventos que dejan un commit nuevo en main. Todo lo demás (force_push, borrados) se ignora: ignorar un evento
 # nunca adelanta el candidato, solo lo deja en uno más viejo.
@@ -220,7 +229,44 @@ def decidir(cwd, principal, actual, candidato, manual):
                             % (actual[:7], candidato[:7]))
     if not es_ancestro(actual, candidato, cwd):
         raise Frena("%s no desciende de estable (%s): divergen, no se mueve nada" % (candidato[:7], actual[:7]))
+    if not manual:
+        revertido = revertido_despues(cwd, actual, candidato, principal)
+        if revertido:
+            raise SinMovimiento("el commit %s, que entraría a estable, fue revertido en main por %s (todavía sin 48 h): "
+                                "no se mueve hasta que el revert también cumpla" % (revertido[0][:7], revertido[1][:7]))
     return candidato
+
+
+def revertido_despues(cwd, actual, candidato, principal):
+    """(commit revertido, commit que lo revierte) si algún commit que entraría a estable (actual..candidato) fue
+    revertido DESPUÉS del candidato (candidato..main), buscando «This reverts commit <sha>» en los mensajes; si no, None.
+    Así estable no queda parada entre un commit malo y su revert."""
+    r = git(["rev-list", "%s..%s" % (actual, candidato)], cwd)
+    if r.returncode != 0:
+        raise Frena("git no pudo listar los commits que entrarían a estable: %s" % (r.stderr or "").strip()[:200])
+    entran = set(r.stdout.split())
+    if not entran:
+        return None
+    r = git(["log", "-z", "--format=%H%n%B", "%s..%s" % (candidato, principal)], cwd)
+    if r.returncode != 0:
+        raise Frena("git no pudo leer los commits nuevos de main: %s" % (r.stderr or "").strip()[:200])
+    for registro in r.stdout.split("\0"):
+        if not registro.strip():
+            continue
+        sha_revert = registro.split("\n", 1)[0].strip()
+        for reverted in PATRON_REVERT.findall(registro):
+            if reverted in entran:
+                return reverted, sha_revert
+    return None
+
+
+def controlar_atraso(cwd, actividad, ahora, final):
+    """Alarma: si algún commit de main lleva más de HORAS_ATRASO esperando y estable (en `final`) no lo tiene, algo la
+    frenó en silencio (un revert pendiente, una divergencia…) y hay que mirarlo."""
+    par = candidato_por_antiguedad(actividad, ahora, HORAS_ATRASO)
+    if par is not None and not es_ancestro(par[1], final, cwd):
+        raise Frena("hay commits de main (hasta %s, de hace %s) que llevan más de %d h sin entrar a estable (que está en %s): "
+                    "hay que mirar por qué" % (par[1][:7], _hace(ahora, par[0]), HORAS_ATRASO, final[:7]))
 
 
 # --------------------------------------------------------------------------- #
@@ -304,22 +350,31 @@ def main(argv=None):
             print(par[1])
             return 0
 
-        if manual:
-            candidato = manual
-            resumen.append("candidato manual («pasalo ya»): `%s`" % candidato[:7])
-        else:
-            actividad, fecha = pedir_actividad(a.repo, a.api, credencial)
-            ahora = hora_del_servidor(fecha)
-            par = candidato_por_antiguedad(actividad, ahora, a.horas)
-            if par is None:
-                raise SinMovimiento("ningún commit de main tiene %d h todavía (hora del servidor %s): no se mueve"
-                                    % (a.horas, ahora.strftime("%Y-%m-%d %H:%M:%SZ")))
-            candidato = par[1]
-            resumen.append("candidato por antigüedad: `%s` (entró a main hace %s según el servidor)"
-                           % (candidato[:7], _hace(ahora, par[0])))
+        actividad = ahora = None
+        sin_mover = None      # motivo por el que no se mueve (no es un error), si lo hay
+        destino = None
         resumen.append("estable actual: `%s`" % actual[:7])
-
-        destino = decidir(cwd, principal, actual, candidato, bool(manual))
+        try:
+            if manual:
+                candidato = manual
+                resumen.append("candidato manual («pasalo ya»): `%s`" % candidato[:7])
+            else:
+                actividad, fecha = pedir_actividad(a.repo, a.api, credencial)
+                ahora = hora_del_servidor(fecha)
+                par = candidato_por_antiguedad(actividad, ahora, a.horas)
+                if par is None:
+                    raise SinMovimiento("ningún commit de main tiene %d h todavía (hora del servidor %s): no se mueve"
+                                        % (a.horas, ahora.strftime("%Y-%m-%d %H:%M:%SZ")))
+                candidato = par[1]
+                resumen.append("candidato por antigüedad: `%s` (entró a main hace %s según el servidor)"
+                               % (candidato[:7], _hace(ahora, par[0])))
+            destino = decidir(cwd, principal, actual, candidato, bool(manual))
+        except SinMovimiento as e:
+            sin_mover = e
+        if actividad is not None:     # solo en automático: hay una hora del servidor con la que medir el atraso
+            controlar_atraso(cwd, actividad, ahora, destino or actual)
+        if sin_mover is not None:
+            raise sin_mover
         if a.sin_push:
             resumen.append("`--sin-push`: se movería a `%s` (no se empujó)" % destino[:7])
             decir("se movería de %s a %s (--sin-push: no se empujó)" % (actual[:7], destino[:7]), log)

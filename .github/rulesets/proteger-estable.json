@@ -9,8 +9,7 @@
     "ref_name": { "include": ["refs/heads/estable"], "exclude": [] }
   },
   "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
-    { "type": "update" }
+    { "type": "update" },
+    { "type": "creation" }
   ]
 }

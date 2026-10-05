@@ -16,7 +16,10 @@
 #   - nunca `pull_request_target`; las actions de terceros van fijadas por sha de 40 caracteres;
 #   - el sha manual entra por una variable de entorno, jamás dentro del código del paso (sin inyección);
 #   - solo corre sobre `main` (el job se niega a correr desde otra rama);
-#   - quién puede empujar a `estable` lo fijan los rulesets de .github/rulesets/ (sin borrado, sin forzar, solo este workflow).
+#   - el checkout es de `estable`, no de `main`: el script que decide qué se promueve es código que ya esperó 48 h (lo que
+#     entra a `main` no puede cambiar la lógica de promoción antes de tiempo; el script trae `main` por su cuenta);
+#   - quién puede tocar `estable` lo fijan los rulesets de .github/rulesets/: nadie la borra ni la fuerza, y solo la
+#     identidad de GitHub Actions la crea o la mueve.
 name: estable
 
 on:
@@ -45,6 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: estable                # el código que decide es el de estable, que ya esperó 48 h; el script trae main solo
           fetch-depth: 0              # historial completo: sin él no se puede comprobar la ancestría
           persist-credentials: false  # la credencial se pone recién en el paso que empuja
       - name: Avanzar estable
