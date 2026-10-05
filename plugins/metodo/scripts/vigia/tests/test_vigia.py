@@ -1453,17 +1453,31 @@ class TestInstaladorAgy(ConHomeTemporal):
 
     def test_con_agy_e_instalador_fijado_sin_novedad(self):
         cuerpo = b"#!/bin/bash\n# instalador oficial\n"
-        with mock.patch.object(vigia.hashlib, "sha256") as m_sha:
-            m_sha.return_value.hexdigest.return_value = vigia.INSTALADOR_AGY_SHA256
-            opener = OpenerFalso({vigia.INSTALADOR_AGY_URL: cuerpo})
+        sha_real = hashlib.sha256(cuerpo).hexdigest()
+        opener = OpenerFalso({vigia.INSTALADOR_AGY_URL: cuerpo})
+        with mock.patch.object(vigia, "INSTALADOR_AGY_SHA256", sha_real):
             self.correr(opener=opener, ejecutables={"agy": "/mock/bin/agy"})
         e = self.estado()
         self.assertEqual(e["estado"], "ok")
         self.assertIn(vigia.INSTALADOR_AGY_URL, opener.urls)
-        self.assertIn("instalador-agy", e["base"])
-        self.assertEqual(e["base"]["instalador-agy"]["visto"], vigia.INSTALADOR_AGY_SHA256)
-        self.assertEqual(e["base"]["instalador-agy"]["fijado"], vigia.INSTALADOR_AGY_SHA256)
+        self.assertEqual(e["base"]["instalador-agy"]["visto"], sha_real)
+        self.assertEqual(e["base"]["instalador-agy"]["fijado"], sha_real)
         self.assertFalse(any(k.startswith("instalador-agy") for k in e.get("novedades", {})))
+        self.assertNotIn("instalador oficial", json.dumps(e))  # del cuerpo solo sale el sha
+
+    def test_error_http_del_instalador_degrada_no_cae(self):
+        for codigo in (404, 500):
+            url = vigia.INSTALADOR_AGY_URL
+            opener = OpenerFalso({url: lambda u, c=codigo: urllib.error.HTTPError(u, c, "x", {}, io.BytesIO(b""))})
+            self.correr(opener=opener, ejecutables={"agy": "/mock/bin/agy"})
+            e = self.estado()
+            self.assertEqual(e["estado"], "degradado", codigo)
+            self.assertTrue(any("instalador de Antigravity" in d for d in e["degradado"]), codigo)
+
+    def test_sin_clis_no_pide_el_instalador(self):
+        opener = OpenerFalso()
+        self.correr(opener=opener, ejecutables={"agy": "/mock/bin/agy"}, argv=["--sin-clis"])
+        self.assertFalse(any("antigravity.google" in u for u in opener.urls))
 
     def test_con_agy_instalador_distinto_crea_una_novedad_no_duplica(self):
         cuerpo = b"#!/bin/bash\necho nuevo instalador\n"

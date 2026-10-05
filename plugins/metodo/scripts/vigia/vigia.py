@@ -1828,7 +1828,13 @@ def fuente_clis(perfil, red, base, novedades, nuevas_ids, degradado, ahora) -> N
 def fuente_instalador_agy(red, base, novedades, nuevas_ids, degradado, ahora) -> None:
     if encontrar_ejecutable("agy", rutas_extra("agy")) is None:
         return
-    cuerpo = red.get_bytes(INSTALADOR_AGY_URL)
+    try:
+        cuerpo = red.get_bytes(INSTALADOR_AGY_URL)
+    except (CupoAgotado, SinRed):
+        raise
+    except Exception as e:  # noqa: BLE001 — un 404/500 de Google no tira abajo toda la corrida
+        degradado.append(f"instalador de Antigravity: {truncar(str(e), 120)}")
+        return
     sha = hashlib.sha256(cuerpo).hexdigest()
     base["instalador-agy"] = {"visto": sha, "fecha": ahora, "fijado": INSTALADOR_AGY_SHA256}
     if sha == INSTALADOR_AGY_SHA256:
@@ -1838,7 +1844,7 @@ def fuente_instalador_agy(red, base, novedades, nuevas_ids, degradado, ahora) ->
         nuevas_ids,
         f"instalador-agy@{sha[:12]}",
         tipo="instalador-agy",
-        detalle="Google cambió el instalador de Antigravity: el sha256 fijado (62966c07…) ya no coincide (ahora "
+        detalle="Google cambió el instalador de Antigravity: el sha256 fijado (" + INSTALADOR_AGY_SHA256[:8] + "…) ya no coincide (ahora "
         + sha[:8]
         + "…). al-dia.sh no lo va a correr. Releerlo entero antes de actualizar AGYI.",
         enlace=INSTALADOR_AGY_URL,

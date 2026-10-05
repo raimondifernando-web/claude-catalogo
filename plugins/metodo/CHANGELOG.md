@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.21.5 — 2026-10-05
+- **El vigía te avisa si Google cambia el instalador de Antigravity.** Hasta ahora, si Google cambiaba ese instalador, «Poner todo al día» dejaba de instalarlo pero en segundo plano nadie se enteraba. Ahora el vigía (solo si tenés Antigravity instalado) compara el instalador publicado por Google con el que revisamos; si es distinto, te lo anota como novedad para que se lo reportes a quien mantiene el catálogo. No lo instala ni lo ejecuta: solo lo compara. Es el único sitio nuevo con el que habla el vigía (`antigravity.google`).
+
 ## 0.21.4 — 2026-10-05
 - **El radar ya no abre el navegador de Antigravity.** Para medir el cupo de Gemini, el radar le preguntaba a Antigravity «¿cuánto te queda?»; si nunca habías entrado con tu cuenta de Google, eso abría una ventana pidiéndote que inicies sesión. Ahora solo le pregunta si ya lo usaste alguna vez (mira que exista su historial, sin abrirlo); si no, lo saltea y te dice «sin usar todavía». Para usarlo, corré `agy` una vez e iniciá sesión.
 
