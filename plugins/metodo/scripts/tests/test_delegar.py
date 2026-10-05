@@ -9,6 +9,8 @@ import io
 import json
 import os
 import shutil
+import signal
+import threading
 import subprocess
 import sys
 import tempfile
@@ -500,6 +502,33 @@ class TestEndurecimiento(BaseDelegar):
         cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
         self.assertEqual(cod, 72)
         self.assertFalse((self.tmp / "FILTRO").exists())
+
+    def test_filtro_escondido_en_un_include_tambien_sale_con_72(self):
+        repo = self.crear_repo_git("repo-include")
+        (repo / ".git" / "extra.cfg").write_text('[filter "x"]\n\tclean = touch %s\n' % (self.tmp / "FILTRO2"), encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "config", "include.path", "extra.cfg"], check=True)
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
+        self.assertEqual(cod, 72)
+        self.assertFalse((self.tmp / "FILTRO2").exists())
+
+    def test_sigterm_a_delegar_corta_tambien_a_la_herramienta(self):
+        repo = self.crear_repo_git("repo-sigterm")
+        pidfile = self.tmp / "hijo3.pid"
+        ruta = self.tmp / "codex-lento2"
+        ruta.write_text(
+            "#!/usr/bin/env python3\nimport os, time\nopen(%r, 'w').write(str(os.getpid()))\ntime.sleep(300)\n" % str(pidfile),
+            encoding="utf-8")
+        ruta.chmod(0o755)
+        os.environ["RADAR_CODEX_BIN"] = str(ruta)
+        hilo = threading.Timer(1.5, lambda: os.kill(os.getpid(), signal.SIGTERM))
+        hilo.start()
+        self.addCleanup(hilo.cancel)
+        with self.assertRaises(SystemExit):
+            D.main(["desarrollo", str(repo), "hacé algo"])
+        pid = int(pidfile.read_text())
+        time.sleep(0.5)
+        with self.assertRaises(ProcessLookupError):
+            os.kill(pid, 0)
 
     def test_archivo_del_pedido_por_enlace_a_otra_parte_se_rechaza(self):
         repo = self.crear_repo_git("repo-enlace")

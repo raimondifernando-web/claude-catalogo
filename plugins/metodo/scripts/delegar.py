@@ -37,7 +37,9 @@ Códigos de salida:
     71  La herramienta tocó .git/config o los hooks del repo: no confíes en ese repo hasta revisarlo.
     124 La herramienta no terminó a tiempo (METODO_DELEGAR_TOPE, 3600 s por defecto) y se cortó con sus hijos.
 
-Límite conocido: los enlaces simbólicos DENTRO del repo que apuntan a otra carpeta los sigue la herramienta; el
+Límite conocido: la aceptación (--aceptar) es un freno para personas, no una defensa contra una sesión hostil (que podría
+escribir el archivo a mano); la huella de .git no mira config.worktree ni los config de submódulos; /tmp es compartido;
+los enlaces simbólicos DENTRO del repo que apuntan a otra carpeta los sigue la herramienta; el
 filtro de carpetas privadas mira la ruta del repo, no lo que hay adentro. El sandbox de solo lectura de Codex puede
 leer fuera del repo: no delegues desde un repo al que no le tengas confianza.
 
@@ -183,7 +185,7 @@ FILTROS_PELIGROSOS = r"^filter\..*\.(clean|smudge|process)$"
 def config_que_ejecuta_programas(repo_path):
     """Claves del config LOCAL del repo que git ejecutaría al comparar archivos (filtros clean/smudge/process). El resto
     (fsmonitor, hooks, diff externo, textconv) ya se neutraliza en GIT_SEGURO."""
-    r = git(repo_path, "config", "--local", "--name-only", "--get-regexp", FILTROS_PELIGROSOS)
+    r = git(repo_path, "config", "--local", "--includes", "--name-only", "--get-regexp", FILTROS_PELIGROSOS)
     return r.stdout.split() if r and r.returncode == 0 else []
 
 
@@ -323,6 +325,18 @@ def ejecutar(cmd, cwd, entrada, tope):
     """Corre la herramienta en su propio grupo de procesos y SIEMPRE corta el grupo entero al salir (al terminar, al
     vencer el tope, con Ctrl-C o ante cualquier error): ningún hijo queda editando en segundo plano. Devuelve el
     código de salida, o None si se cortó por tiempo."""
+    # SIGTERM / SIGHUP (cerrar la terminal, kill) también tienen que pasar por el `finally`: con start_new_session la
+    # herramienta no recibe esas señales sola y quedaría editando en segundo plano
+    anteriores = {}
+
+    def _salir(signum, _frame):
+        raise SystemExit(128 + signum)
+
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        try:
+            anteriores[sig] = signal.signal(sig, _salir)
+        except (ValueError, OSError):   # fuera del hilo principal no se pueden cambiar: queda el comportamiento normal
+            pass
     p = subprocess.Popen(
         cmd, cwd=cwd, stdin=subprocess.PIPE if entrada is not None else subprocess.DEVNULL,
         universal_newlines=True, encoding="utf-8", start_new_session=True,
@@ -338,6 +352,11 @@ def ejecutar(cmd, cwd, entrada, tope):
             p.wait(timeout=5)
         except subprocess.TimeoutExpired:
             pass
+        for sig, viejo in anteriores.items():
+            try:
+                signal.signal(sig, viejo)
+            except (ValueError, OSError, TypeError):
+                pass
 
 
 def main(argv=None):
