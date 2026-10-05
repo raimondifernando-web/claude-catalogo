@@ -1,0 +1,62 @@
+# Rama `estable` del catálogo: los clientes siguen `estable`, que va 48 h detrás de `main`.
+# Lo que entra a `main` (aunque lo empuje una cuenta o una sesión comprometida) llega a las Macs de los clientes recién
+# 48 h después: tiempo para notarlo y revertirlo. La lógica está en scripts/estable-avanzar.py (con pruebas).
+#
+#   - cada hora: mueve `estable` al commit más nuevo de `main` que tenga >= 48 h según la HORA DEL SERVIDOR de GitHub
+#     (nunca la fecha de un commit), y solo si es un avance rápido (descendiente de `estable`, ancestro de `main`);
+#   - «pasalo ya» (lo urgente que decida una persona):
+#         gh workflow run estable.yml -f sha=<commit completo de main>
+#     promueve ese commit sin esperar, con el mismo control de ancestría.
+#
+# EMERGENCIA (entró algo malo a `main`): `gh workflow disable estable.yml`, revertir en `main`, y reactivar
+# (`gh workflow enable estable.yml`) recién 48 h DESPUÉS del revert. Detalle del porqué en el encabezado del script.
+#
+# Seguridad:
+#   - permisos: ninguno arriba; `contents: write` solo en el job, para empujar la rama `estable`;
+#   - nunca `pull_request_target`; las actions de terceros van fijadas por sha de 40 caracteres;
+#   - el sha manual entra por una variable de entorno, jamás dentro del código del paso (sin inyección);
+#   - solo corre sobre `main` (el job se niega a correr desde otra rama);
+#   - quién puede empujar a `estable` lo fijan los rulesets de .github/rulesets/ (sin borrado, sin forzar, solo este workflow).
+name: estable
+
+on:
+  schedule:
+    - cron: "41 * * * *"   # cada hora
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Pasalo ya: commit COMPLETO (40 caracteres) de main para promover a estable sin esperar. Vacío = automático"
+        required: false
+        default: ""
+
+permissions: {}
+
+concurrency:
+  group: estable
+  cancel-in-progress: false
+
+jobs:
+  avanzar:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0              # historial completo: sin él no se puede comprobar la ancestría
+          persist-credentials: false  # la credencial se pone recién en el paso que empuja
+      - name: Avanzar estable
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA_MANUAL: ${{ github.event.inputs.sha }}
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          if [ -n "${SHA_MANUAL:-}" ]; then
+            python3 scripts/estable-avanzar.py --repo "$REPO" --sha "$SHA_MANUAL"
+          else
+            python3 scripts/estable-avanzar.py --repo "$REPO"
+          fi

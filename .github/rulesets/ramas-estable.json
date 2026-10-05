@@ -1,0 +1,12 @@
+{
+  "name": "sin-ramas-estable-extra",
+  "target": "branch",
+  "enforcement": "active",
+  "bypass_actors": [],
+  "conditions": {
+    "ref_name": { "include": ["refs/heads/*estable*"], "exclude": ["refs/heads/estable"] }
+  },
+  "rules": [
+    { "type": "creation" }
+  ]
+}
