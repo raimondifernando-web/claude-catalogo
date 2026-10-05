@@ -5,6 +5,8 @@ Correr desde la raíz del repo:
     python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_estable.py' -v
 Sin red real, sin credenciales: nada de esto toca GitHub.
 """
+import base64
+import hashlib
 import importlib.util
 import json
 import os
@@ -272,6 +274,19 @@ class TestScript(unittest.TestCase):
         self.assertEqual(self._git(trabajo, "branch", "--show-current"), "estable")   # su rama local no se toca
         self.assertEqual(self._git(trabajo, "rev-parse", "HEAD"), self.c[1])
 
+    def test_empuja_por_la_url_de_push_del_remoto(self):
+        # El workflow lee por HTTPS y empuja por SSH: pone `remote set-url --push`. El script tiene que empujar por el
+        # NOMBRE del remoto (nunca por una URL propia) para que eso valga.
+        espejo = self.dir / "espejo.git"
+        self._git(self.dir, "clone", "--quiet", "--bare", str(self.remoto), str(espejo))
+        trabajo = self._clon_de_trabajo()
+        self._git(trabajo, "remote", "set-url", "--push", "origin", str(espejo))
+        self._eventos_normales()
+        r = self.correr()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._git(espejo, "rev-parse", "refs/heads/estable"), self.c[3])   # se movió donde dice la URL de push
+        self.assertEqual(self._estable_remoto(), self.c[1])                                # y no en la de lectura
+
     def test_el_manual_tambien_corre_desde_el_checkout_de_estable(self):
         r = self.correr("--sha", self.c[4], api="http://127.0.0.1:1", rama="estable")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
@@ -509,11 +524,108 @@ class TestWorkflow(unittest.TestCase):
         for uso in usos:
             self.assertRegex(uso, r"@[0-9a-f]{40}$", uso)
 
-    def test_permiso_de_escritura_solo_en_el_job(self):
+    def test_el_job_solo_lee_el_repositorio(self):
+        # El push no usa la credencial del workflow: usa la clave de despliegue. Nada de escritura con el permiso del job.
         self.assertRegex(self.texto, r"(?m)^permissions:\s*\{\}\s*$")   # arriba: nada
-        self.assertEqual(self.texto.count("contents: write"), 1)
+        self.assertNotIn("contents: write", self.texto)
         self.assertNotIn("write-all", self.texto)
-        self.assertNotRegex(self.texto, r"(?m)^permissions:\s*\n\s+contents: write")  # no a nivel de workflow
+        self.assertEqual(self.texto.count("contents: read"), 1)
+        self.assertNotIn("gh auth setup-git", self.texto)              # ya no se configura la credencial del workflow para git
+
+    def _paso(self, nombre):
+        """Texto de un paso (desde su `- name:` hasta el siguiente)."""
+        partes = re.split(r"(?m)^      - ", self.texto)
+        encontrados = [p for p in partes if p.startswith("name: " + nombre)]
+        self.assertEqual(len(encontrados), 1, nombre)
+        return encontrados[0]
+
+    def test_el_job_usa_el_environment_estable(self):
+        self.assertRegex(self.texto, r"(?m)^    environment:\s*estable\b")
+
+    def test_el_secreto_solo_llega_al_paso_que_prepara_ssh(self):
+        usos = re.findall(r"\$\{\{\s*secrets\.([A-Za-z0-9_]+)\s*\}\}", self.texto)
+        self.assertEqual(usos, ["ESTABLE_DEPLOY_KEY"])          # el único secreto, una sola vez
+        self.assertIn("secrets.ESTABLE_DEPLOY_KEY", self._paso("Preparar el push por SSH"))
+        self.assertNotIn("secrets.", self._paso("Avanzar estable"))
+        self.assertNotIn("ESTABLE_DEPLOY_KEY", self._paso("Avanzar estable"))
+        # y nunca se imprime: solo se escribe a un archivo; sin echo, sin cat, sin trazas de bash
+        for linea in self.texto.splitlines():
+            if "ESTABLE_DEPLOY_KEY" in linea and "printf" in linea:
+                self.assertRegex(linea, r'>\s*"\$d/id"\s*$')
+            if "ESTABLE_DEPLOY_KEY" in linea and "::error::" not in linea:
+                self.assertNotRegex(linea, r"\b(echo|cat|tee|set -x)\b")
+        self.assertNotRegex(self.texto, r"set -[a-z]*x")
+
+    def test_ssh_con_servidores_fijados_y_sin_preguntar(self):
+        paso = self._paso("Preparar el push por SSH")
+        self.assertIn("StrictHostKeyChecking=yes", paso)
+        self.assertIn("UserKnownHostsFile=", paso)
+        self.assertIn("IdentitiesOnly=yes", paso)
+        self.assertNotIn("StrictHostKeyChecking=no", self.texto)
+        self.assertNotIn("ssh-keyscan", self.texto)               # las claves del servidor no se piden en el momento
+        self.assertIn('git remote set-url --push origin "git@github.com:${REPO}.git"', paso)
+        self.assertIn("git config core.sshCommand", paso)          # solo para este repositorio: sin variables globales
+
+    def test_las_claves_de_github_fijadas_son_las_publicadas(self):
+        # Huellas oficiales (docs.github.com/authentication/.../githubs-ssh-key-fingerprints).
+        publicadas = {
+            "ssh-rsa": "uNiVztksCsDhcc0u9e8BujQXVUpKZIDTMczCvj3tD2s",
+            "ecdsa-sha2-nistp256": "p2QAMXNIC1TJYWeIOttrVc98/R1BUFWu3/LiyKgUfQM",
+            "ssh-ed25519": "+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU",
+        }
+        lineas = re.findall(r"(?m)^\s*github\.com (ssh-[a-z0-9]+|ecdsa-sha2-nistp256) ([A-Za-z0-9+/=]+)\s*$", self.texto)
+        self.assertEqual(sorted(t for t, _ in lineas), sorted(publicadas))   # exactamente esas tres, ni una más
+        for tipo, clave in lineas:
+            huella = base64.b64encode(hashlib.sha256(base64.b64decode(clave)).digest()).decode().rstrip("=")
+            self.assertEqual(huella, publicadas[tipo], tipo)
+
+    @unittest.skipIf(ES_WINDOWS, "el paso es de bash")
+    def test_el_paso_de_ssh_escribe_la_clave_con_permiso_600_y_configura_git(self):
+        paso = self._paso("Preparar el push por SSH")
+        codigo = paso.split("run: |\n", 1)[1]
+        codigo = "\n".join(l[10:] if l.startswith(" " * 10) else l for l in codigo.splitlines()) + "\n"
+        with tempfile.TemporaryDirectory(prefix="estable ssh ") as tmp:
+            repo, runner = Path(tmp) / "repo", Path(tmp) / "runner"
+            repo.mkdir()
+            runner.mkdir()
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", "https://github.com/dueno/repo"], check=True)
+            env = dict(os.environ, RUNNER_TEMP=str(runner), REPO="dueno/repo", ESTABLE_DEPLOY_KEY="CLAVE DE PRUEBA\nSEGUNDA LINEA")
+            r = subprocess.run(["bash", "-c", codigo], cwd=str(repo), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               universal_newlines=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            carpeta = runner / "estable-ssh"
+            self.assertEqual(oct(carpeta.stat().st_mode & 0o777), "0o700")
+            self.assertEqual(oct((carpeta / "id").stat().st_mode & 0o777), "0o600")
+            self.assertEqual((carpeta / "id").read_text(encoding="utf-8"), "CLAVE DE PRUEBA\nSEGUNDA LINEA\n")
+            self.assertEqual(len((carpeta / "known_hosts").read_text(encoding="utf-8").splitlines()), 3)
+            self.assertNotIn("CLAVE DE PRUEBA", r.stdout + r.stderr)             # nunca se imprime
+            cfg = subprocess.run(["git", "-C", str(repo), "config", "core.sshCommand"], stdout=subprocess.PIPE,
+                                 universal_newlines=True).stdout
+            self.assertIn("StrictHostKeyChecking=yes", cfg)
+            self.assertIn(str(carpeta / "known_hosts"), cfg)
+            # Sin la configuración global del que corre la prueba (puede reescribir git@github.com: a https, como hace al-dia).
+            limpio = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+            push = subprocess.run(["git", "-C", str(repo), "remote", "get-url", "--push", "origin"], stdout=subprocess.PIPE,
+                                  env=limpio, universal_newlines=True).stdout.strip()
+            fetch = subprocess.run(["git", "-C", str(repo), "remote", "get-url", "origin"], stdout=subprocess.PIPE,
+                                   env=limpio, universal_newlines=True).stdout.strip()
+            self.assertEqual(push, "git@github.com:dueno/repo.git")
+            self.assertEqual(fetch, "https://github.com/dueno/repo")             # leer sigue siendo por HTTPS
+            # sin el secreto, falla sin dejar nada
+            env["ESTABLE_DEPLOY_KEY"] = ""
+            runner2 = Path(tmp) / "runner2"
+            runner2.mkdir()
+            env["RUNNER_TEMP"] = str(runner2)
+            r = subprocess.run(["bash", "-c", codigo], cwd=str(repo), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               universal_newlines=True)
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertFalse((runner2 / "estable-ssh").exists())
+
+    def test_al_final_se_borra_la_clave_aunque_falle_algo(self):
+        paso = self._paso("Borrar la clave del runner")
+        self.assertIn("if: always()", paso)
+        self.assertIn("rm -rf", paso)
 
     def test_disparos(self):
         self.assertRegex(self.texto, r"(?m)^\s+- cron:")
@@ -544,7 +656,9 @@ class TestWorkflow(unittest.TestCase):
 
 class TestRulesets(unittest.TestCase):
     ARCHIVOS = ("estable-intocable.json", "proteger-estable.json", "tags-estable.json", "ramas-estable.json")
-    ACTIONS = {"actor_id": 15368, "actor_type": "Integration", "bypass_mode": "always"}   # GitHub Actions
+    # En un repositorio personal GitHub no deja poner a GitHub Actions como excepción (422): la única excepción posible
+    # es una clave de despliegue (deploy key), y su actor_id va en null.
+    CLAVE_DE_DESPLIEGUE = {"actor_id": None, "actor_type": "DeployKey", "bypass_mode": "always"}
 
     def cargar(self, nombre):
         return json.loads((RULESETS / nombre).read_text(encoding="utf-8"))
@@ -560,13 +674,13 @@ class TestRulesets(unittest.TestCase):
         self.assertEqual(self.tipos(rs), ["deletion", "non_fast_forward"])
         self.assertEqual(rs["bypass_actors"], [])    # ni siquiera GitHub Actions: sin excepciones
 
-    def test_proteger_estable_solo_actions_la_crea_o_la_mueve(self):
+    def test_proteger_estable_solo_una_clave_de_despliegue_la_crea_o_la_mueve(self):
         rs = self.cargar("proteger-estable.json")
         self.assertEqual(rs["target"], "branch")
         self.assertEqual(rs["enforcement"], "active")
         self.assertEqual(rs["conditions"]["ref_name"], {"include": ["refs/heads/estable"], "exclude": []})
         self.assertEqual(self.tipos(rs), ["creation", "update"])
-        self.assertEqual(rs["bypass_actors"], [self.ACTIONS])    # nadie más (sin administradores ni roles exentos)
+        self.assertEqual(rs["bypass_actors"], [self.CLAVE_DE_DESPLIEGUE])   # nadie más (sin administradores ni roles exentos)
 
     def test_tags_con_estable_en_el_nombre_prohibidos_sin_excepciones(self):
         rs = self.cargar("tags-estable.json")
@@ -590,6 +704,12 @@ class TestRulesets(unittest.TestCase):
         self.assertEqual(len({r["name"] for r in todos}), len(self.ARCHIVOS))
         con_excepcion = [r["name"] for r in todos if r["bypass_actors"]]
         self.assertEqual(con_excepcion, ["proteger-estable"])
+
+    def test_ningun_ruleset_nombra_a_github_actions_como_excepcion(self):
+        for n in self.ARCHIVOS:
+            for actor in self.cargar(n)["bypass_actors"]:
+                self.assertNotEqual(actor["actor_type"], "Integration", n)
+                self.assertNotIn(15368, [actor.get("actor_id")], n)
 
     def test_no_queda_el_ruleset_viejo_sin_partir(self):
         self.assertFalse((RULESETS / "estable.json").exists())
