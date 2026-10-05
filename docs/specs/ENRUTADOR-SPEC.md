@@ -43,3 +43,13 @@ pieza que mida, elija y ejecute, y que la usen las sesiones, el Bicho y los clie
 ## Pruebas (en `scripts/tests/`, sin red ni CLIs reales: se simulan con scripts falsos en un directorio temporal)
 Cada lector con salida real, vacía y rota; `motivo_salto` por nivel; `elegir(delegar=True)`; `delegar.py` con CLIs
 falsos (codex, agy) para los 3 adaptadores, `--dry-run`, árbol sucio, carpeta privada, CLI ausente.
+
+## Endurecimiento (revisión de seguridad 2026-10-05, antes de publicar)
+`git` siempre con `-c core.fsmonitor=false -c core.hooksPath=/dev/null -c diff.external=` y sin bloqueos opcionales; hash de
+`.git/config` y hooks antes y después de la herramienta (cambió → código 71). El pedido es TEXTO; solo es archivo con
+`--archivo` (rechaza nombres de claves y más de 100 KB). Primera vez: `delegar.py --aceptar` (código 68 mientras tanto).
+Se bloquea el repo igual a la carpeta personal o a `/`, y se mira también la raíz del repo y la ruta tal como se escribió.
+`modelo_api` y el esfuerzo se validan con `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`; los binarios solo valen con ruta absoluta,
+ejecutables y fuera del repo; los lectores de cupo corren en una carpeta neutra, sin entrada y con `--setting-sources user`;
+`cupo.json` se lee con tope de 64 KB y porcentajes entre 0 y 100; al vencer el tiempo se corta el grupo de procesos entero.
+Límite conocido: enlaces simbólicos dentro del repo y lectura fuera del repo del sandbox de solo lectura de Codex.

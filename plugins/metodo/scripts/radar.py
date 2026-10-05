@@ -29,6 +29,7 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 import sys
 import time
 import unicodedata
@@ -313,24 +314,37 @@ def buscar_categoria(radar, texto):
 # Disponibilidad
 # --------------------------------------------------------------------------- #
 def _buscar_bin(nombre, var_env):
+    """Ruta absoluta y ejecutable de la CLI, o None. Una variable o un PATH con rutas relativas no cuentan: la
+    herramienta se ejecuta con el repo del usuario como carpeta actual y no puede encontrarse un binario ahí."""
+    def bueno(ruta):
+        try:
+            real = os.path.realpath(ruta)
+            return real if os.path.isabs(real) and os.path.isfile(real) and os.access(real, os.X_OK) else None
+        except (OSError, ValueError):
+            return None
+
     propia = os.environ.get(var_env, "").strip()
     if propia:
-        return propia
+        return bueno(propia) if os.path.isabs(propia) else None
     w = shutil.which(nombre)
-    if w:
-        return w
-    candidatos = [
-        Path.home() / ".local" / "bin" / nombre,
-        Path("/opt/homebrew/bin") / nombre,
-        Path("/usr/local/bin") / nombre,
-    ]
-    for c in candidatos:
-        try:
-            if c.is_file() and os.access(str(c), os.X_OK):
-                return str(c)
-        except Exception:
-            pass
+    if w and os.path.isabs(w):
+        r = bueno(w)
+        if r:
+            return r
+    for c in (Path.home() / ".local" / "bin" / nombre, Path("/opt/homebrew/bin") / nombre, Path("/usr/local/bin") / nombre):
+        r = bueno(str(c))
+        if r:
+            return r
     return None
+
+
+def _pct_valido(v):
+    """Porcentaje entre 0 y 100, o None (un cupo.json ajeno no puede hacer ver «ok» con -1 o nan)."""
+    try:
+        x = float(v)
+    except (ValueError, TypeError):
+        return None
+    return x if 0.0 <= x <= 100.0 else None
 
 
 def cupo_codex():
@@ -356,18 +370,15 @@ def cupo_claude():
     cerebro = os.environ.get("CEREBRO_HOME", "").strip()
     ruta_json = Path(cerebro) / "cupo.json" if cerebro else Path.home() / ".cerebro" / "cupo.json"
     try:
-        if ruta_json.is_file():
+        if ruta_json.is_file() and ruta_json.stat().st_size < 65536:
             datos = json.loads(ruta_json.read_text(encoding="utf-8"))
             ts = float(datos.get("ts", 0))
             if 0 <= (time.time() - ts) < 900:
                 pcts = []
                 for k in ("five_hour", "seven_day"):
                     sub = datos.get(k)
-                    if isinstance(sub, dict) and "pct" in sub:
-                        try:
-                            pcts.append(float(sub["pct"]))
-                        except (ValueError, TypeError):
-                            pass
+                    if isinstance(sub, dict) and _pct_valido(sub.get("pct")) is not None:
+                        pcts.append(_pct_valido(sub.get("pct")))
                 if pcts:
                     max_pct = max(pcts)
                     nivel = "agotado" if max_pct >= 90 else "alto" if max_pct >= 70 else "ok"
@@ -381,9 +392,12 @@ def cupo_claude():
 
     try:
         r = subprocess.run(
-            [bin_claude, "-p", "/usage", "--output-format", "text", "--no-session-persistence", "--settings", '{"disableAllHooks":true}'],
+            [bin_claude, "-p", "/usage", "--output-format", "text", "--no-session-persistence", "--setting-sources", "user",
+             "--settings", '{"disableAllHooks":true}'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            stdin=subprocess.DEVNULL,
+            cwd=tempfile.gettempdir(),
             timeout=30
         )
         if r.returncode != 0:
@@ -416,6 +430,8 @@ def cupo_antigravity():
             [bin_agy, "-p", "/usage", "--output-format", "json"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            stdin=subprocess.DEVNULL,
+            cwd=tempfile.gettempdir(),
             timeout=30
         )
         if r.returncode != 0:
