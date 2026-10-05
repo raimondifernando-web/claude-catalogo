@@ -287,6 +287,28 @@ class TestLectoresCupo(Base):
         os.environ["RADAR_AGY_BIN"] = str(self.tmp / "inexistente")   # no instalada: el plan se salta
         self.assertEqual(R.cupo_antigravity(), ("no_disponible", "Antigravity: no está instalada"))
 
+    def test_antigravity_sin_usar_no_se_ejecuta(self):
+        """Sin su historial, `agy -p /usage` abriría el navegador para iniciar sesión: no se lo llama."""
+        marca = self.tmp / "agy-fue-llamado"
+        bin_dir = self.tmp / "bin"
+        bin_dir.mkdir()
+        agy = bin_dir / "agy"
+        agy.write_text("#!/bin/sh\ntouch '%s'\ncat << 'EOF'\n%s\nEOF\n" % (marca, json.dumps(
+            {"command": {"data": {"groups": [{"name": "Gemini", "buckets": [{"remaining_fraction": 0.5}]}]}}})), encoding="utf-8")
+        agy.chmod(0o755)
+        os.environ.pop("RADAR_AGY_BIN", None)
+        os.environ["PATH"] = str(bin_dir) + os.pathsep + os.environ.get("PATH", "")
+        estado = self.tmp / "agy-estado"
+        estado.mkdir()
+        os.environ["RADAR_AGY_STATE"] = str(estado)
+        nivel, texto = R.cupo_antigravity()
+        self.assertEqual(nivel, "no_disponible")
+        self.assertIn("sin usar", texto)
+        self.assertFalse(marca.exists(), "se llamó a agy sin historial")
+        (estado / "history.jsonl").write_text("", encoding="utf-8")   # ya se usó: ahora sí se le pregunta
+        self.assertEqual(R.cupo_antigravity(), ("ok", "Antigravity: 50% usado"))
+        self.assertTrue(marca.exists())
+
     def test_codex_no_instalada_o_sin_sesion_se_salta(self):
         os.environ.pop("RADAR_CODEX_CUPO", None)
         os.environ["RADAR_CODEX_BIN"] = str(self.tmp / "codex-inexistente")

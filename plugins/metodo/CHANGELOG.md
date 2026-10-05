@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.21.4 — 2026-10-05
+- **El radar ya no abre el navegador de Antigravity.** Para medir el cupo de Gemini, el radar le preguntaba a Antigravity «¿cuánto te queda?»; si nunca habías entrado con tu cuenta de Google, eso abría una ventana pidiéndote que inicies sesión. Ahora solo le pregunta si ya lo usaste alguna vez (mira que exista su historial, sin abrirlo); si no, lo saltea y te dice «sin usar todavía». Para usarlo, corré `agy` una vez e iniciá sesión.
+
 ## 0.21.3 — 2026-10-05
 - **Antigravity ya no se abre solo.** En la 0.21.2, probar el estado de Antigravity sin tener sesión iniciada podía abrir el navegador pidiéndote entrar con tu cuenta de Google. Ahora «Poner todo al día» no ejecuta Antigravity nunca: solo comprueba que esté firmado por Google (con la cadena de Apple completa). Y lo instala solamente cuando lo corrés a mano, nunca en la actualización automática de fondo. Si Google cambia su instalador, no se instala y lo dice, sin frenar el «Todo al día». Si se corta la instalación o la conexión, queda marcado con ⟳ para repetir el comando.
 

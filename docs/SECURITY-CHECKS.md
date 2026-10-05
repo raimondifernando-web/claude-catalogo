@@ -668,3 +668,12 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Revisión | Los 7 hallazgos de la 0.21.2 aplicados por Consultoría. `security-reviewer` (Sonnet) sobre la v6.3: 0 críticos, 0 altos, 0 medios. Orquesta probó la firma estricta contra un `agy` real ya instalado (sin ejecutarlo): pasa con el equipo de Google y falla con otro |
 | Límites | Probado con `agy` y `curl` falsos. El instalador cambiado en `--auto` no puede avisar por sí mismo: depende de que el vigía lo mire (pendiente, 0.21.4). El instalador sigue bajando y ejecutando el binario antes de la comprobación de firma |
 | Metadatos / clientes | verificar-metadatos y grep de clientes los corre el script de publicación |
+
+### 2026-10-05 · metodo 0.21.4 (el radar no llama a Antigravity si nunca se usó)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | `cupo_antigravity` solo ejecuta `agy -p /usage` si existe `~/.gemini/antigravity-cli/history.jsonl` (o `RADAR_AGY_STATE`); sin él devuelve `no_disponible` («sin usar todavía»). Antes, sin sesión, esa llamada abría el navegador para iniciar sesión |
+| Superficie nueva | Ninguna: solo comprueba que un archivo exista (no lo abre ni lo lee) y deja de ejecutar `agy` en un caso. Una ruta puesta a mano en `RADAR_AGY_BIN` (pruebas) se usa tal cual |
+| Revisión | Sin `security-reviewer` aparte: 9 líneas que reducen ejecución, leídas enteras por Orquesta; prueba nueva (el `agy` falso no se llama sin historial) |
+| Límite | Es una señal indirecta de «hay sesión»: quien inició sesión pero nunca le pasó un pedido queda salteado hasta que lo use una vez (falla hacia no abrir nada) |
+| Metadatos / clientes | verificar-metadatos y grep de clientes los corre el script de publicación |
