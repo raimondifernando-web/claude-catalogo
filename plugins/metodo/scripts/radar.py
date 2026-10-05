@@ -435,6 +435,14 @@ def cupo_antigravity():
     bin_agy = _buscar_bin("agy", "RADAR_AGY_BIN")
     if not bin_agy:
         return "no_disponible", "Antigravity: no está instalada"
+    # `agy -p /usage` SIN sesión iniciada abre el navegador para que el usuario entre con su cuenta de Google (pasó el
+    # 2026-10-05). Para no abrirlo nunca, solo se le pregunta si ya se usó alguna vez (su historial existe; solo se mira que
+    # exista, nunca se abre). Una ruta puesta a mano en RADAR_AGY_BIN (pruebas) se usa tal cual.
+    if not os.environ.get("RADAR_AGY_BIN", "").strip():
+        estado = os.environ.get("RADAR_AGY_STATE", "").strip()
+        base = Path(estado) if estado and os.path.isabs(estado) else Path.home() / ".gemini" / "antigravity-cli"
+        if not (base / "history.jsonl").is_file():
+            return "no_disponible", "Antigravity: sin usar todavía (corré «agy» una vez e iniciá sesión)"
 
     try:
         r = subprocess.run(
