@@ -17,6 +17,12 @@ terminal. En los ejemplos, `radar` quiere decir `python3 "${CLAUDE_PLUGIN_ROOT}/
 - **`radar elegir <categoría>`** — *antes de delegar o de cambiar de herramienta.* Devuelve el primer plan disponible y dice
   en una línea qué saltó y por qué. Con **`--sensible`** si el trabajo lleva código privado, datos de clientes o nada que
   deba salir de la empresa: salta los planes gratis que usan lo que mandás para entrenar.
+- **`delegar <categoría> <repo> <pedido.txt> --archivo [--revisar]`** — *cuando hay que mandar trabajo acotado a otra IA* (programar un
+  arreglo, revisar un repo). Es `scripts/delegar.py`, no el radar: elige con el radar poniendo a Claude último, mide el
+  cupo de Claude, Codex y Antigravity, ejecuta con la herramienta del plan (Codex o Antigravity) y deja el cambio sin
+  commitear. Si el plan elegido es Claude, sale con código 3: lo hacés en esta sesión. Se niega en carpetas con datos
+  privados o de clientes, y la primera vez exige `delegar.py --aceptar` (el código viaja a OpenAI o Google; los planes
+  gratuitos pueden entrenar con él): explicáselo al usuario y pedile que lo corra él en su terminal (no se puede dar desde una sesión de IA). Tests y revisión del cambio los hacés vos.
 - **`radar ver [categoría]`** — *cuando el usuario quiere mirar el ranking.* Sin categoría, el resumen A/B/C de todas; con
   categoría, el detalle (por qué, condiciones, cómo ver el cupo, fuente y fecha).
 - **`radar html`** — una página local para mirarlo en el navegador (`<config>/metodo/radar.html`).
@@ -31,8 +37,9 @@ terminal. En los ejemplos, `radar` quiere decir `python3 "${CLAUDE_PLUGIN_ROOT}/
    cites como cifra textual.
 3. Respetá las **condiciones** del plan (por ejemplo, «sin datos privados en el plan gratis»). Si el trabajo es sensible y
    el comando dice que ningún plan alcanza, parás y preguntás.
-4. El radar **no gasta cupo**: los topes de Claude se miran con `/usage`; los de Codex con `scripts/codex-cupo` (el radar
-   lo usa solo). Para los demás no hay forma local de medir: el radar no los salta, avisá si el usuario sabe que se acabó.
+4. El radar **no gasta cupo**: mide solo el de Claude (`/usage`), Codex (`scripts/codex-cupo`) y Antigravity (`agy -p /usage`), los
+   tres sin llamar a ningún modelo, y salta un plan con el cupo agotado. Para los demás no hay forma local de medir: el
+   radar no los salta, avisá si el usuario sabe que se acabó.
 5. Nunca elijas un modelo de memoria cuando el radar tiene la respuesta.
 
 ## Qué no hace

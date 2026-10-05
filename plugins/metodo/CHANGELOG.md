@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.21.0 — 2026-10-05
+- **El radar ahora mide el cupo de Claude, de Codex y de Antigravity (Gemini), no solo el de Codex.** Antes siempre te decía «Claude» porque nunca veía que se te acababa o que el de Gemini estaba sin usar. Si el cupo de un plan está agotado, lo salta; si está alto, avisa «solo tareas chicas».
+- **Nuevo: `delegar.py` (junto a `radar.py`).** Le das una categoría, la carpeta del repo y la tarea; mide el cupo, elige la IA que conviene dejando a Claude de coordinador, la ejecuta (Codex o Antigravity) y te deja el cambio sin guardar para que corras los tests y lo revises. Con `--revisar` solo lee y te da un informe.
+- **Cuidados:** la primera vez pide una aceptación (`delegar.py --aceptar`) porque el código del repo viaja a OpenAI o a Google y los planes gratuitos pueden entrenar con lo que reciben; se niega en tu carpeta personal y en carpetas de Finanzas, Personal o clientes (se amplía con `METODO_NO_DELEGAR`); no ejecuta nada del repo (git sin hooks), corta la herramienta si pasa de una hora y avisa si toca la configuración del repo.
+- La regla 18 del método y la skill `radar` explican cuándo usarlo. Un cupo sin usar es plata tirada.
+
 ## 0.20.1 — 2026-10-05
 - «Poner todo al día» pasa solo a la rama estable también en la actualización automática (como mucho un intento por semana); antes guarda una copia de todo, instala metodo primero y, si algo falla, deja la configuración como estaba. Una descarga colgada ya no espera al tope de 30 minutos.
 
