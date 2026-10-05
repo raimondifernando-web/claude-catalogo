@@ -27,8 +27,10 @@ import html as _html
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import time
 import unicodedata
 import urllib.error
 import urllib.request
@@ -310,6 +312,27 @@ def buscar_categoria(radar, texto):
 # --------------------------------------------------------------------------- #
 # Disponibilidad
 # --------------------------------------------------------------------------- #
+def _buscar_bin(nombre, var_env):
+    propia = os.environ.get(var_env, "").strip()
+    if propia:
+        return propia
+    w = shutil.which(nombre)
+    if w:
+        return w
+    candidatos = [
+        Path.home() / ".local" / "bin" / nombre,
+        Path("/opt/homebrew/bin") / nombre,
+        Path("/usr/local/bin") / nombre,
+    ]
+    for c in candidatos:
+        try:
+            if c.is_file() and os.access(str(c), os.X_OK):
+                return str(c)
+        except Exception:
+            pass
+    return None
+
+
 def cupo_codex():
     """(nivel, texto). nivel: ok | alto | agotado | desconocido. Usa la misma lectura que `codex-cupo`."""
     script = os.environ.get("RADAR_CODEX_CUPO", "").strip() or str(CODEX_CUPO)
@@ -326,6 +349,98 @@ def cupo_codex():
     except Exception:
         pass
     return "desconocido", "Codex: cupo desconocido"
+
+
+def cupo_claude():
+    """(nivel, texto). nivel: ok | alto | agotado | desconocido."""
+    cerebro = os.environ.get("CEREBRO_HOME", "").strip()
+    ruta_json = Path(cerebro) / "cupo.json" if cerebro else Path.home() / ".cerebro" / "cupo.json"
+    try:
+        if ruta_json.is_file():
+            datos = json.loads(ruta_json.read_text(encoding="utf-8"))
+            ts = float(datos.get("ts", 0))
+            if 0 <= (time.time() - ts) < 900:
+                pcts = []
+                for k in ("five_hour", "seven_day"):
+                    sub = datos.get(k)
+                    if isinstance(sub, dict) and "pct" in sub:
+                        try:
+                            pcts.append(float(sub["pct"]))
+                        except (ValueError, TypeError):
+                            pass
+                if pcts:
+                    max_pct = max(pcts)
+                    nivel = "agotado" if max_pct >= 90 else "alto" if max_pct >= 70 else "ok"
+                    return nivel, "Claude: %d%% usado" % round(max_pct)
+    except Exception:
+        pass
+
+    bin_claude = _buscar_bin("claude", "RADAR_CLAUDE_BIN")
+    if not bin_claude:
+        return "desconocido", "Claude: cupo desconocido"
+
+    try:
+        r = subprocess.run(
+            [bin_claude, "-p", "/usage", "--output-format", "text", "--no-session-persistence", "--settings", '{"disableAllHooks":true}'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30
+        )
+        if r.returncode != 0:
+            return "desconocido", "Claude: cupo desconocido"
+        salida = r.stdout.decode("utf-8", "replace")
+        pcts = []
+        for linea in salida.splitlines():
+            linea_s = linea.strip()
+            if linea_s.startswith("Current session:") or linea_s.startswith("Current week (all models):"):
+                m = re.search(r"(\d+(?:\.\d+)?)\s*%", linea_s)
+                if m:
+                    pcts.append(float(m.group(1)))
+        if pcts:
+            max_pct = max(pcts)
+            nivel = "agotado" if max_pct >= 90 else "alto" if max_pct >= 70 else "ok"
+            return nivel, "Claude: %d%% usado" % round(max_pct)
+    except Exception:
+        pass
+    return "desconocido", "Claude: cupo desconocido"
+
+
+def cupo_antigravity():
+    """(nivel, texto). nivel: ok | alto | agotado | desconocido."""
+    bin_agy = _buscar_bin("agy", "RADAR_AGY_BIN")
+    if not bin_agy:
+        return "desconocido", "Antigravity: cupo desconocido"
+
+    try:
+        r = subprocess.run(
+            [bin_agy, "-p", "/usage", "--output-format", "json"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30
+        )
+        if r.returncode != 0:
+            return "desconocido", "Antigravity: cupo desconocido"
+        raiz = json.loads(r.stdout.decode("utf-8", "replace"))
+        grupos = raiz.get("command", {}).get("data", {}).get("groups", [])
+        if not isinstance(grupos, list):
+            return "desconocido", "Antigravity: cupo desconocido"
+        usados = []
+        for g in grupos:
+            if isinstance(g, dict) and str(g.get("name", "")).startswith("Gemini"):
+                buckets = g.get("buckets", [])
+                if isinstance(buckets, list):
+                    for b in buckets:
+                        if isinstance(b, dict):
+                            rem = b.get("remaining_fraction")
+                            if isinstance(rem, (int, float)):
+                                usados.append(100.0 * (1.0 - float(rem)))
+        if usados:
+            max_usado = max(usados)
+            nivel = "agotado" if max_usado >= 90 else "alto" if max_usado >= 70 else "ok"
+            return nivel, "Antigravity: %d%% usado" % round(max_usado)
+    except Exception:
+        pass
+    return "desconocido", "Antigravity: cupo desconocido"
 
 
 def cargar_prueba():
@@ -357,19 +472,26 @@ def motivo_salto(plan, radar, sensible, prueba, cache_cupo):
         f = a_fecha(p.get("fecha"))
         if f is None or (hoy() - f).days <= DIAS_PRUEBA_VALIDA:
             return "la última prueba (%s) lo marcó no disponible: %s" % (p.get("fecha", "?"), p.get("motivo", "sin detalle"))
-    if plan.get("cupo") == "codex":
-        if "codex" not in cache_cupo:
-            cache_cupo["codex"] = cupo_codex()
-        nivel, texto = cache_cupo["codex"]
+    lectores = {"codex": cupo_codex, "claude": cupo_claude, "antigravity": cupo_antigravity}
+    tipo_cupo = plan.get("cupo")
+    if tipo_cupo in lectores:
+        if tipo_cupo not in cache_cupo:
+            cache_cupo[tipo_cupo] = lectores[tipo_cupo]()
+        nivel, texto = cache_cupo[tipo_cupo]
         if nivel == "agotado":
             return "cupo agotado (%s)" % texto
     return None
 
 
-def elegir(radar, categoria, sensible=False, prueba=None):
+def elegir(radar, categoria, sensible=False, prueba=None, delegar=False):
     prueba = cargar_prueba() if prueba is None else prueba
     cache, saltados = {}, []
-    for plan in categoria.get("planes") or []:
+    planes = categoria.get("planes") or []
+    if delegar:
+        no_claude = [p for p in planes if not str(p.get("herramienta", "")).startswith("Claude Code")]
+        claude = [p for p in planes if str(p.get("herramienta", "")).startswith("Claude Code")]
+        planes = no_claude + claude
+    for plan in planes:
         m = motivo_salto(plan, radar, sensible, prueba, cache)
         if m is None:
             return plan, saltados, cache
@@ -674,7 +796,7 @@ def cmd_elegir(a):
     if not c:
         print("No conozco la categoría «%s». Las que hay: %s" % (a.categoria, _ids(radar)))
         return 2
-    plan, saltados, cache = elegir(radar, c, a.sensible)
+    plan, saltados, cache = elegir(radar, c, a.sensible, delegar=getattr(a, "delegar", False))
     if a.json:
         print(json.dumps({"categoria": c["id"], "plan": plan, "respaldado": respaldo(c)[1], "saltados": [{"plan": p.get("plan"), "motivo": m} for p, m in saltados]},
                          ensure_ascii=False))
@@ -690,8 +812,9 @@ def cmd_elegir(a):
         print(texto_respaldo(c))
     if plan.get("condiciones"):
         print("Condiciones: " + plan["condiciones"])
-    if plan.get("cupo") == "codex" and cache.get("codex") and cache["codex"][0] == "alto":
-        print("Ojo: " + cache["codex"][1] + " (solo tareas chicas).")
+    cupo = plan.get("cupo")
+    if cupo and cache.get(cupo) and cache[cupo][0] == "alto":
+        print("Ojo: " + cache[cupo][1] + " (solo tareas chicas).")
     if plan.get("como_ver_cupo"):
         print("Ver cupo: " + plan["como_ver_cupo"])
     return 0
@@ -764,6 +887,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd")
     s = sub.add_parser("ver"); s.add_argument("categoria", nargs="?"); s.set_defaults(f=cmd_ver)
     s = sub.add_parser("elegir"); s.add_argument("categoria"); s.add_argument("--sensible", action="store_true")
+    s.add_argument("--delegar", action="store_true")
     s.add_argument("--json", action="store_true"); s.set_defaults(f=cmd_elegir)
     s = sub.add_parser("json"); s.add_argument("--salida"); s.add_argument("--stdout", action="store_true"); s.set_defaults(f=cmd_json)
     s = sub.add_parser("html"); s.add_argument("--salida"); s.set_defaults(f=cmd_html)

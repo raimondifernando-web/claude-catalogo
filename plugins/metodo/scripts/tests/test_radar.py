@@ -14,6 +14,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import urllib.error
 from pathlib import Path
@@ -69,8 +70,11 @@ class Base(unittest.TestCase):
         os.environ["CLAUDE_CONFIG_DIR"] = str(self.tmp / "config")
         os.environ["RADAR_HOY"] = "2026-10-10"
         os.environ.pop("RADAR_PROBAR", None)
+        os.environ["CEREBRO_HOME"] = str(self.tmp / "cerebro")
         # aislado del cupo REAL de la máquina que corre los tests
         self.cupo_falso(0, "Codex: cupo desconocido (sin dato en los registros recientes)")
+        self.claude_falso(0, "Current session: 0% used\n")
+        self.agy_falso(0, json.dumps({"command": {"data": {"groups": [{"name": "Gemini", "buckets": [{"remaining_fraction": 1.0}]}]}}}))
 
     def _restaurar(self):
         os.environ.clear()
@@ -80,6 +84,28 @@ class Base(unittest.TestCase):
         ruta = self.tmp / "codex-cupo-falso"
         ruta.write_text("#!/bin/bash\necho '%s'\nexit %d\n" % (texto, codigo))
         os.environ["RADAR_CODEX_CUPO"] = str(ruta)
+
+    def claude_falso(self, codigo, texto):
+        ruta = self.tmp / "claude-falso"
+        if texto:
+            contenido = "#!/bin/sh\ncat << 'EOF'\n%s\nEOF\nexit %d\n" % (texto, codigo)
+        else:
+            contenido = "#!/bin/sh\nexit %d\n" % codigo
+        ruta.write_text(contenido, encoding="utf-8")
+        ruta.chmod(0o755)
+        os.environ["RADAR_CLAUDE_BIN"] = str(ruta)
+        return ruta
+
+    def agy_falso(self, codigo, texto):
+        ruta = self.tmp / "agy-falso"
+        if texto:
+            contenido = "#!/bin/sh\ncat << 'EOF'\n%s\nEOF\nexit %d\n" % (texto, codigo)
+        else:
+            contenido = "#!/bin/sh\nexit %d\n" % codigo
+        ruta.write_text(contenido, encoding="utf-8")
+        ruta.chmod(0o755)
+        os.environ["RADAR_AGY_BIN"] = str(ruta)
+        return ruta
 
     def correr(self, *args):
         out = io.StringIO()
@@ -155,6 +181,244 @@ class TestElegir(Base):
         plan_, saltados, _ = R.elegir(radar, radar["categorias"][0], sensible=True, prueba={})
         self.assertIsNone(plan_)
         self.assertEqual(len(saltados), 3)
+
+
+@unittest.skipIf(ES_WINDOWS, "scripts de sh")
+class TestLectoresCupo(Base):
+    def test_codex_salida_real_ok_alto_agotado(self):
+        self.cupo_falso(0, "Codex: 15% del cupo mensual — OK")
+        self.assertEqual(R.cupo_codex(), ("ok", "Codex: 15% del cupo mensual — OK"))
+        self.cupo_falso(1, "Codex: 75% del cupo mensual — ALTO")
+        self.assertEqual(R.cupo_codex(), ("alto", "Codex: 75% del cupo mensual — ALTO"))
+        self.cupo_falso(2, "Codex: 95% del cupo mensual — NO lanzar")
+        self.assertEqual(R.cupo_codex(), ("agotado", "Codex: 95% del cupo mensual — NO lanzar"))
+
+    def test_codex_salida_vacia_y_rota(self):
+        self.cupo_falso(0, "")
+        self.assertEqual(R.cupo_codex(), ("desconocido", "Codex: cupo desconocido"))
+        self.cupo_falso(0, "Codex: cupo desconocido (sin registros)")
+        self.assertEqual(R.cupo_codex(), ("desconocido", "Codex: cupo desconocido"))
+        os.environ["RADAR_CODEX_CUPO"] = str(self.tmp / "inexistente")
+        self.assertEqual(R.cupo_codex(), ("desconocido", "Codex: cupo desconocido"))
+
+    def test_claude_salida_real_cli(self):
+        salida_ok = (
+            "Current session: 28% used · resets Oct 5 at 11:59am (America/Cordoba)\n"
+            "Current week (all models): 45% used · resets Oct 10 at 11:59am\n"
+        )
+        self.claude_falso(0, salida_ok)
+        self.assertEqual(R.cupo_claude(), ("ok", "Claude: 45% usado"))
+
+        salida_alto = (
+            "Current session: 72% used · resets Oct 5 at 11:59am\n"
+            "Current week (all models): 20% used · resets Oct 10\n"
+        )
+        self.claude_falso(0, salida_alto)
+        self.assertEqual(R.cupo_claude(), ("alto", "Claude: 72% usado"))
+
+        salida_agotado = (
+            "Current session: 30% used\n"
+            "Current week (all models): 93% used · resets Oct 10\n"
+        )
+        self.claude_falso(0, salida_agotado)
+        self.assertEqual(R.cupo_claude(), ("agotado", "Claude: 93% usado"))
+
+    def test_claude_salida_real_cupo_json(self):
+        cerebro_dir = self.tmp / "cerebro"
+        cerebro_dir.mkdir(parents=True, exist_ok=True)
+        cupo_json = cerebro_dir / "cupo.json"
+        # Datos frescos (< 900s)
+        datos = {"five_hour": {"pct": 25}, "seven_day": {"pct": 82}, "ts": time.time()}
+        cupo_json.write_text(json.dumps(datos), encoding="utf-8")
+        # El archivo cupo.json gana sobre la CLI
+        self.claude_falso(0, "Current session: 10% used\n")
+        self.assertEqual(R.cupo_claude(), ("alto", "Claude: 82% usado"))
+
+        # Si ts es viejo (> 900s), se ignora cupo.json y se ejecuta la CLI
+        datos["ts"] = time.time() - 1000
+        cupo_json.write_text(json.dumps(datos), encoding="utf-8")
+        self.assertEqual(R.cupo_claude(), ("ok", "Claude: 10% usado"))
+
+    def test_claude_salida_vacia_y_rota(self):
+        self.claude_falso(0, "")
+        self.assertEqual(R.cupo_claude(), ("desconocido", "Claude: cupo desconocido"))
+        self.claude_falso(1, "error inesperado")
+        self.assertEqual(R.cupo_claude(), ("desconocido", "Claude: cupo desconocido"))
+        self.claude_falso(0, "salida no esperada")
+        self.assertEqual(R.cupo_claude(), ("desconocido", "Claude: cupo desconocido"))
+        os.environ["RADAR_CLAUDE_BIN"] = str(self.tmp / "inexistente")
+        self.assertEqual(R.cupo_claude(), ("desconocido", "Claude: cupo desconocido"))
+
+    def test_antigravity_salida_real(self):
+        def json_agy(rem_gemini, rem_otros=0.01):
+            return json.dumps({
+                "command": {
+                    "data": {
+                        "groups": [
+                            {"name": "Gemini 2.5 Pro", "buckets": [{"remaining_fraction": rem_gemini}]},
+                            {"name": "Claude and GPT models", "buckets": [{"remaining_fraction": rem_otros}]}
+                        ]
+                    }
+                }
+            })
+        # 100 * (1 - 0.8) = 20% -> ok (el grupo Claude and GPT se ignora)
+        self.agy_falso(0, json_agy(0.80))
+        self.assertEqual(R.cupo_antigravity(), ("ok", "Antigravity: 20% usado"))
+
+        # 100 * (1 - 0.25) = 75% -> alto
+        self.agy_falso(0, json_agy(0.25))
+        self.assertEqual(R.cupo_antigravity(), ("alto", "Antigravity: 75% usado"))
+
+        # 100 * (1 - 0.05) = 95% -> agotado
+        self.agy_falso(0, json_agy(0.05))
+        self.assertEqual(R.cupo_antigravity(), ("agotado", "Antigravity: 95% usado"))
+
+    def test_antigravity_salida_vacia_y_rota(self):
+        self.agy_falso(0, "")
+        self.assertEqual(R.cupo_antigravity(), ("desconocido", "Antigravity: cupo desconocido"))
+        self.agy_falso(1, "error interno")
+        self.assertEqual(R.cupo_antigravity(), ("desconocido", "Antigravity: cupo desconocido"))
+        self.agy_falso(0, "{esto no es json")
+        self.assertEqual(R.cupo_antigravity(), ("desconocido", "Antigravity: cupo desconocido"))
+        self.agy_falso(0, json.dumps({"command": {"data": {"groups": []}}}))
+        self.assertEqual(R.cupo_antigravity(), ("desconocido", "Antigravity: cupo desconocido"))
+        os.environ["RADAR_AGY_BIN"] = str(self.tmp / "inexistente")
+        self.assertEqual(R.cupo_antigravity(), ("desconocido", "Antigravity: cupo desconocido"))
+
+
+@unittest.skipIf(ES_WINDOWS, "scripts de sh")
+class TestMotivoSaltoPorNivel(Base):
+    def test_motivo_salto_niveles(self):
+        radar = radar_de_prueba()
+        for tipo, fn_falso, prefijo in (
+            ("codex", lambda cod, txt: self.cupo_falso(cod, txt), "Codex:"),
+            ("claude", lambda cod, txt: self.claude_falso(cod, txt), "Claude:"),
+            ("antigravity", lambda cod, txt: self.agy_falso(cod, txt), "Antigravity:"),
+        ):
+            p = plan("X", "Herramienta", cupo=tipo)
+
+            # Nivel ok -> no salta
+            if tipo == "codex":
+                fn_falso(0, "%s 10%% usado" % prefijo)
+            elif tipo == "claude":
+                fn_falso(0, "Current session: 10% used\n")
+            else:
+                fn_falso(0, json.dumps({"command": {"data": {"groups": [{"name": "Gemini", "buckets": [{"remaining_fraction": 0.9}]}]}}}))
+            cache = {}
+            self.assertIsNone(R.motivo_salto(p, radar, False, {}, cache))
+            self.assertEqual(cache[tipo][0], "ok")
+
+            # Nivel alto -> NO salta (incluyendo claude)
+            if tipo == "codex":
+                fn_falso(1, "%s 75%% usado" % prefijo)
+            elif tipo == "claude":
+                fn_falso(0, "Current session: 75% used\n")
+            else:
+                fn_falso(0, json.dumps({"command": {"data": {"groups": [{"name": "Gemini", "buckets": [{"remaining_fraction": 0.25}]}]}}}))
+            cache = {}
+            self.assertIsNone(R.motivo_salto(p, radar, False, {}, cache))
+            self.assertEqual(cache[tipo][0], "alto")
+
+            # Nivel agotado -> SÍ salta con "cupo agotado (%s)"
+            if tipo == "codex":
+                fn_falso(2, "%s 95%% usado" % prefijo)
+            elif tipo == "claude":
+                fn_falso(0, "Current session: 95% used\n")
+            else:
+                fn_falso(0, json.dumps({"command": {"data": {"groups": [{"name": "Gemini", "buckets": [{"remaining_fraction": 0.05}]}]}}}))
+            cache = {}
+            m = R.motivo_salto(p, radar, False, {}, cache)
+            self.assertIsNotNone(m)
+            self.assertIn("cupo agotado", m)
+            self.assertEqual(cache[tipo][0], "agotado")
+
+            # Nivel desconocido -> no salta
+            if tipo == "codex":
+                fn_falso(0, "Codex: cupo desconocido")
+            else:
+                fn_falso(0, "")
+            cache = {}
+            self.assertIsNone(R.motivo_salto(p, radar, False, {}, cache))
+            self.assertEqual(cache[tipo][0], "desconocido")
+
+
+@unittest.skipIf(ES_WINDOWS, "scripts de sh")
+class TestElegirDelegar(Base):
+    def setUp(self):
+        super().setUp()
+        self.cat = {
+            "id": "programar",
+            "nombre": "Programar",
+            "planes": [
+                plan("A", "Claude Code", "m-a", True, "claude"),
+                plan("B", "Codex", "m-b", True, "codex"),
+                plan("C", "Antigravity", "m-c", True, "antigravity"),
+            ]
+        }
+        self.radar = {"actualizado": "2026-10-05", "categorias": [self.cat], "retiros": []}
+        self.claude_falso(0, "Current session: 10% used\n")
+        self.cupo_falso(0, "Codex: 10% del cupo — OK")
+        self.agy_falso(0, json.dumps({"command": {"data": {"groups": [{"name": "Gemini", "buckets": [{"remaining_fraction": 0.9}]}]}}}))
+
+    def test_delegar_false_mantiene_orden_original(self):
+        p, saltados, _ = R.elegir(self.radar, self.cat, delegar=False)
+        self.assertEqual(p["plan"], "A")
+        self.assertEqual(p["herramienta"], "Claude Code")
+        self.assertEqual(saltados, [])
+
+    def test_delegar_true_antepone_no_claude_y_pospone_claude(self):
+        # Con delegar=True, B (Codex) va antes que A (Claude Code)
+        p, saltados, _ = R.elegir(self.radar, self.cat, delegar=True)
+        self.assertEqual(p["plan"], "B")
+        self.assertEqual(p["herramienta"], "Codex")
+        self.assertEqual(saltados, [])
+
+        # Si B está agotado, pasa a C (Antigravity)
+        self.cupo_falso(2, "Codex: 95% — NO lanzar")
+        p, saltados, _ = R.elegir(self.radar, self.cat, delegar=True)
+        self.assertEqual(p["plan"], "C")
+        self.assertEqual(p["herramienta"], "Antigravity")
+        self.assertEqual(len(saltados), 1)
+        self.assertEqual(saltados[0][0]["plan"], "B")
+
+        # Si B y C están agotados, cae en A (Claude Code)
+        self.agy_falso(0, json.dumps({"command": {"data": {"groups": [{"name": "Gemini", "buckets": [{"remaining_fraction": 0.02}]}]}}}))
+        p, saltados, _ = R.elegir(self.radar, self.cat, delegar=True)
+        self.assertEqual(p["plan"], "A")
+        self.assertEqual(p["herramienta"], "Claude Code")
+        self.assertEqual(len(saltados), 2)
+        self.assertEqual([s[0]["plan"] for s in saltados], ["B", "C"])
+
+    def test_cmd_elegir_delegar_y_aviso_alto(self):
+        cache_dir = self.tmp / "config" / "metodo" / "radar"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        (cache_dir / "RADAR.yaml").write_text(R.yaml_volcar(self.radar), encoding="utf-8")
+
+        # Sin --delegar: elige Plan A
+        cod, out = self.correr("elegir", "programar")
+        self.assertEqual(cod, 0)
+        self.assertIn("plan A", out)
+
+        # Con --delegar: elige Plan B (Codex)
+        cod, out = self.correr("elegir", "programar", "--delegar")
+        self.assertEqual(cod, 0)
+        self.assertIn("plan B", out)
+
+        # Aviso con nivel "alto" generalizado (para cualquier cupo, p. ej. Codex en alto)
+        self.cupo_falso(1, "Codex: 78% del cupo mensual — ALTO")
+        cod, out = self.correr("elegir", "programar", "--delegar")
+        self.assertEqual(cod, 0)
+        self.assertIn("plan B", out)
+        self.assertIn("Ojo: Codex: 78%", out)
+        self.assertIn("solo tareas chicas", out)
+
+        # Aviso con nivel "alto" para Claude cuando se elige Plan A
+        self.claude_falso(0, "Current session: 74% used\n")
+        cod, out = self.correr("elegir", "programar")
+        self.assertEqual(cod, 0)
+        self.assertIn("plan A", out)
+        self.assertIn("Ojo: Claude: 74% usado", out)
+        self.assertIn("solo tareas chicas", out)
 
 
 class TestDatosReales(Base):
