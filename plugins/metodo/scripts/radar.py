@@ -351,7 +351,8 @@ def cupo_codex():
     """(nivel, texto). nivel: ok | alto | agotado | desconocido. Usa la misma lectura que `codex-cupo`."""
     script = os.environ.get("RADAR_CODEX_CUPO", "").strip() or str(CODEX_CUPO)
     try:
-        r = subprocess.run(["bash", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
+        r = subprocess.run(["bash", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+                           cwd=tempfile.gettempdir(), timeout=10)
         texto = r.stdout.decode("utf-8", "replace").strip().splitlines()
         texto = texto[-1] if texto else "Codex: cupo desconocido"
         if r.returncode == 2:

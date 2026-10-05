@@ -33,6 +33,7 @@ Códigos de salida:
     67  La CLI del plan elegido (codex o agy) no está instalada, o está dentro del repo.
     68  Falta aceptar el envío del código a un tercero (corré una vez `delegar.py --aceptar`).
     70  La herramienta (codex o agy) terminó con error; su código real va en el mensaje.
+    72  La configuración local del repo trae filtros que ejecutan programas (filter.*.clean/smudge/process).
     71  La herramienta tocó .git/config o los hooks del repo: no confíes en ese repo hasta revisarlo.
     124 La herramienta no terminó a tiempo (METODO_DELEGAR_TOPE, 3600 s por defecto) y se cortó con sus hijos.
 
@@ -61,7 +62,7 @@ import radar
 
 TOPE_PEDIDO = 100 * 1024
 MODELO_VALIDO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
-NOMBRES_DE_CLAVES = re.compile(r"(^\.env|\.pem$|\.key$|\.p12$|\.pfx$|^id_|credencial|secret|token|\.npmrc$|\.netrc$)", re.I)
+NOMBRES_DE_CLAVES = re.compile(r"(^\.env|\.pem$|\.key$|\.p12$|\.pfx$|\.keychain|^id_|credential|credencial|secret|token|\.npmrc$|\.netrc$|known_hosts|authorized_keys|pgpass|history|^config$|kubeconfig|\.git-credentials)", re.I)
 # git sin ejecutar nada del repo (un repo bajado de afuera puede traer core.fsmonitor, hooks o diff externo en su config)
 GIT_SEGURO = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "diff.external=", "-c", "protocol.ext.allow=never"]
 
@@ -141,23 +142,49 @@ def arbol_sucio(repo_path):
     return bool(r.stdout.strip())
 
 
+def _git_plano(repo_path, *args):
+    """rev-parse y similares: no ejecutan nada del repo; sin los -c de seguridad (que cambian las rutas que devuelve)."""
+    try:
+        r = subprocess.run(["git", "-C", str(repo_path)] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           stdin=subprocess.DEVNULL, universal_newlines=True, encoding="utf-8", timeout=60)
+        return r.stdout.strip() if r.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
 def huella_git(repo_path):
-    """Hash de .git/config y de los hooks: si la herramienta los toca, lo vemos al terminar."""
+    """Hash de .git/config (del repo y del común, si es un worktree) y de todos los hooks: si la herramienta los
+    toca, lo vemos al terminar."""
     h = hashlib.sha256()
-    for que in ("config", "hooks"):
-        r = git(repo_path, "rev-parse", "--git-path", que)
-        if not r or r.returncode != 0:
+    base = Path(repo_path)
+    rutas = []
+    for que in ("--git-dir", "--git-common-dir"):
+        d = _git_plano(repo_path, "rev-parse", que)
+        if d:
+            d = Path(d)
+            rutas.append(d if d.is_absolute() else base / d)
+    vistos = []
+    for d in rutas:
+        if d in vistos:
             continue
-        p = Path(r.stdout.strip())
-        if not p.is_absolute():
-            p = Path(repo_path) / p
-        archivos = [p] if p.is_file() else sorted(x for x in p.rglob("*") if x.is_file()) if p.is_dir() else []
+        vistos.append(d)
+        archivos = [d / "config"] + (sorted(x for x in (d / "hooks").rglob("*") if x.is_file()) if (d / "hooks").is_dir() else [])
         for a in archivos:
             try:
-                h.update(str(a).encode("utf-8", "replace") + b"\0" + a.read_bytes() + b"\0")
+                h.update(str(a).encode("utf-8", "replace") + b"\0" + (a.read_bytes() if a.is_file() else b"-") + b"\0")
             except OSError:
                 h.update(b"?")
     return h.hexdigest()
+
+
+FILTROS_PELIGROSOS = r"^filter\..*\.(clean|smudge|process)$"
+
+
+def config_que_ejecuta_programas(repo_path):
+    """Claves del config LOCAL del repo que git ejecutaría al comparar archivos (filtros clean/smudge/process). El resto
+    (fsmonitor, hooks, diff externo, textconv) ya se neutraliza en GIT_SEGURO."""
+    r = git(repo_path, "config", "--local", "--name-only", "--get-regexp", FILTROS_PELIGROSOS)
+    return r.stdout.split() if r and r.returncode == 0 else []
 
 
 def args_modelo_agy(plan):
@@ -203,7 +230,19 @@ def esta_aceptado():
         return False
 
 
+def confirmar_interactivo():
+    """Una persona, en una terminal: una sesión de IA (sin terminal) no puede darse el permiso sola."""
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        sys.stderr.write("--aceptar lo tiene que correr una persona en su terminal (no hay terminal interactiva acá).\n")
+        return False
+    print("El código del repo que delegues viaja a OpenAI (Codex) o a Google (Antigravity); los planes gratuitos pueden "
+          "entrenar con lo que reciben. Nunca delegues datos privados, de clientes ni claves.")
+    return input("Escribí SI para aceptar: ").strip().upper() == "SI"
+
+
 def aceptar():
+    if not confirmar_interactivo():
+        return 64
     ruta = ruta_aceptacion()
     ruta.parent.mkdir(parents=True, exist_ok=True)
     tmp = ruta.with_name(ruta.name + ".tmp")
@@ -235,14 +274,24 @@ def parsear_argumentos(argv=None):
     return a
 
 
-def leer_pedido(args):
+def bases_permitidas(repo_path):
+    """El archivo del pedido tiene que estar en el repo o en una carpeta temporal (por la ruta real, siguiendo enlaces)."""
+    import tempfile
+    bases = [Path(repo_path).resolve(), Path(tempfile.gettempdir()).resolve(), Path("/tmp").resolve(), Path("/var/tmp").resolve()]
+    return [str(b).rstrip("/") + "/" for b in bases]
+
+
+def leer_pedido(args, repo_path):
     """(texto, error). El pedido es texto; solo es un archivo si se pidió con --archivo."""
     if not args.archivo:
         texto = args.pedido
     else:
         p = Path(args.pedido)
-        if NOMBRES_DE_CLAVES.search(p.name):
+        real = Path(os.path.realpath(str(p)))
+        if NOMBRES_DE_CLAVES.search(p.name) or NOMBRES_DE_CLAVES.search(real.name):
             return None, "«%s» parece un archivo de claves: no se manda." % p.name
+        if not any((str(real) + "/").startswith(b) for b in bases_permitidas(repo_path)):
+            return None, "el archivo del pedido tiene que estar dentro del repo o en una carpeta temporal (no en «%s»)." % real.parent
         try:
             if not p.is_file() or p.stat().st_size > TOPE_PEDIDO:
                 return None, "el archivo del pedido no existe o pasa de %d KB." % (TOPE_PEDIDO // 1024)
@@ -254,9 +303,26 @@ def leer_pedido(args):
     return texto, None
 
 
+def _cortar_grupo(p):
+    """TERM al grupo de procesos de la herramienta y, si algo sigue vivo a los 3 s, KILL. Se llama siempre al salir."""
+    for sig, espera in ((signal.SIGTERM, 3.0), (signal.SIGKILL, 0.5)):
+        try:
+            os.killpg(p.pid, sig)
+        except (ProcessLookupError, PermissionError):
+            return
+        limite = time.time() + espera
+        while time.time() < limite:
+            try:
+                os.killpg(p.pid, 0)
+            except (ProcessLookupError, PermissionError):
+                return
+            time.sleep(0.1)
+
+
 def ejecutar(cmd, cwd, entrada, tope):
-    """Corre la herramienta en su propio grupo de procesos; al vencer el tope se corta el grupo entero (los hijos
-    también). Devuelve el código de salida, o None si se cortó por tiempo."""
+    """Corre la herramienta en su propio grupo de procesos y SIEMPRE corta el grupo entero al salir (al terminar, al
+    vencer el tope, con Ctrl-C o ante cualquier error): ningún hijo queda editando en segundo plano. Devuelve el
+    código de salida, o None si se cortó por tiempo."""
     p = subprocess.Popen(
         cmd, cwd=cwd, stdin=subprocess.PIPE if entrada is not None else subprocess.DEVNULL,
         universal_newlines=True, encoding="utf-8", start_new_session=True,
@@ -265,17 +331,13 @@ def ejecutar(cmd, cwd, entrada, tope):
         p.communicate(input=entrada, timeout=tope)
         return p.returncode
     except subprocess.TimeoutExpired:
-        for sig in (signal.SIGTERM, signal.SIGKILL):
-            try:
-                os.killpg(p.pid, sig)
-            except (ProcessLookupError, PermissionError):
-                pass
-            try:
-                p.wait(timeout=5)
-                break
-            except subprocess.TimeoutExpired:
-                continue
         return None
+    finally:
+        _cortar_grupo(p)
+        try:
+            p.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
 
 
 def main(argv=None):
@@ -347,10 +409,17 @@ def main(argv=None):
     if not args.dry_run and not esta_aceptado():
         sys.stderr.write(
             "Falta aceptar que el código de «%s» se envía a un tercero (%s). Los planes gratuitos pueden entrenar con lo "
-            "enviado: nunca datos privados ni claves. Si el usuario está de acuerdo, corré una vez: "
-            "python3 %s --aceptar\n" % (args.repo, "OpenAI" if herramienta.startswith("Codex") else "Google", Path(__file__).resolve())
+            "enviado: nunca datos privados ni claves. Pedile a la persona que, si está de acuerdo, corra UNA vez en su "
+            "terminal (no lo corras vos): python3 %s --aceptar\n" % (args.repo, "OpenAI" if herramienta.startswith("Codex") else "Google", Path(__file__).resolve())
         )
         return 68
+    peligrosas = config_que_ejecuta_programas(repo_path)
+    if peligrosas:
+        sys.stderr.write(
+            "El repo «%s» trae en su configuración programas que git ejecutaría al leerlo (%s). No se delega: "
+            "revisá esa configuración o hacelo en esta sesión.\n" % (args.repo, ", ".join(peligrosas[:3]))
+        )
+        return 72
     if not args.revisar and arbol_sucio(repo_path):
         sys.stderr.write(
             "El árbol de trabajo en «%s» tiene cambios sin confirmar (o no se pudo leer).\n"
@@ -360,7 +429,7 @@ def main(argv=None):
         return 66
 
     # 8. Texto del pedido (64 si es ilegible o demasiado grande)
-    pedido_texto, error = leer_pedido(args)
+    pedido_texto, error = leer_pedido(args, repo_path)
     if error:
         sys.stderr.write("Pedido rechazado: %s\n" % error)
         return 64

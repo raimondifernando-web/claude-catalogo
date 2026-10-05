@@ -22,7 +22,7 @@ terminal. En los ejemplos, `radar` quiere decir `python3 "${CLAUDE_PLUGIN_ROOT}/
   cupo de Claude, Codex y Antigravity, ejecuta con la herramienta del plan (Codex o Antigravity) y deja el cambio sin
   commitear. Si el plan elegido es Claude, sale con código 3: lo hacés en esta sesión. Se niega en carpetas con datos
   privados o de clientes, y la primera vez exige `delegar.py --aceptar` (el código viaja a OpenAI o Google; los planes
-  gratuitos pueden entrenar con él): explicáselo al usuario y esperá su sí. Tests y revisión del cambio los hacés vos.
+  gratuitos pueden entrenar con él): explicáselo al usuario y pedile que lo corra él en su terminal (no se puede dar desde una sesión de IA). Tests y revisión del cambio los hacés vos.
 - **`radar ver [categoría]`** — *cuando el usuario quiere mirar el ranking.* Sin categoría, el resumen A/B/C de todas; con
   categoría, el detalle (por qué, condiciones, cómo ver el cupo, fuente y fecha).
 - **`radar html`** — una página local para mirarlo en el navegador (`<config>/metodo/radar.html`).

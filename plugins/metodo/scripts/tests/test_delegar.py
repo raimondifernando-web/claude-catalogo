@@ -469,11 +469,70 @@ class TestEndurecimiento(BaseDelegar):
         self.assertIn("--aceptar", err)
         self.assertFalse((self.tmp / "codex_args.json").exists())
 
-    def test_aceptar_deja_constancia(self):
+    def test_aceptar_deja_constancia_si_lo_confirma_una_persona(self):
         (self.tmp / "config" / "metodo" / "delegar-aceptado.json").unlink()
+        original = D.confirmar_interactivo
+        D.confirmar_interactivo = lambda: True
+        self.addCleanup(setattr, D, "confirmar_interactivo", original)
         cod, out, err = self.correr("--aceptar")
         self.assertEqual(cod, 0)
         self.assertTrue(D.esta_aceptado())
+
+    def test_aceptar_sin_terminal_se_niega(self):
+        # una sesión de IA no tiene terminal interactiva: no puede darse el permiso sola
+        (self.tmp / "config" / "metodo" / "delegar-aceptado.json").unlink()
+        cod, out, err = self.correr("--aceptar")
+        self.assertEqual(cod, 64)
+        self.assertFalse(D.esta_aceptado())
+
+    def test_un_hook_plantado_por_la_herramienta_sale_con_71(self):
+        repo = self.crear_repo_git("repo-hook")
+        ruta = self.tmp / "codex-hook"
+        ruta.write_text("#!/bin/sh\ncat >/dev/null\nprintf '#!/bin/sh\\n' > %s/.git/hooks/pre-commit\n" % repo, encoding="utf-8")
+        ruta.chmod(0o755)
+        os.environ["RADAR_CODEX_BIN"] = str(ruta)
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
+        self.assertEqual(cod, 71)
+
+    def test_repo_con_filtro_que_ejecuta_programas_sale_con_72(self):
+        repo = self.crear_repo_git("repo-filtro")
+        subprocess.run(["git", "-C", str(repo), "config", "filter.x.clean", "touch %s" % (self.tmp / "FILTRO")], check=True)
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
+        self.assertEqual(cod, 72)
+        self.assertFalse((self.tmp / "FILTRO").exists())
+
+    def test_archivo_del_pedido_por_enlace_a_otra_parte_se_rechaza(self):
+        repo = self.crear_repo_git("repo-enlace")
+        enlace = self.tmp / "notas.txt"
+        os.symlink("/etc/hosts", str(enlace))
+        cod, out, err = self.correr("desarrollo", str(repo), str(enlace), "--archivo")
+        self.assertEqual(cod, 64)
+        self.assertIn("dentro del repo", err)
+        # y un enlace inocente que apunta a un archivo con nombre de claves
+        real = self.tmp / "id_rsa_falsa"
+        real.write_text("x", encoding="utf-8")
+        enlace2 = self.tmp / "notas2.txt"
+        os.symlink(str(real), str(enlace2))
+        cod, out, err = self.correr("desarrollo", str(repo), str(enlace2), "--archivo")
+        self.assertEqual(cod, 64)
+        self.assertIn("claves", err)
+
+    def test_un_hijo_que_sobrevive_a_la_herramienta_tambien_se_corta(self):
+        repo = self.crear_repo_git("repo-hijo")
+        pidfile = self.tmp / "hijo2.pid"
+        ruta = self.tmp / "codex-deja-hijo"
+        ruta.write_text(
+            "#!/usr/bin/env python3\nimport subprocess, sys\nsys.stdin.read()\n"
+            "h = subprocess.Popen(['sleep', '300'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+            "open(%r, 'w').write(str(h.pid))\n" % str(pidfile), encoding="utf-8")
+        ruta.chmod(0o755)
+        os.environ["RADAR_CODEX_BIN"] = str(ruta)
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
+        self.assertEqual(cod, 0)
+        pid = int(pidfile.read_text())
+        time.sleep(0.5)
+        with self.assertRaises(ProcessLookupError):
+            os.kill(pid, 0)
 
     def test_dry_run_no_pide_aceptar(self):
         (self.tmp / "config" / "metodo" / "delegar-aceptado.json").unlink()

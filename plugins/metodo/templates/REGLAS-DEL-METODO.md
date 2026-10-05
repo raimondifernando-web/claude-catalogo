@@ -77,7 +77,7 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     tests y lo revises. Un cupo sin usar es plata tirada: no lo dejes dormido mientras Claude se gasta. **La primera
     vez** pide una aceptación (`delegar.py --aceptar`): el código del repo viaja a OpenAI o a Google y los planes
     gratuitos pueden entrenar con lo enviado, así que **nunca** con datos privados, de clientes o claves (se niega en
-    esas carpetas). Contale eso a la persona y esperá su sí antes de aceptar por ella.
+    esas carpetas). Contale eso a la persona y pedile que corra ella `delegar.py --aceptar` en su terminal (lo pide a una persona: vos no podés dártelo).
 
 ## Cuando se crean o suman skills y agentes (regla 19)
 

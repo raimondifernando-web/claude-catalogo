@@ -53,3 +53,7 @@ Se bloquea el repo igual a la carpeta personal o a `/`, y se mira también la ra
 ejecutables y fuera del repo; los lectores de cupo corren en una carpeta neutra, sin entrada y con `--setting-sources user`;
 `cupo.json` se lee con tope de 64 KB y porcentajes entre 0 y 100; al vencer el tiempo se corta el grupo de procesos entero.
 Límite conocido: enlaces simbólicos dentro del repo y lectura fuera del repo del sandbox de solo lectura de Codex.
+Segunda vuelta (mismo día): la huella de hooks se calcula con `rev-parse --git-dir/--git-common-dir` sin los `-c` de seguridad
+(con `hooksPath=/dev/null` devolvía una ruta vacía); prechequeo de filtros `filter.*.clean|smudge|process` en el config local
+(código 72); `--archivo` solo por ruta real dentro del repo o de carpetas temporales y con más nombres de claves; se corta el
+grupo de procesos SIEMPRE al salir (TERM y luego KILL), también con Ctrl-C; `--aceptar` exige terminal interactiva y escribir SI.
