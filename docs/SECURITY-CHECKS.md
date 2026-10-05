@@ -634,3 +634,12 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Revisión | Dueño del producto: `security-reviewer`, primera vuelta «no publicar» (ALTO: sin `metodo` ni hook si fallaba la instalación), arreglado, vuelta final «se puede publicar». Orquesta leyó el diff entero contra lo publicado y copió del commit fijado (`git show`, no del disco): sin hallazgos; las dos copias de `al-dia.sh` son idénticas. Pruebas del dueño con `claude` real en configuración temporal: paso desde `main`, falla forzada de `install metodo@`, falla de `marketplace add`, `known_marketplaces.json` roto |
 | Queda (MEDIO, próxima) | Si hay otra sesión de `claude` abriéndose durante el cambio, arranca sin paquetes una vez; posponer el cambio cuando haya más de un `claude` abierto |
 | Metadatos / clientes | TODO COINCIDE · 0 |
+
+### 2026-10-05 · metodo 0.21.0 (radar con cupo de Claude/Antigravity + `delegar.py`)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | `radar.py`: lectores de cupo de Claude (`claude -p /usage`, 0 tokens) y Antigravity (`agy -p /usage`, 0 tokens), `elegir --delegar`. Nuevo `delegar.py`: ejecuta Codex o `agy` sobre un repo git del usuario con un pedido de texto |
+| Revisión | `security-reviewer` (Sonnet), dos vueltas. Primera: «no publicar», 2 ALTO + 5 MEDIO (git sobre un repo no confiable, pedido que se lee desde una ruta, privacidad sin aceptación previa, binarios y modelos sin validar, tope de tiempo que no cortaba los hijos). Todo arreglado y con prueba; segunda vuelta: ver el veredicto en el commit de publicación |
+| Pruebas | 200 en el plugin; el delegador con CLIs falsas (argumentos, `--dry-run`, árbol sucio, carpeta privada, aceptación, repo hostil con `core.fsmonitor`, herramienta que toca `.git/config`, corte de hijos) y probado de punta a punta con `agy` real en un repo de prueba |
+| Límite conocido | Enlaces simbólicos dentro del repo y lectura fuera del repo del sandbox de solo lectura de Codex; la herramienta externa recibe el código del repo (planes gratuitos pueden entrenar): por eso la aceptación previa y la lista de carpetas que se niega |
+| Metadatos / clientes | verificar-metadatos y grep de clientes antes de subir (los corre el script de publicación) |
