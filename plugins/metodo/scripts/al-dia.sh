@@ -212,6 +212,29 @@ if command -v node >/dev/null 2>&1; then
   else falta+=("Codex"); fi
 fi
 
+# 5g. Antigravity de Google (agy, la herramienta de Gemini que usa Fernando): instalador oficial, sin contraseña, en tu
+#     carpeta de usuario. Se fija la huella del INSTALADOR (si Google lo cambia, no se corre: avisá a Fernando); el programa
+#     baja la última versión, verifica su huella y después se actualiza solo. Entrar con tu cuenta de Google se hace aparte.
+local AGYI=62966c07365423bd4dc209355060744058fb30d60f5323e2d360e39de64e5042 AGB AP AS
+if [ ! -x "$HOME/.local/bin/agy" ] && ! command -v agy >/dev/null 2>&1; then
+  T=$(mktemp)   # T: lo borra el trap de salida
+  if ! curl -fsSL --max-time 60 -o "$T" https://antigravity.google/cli/install.sh; then
+    falta+=("Antigravity (sin conexión)")
+  elif [ "$(shasum -a 256 "$T" | cut -d' ' -f1)" = "$AGYI" ]; then
+    /bin/bash "$T" </dev/null >/dev/null 2>&1 & AP=$! AS=0      # tope propio de 5 minutos: si se cuelga, sigue lo demás
+    while kill -0 "$AP" 2>/dev/null && [ $AS -lt 300 ]; do sleep 2; AS=$((AS+2)); done
+    pkill -P "$AP" 2>/dev/null; kill "$AP" 2>/dev/null; wait "$AP" 2>/dev/null
+    [ -x "$HOME/.local/bin/agy" ] && echo "· Antigravity instalado. Lo que le pases sale a Google con tu cuenta; en el plan gratis Google puede usarlo para mejorar sus modelos."
+  else falta+=("Antigravity (cambió su instalador: avisale a Fernando)"); fi
+  rm -f "$T"; T=""
+fi
+# En cada corrida: el programa (y cada actualización que se baja solo) tiene que estar firmado por Google ante Apple.
+AGB=$(command -v agy 2>/dev/null || echo "$HOME/.local/bin/agy")
+if [ -x "$AGB" ]; then
+  { codesign --verify --strict "$AGB" 2>/dev/null && codesign -dv "$AGB" 2>&1 | grep -qx 'TeamIdentifier=EQHXZ8M8AV'; } \
+    || falta+=("Antigravity (la firma no es de Google: no lo uses y avisale a Fernando)")
+elif ! printf '%s\n' "${falta[@]+"${falta[@]}"}" | grep -q Antigravity; then falta+=("Antigravity"); fi
+
 # 5c. Datos de uso de HyperFrames: apagados (solo esa variable; nunca una general como DO_NOT_TRACK)
 if [ -f "$S" ]; then
   plutil -extract env json -o /dev/null "$S" >/dev/null 2>&1 || plutil -insert env -dictionary "$S" 2>/dev/null
@@ -311,7 +334,7 @@ fi
 echo
 if [ ${#falta[@]} -eq 0 ]; then
   echo "ok $(date +%Y-%m-%d)" > "$RES"
-  echo "Todo al día ✓  ($okp paquetes · $R reglas del método · Python, Node y Codex · actualización automática prendida)"
+  echo "Todo al día ✓  ($okp paquetes · $R reglas del método · Python, Node, Codex y Antigravity · actualización automática prendida)"
   echo "Cerrá Claude Code y volvé a abrirlo para que tome lo nuevo."
 else
   local x rep=1
