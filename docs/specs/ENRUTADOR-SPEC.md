@@ -30,7 +30,7 @@ pieza que mida, elija y ejecute, y que la usen las sesiones, el Bicho y los clie
      «el plan elegido es Claude Code: hacelo en esta sesión» y sale con 3.
    - al terminar: `git status --short` + `git diff --stat` y «Todo al día ✓»; nunca corre tests ni commitea.
    - códigos: 0 bien · 1 sin plan disponible · 2 categoría desconocida · 3 le toca a Claude · 64 uso · 65 carpeta
-     privada · 66 árbol sucio · 67 la CLI del plan elegido no está instalada.
+     privada · 66 árbol sucio · 67 la CLI del plan elegido no está instalada · 70 la herramienta terminó con error (no se devuelve su código: podría chocar con los reservados) · 124 no terminó a tiempo (`METODO_DELEGAR_TOPE`, 1 h).
 4. **Distribución:** plugin `metodo` → clientes (rama `estable`, 48 h). Las reglas del método (`reglas.py`) y la skill
    `radar` pasan a decir «delegá con `delegar.py`» en vez de «elegí de memoria». Orquesta: `~/.claude/scripts/agy-delegar`
    queda como atajo y la regla XXVII apunta a `delegar.py`.

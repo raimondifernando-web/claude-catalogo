@@ -27,6 +27,7 @@ Códigos de salida:
     65  Carpeta privada (/Finanzas, /Personal, /Consultoria-Negocio, /clientes/ o METODO_NO_DELEGAR).
     66  Árbol sucio al editar (git status no limpio sin --revisar).
     67  La CLI del plan elegido (codex o agy) no está instalada.
+    70  La herramienta (codex o agy) terminó con error; su código real va en el mensaje.
     124 La herramienta no terminó a tiempo (METODO_DELEGAR_TOPE, 3600 s por defecto) y se cortó.
 
 Python 3.6+. Solo biblioteca estándar.
@@ -149,6 +150,8 @@ def main(argv=None):
 
     # 2. Chequeo de carpeta privada (65)
     privada, motivo = es_carpeta_privada(repo_path)
+    if not privada:   # también la ruta como se escribió: un enlace llamado /Personal que apunta a otra carpeta
+        privada, motivo = es_carpeta_privada(Path(os.path.abspath(args.repo)))
     if privada:
         sys.stderr.write(
             "No se delega en carpetas privadas (coincide con «%s»). "
@@ -209,12 +212,16 @@ def main(argv=None):
     # 8. Obtener texto del pedido (desde archivo o argumento directo)
     pedido_arg = args.pedido
     try:
-        p_obj = Path(pedido_arg)
-        if p_obj.is_file():
-            pedido_texto = p_obj.read_text(encoding="utf-8")
-        else:
-            pedido_texto = pedido_arg
-    except OSError:
+        es_archivo = Path(pedido_arg).is_file()
+    except (OSError, ValueError):
+        es_archivo = False   # texto largo o con caracteres que no pueden ser una ruta: es el pedido mismo
+    if es_archivo:
+        try:
+            pedido_texto = Path(pedido_arg).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as e:
+            sys.stderr.write("No pude leer el archivo del pedido «%s» (%s): no lo mando como texto.\n" % (pedido_arg, e.__class__.__name__))
+            return 64
+    else:
         pedido_texto = pedido_arg
 
     # 9. Construir comando según adaptador y verificar CLI instalada (67)
@@ -285,7 +292,8 @@ def main(argv=None):
         return 124
 
     if r.returncode != 0:
-        return r.returncode
+        sys.stderr.write("La herramienta terminó con error (código %d). Revisá el árbol con git status.\n" % r.returncode)
+        return 70
 
     # 12. Al terminar adaptador que editó
     if not args.revisar:

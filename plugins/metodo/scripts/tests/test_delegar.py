@@ -199,6 +199,24 @@ class BaseDelegar(unittest.TestCase):
 
 
 @unittest.skipIf(ES_WINDOWS, "scripts falsos de bash/sh")
+class TestFallos(BaseDelegar):
+    def test_herramienta_con_error_devuelve_70_y_no_su_codigo(self):
+        self.codex_falso(codigo=3)   # 3 es el código reservado de «le toca a Claude»: no se puede devolver tal cual
+        repo = self.crear_repo_git("repo-falla")
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
+        self.assertEqual(cod, 70)
+        self.assertIn("código 3", err)
+
+    def test_pedido_ilegible_no_se_manda_como_texto(self):
+        repo = self.crear_repo_git("repo-ilegible")
+        pedido = self.tmp / "pedido-secreto.txt"
+        pedido.write_bytes(b"\xff\xfe\x00no es utf-8")
+        cod, out, err = self.correr("desarrollo", str(repo), str(pedido))
+        self.assertEqual(cod, 64)
+        self.assertIn("no lo mando como texto", err)
+
+
+@unittest.skipIf(ES_WINDOWS, "scripts falsos de bash/sh")
 class TestAdaptadores(BaseDelegar):
     def test_adaptador_codex_argumentos_y_stdin(self):
         repo = self.crear_repo_git("repo-codex")
@@ -430,3 +448,7 @@ class TestCorrecciones(unittest.TestCase):
 
     def test_arbol_sucio_ante_error_es_sucio(self):
         self.assertTrue(D.arbol_sucio(Path("/ruta/que/no/existe")))
+
+    def test_carpeta_privada_por_la_ruta_escrita_y_no_solo_la_resuelta(self):
+        # un enlace llamado /Personal que apunta a otra carpeta: la ruta resuelta no lo dice, la escrita sí
+        self.assertTrue(D.es_carpeta_privada(Path(os.path.abspath("/Users/x/Personal/app")))[0])
