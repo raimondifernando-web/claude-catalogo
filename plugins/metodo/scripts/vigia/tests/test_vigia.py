@@ -244,6 +244,40 @@ class TestDetector(ConHomeTemporal):
         self.assertIsNotNone(e["ultima_corrida"])
         self.assertTrue((self.dir_vigia / "NOVEDADES.md").exists())
 
+    def _plugin_de_marketplace(self, nombre_mkt, repo):
+        """Un plugin local instalado desde un marketplace de GitHub, con 3 commits nuevos en `main`."""
+        self.escribir(
+            ".claude/plugins/known_marketplaces.json",
+            {nombre_mkt: {"source": {"source": "github", "repo": repo}}},
+        )
+        self.escribir(
+            ".claude/plugins/installed_plugins.json",
+            {"plugins": {f"metodo@{nombre_mkt}": [{"gitCommitSha": SHA_A}]}},
+        )
+        owner = repo.split("/")[0]
+        return OpenerFalso({
+            GH + f"repos/{repo}": {"default_branch": "main", "owner": {"login": owner}, "stargazers_count": 10, "fork": False},
+            GH + f"repos/{repo}/compare/{SHA_A}...main": {"ahead_by": 3, "commits": [{"sha": SHA_C}]},
+        })
+
+    def test_plugins_del_catalogo_no_se_comparan_contra_main(self):
+        # El catálogo llega solo por la rama estable (48 h atrás de main): el vigía no puede
+        # proponer actualizar un plugin de claude-catalogo contra el HEAD de main.
+        opener = self._plugin_de_marketplace("claude-catalogo", "raimondifernando-web/claude-catalogo")
+        self.correr(opener=opener)
+        e = self.estado()
+        self.assertEqual(e["estado"], "ok", e["degradado"])
+        self.assertEqual([k for k in e["novedades"] if k.startswith("plugin-mkt:")], [])
+        self.assertFalse([u for u in opener.urls if "raimondifernando-web/claude-catalogo" in u], opener.urls)
+
+    def test_plugins_de_otro_marketplace_si_se_comparan_contra_main(self):
+        # Control: el mismo escenario con otro nombre de marketplace sí genera la novedad
+        # (si este falla, el test de arriba no prueba nada).
+        opener = self._plugin_de_marketplace("otro-catalogo", "duenio/otro-catalogo")
+        self.correr(opener=opener)
+        e = self.estado()
+        self.assertEqual(len([k for k in e["novedades"] if k.startswith("plugin-mkt:")]), 1, e["novedades"])
+
     def test_secretos_de_mcp_nunca_salen(self):
         self.fixtures_completas()
         opener = self.correr()

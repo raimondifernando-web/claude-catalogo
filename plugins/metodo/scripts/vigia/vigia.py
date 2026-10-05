@@ -88,6 +88,8 @@ TIMEOUT_CLI = 30
 USER_AGENT = "vigia/2.0 (solo lectura; plugin metodo de claude-catalogo)"
 
 MARKETPLACE_OFICIAL = "claude-plugins-official"
+# El catálogo llega solo por su rama `estable` (48 h atrás de `main`): el vigía no lo compara contra `main`.
+MARKETPLACE_CATALOGO = "claude-catalogo"
 
 # Propietarios que se consideran "oficiales" sin importar las estrellas.
 OWNERS_OFICIALES = {
@@ -1366,7 +1368,7 @@ def fuente_plugins_terceros(
         if "@" not in str(clave_inst) or not isinstance(entradas, list):
             continue
         nombre_plugin, nombre_mkt = str(clave_inst).rsplit("@", 1)
-        if nombre_mkt == MARKETPLACE_OFICIAL or nombre_mkt in perfil["marketplaces_excluidas"]:
+        if nombre_mkt in (MARKETPLACE_OFICIAL, MARKETPLACE_CATALOGO) or nombre_mkt in perfil["marketplaces_excluidas"]:
             continue
         # Los que el marketplace fija por sha ya los cubre la fuente 1 (su commit
         # instalado es del repo de origen, no del marketplace).

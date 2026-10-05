@@ -83,6 +83,7 @@ En `estado.json` marcá cada novedad así:
 | Tipo | Cómo |
 |---|---|
 | Plugin de un marketplace (`plugin-marketplace-terceros`) | `claude plugin marketplace update <marketplace>` → `claude plugin update <plugin>@<marketplace>` |
+| Plugin de `claude-catalogo` | No se aplica: llega solo por la rama `estable`, que va 48 h atrás de `main` |
 | Plugin fijado por el catálogo | No se aplica: se reporta al consultor (ver paso 2) |
 | Pieza de un catálogo compartido que mantenés vos (`pieza-desactualizada`) | Leer el compare del enlace, volver a copiar la carpeta desde el sha nuevo y actualizar el `@sha` de su `origen:` |
 | `origen-sin-fijar` | No es una versión nueva: la pieza no declara de qué versión salió y no se puede comparar. Buscar su origen y fijarlo como `github:owner/repo//ruta@sha` |
