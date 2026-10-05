@@ -677,3 +677,12 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Revisión | Sin `security-reviewer` aparte: 9 líneas que reducen ejecución, leídas enteras por Orquesta; prueba nueva (el `agy` falso no se llama sin historial) |
 | Límite | Es una señal indirecta de «hay sesión»: quien inició sesión pero nunca le pasó un pedido queda salteado hasta que lo use una vez (falla hacia no abrir nada) |
 | Metadatos / clientes | verificar-metadatos y grep de clientes los corre el script de publicación |
+
+### 2026-10-05 · metodo 0.21.5 (el vigía vigila el instalador de Antigravity)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Fuente nueva `fuente_instalador_agy` en el vigía: si `agy` está instalado, baja `https://antigravity.google/cli/install.sh`, calcula su sha256 y lo compara con el fijado en `scripts/al-dia.sh` (`AGYI`); si difiere, anota una novedad `instalador-agy`. Sin `agy` no hace ningún pedido. |
+| Superficie nueva | Un host más en la lista blanca de red: `antigravity.google` (de 3 a 4). Solo GET por HTTPS, redirecciones revalidadas. El cuerpo solo se hashea: no se ejecuta, no se escribe, no se decodifica; a `estado.json` solo llega el sha en hexadecimal. |
+| Revisión | `security-reviewer` (Sonnet): 0 críticos, 0 altos, 1 medio, 3 bajos → **PASS con observaciones**. Medio: un 404/500 de Google marcaba toda la corrida como «caída» → corregido (queda «degradado»). Bajos: test que mockeaba `hashlib` (ahora usa sha real), tests de 404/500/`--sin-clis`/cuerpo fuera del estado agregados, sha repetido en el texto del aviso (ahora sale de la constante). El nuevo test de 404/500 falla sin el arreglo (comprobado). |
+| Límites | La lista blanca habilita el host entero, no solo `/cli/install.sh` (hoy solo se construye esa URL). La constante del vigía y `AGYI` deben cambiar juntas: un test las cruza. Un instalador cambiado se avisa al abrir sesión (≤1 vez por semana), no al instante. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE. Grep de clientes: 0. Tests del vigía: 97 OK. |

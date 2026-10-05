@@ -11,7 +11,7 @@ instaladas por hash, MCPs por npx, CLIs que pida el perfil) y deja todo anotado 
 ~/.claude/vigia/ (estado.json + NOVEDADES.md) para que la skill `vigia` decida.
 
 Red: SOLO los hosts de HOSTS_PERMITIDOS (api.github.com, registry.npmjs.org,
-pypi.org), por HTTPS y con GET. Todo pedido HTTP pasa por `abrir_url`, que verifica
+pypi.org, antigravity.google), por HTTPS y con GET. Todo pedido HTTP pasa por `abrir_url`, que verifica
 el host antes de salir y también en cada redirección. Si `gh` está instalado y
 autenticado se usa `gh api` (fijado a github.com); si no, la API pública de GitHub
 sin token, con un tope de LIMITE_LLAMADAS_GH_SIN_GH pedidos por corrida. No manda
@@ -69,7 +69,7 @@ from pathlib import Path
 # --------------------------------------------------------------------------- #
 
 # Los ÚNICOS hosts a los que este script puede hablar. Un test lo verifica.
-HOSTS_PERMITIDOS = frozenset({"api.github.com", "registry.npmjs.org", "pypi.org"})
+HOSTS_PERMITIDOS = frozenset({"api.github.com", "registry.npmjs.org", "pypi.org", "antigravity.google"})
 
 LIMITE_LLAMADAS_GH_CON_GH = 110  # con gh autenticado (5000/hora reales; esto es un techo propio)
 LIMITE_LLAMADAS_GH_SIN_GH = 40  # API pública sin token: 60/hora por IP, se deja margen
@@ -106,6 +106,10 @@ UMBRAL_ESTRELLAS = 5000
 CONFIANZAS_VALIDAS = {"oficial", ">=5K", "otro"}
 TIPOS_CLI = ("npm", "pipx", "uv", "brew")
 
+# mismo valor que AGYI en scripts/al-dia.sh; un test lo verifica
+INSTALADOR_AGY_URL = "https://antigravity.google/cli/install.sh"
+INSTALADOR_AGY_SHA256 = "62966c07365423bd4dc209355060744058fb30d60f5323e2d360e39de64e5042"
+
 # Variables de entorno que controlan el vigía (ninguna es un secreto).
 ENV_PERFIL = "VIGIA_PERFIL"
 
@@ -126,7 +130,7 @@ PATRON_VERSION = re.compile(r"^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$")
 PATRON_TEXTO_ID = re.compile(r"^[A-Za-z0-9@._/:+-]{1,100}$")
 # Enlaces solo a los hosts que este script construye a mano (para mostrar; no se piden).
 PATRON_ENLACE_VALIDO = re.compile(
-    r"^https://(github\.com|www\.npmjs\.com|pypi\.org|formulae\.brew\.sh)/[A-Za-z0-9._~/%@+=,-]*$"
+    r"^https://(github\.com|www\.npmjs\.com|pypi\.org|formulae\.brew\.sh|antigravity\.google)/[A-Za-z0-9._~/%@+=,-]*$"
 )
 
 # Caracteres de control, separadores de línea Unicode, marcas bidireccionales y de
@@ -332,6 +336,7 @@ def rutas_extra(nombre: str) -> list:
         "uv": [home / ".local/bin/uv", home / ".cargo/bin/uv", "/opt/homebrew/bin/uv"],
         "pipx": [home / ".local/bin/pipx", "/opt/homebrew/bin/pipx", "/usr/local/bin/pipx"],
         "npm": ["/opt/homebrew/bin/npm", "/usr/local/bin/npm"],
+        "agy": [home / ".local/bin/agy"],
     }
     return tabla.get(nombre, [])
 
@@ -408,7 +413,7 @@ class Red:
         if time.monotonic() > self.vence:
             raise CupoAgotado("se llegó al tope de tiempo de la corrida")
 
-    def get_json(self, url: str, headers: dict | None = None):
+    def get_bytes(self, url: str, headers: dict | None = None) -> bytes:
         self.controlar_plazo()
         host = (urllib.parse.urlsplit(url).hostname or "").lower()
         if host in self.hosts_caidos:
@@ -423,7 +428,10 @@ class Red:
             self.hubo_sin_red = True
             raise SinRed(f"{host}: {truncar(str(getattr(e, 'reason', e)), 120)}") from None
         self.exitos += 1
-        return json.loads(crudo.decode("utf-8"))
+        return crudo
+
+    def get_json(self, url: str, headers: dict | None = None):
+        return json.loads(self.get_bytes(url, headers).decode("utf-8"))
 
 
 def obtener_ultima_version_npm(red: Red, pkg: str) -> str | None:
@@ -1817,6 +1825,34 @@ def fuente_clis(perfil, red, base, novedades, nuevas_ids, degradado, ahora) -> N
             degradado.append(f"CLIs brew: {truncar(str(e))}")
 
 
+def fuente_instalador_agy(red, base, novedades, nuevas_ids, degradado, ahora) -> None:
+    if encontrar_ejecutable("agy", rutas_extra("agy")) is None:
+        return
+    try:
+        cuerpo = red.get_bytes(INSTALADOR_AGY_URL)
+    except (CupoAgotado, SinRed):
+        raise
+    except Exception as e:  # noqa: BLE001 — un 404/500 de Google no tira abajo toda la corrida
+        degradado.append(f"instalador de Antigravity: {truncar(str(e), 120)}")
+        return
+    sha = hashlib.sha256(cuerpo).hexdigest()
+    base["instalador-agy"] = {"visto": sha, "fecha": ahora, "fijado": INSTALADOR_AGY_SHA256}
+    if sha == INSTALADOR_AGY_SHA256:
+        return
+    registrar_novedad(
+        novedades,
+        nuevas_ids,
+        f"instalador-agy@{sha[:12]}",
+        tipo="instalador-agy",
+        detalle="Google cambió el instalador de Antigravity: el sha256 fijado (" + INSTALADOR_AGY_SHA256[:8] + "…) ya no coincide (ahora "
+        + sha[:8]
+        + "…). al-dia.sh no lo va a correr. Releerlo entero antes de actualizar AGYI.",
+        enlace=INSTALADOR_AGY_URL,
+        confianza="oficial",
+        desde=ahora,
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Fuente 6 — CATALOGO.yaml de un catálogo compartido (solo si el perfil lo indica)
 # --------------------------------------------------------------------------- #
@@ -2409,6 +2445,9 @@ def _correr(args, rutas: Rutas, log: Log) -> int:
     fijadas, sin_fijar = mcps if mcps else ([], [])
     if not args.sin_clis:
         correr_fuente("CLIs", fuente_clis, perfil, red, base, novedades, nuevas_ids, degradado, ahora)
+        correr_fuente(
+            "instalador de Antigravity", fuente_instalador_agy, red, base, novedades, nuevas_ids, degradado, ahora
+        )
     conteos_cc = correr_fuente(
         "catálogo compartido", fuente_catalogo_compartido,
         perfil["catalogo_compartido"], gh, base, novedades, nuevas_ids, degradado, ahora,
