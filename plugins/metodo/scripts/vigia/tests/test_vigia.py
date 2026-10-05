@@ -5,6 +5,7 @@ Correr desde la raíz del repo:
 
 Cada test usa un HOME temporal: nunca se lee ni se escribe la configuración real.
 """
+import hashlib
 import importlib.util
 import io
 import json
@@ -18,6 +19,7 @@ import tempfile
 import time
 import unittest
 import urllib.error
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
@@ -63,7 +65,12 @@ def ahora():
 
 class RespuestaFalsa:
     def __init__(self, datos):
-        self._crudo = json.dumps(datos).encode("utf-8")
+        if isinstance(datos, bytes):
+            self._crudo = datos
+        elif isinstance(datos, str):
+            self._crudo = datos.encode("utf-8")
+        else:
+            self._crudo = json.dumps(datos).encode("utf-8")
 
     def __enter__(self):
         return self
@@ -411,7 +418,10 @@ class TestDetector(ConHomeTemporal):
 
 class TestHosts(unittest.TestCase):
     def test_lista_exacta(self):
-        self.assertEqual(set(vigia.HOSTS_PERMITIDOS), {"api.github.com", "registry.npmjs.org", "pypi.org"})
+        self.assertEqual(
+            set(vigia.HOSTS_PERMITIDOS),
+            {"api.github.com", "registry.npmjs.org", "pypi.org", "antigravity.google"},
+        )
 
     def test_host_fuera_de_la_lista_no_sale(self):
         opener = OpenerFalso()
@@ -1416,6 +1426,99 @@ def crear_uv_lento(bindir):
         uv = bindir / "uv"
         uv.write_text("#!/bin/sh\nsleep 3\n", encoding="utf-8")
         uv.chmod(0o755)
+
+
+# --------------------------------------------------------------------------- #
+# Fuente — Instalador de Antigravity (agy)
+# --------------------------------------------------------------------------- #
+
+
+class TestInstaladorAgy(ConHomeTemporal):
+    def test_sin_agy_no_pide_red_ni_crea_novedad(self):
+        opener = OpenerFalso()
+        self.correr(opener=opener, ejecutables={})
+        self.assertFalse(any("antigravity.google" in u for u in opener.urls))
+        e = self.estado()
+        self.assertNotIn("instalador-agy", e.get("base", {}))
+        self.assertFalse(any(k.startswith("instalador-agy") for k in e.get("novedades", {})))
+
+    def test_sin_agy_aislado_en_path_y_home_no_toca_red(self):
+        red = vigia.Red()
+        base, novedades, nuevas_ids, degradado = {}, {}, [], []
+        with mock.patch.object(vigia.shutil, "which", return_value=None):
+            vigia.fuente_instalador_agy(red, base, novedades, nuevas_ids, degradado, iso(ahora()))
+        self.assertEqual(red.exitos, 0)
+        self.assertEqual(base, {})
+        self.assertEqual(novedades, {})
+
+    def test_con_agy_e_instalador_fijado_sin_novedad(self):
+        cuerpo = b"#!/bin/bash\n# instalador oficial\n"
+        with mock.patch.object(vigia.hashlib, "sha256") as m_sha:
+            m_sha.return_value.hexdigest.return_value = vigia.INSTALADOR_AGY_SHA256
+            opener = OpenerFalso({vigia.INSTALADOR_AGY_URL: cuerpo})
+            self.correr(opener=opener, ejecutables={"agy": "/mock/bin/agy"})
+        e = self.estado()
+        self.assertEqual(e["estado"], "ok")
+        self.assertIn(vigia.INSTALADOR_AGY_URL, opener.urls)
+        self.assertIn("instalador-agy", e["base"])
+        self.assertEqual(e["base"]["instalador-agy"]["visto"], vigia.INSTALADOR_AGY_SHA256)
+        self.assertEqual(e["base"]["instalador-agy"]["fijado"], vigia.INSTALADOR_AGY_SHA256)
+        self.assertFalse(any(k.startswith("instalador-agy") for k in e.get("novedades", {})))
+
+    def test_con_agy_instalador_distinto_crea_una_novedad_no_duplica(self):
+        cuerpo = b"#!/bin/bash\necho nuevo instalador\n"
+        sha_nuevo = hashlib.sha256(cuerpo).hexdigest()
+        self.assertNotEqual(sha_nuevo, vigia.INSTALADOR_AGY_SHA256)
+        id_esperado = f"instalador-agy@{sha_nuevo[:12]}"
+        opener = OpenerFalso({vigia.INSTALADOR_AGY_URL: cuerpo})
+        self.correr(opener=opener, ejecutables={"agy": "/mock/bin/agy"})
+        e = self.estado()
+        self.assertEqual(e["estado"], "ok")
+        self.assertIn(id_esperado, e["novedades"])
+        nov = e["novedades"][id_esperado]
+        self.assertEqual(nov["tipo"], "instalador-agy")
+        self.assertEqual(nov["confianza"], "oficial")
+        self.assertEqual(nov["enlace"], vigia.INSTALADOR_AGY_URL)
+        self.assertIn(sha_nuevo[:8], nov["detalle"])
+        self.assertIn(vigia.INSTALADOR_AGY_SHA256[:8], nov["detalle"])
+        novs_agy = [k for k, v in e["novedades"].items() if v.get("tipo") == "instalador-agy"]
+        self.assertEqual(len(novs_agy), 1)
+
+        # Segunda corrida: no la duplica
+        self.correr(opener=opener, ejecutables={"agy": "/mock/bin/agy"})
+        e2 = self.estado()
+        novs_agy2 = [k for k, v in e2["novedades"].items() if v.get("tipo") == "instalador-agy"]
+        self.assertEqual(len(novs_agy2), 1)
+        self.assertEqual(novs_agy2[0], id_esperado)
+
+    def test_redireccion_instalador_a_host_no_permitido_bloqueada(self):
+        manejador = vigia._RedireccionSegura()
+        req = urllib.request.Request(vigia.INSTALADOR_AGY_URL)
+        for url_fuera in (
+            "https://evil.example.com/cli/install.sh",
+            "http://antigravity.google/cli/install.sh",
+            "https://antigravity.google.evil.com/cli/install.sh",
+        ):
+            with self.assertRaises(vigia.HostNoPermitido):
+                manejador.redirect_request(req, None, 302, "Found", {}, url_fuera)
+
+    def test_guardia_sincronia_sha_con_al_dia_sh(self):
+        actual = Path(__file__).resolve().parent
+        ruta_al_dia = None
+        for _ in range(10):
+            candidato = actual / "scripts" / "al-dia.sh"
+            if candidato.is_file():
+                ruta_al_dia = candidato
+                break
+            if actual.parent == actual:
+                break
+            actual = actual.parent
+        if not ruta_al_dia:
+            self.skipTest("scripts/al-dia.sh no encontrado (corriendo fuera del repo)")
+        contenido = ruta_al_dia.read_text(encoding="utf-8")
+        m = re.search(r"AGYI=([0-9a-f]{64})", contenido)
+        self.assertIsNotNone(m, "no se encontró la variable AGYI con sha256 en scripts/al-dia.sh")
+        self.assertEqual(vigia.INSTALADOR_AGY_SHA256, m.group(1))
 
 
 if __name__ == "__main__":

@@ -62,6 +62,12 @@ versión auditada**. El usuario **no las mueve**: se le reporta a quien mantiene
 enlace y la clasificación, y la novedad queda como `propuesta`. Cuando el catálogo publique la versión nueva, llega
 como actualización normal del plugin.
 
+### Instalador de Antigravity
+La novedad de tipo `instalador-agy` avisa que Google cambió el instalador de agy y el catálogo fija el anterior.
+El usuario **no la aplica ni corre el instalador**: se le reporta a quien mantiene el catálogo con el enlace.
+Hay que releer el instalador entero, actualizar juntos `AGYI` en `scripts/al-dia.sh` y la constante del vigía, y la
+novedad queda como `propuesta`.
+
 ## 3. Decidir: aplicar directo o preguntar
 Escribí `~/.claude/vigia/PROPUESTAS-AAAA-MM.md` en dos bloques:
 - **Aplicado:** las de **seguridad** y **útil** que pasaron la auditoría. Van al paso 4 sin preguntar. De cada una anotá
