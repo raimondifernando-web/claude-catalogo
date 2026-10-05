@@ -15,6 +15,7 @@ while [ $# -gt 0 ]; do case "$1" in --buzon) BUZON="${2:-}"; shift; [ $# -gt 0 ]
 local AUTO_NUEVOS=1
 if [ $AUTO -eq 1 ]; then
   export GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15"
+  export GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=60   # una descarga colgada falla en vez de esperar al tope
   sleep 90   # deja terminar de arrancar Claude Code (y su actualización automática) antes de tocar los paquetes
 fi
 local RES="$CC/metodo/al-dia.resultado"; mkdir -p "$CC/metodo"
@@ -51,23 +52,42 @@ fi
 #    Se sigue la rama «estable» del catálogo: GitHub la adelanta sola a lo publicado hace 48 horas o más, así que si
 #    alguien llegara a meter algo malo en el catálogo hay dos días para verlo y sacarlo antes de que llegue a una Mac.
 #    Lo urgente se pasa a «estable» en el momento (lo hace Fernando). Mientras «estable» no exista, se sigue «main».
-local RAMA=estable M="$CC/plugins/marketplaces/$CAT" CAMBIO=0 S="$CC/settings.json" KM="$CC/plugins/known_marketplaces.json" REF="" APAGADOS=""
+local RAMA=estable M="$CC/plugins/marketplaces/$CAT" CAMBIO=0 S="$CC/settings.json" KM="$CC/plugins/known_marketplaces.json" REF="" APAGADOS="" INSTALADOS="" RD=""
+local IP="$CC/plugins/installed_plugins.json" MARCA="$CC/metodo/antes-de-estable.intento"
+# Vuelve todo a como estaba antes del cambio de rama (configuración, copia del catálogo y paquetes), sin usar claude.
+restaurar() {
+  cp -p "$RD/settings.json" "$S" 2>/dev/null; cp -p "$RD/known_marketplaces.json" "$KM" 2>/dev/null; cp -p "$RD/installed_plugins.json" "$IP" 2>/dev/null
+  [ -d "$RD/marketplace" ] && { rm -rf "$M"; cp -Rp "$RD/marketplace" "$M"; }
+  find "$CC/plugins/cache/$CAT" -name .orphaned_at -delete 2>/dev/null   # que Claude no limpie los paquetes al arrancar
+  echo "✗ No pude cambiar el catálogo de rama y lo dejé como estaba (copia en ${RD#$HOME/}). Mandale esta captura a Fernando." | tee "$RES"
+}
 [ -f "$S" ] && { [ -f "$S.antes-al-dia" ] || cp "$S" "$S.antes-al-dia"; }   # copia de la configuración, una sola vez, antes de tocar nada
 # La rama tiene que existir con ese nombre exacto; si no se puede confirmar, no se agrega ni se cambia nada.
 git ls-remote --heads "https://github.com/$REPO.git" "refs/heads/$RAMA" 2>/dev/null | grep -q "[[:space:]]refs/heads/$RAMA$" \
   || { [ $AUTO -eq 1 ] && return 0; echo "✗ No pude confirmar la rama estable del catálogo (¿internet?). Probá de nuevo en un rato."; return 1; }
 if claude plugin marketplace list 2>/dev/null | grep -qF "$CAT"; then
-  REF=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]]["source"].get("ref",""))' "$KM" "$CAT" 2>/dev/null)
-  # Ya estaba, siguiendo otra rama: se pasa a «estable» (solo a mano). Claude no deja cambiar la rama de un catálogo
-  # instalado: hay que quitarlo y volver a agregarlo, y eso desinstala sus paquetes; el paso 5 los vuelve a instalar.
-  if [ "$REF" != "$RAMA" ] && [ $AUTO -eq 0 ]; then
-    local RD="$CC/metodo/antes-de-estable-$(date +%Y%m%d-%H%M%S)"
-    mkdir -p "$RD" && for f in "$S" "$KM" "$CC/plugins/installed_plugins.json"; do [ -f "$f" ] && cp "$f" "$RD/"; done
+  REF=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]]["source"].get("ref",""))' "$KM" "$CAT" 2>/dev/null) || REF="?"
+  # Ya estaba, siguiendo otra rama: se pasa a «estable» (también en la corrida automática, como mucho una vez por semana).
+  # Claude no deja cambiar la rama de un catálogo instalado: hay que quitarlo y volver a agregarlo, y eso desinstala sus
+  # paquetes. Antes se guarda una copia de todo; primero se reinstala metodo (el que mantiene todo al día) y, si no queda
+  # andando, se restaura la copia y queda como estaba. Si no se puede leer en qué rama está, no se toca nada.
+  if [ "$REF" != "$RAMA" ] && [ "$REF" != "?" ] && { [ $AUTO -eq 0 ] || [ -z "$(find "$MARCA" -mtime -7 2>/dev/null)" ]; }; then
+    touch "$MARCA" 2>/dev/null
+    RD="$CC/metodo/antes-de-estable-$(date +%Y%m%d-%H%M%S)"; local f ok=1
+    mkdir -p "$RD" && chmod 700 "$RD" || ok=0
+    for f in "$S" "$KM" "$IP"; do [ ! -f "$f" ] || cp -p "$f" "$RD/" || ok=0; done
+    [ ! -d "$M" ] || cp -Rp "$M" "$RD/marketplace" || ok=0
+    [ $ok -eq 1 ] || { [ $AUTO -eq 1 ] && return 0; echo "✗ No pude guardar la copia de tu configuración: no toqué nada. Mandale esta captura a Fernando."; return 1; }
     APAGADOS=$(/usr/bin/python3 -c 'import json,sys; print(" ".join(k for k,v in json.load(open(sys.argv[1])).get("enabledPlugins",{}).items() if v is False and k.endswith("@"+sys.argv[2])))' "$S" "$CAT" 2>/dev/null)
-    if claude plugin marketplace remove "$CAT" >/dev/null 2>&1; then
-      if claude plugin marketplace add "$REPO#$RAMA" >/dev/null 2>&1; then CAMBIO=1
-      else claude plugin marketplace add "$REPO" >/dev/null 2>&1; falta+=("pasar el catálogo a la rama estable (sigue en la de antes; copia en ${RD#$HOME/})"); fi
-    else falta+=("pasar el catálogo a la rama estable"); fi
+    INSTALADOS=$(/usr/bin/python3 -c 'import json,sys; print(" ".join(k.split("@")[0] for k in json.load(open(sys.argv[1])).get("plugins",{}) if k.endswith("@"+sys.argv[2])))' "$IP" "$CAT" 2>/dev/null)
+    claude plugin marketplace remove "$CAT" >/dev/null 2>&1
+    if claude plugin marketplace list 2>/dev/null | grep -qF "$CAT"; then
+      falta+=("pasar el catálogo a la rama estable")                       # no se quitó: sigue todo como estaba
+    elif claude plugin marketplace add "$REPO#$RAMA" >/dev/null 2>&1; then
+      claude plugin install "metodo@$CAT" >/dev/null 2>&1 || claude plugin install "metodo@$CAT" >/dev/null 2>&1
+      if claude plugin list 2>/dev/null | grep -A3 -E "❯ metodo@$CAT[[:space:]]*$" | grep -q "✔ enabled"; then CAMBIO=1
+      else restaurar; return 1; fi
+    else restaurar; return 1; fi
   fi
 else
   claude plugin marketplace add "$REPO#$RAMA" >/dev/null 2>&1
@@ -112,7 +132,7 @@ done
 lista=$(claude plugin list 2>/dev/null)
 for p in ${paquetes[@]+"${paquetes[@]}"}; do
   if printf '%s\n' "$lista" | grep -qE "❯ $p@$CAT[[:space:]]*$"; then claude plugin update "$p@$CAT" >/dev/null 2>&1
-  elif [ $AUTO -eq 1 ] && { [ $AUTO_NUEVOS -eq 0 ] || ! fijo "$p"; }; then nuevos+=("$p")
+  elif [ $AUTO -eq 1 ] && ! printf ' %s ' "$INSTALADOS" | grep -qF " $p " && { [ $AUTO_NUEVOS -eq 0 ] || ! fijo "$p"; }; then nuevos+=("$p")
   else claude plugin install "$p@$CAT" >/dev/null 2>&1; fi
 done
 lista=$(claude plugin list 2>/dev/null)
@@ -124,7 +144,7 @@ done
 # 5a. Los paquetes que tenías apagados antes del cambio de rama quedan apagados; y el catálogo, en la rama estable
 for p in $APAGADOS; do [[ $p =~ ^[a-z0-9][a-z0-9-]*@$CAT$ ]] && claude plugin disable "$p" >/dev/null 2>&1; done
 [ "$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]]["source"].get("ref",""))' "$KM" "$CAT" 2>/dev/null)" = "$RAMA" ] \
-  || { [ $AUTO -eq 0 ] && falta+=("el catálogo no quedó en la rama estable"); }
+  || [ "$REF" = "?" ] || falta+=("el catálogo no quedó en la rama estable")   # ilegible: no se tocó nada, no se avisa todos los días
 
 # 5b. Herramientas de Apple (traen Python) y librerías de las skills de documentos e imágenes, con versiones fijas
 #     markitdown pide Python 3.10 o más: va con uv (Astral), en su propio Python, sin contraseña.

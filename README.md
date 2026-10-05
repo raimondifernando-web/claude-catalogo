@@ -5,7 +5,7 @@ acompañados por una consultoría. Todo lo que hay acá es genérico: sin datos,
 
 ## Cómo se instala (el cliente, en su máquina, con su cuenta)
 ```
-claude plugin marketplace add raimondifernando-web/claude-catalogo
+claude plugin marketplace add raimondifernando-web/claude-catalogo#estable
 claude plugin install base-segura@claude-catalogo
 claude plugin install rubro-estudio-arquitectura@claude-catalogo   # según el rubro
 claude plugin install metodo@claude-catalogo                        # a las 2 semanas, o cuando duela
