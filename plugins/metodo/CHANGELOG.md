@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.21.1 — 2026-10-05
+- **El radar y `delegar.py` saltean la IA que no está instalada o no tiene cuenta.** Antes, en una computadora sin Antigravity (`agy`) o con Codex instalado pero sin haber iniciado sesión (`codex login`), el radar decía «cupo desconocido», no la salteaba, `delegar.py` la elegía y fallaba. Ahora esa IA se salta igual que una con el cupo agotado, y la salida dice por qué («Antigravity: no está instalada», «Codex: sin sesión iniciada»). Si no queda ninguna otra, `delegar.py` te dice que lo hagas en la sesión de Claude.
+
 ## 0.21.0 — 2026-10-05
 - **El radar ahora mide el cupo de Claude, de Codex y de Antigravity (Gemini), no solo el de Codex.** Antes siempre te decía «Claude» porque nunca veía que se te acababa o que el de Gemini estaba sin usar. Si el cupo de un plan está agotado, lo salta; si está alto, avisa «solo tareas chicas».
 - **Nuevo: `delegar.py` (junto a `radar.py`).** Le das una categoría, la carpeta del repo y la tarea; mide el cupo, elige la IA que conviene dejando a Claude de coordinador, la ejecuta (Codex o Antigravity) y te deja el cambio sin guardar para que corras los tests y lo revises. Con `--revisar` solo lee y te da un informe.

@@ -276,14 +276,37 @@ class TestLectoresCupo(Base):
     def test_antigravity_salida_vacia_y_rota(self):
         self.agy_falso(0, "")
         self.assertEqual(R.cupo_antigravity(), ("desconocido", "Antigravity: cupo desconocido"))
-        self.agy_falso(1, "error interno")
-        self.assertEqual(R.cupo_antigravity(), ("desconocido", "Antigravity: cupo desconocido"))
+        self.agy_falso(1, "error interno")   # sin sesión iniciada o con error: el plan se salta
+        self.assertEqual(R.cupo_antigravity()[0], "no_disponible")
+        self.agy_falso(0, json.dumps({"status": "ERROR", "error": "no hay sesión"}))
+        self.assertEqual(R.cupo_antigravity()[0], "no_disponible")
         self.agy_falso(0, "{esto no es json")
         self.assertEqual(R.cupo_antigravity(), ("desconocido", "Antigravity: cupo desconocido"))
         self.agy_falso(0, json.dumps({"command": {"data": {"groups": []}}}))
         self.assertEqual(R.cupo_antigravity(), ("desconocido", "Antigravity: cupo desconocido"))
+        os.environ["RADAR_AGY_BIN"] = str(self.tmp / "inexistente")   # no instalada: el plan se salta
+        self.assertEqual(R.cupo_antigravity(), ("no_disponible", "Antigravity: no está instalada"))
+
+    def test_codex_no_instalada_o_sin_sesion_se_salta(self):
+        os.environ.pop("RADAR_CODEX_CUPO", None)
+        os.environ["RADAR_CODEX_BIN"] = str(self.tmp / "codex-inexistente")
+        self.assertEqual(R.cupo_codex(), ("no_disponible", "Codex: no está instalada"))
+        falso = self.tmp / "codex-falso"
+        falso.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        falso.chmod(0o755)
+        os.environ["RADAR_CODEX_BIN"] = str(falso)
+        os.environ["CODEX_HOME"] = str(self.tmp / "codex-home-vacio")
+        nivel, texto = R.cupo_codex()
+        self.assertEqual(nivel, "no_disponible")
+        self.assertIn("codex login", texto)
+
+    def test_motivo_salto_dice_por_que_no_esta_disponible(self):
+        radar = radar_de_prueba()
         os.environ["RADAR_AGY_BIN"] = str(self.tmp / "inexistente")
-        self.assertEqual(R.cupo_antigravity(), ("desconocido", "Antigravity: cupo desconocido"))
+        p = plan("X", "Antigravity", cupo="antigravity")
+        m = R.motivo_salto(p, radar, False, {}, {})
+        self.assertIn("no disponible", m)
+        self.assertIn("no está instalada", m)
 
 
 @unittest.skipIf(ES_WINDOWS, "scripts de sh")

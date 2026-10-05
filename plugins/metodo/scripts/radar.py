@@ -348,8 +348,17 @@ def _pct_valido(v):
 
 
 def cupo_codex():
-    """(nivel, texto). nivel: ok | alto | agotado | desconocido. Usa la misma lectura que `codex-cupo`."""
-    script = os.environ.get("RADAR_CODEX_CUPO", "").strip() or str(CODEX_CUPO)
+    """(nivel, texto). nivel: ok | alto | agotado | desconocido | no_disponible. Usa la misma lectura que `codex-cupo`.
+    `no_disponible` = la CLI no está instalada o no tiene sesión iniciada (`codex login`): el plan se salta."""
+    script = os.environ.get("RADAR_CODEX_CUPO", "").strip()
+    if not script:   # con el lector reemplazado (pruebas) no se mira el equipo
+        if not _buscar_bin("codex", "RADAR_CODEX_BIN"):
+            return "no_disponible", "Codex: no está instalada"
+        codex_home = os.environ.get("CODEX_HOME", "").strip()
+        sesion = Path(codex_home) if codex_home and os.path.isabs(codex_home) else Path.home() / ".codex"
+        if not (sesion / "auth.json").is_file():   # solo se mira que exista, nunca se abre
+            return "no_disponible", "Codex: sin sesión iniciada (falta «codex login»)"
+        script = str(CODEX_CUPO)
     try:
         r = subprocess.run(["bash", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
                            cwd=tempfile.gettempdir(), timeout=10)
@@ -421,10 +430,11 @@ def cupo_claude():
 
 
 def cupo_antigravity():
-    """(nivel, texto). nivel: ok | alto | agotado | desconocido."""
+    """(nivel, texto). nivel: ok | alto | agotado | desconocido | no_disponible.
+    `no_disponible` = la CLI no está instalada o `agy -p /usage` falla (sin sesión iniciada): el plan se salta."""
     bin_agy = _buscar_bin("agy", "RADAR_AGY_BIN")
     if not bin_agy:
-        return "desconocido", "Antigravity: cupo desconocido"
+        return "no_disponible", "Antigravity: no está instalada"
 
     try:
         r = subprocess.run(
@@ -436,8 +446,10 @@ def cupo_antigravity():
             timeout=30
         )
         if r.returncode != 0:
-            return "desconocido", "Antigravity: cupo desconocido"
+            return "no_disponible", "Antigravity: sin sesión iniciada o con error (corré «agy» una vez e iniciá sesión)"
         raiz = json.loads(r.stdout.decode("utf-8", "replace"))
+        if isinstance(raiz, dict) and str(raiz.get("status", "")).upper() == "ERROR":
+            return "no_disponible", "Antigravity: sin sesión iniciada o con error (corré «agy» una vez e iniciá sesión)"
         grupos = raiz.get("command", {}).get("data", {}).get("groups", [])
         if not isinstance(grupos, list):
             return "desconocido", "Antigravity: cupo desconocido"
@@ -497,6 +509,8 @@ def motivo_salto(plan, radar, sensible, prueba, cache_cupo):
         nivel, texto = cache_cupo[tipo_cupo]
         if nivel == "agotado":
             return "cupo agotado (%s)" % texto
+        if nivel == "no_disponible":   # sin instalar o sin cuenta: se pasa al plan siguiente, con el motivo a la vista
+            return "no disponible (%s)" % texto
     return None
 
 

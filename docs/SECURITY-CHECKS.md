@@ -643,3 +643,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Pruebas | 200 en el plugin; el delegador con CLIs falsas (argumentos, `--dry-run`, árbol sucio, carpeta privada, aceptación, repo hostil con `core.fsmonitor`, herramienta que toca `.git/config`, corte de hijos) y probado de punta a punta con `agy` real en un repo de prueba |
 | Límite conocido | **La aceptación previa (`--aceptar`) es un freno para personas, no una defensa contra una sesión hostil** (podría escribir el archivo a mano o abrir una terminal propia); `/tmp` es compartido; la huella de `.git` no mira `config.worktree` ni submódulos; enlaces simbólicos dentro del repo y lectura fuera del repo del sandbox de solo lectura de Codex; la herramienta externa recibe el código del repo (planes gratuitos pueden entrenar): por eso la aceptación previa y la lista de carpetas que se niega |
 | Metadatos / clientes | verificar-metadatos y grep de clientes antes de subir (los corre el script de publicación) |
+
+### 2026-10-05 · metodo 0.21.1 (el radar salta la IA no instalada o sin cuenta)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | `cupo_codex` y `cupo_antigravity` devuelven `no_disponible` (CLI ausente, `agy -p /usage` con error, o Codex sin su archivo de sesión) y `motivo_salto` lo trata como salto. Pedido de Consultoría IA |
+| Superficie nueva | Solo comprueba que exista el archivo de sesión de Codex (no lo abre ni lo lee). Ningún camino nuevo de ejecución |
+| Revisión | Sin `security-reviewer` aparte: cambio de tres condiciones, leído entero por Orquesta y cubierto por pruebas (210 en el plugin) |
+| Metadatos / clientes | verificar-metadatos y grep de clientes los corre el script de publicación |

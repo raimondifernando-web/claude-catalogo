@@ -360,13 +360,24 @@ class TestCliAusente(BaseDelegar):
         self.assertEqual(cod, 67)
         self.assertIn("no está instalada", err)
 
-    def test_cli_agy_ausente_sale_con_67(self):
+    def test_agy_no_instalada_se_salta_y_pasa_al_plan_siguiente(self):
+        # Codex agotado y Antigravity sin instalar: ya no se elige una herramienta que va a fallar; queda Claude
         self.cupo_codex_falso(2, "Codex: 95% del cupo mensual — NO lanzar")
         os.environ["RADAR_AGY_BIN"] = str(self.tmp / "agy-inexistente")
         repo = self.crear_repo_git("repo-sin-agy")
         cod, out, err = self.correr("desarrollo", str(repo), "tarea")
-        self.assertEqual(cod, 67)
-        self.assertIn("no está instalada", err)
+        self.assertEqual(cod, 3)
+        self.assertIn("no disponible", out)
+        self.assertIn("no está instalada", out)
+
+    def test_codex_sin_sesion_se_salta_y_se_elige_antigravity(self):
+        os.environ.pop("RADAR_CODEX_CUPO", None)
+        os.environ["CODEX_HOME"] = str(self.tmp / "codex-home-vacio")   # sin «codex login»
+        repo = self.crear_repo_git("repo-codex-sin-sesion")
+        cod, out, err = self.correr("desarrollo", str(repo), "tarea")
+        self.assertEqual(cod, 0)
+        self.assertIn("Plan elegido: Antigravity", out)
+        self.assertIn("codex login", out)
 
 
 @unittest.skipIf(ES_WINDOWS, "scripts falsos de bash/sh")
