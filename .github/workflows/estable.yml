@@ -11,15 +11,22 @@
 # EMERGENCIA (entró algo malo a `main`): `gh workflow disable estable.yml`, revertir en `main`, y reactivar
 # (`gh workflow enable estable.yml`) recién 48 h DESPUÉS del revert. Detalle del porqué en el encabezado del script.
 #
+# Quién puede mover `estable`: solo una CLAVE DE DESPLIEGUE (deploy key) de escritura. Es la única excepción del ruleset
+# `proteger-estable`: GitHub Actions como tal NO puede ser excepción en un repositorio personal. La clave privada vive en el
+# secreto ESTABLE_DEPLOY_KEY de un ENVIRONMENT llamado `estable`, limitado a la rama `main`: ningún otro workflow
+# (radar.yml, uno nuevo, uno modificado en otra rama) lo ve. Se arma con .claude/estable-completar.sh (nunca a mano).
+#
 # Seguridad:
-#   - permisos: ninguno arriba; `contents: write` solo en el job, para empujar la rama `estable`;
+#   - permisos: ninguno arriba; el job solo LEE el repositorio (el push no usa la credencial del workflow, usa la clave);
+#   - el push va por SSH con la clave de despliegue, con los servidores de GitHub fijados por sus claves públicas
+#     (las del documento oficial de huellas de GitHub; hay una prueba que las compara con las huellas publicadas) y
+#     `StrictHostKeyChecking=yes`; la clave se escribe en una carpeta 700 del runner y se borra al final;
 #   - nunca `pull_request_target`; las actions de terceros van fijadas por sha de 40 caracteres;
 #   - el sha manual entra por una variable de entorno, jamás dentro del código del paso (sin inyección);
-#   - solo corre sobre `main` (el job se niega a correr desde otra rama);
+#   - solo corre sobre `main` (el job se niega a correr desde otra rama, y el environment tampoco lo permite);
 #   - el checkout es de `estable`, no de `main`: el script que decide qué se promueve es código que ya esperó 48 h (lo que
 #     entra a `main` no puede cambiar la lógica de promoción antes de tiempo; el script trae `main` por su cuenta);
-#   - quién puede tocar `estable` lo fijan los rulesets de .github/rulesets/: nadie la borra ni la fuerza, y solo la
-#     identidad de GitHub Actions la crea o la mueve.
+#   - nadie borra ni fuerza `estable` (ruleset `estable-intocable`, sin ninguna excepción).
 name: estable
 
 on:
@@ -43,24 +50,49 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: estable        # limitado a la rama main; acá vive el secreto de la clave de despliegue
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: estable                # el código que decide es el de estable, que ya esperó 48 h; el script trae main solo
           fetch-depth: 0              # historial completo: sin él no se puede comprobar la ancestría
-          persist-credentials: false  # la credencial se pone recién en el paso que empuja
+          persist-credentials: false  # el checkout no deja credencial; el push usa la clave de despliegue
+      - name: Preparar el push por SSH (clave de despliegue)
+        env:
+          ESTABLE_DEPLOY_KEY: ${{ secrets.ESTABLE_DEPLOY_KEY }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ESTABLE_DEPLOY_KEY:-}" ]; then
+            echo "::error::falta el secreto ESTABLE_DEPLOY_KEY del environment estable (lo arma .claude/estable-completar.sh)"
+            exit 1
+          fi
+          d="$RUNNER_TEMP/estable-ssh"
+          mkdir -m 700 "$d"
+          printf '%s\n' "$ESTABLE_DEPLOY_KEY" > "$d/id"
+          chmod 600 "$d/id"
+          cat > "$d/known_hosts" <<'CLAVES_DE_GITHUB'
+          github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+          github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+          CLAVES_DE_GITHUB
+          # Solo para este repositorio: leer por HTTPS (público), empujar por SSH con la clave de despliegue.
+          git config core.sshCommand "ssh -i $d/id -o IdentitiesOnly=yes -o IdentityAgent=none -o UserKnownHostsFile=$d/known_hosts -o GlobalKnownHostsFile=/dev/null -o StrictHostKeyChecking=yes -o BatchMode=yes"
+          git remote set-url --push origin "git@github.com:${REPO}.git"
       - name: Avanzar estable
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}   # solo lectura: da más cupo a la API (el script solo se lo manda a api.github.com)
           REPO: ${{ github.repository }}
           SHA_MANUAL: ${{ github.event.inputs.sha }}
         run: |
           set -euo pipefail
-          gh auth setup-git
           if [ -n "${SHA_MANUAL:-}" ]; then
             python3 scripts/estable-avanzar.py --repo "$REPO" --sha "$SHA_MANUAL"
           else
             python3 scripts/estable-avanzar.py --repo "$REPO"
           fi
+      - name: Borrar la clave del runner
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/estable-ssh"
