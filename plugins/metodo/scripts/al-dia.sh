@@ -15,13 +15,26 @@ while [ $# -gt 0 ]; do case "$1" in --buzon) BUZON="${2:-}"; shift; [ $# -gt 0 ]
 local AUTO_NUEVOS=1
 if [ $AUTO -eq 1 ]; then
   export GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15"
-  sleep 90   # deja terminar la actualización automática de Claude Code antes de tocar los paquetes
+  sleep 90   # deja terminar de arrancar Claude Code (y su actualización automática) antes de tocar los paquetes
 fi
 local RES="$CC/metodo/al-dia.resultado"; mkdir -p "$CC/metodo"
 if [ -n "$BUZON" ] && ! [[ $BUZON =~ ^[A-Za-z0-9-]+/[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; then echo "✗ El nombre del buzón no es válido. Mandale esta captura a Fernando."; return 1; fi
 local falta=() paquetes=() nuevos=()
-N=""; T=""
-trap 'rm -f "${N:-}" "${T:-}"' EXIT
+N=""; T=""; LK=""
+trap 'rm -f "${N:-}" "${T:-}"; [ -n "${LK:-}" ] && rm -rf "$LK"' EXIT
+# Una sola puesta al día a la vez: la automática ya tomó el candado (al-dia-auto.sh); la manual lo toma acá.
+if [ $AUTO -eq 0 ]; then
+  local L="$CC/metodo/al-dia.corriendo" P
+  if [ -d "$L" ]; then
+    P=$(cat "$L/pid" 2>/dev/null)
+    if { [ -n "$P" ] && kill -0 "$P" 2>/dev/null; } || { [ -z "$P" ] && [ -z "$(find "$L" -maxdepth 0 -mmin +1 2>/dev/null)" ]; }; then
+      echo "Ya se está poniendo al día solo en este momento. Probá de nuevo en 10 minutos."; return 0
+    fi
+    mv "$L" "$L.viejo.$$" 2>/dev/null && rm -rf "$L.viejo.$$"   # candado de un proceso que ya no existe
+  fi
+  mkdir "$L" 2>/dev/null || { echo "Ya se está poniendo al día solo en este momento. Probá de nuevo en 10 minutos."; return 0; }
+  echo $$ > "$L/pid"; LK="$L"
+fi
 
 echo "Poniendo Claude al día… (puede tardar unos minutos)"
 
@@ -34,18 +47,34 @@ if ! command -v claude >/dev/null 2>&1; then
   echo "✗ No encuentro Claude Code en esta Mac. Mandale esta captura a Fernando."; return 1
 fi
 
-# 2. El catálogo: agregarlo si falta y traer su versión nueva
-claude plugin marketplace list 2>/dev/null | grep -qF "$CAT" || claude plugin marketplace add "$REPO" >/dev/null 2>&1
-if ! claude plugin marketplace update "$CAT" >/dev/null 2>&1; then
-  [ $AUTO -eq 1 ] && return 0   # sin red: se reintenta otro día, sin molestar
-  falta+=("no pude traer la versión nueva del catálogo")
+# 2. El catálogo: agregarlo si falta y traer su versión nueva.
+#    Se sigue la rama «estable» del catálogo: GitHub la adelanta sola a lo publicado hace 48 horas o más, así que si
+#    alguien llegara a meter algo malo en el catálogo hay dos días para verlo y sacarlo antes de que llegue a una Mac.
+#    Lo urgente se pasa a «estable» en el momento (lo hace Fernando). Mientras «estable» no exista, se sigue «main».
+local RAMA=estable M="$CC/plugins/marketplaces/$CAT" CAMBIO=0 S="$CC/settings.json" KM="$CC/plugins/known_marketplaces.json" REF="" APAGADOS=""
+[ -f "$S" ] && { [ -f "$S.antes-al-dia" ] || cp "$S" "$S.antes-al-dia"; }   # copia de la configuración, una sola vez, antes de tocar nada
+# La rama tiene que existir con ese nombre exacto; si no se puede confirmar, no se agrega ni se cambia nada.
+git ls-remote --heads "https://github.com/$REPO.git" "refs/heads/$RAMA" 2>/dev/null | grep -q "[[:space:]]refs/heads/$RAMA$" \
+  || { [ $AUTO -eq 1 ] && return 0; echo "✗ No pude confirmar la rama estable del catálogo (¿internet?). Probá de nuevo en un rato."; return 1; }
+if claude plugin marketplace list 2>/dev/null | grep -qF "$CAT"; then
+  REF=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]]["source"].get("ref",""))' "$KM" "$CAT" 2>/dev/null)
+  # Ya estaba, siguiendo otra rama: se pasa a «estable» (solo a mano). Claude no deja cambiar la rama de un catálogo
+  # instalado: hay que quitarlo y volver a agregarlo, y eso desinstala sus paquetes; el paso 5 los vuelve a instalar.
+  if [ "$REF" != "$RAMA" ] && [ $AUTO -eq 0 ]; then
+    local RD="$CC/metodo/antes-de-estable-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$RD" && for f in "$S" "$KM" "$CC/plugins/installed_plugins.json"; do [ -f "$f" ] && cp "$f" "$RD/"; done
+    APAGADOS=$(/usr/bin/python3 -c 'import json,sys; print(" ".join(k for k,v in json.load(open(sys.argv[1])).get("enabledPlugins",{}).items() if v is False and k.endswith("@"+sys.argv[2])))' "$S" "$CAT" 2>/dev/null)
+    if claude plugin marketplace remove "$CAT" >/dev/null 2>&1; then
+      if claude plugin marketplace add "$REPO#$RAMA" >/dev/null 2>&1; then CAMBIO=1
+      else claude plugin marketplace add "$REPO" >/dev/null 2>&1; falta+=("pasar el catálogo a la rama estable (sigue en la de antes; copia en ${RD#$HOME/})"); fi
+    else falta+=("pasar el catálogo a la rama estable"); fi
+  fi
+else
+  claude plugin marketplace add "$REPO#$RAMA" >/dev/null 2>&1
 fi
-local M="$CC/plugins/marketplaces/$CAT"
 [ -f "$M/.claude-plugin/marketplace.json" ] || { echo "✗ No pude bajar el catálogo de Fernando. Mandale esta captura."; return 1; }
 
 # 3. Actualización automática del catálogo (con copia de la configuración, una sola vez)
-local S="$CC/settings.json"
-[ -f "$S" ] && { [ -f "$S.antes-al-dia" ] || cp "$S" "$S.antes-al-dia"; }
 [ "$(plutil -extract "extraKnownMarketplaces.$CAT.autoUpdate" raw "$S" 2>/dev/null)" = "true" ] \
   || plutil -replace "extraKnownMarketplaces.$CAT.autoUpdate" -bool true "$S" 2>/dev/null
 [ "$(plutil -extract "extraKnownMarketplaces.$CAT.autoUpdate" raw "$S" 2>/dev/null)" = "true" ] || falta+=("actualización automática")
@@ -61,6 +90,19 @@ if ! ssh -T -o BatchMode=yes -o ConnectTimeout=10 git@github.com 2>&1 | grep -q 
 fi
 
 # 5. Todos los paquetes del catálogo: instalar los que falten, actualizar los demás
+#    En --auto, un paquete NUEVO entra solo si vive dentro del catálogo (./plugins/…) o viene de afuera fijado por sha;
+#    si no, queda para la próxima vez que se pegue el comando a mano.
+fijo() { /usr/bin/python3 - "$M/.claude-plugin/marketplace.json" "$1" <<'PY' >/dev/null 2>&1
+import json, re, sys
+ps = [x for x in json.load(open(sys.argv[1]))["plugins"] if x.get("name") == sys.argv[2]]
+s = (ps[0] if len(ps) == 1 else {}).get("source")      # nombre repetido: no se toma ninguno
+ok = (isinstance(s, str) and s.startswith("./") and ".." not in s) or (
+    isinstance(s, dict) and s.get("source") in ("github", "git-subdir", "url")
+    and re.fullmatch(r"[0-9a-f]{40}", str(s.get("sha", "")))
+    and (s.get("source") == "github" or str(s.get("url", "")).startswith("https://")))
+sys.exit(0 if ok else 1)
+PY
+}
 local i=0 n p lista okp=0
 while n=$(plutil -extract "plugins.$i.name" raw "$M/.claude-plugin/marketplace.json" 2>/dev/null); do
   if [[ $n =~ ^[a-z0-9][a-z0-9-]*$ ]]; then paquetes+=("$n"); else falta+=("nombre de paquete inválido"); fi
@@ -70,7 +112,7 @@ done
 lista=$(claude plugin list 2>/dev/null)
 for p in ${paquetes[@]+"${paquetes[@]}"}; do
   if printf '%s\n' "$lista" | grep -qE "❯ $p@$CAT[[:space:]]*$"; then claude plugin update "$p@$CAT" >/dev/null 2>&1
-  elif [ $AUTO -eq 1 ] && [ $AUTO_NUEVOS -eq 0 ]; then nuevos+=("$p")
+  elif [ $AUTO -eq 1 ] && { [ $AUTO_NUEVOS -eq 0 ] || ! fijo "$p"; }; then nuevos+=("$p")
   else claude plugin install "$p@$CAT" >/dev/null 2>&1; fi
 done
 lista=$(claude plugin list 2>/dev/null)
@@ -79,8 +121,15 @@ for p in ${paquetes[@]+"${paquetes[@]}"}; do
   elif ! printf '%s\n' ${nuevos[@]+"${nuevos[@]}"} | grep -qx "$p"; then falta+=("$p"); fi
 done
 
+# 5a. Los paquetes que tenías apagados antes del cambio de rama quedan apagados; y el catálogo, en la rama estable
+for p in $APAGADOS; do [[ $p =~ ^[a-z0-9][a-z0-9-]*@$CAT$ ]] && claude plugin disable "$p" >/dev/null 2>&1; done
+[ "$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]]["source"].get("ref",""))' "$KM" "$CAT" 2>/dev/null)" = "$RAMA" ] \
+  || { [ $AUTO -eq 0 ] && falta+=("el catálogo no quedó en la rama estable"); }
+
 # 5b. Herramientas de Apple (traen Python) y librerías de las skills de documentos e imágenes, con versiones fijas
 #     markitdown pide Python 3.10 o más: va con uv (Astral), en su propio Python, sin contraseña.
+#     --exclude-newer: también sus dependencias quedan congeladas a esa fecha (no entra una versión nueva sin mirar).
+#     --with azure…==1.2.0b3: markitdown 0.1.8 pide una beta de esa librería y uv no instala betas solo (en la v5 fallaba).
 local PY=/usr/bin/python3 UVV=0.12.19 MDV=0.1.8 UV="$HOME/.local/bin/uv"
 grep -qsF '$HOME/.local/bin' ~/.zshrc || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH";; esac
@@ -101,7 +150,7 @@ else
     rm -f "$UI"
   fi
   if [ -x "$UV" ]; then
-    "$UV" tool list 2>/dev/null | grep -qx "markitdown v$MDV" || "$UV" tool install --force --quiet --python 3.12 "markitdown[all]==$MDV" >/dev/null 2>&1
+    "$UV" tool list 2>/dev/null | grep -qx "markitdown v$MDV" || "$UV" tool install --force --quiet --python 3.12 --exclude-newer 2026-10-01T00:00:00Z --with azure-ai-contentunderstanding==1.2.0b3 "markitdown[all]==$MDV" >/dev/null 2>&1
     "$UV" tool list 2>/dev/null | grep -qx "markitdown v$MDV" || falta+=("markitdown")
   else falta+=("markitdown (no pude instalar uv)"); fi
 fi
@@ -133,7 +182,7 @@ command -v node >/dev/null 2>&1 || falta+=("Node.js (no pude instalarlo solo)")
 local CXV=0.158.0
 if command -v node >/dev/null 2>&1; then
   if [ "$(codex --version 2>/dev/null)" != "codex-cli $CXV" ]; then
-    npm install -g --silent --prefix "$NPMG" "@openai/codex@$CXV" >/dev/null 2>&1
+    npm install -g --silent --ignore-scripts --prefix "$NPMG" "@openai/codex@$CXV" >/dev/null 2>&1
     if [ -x "$NPMG/bin/codex" ] && { [ ! -e "$HOME/.local/bin/codex" ] || [ "$(readlink "$HOME/.local/bin/codex")" = "$NPMG/bin/codex" ]; }; then
       ln -sf "$NPMG/bin/codex" "$HOME/.local/bin/codex"
     fi

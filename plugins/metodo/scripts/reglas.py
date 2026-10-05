@@ -51,7 +51,8 @@ def escribir_atomico(ficha: Path, lineas: list, fin_de_linea: str = "\n"):
 def respaldo(ficha: Path, guardar: int = 5):
     if ficha.exists():
         copia = ficha.with_name(ficha.name + ".antes-reglas-" + time.strftime("%Y%m%d-%H%M%S"))
-        copia.write_bytes(ficha.read_bytes())
+        fd = os.open(copia, os.O_WRONLY | os.O_CREAT | os.O_EXCL, ficha.stat().st_mode & 0o777)   # con los permisos de la ficha desde el inicio
+        with os.fdopen(fd, "wb") as f: f.write(ficha.read_bytes())
         viejas = sorted(ficha.parent.glob(ficha.name + ".antes-reglas-*"))[:-guardar]
         for v in viejas:
             try: v.unlink()
