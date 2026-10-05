@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.20.1 — 2026-10-05
+- «Poner todo al día» pasa solo a la rama estable también en la actualización automática (como mucho un intento por semana); antes guarda una copia de todo, instala metodo primero y, si algo falla, deja la configuración como estaba. Una descarga colgada ya no espera al tope de 30 minutos.
+
 ## 0.20.0 — 2026-10-04
 - **Las actualizaciones del catálogo te llegan con dos días de demora, a propósito.** Ahora hay una rama «estable» que va 48 horas detrás de lo último que se publica. Si alguien llegara a meter algo malo, hay dos días para verlo y sacarlo antes de que llegue a tu computadora. Lo urgente se adelanta a mano, en el momento. Al pegar «Poner todo al día», tu catálogo pasa solo a esa rama: guarda antes una copia con fecha de tu configuración, deja apagado lo que tenías apagado y, si algo falla, vuelve a como estaba.
 - **El vigía ya no propone actualizar por su cuenta los plugins de este catálogo:** esos llegan por la rama estable. Sigue avisando de todo lo demás.
