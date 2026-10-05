@@ -6,6 +6,7 @@ Correr desde la raíz del repo:
 Cada test arma un repositorio «bare» temporal (hace de GitHub) y dos clones: el del cliente y el de quien acompaña,
 cada uno con su propia carpeta de configuración (CLAUDE_CONFIG_DIR). Nunca se toca la configuración real.
 """
+import importlib.util
 import json
 import os
 import shutil
@@ -217,6 +218,33 @@ class TestSecretos(BaseBuzon):
         self.assertEqual(codigo, 3)
         self.assertNotIn(CLAVE_FALSA, salida)
 
+    def test_claves_de_otros_servicios_frenan_y_se_ocultan(self):
+        # Armadas en tiempo de ejecución, como las de arriba. Cada una con su servicio.
+        falsas = {
+            "clave de Stripe": "sk_" + "live_" + "A1b2" * 6,
+            "clave de Notion": "nt" + "n_" + "Ab1" * 12,
+            "clave de Notion (secret_)": "sec" + "ret_" + "Ab1" * 12,
+            "clave de Hugging Face": "hf" + "_" + "aB3" * 12,
+            "clave de Figma": "fig" + "d_" + "aB3_" * 6,
+            "clave de npm": "np" + "m_" + "aB3" * 12,
+            "clave de GitLab": "glp" + "at-" + "aB3-" * 6,
+            "clave de un bot de Telegram": "123456789" + ":AA" + "aB3_" * 9,
+        }
+        spec = importlib.util.spec_from_file_location("buzon_para_prueba", str(BUZON_PY))
+        buzon = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(buzon)
+        for nombre, falsa in falsas.items():
+            tipos = [t for _, t in buzon.escanear("antes " + falsa + " despues")]
+            self.assertTrue(tipos, "no detectó: " + nombre)
+            self.assertNotIn(falsa, buzon.ocultar("antes " + falsa + " despues"), nombre)
+        self.configurar_los_dos()
+        antes = git(self.bare, "rev-parse", "main")
+        for nombre, falsa in falsas.items():
+            codigo, salida, _ = self.correr("cliente", "armar", "--tema", "ayuda", entrada="Pegá esto: " + falsa)
+            self.assertEqual(codigo, 3, "no frenó: " + nombre)
+            self.assertNotIn(falsa, salida)
+        self.assertEqual(git(self.bare, "rev-parse", "main"), antes)
+
     def test_borrador_tocado_a_mano_frena_al_subir(self):
         self.configurar_los_dos()
         self.ok("cliente", "armar", "--tema", "ayuda", entrada="todo bien")
@@ -255,7 +283,8 @@ class TestSecretos(BaseBuzon):
     def test_textos_normales_no_frenan(self):
         self.configurar_los_dos()
         for cuerpo in ("Copiá .env.example y completalo vos", "El environment de prueba anda",
-                       "Usá tu clave en el llavero, no la pegues acá", "Error: invalid token (expired)"):
+                       "Usá tu clave en el llavero, no la pegues acá", "Error: invalid token (expired)",
+                       "El secret_santa de la oficina es el viernes", "Revisá npm_config_cache a las 10:30:45"):
             codigo, salida, _ = self.correr("cliente", "armar", "--tema", "ok", entrada=cuerpo)
             self.assertEqual(codigo, 0, "frenó de más: {!r}\n{}".format(cuerpo, salida))
 

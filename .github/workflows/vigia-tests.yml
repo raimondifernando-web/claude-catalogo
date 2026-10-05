@@ -1,4 +1,4 @@
-# Tests del vigía de actualizaciones y del buzón (plugin metodo) en Mac, Linux y Windows.
+# Tests del vigía de actualizaciones, del buzón y de la rama `estable` (plugin metodo) en Mac, Linux y Windows.
 # Sin secretos, sin red real (los tests simulan GitHub/npm/PyPI) y con permisos de solo lectura.
 name: vigia-tests
 
@@ -11,8 +11,11 @@ on:
       - "plugins/metodo/scripts/radar.py"
       - "plugins/metodo/radar/**"
       - "scripts/radar-fuentes.py"
+      - "scripts/estable-avanzar.py"
       - "plugins/metodo/scripts/tests/**"
       - ".github/workflows/vigia-tests.yml"
+      - ".github/workflows/estable.yml"
+      - ".github/rulesets/**"
   pull_request:
     paths:
       - "plugins/metodo/scripts/vigia/**"
@@ -21,8 +24,11 @@ on:
       - "plugins/metodo/scripts/radar.py"
       - "plugins/metodo/radar/**"
       - "scripts/radar-fuentes.py"
+      - "scripts/estable-avanzar.py"
       - "plugins/metodo/scripts/tests/**"
       - ".github/workflows/vigia-tests.yml"
+      - ".github/workflows/estable.yml"
+      - ".github/rulesets/**"
   workflow_dispatch:
 
 permissions:
@@ -47,7 +53,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: unittest
         run: python -m unittest discover -s plugins/metodo/scripts/vigia/tests -v
-      - name: unittest del buzón y del radar
+      - name: unittest del buzón, del radar y de estable
         run: python -m unittest discover -s plugins/metodo/scripts/tests -v
 
   hook-bash:
