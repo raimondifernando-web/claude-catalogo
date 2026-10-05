@@ -1,6 +1,6 @@
 # RADAR.yaml — qué IA usar para cada cosa, con plan A, B y C. Lo lee `scripts/radar.py`.
 # Lo mantiene un PR automático (.github/workflows/radar.yml) que una persona aprueba; el RADAR.md se genera con `radar.py md`.
-actualizado: 2026-10-04
+actualizado: 2026-10-05
 nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual."
 categorias:
   - id: desarrollo
@@ -66,10 +66,25 @@ categorias:
         respaldo:
           - "Terminal-Bench 4.0 (tabla oficial)"
     ranking:
-      fuente: "sin ranking cargado todavía"
-      fecha: null
+      fuente: "Arena (dataset en Hugging Face)"
+      fecha: 2026-10-05
       verificado: false
-      items: []
+      items:
+        - puesto: 1
+          modelo: claude-opus-5.5-max
+          puntaje: 1815
+        - puesto: 2
+          modelo: gpt-6-astra-max
+          puntaje: 1788
+        - puesto: 3
+          modelo: claude-sonnet-5.5-xhigh
+          puntaje: 1786
+        - puesto: 4
+          modelo: gpt-6.1-sol-max
+          puntaje: 1758
+        - puesto: 5
+          modelo: claude-fable-5.1-max
+          puntaje: 1749
     arena:
       config: webdev
       split: latest
@@ -182,10 +197,25 @@ categorias:
         cupo: antigravity
         verificado: false
     ranking:
-      fuente: "sin ranking cargado todavía"
-      fecha: null
+      fuente: "Arena (dataset en Hugging Face)"
+      fecha: 2026-10-05
       verificado: false
-      items: []
+      items:
+        - puesto: 1
+          modelo: claude-opus-5.5-max
+          puntaje: 1815
+        - puesto: 2
+          modelo: gpt-6-astra-max
+          puntaje: 1788
+        - puesto: 3
+          modelo: claude-sonnet-5.5-xhigh
+          puntaje: 1786
+        - puesto: 4
+          modelo: gpt-6.1-sol-max
+          puntaje: 1758
+        - puesto: 5
+          modelo: claude-fable-5.1-max
+          puntaje: 1749
     arena:
       config: webdev
       split: latest
@@ -253,13 +283,25 @@ categorias:
         respaldo:
           - EQ-Bench Creative Writing v3
     ranking:
-      fuente: "Arena texto (contradictorio: a verificar)"
-      fecha: 2026-09-25
+      fuente: "Arena (dataset en Hugging Face)"
+      fecha: 2026-10-05
       verificado: false
       items:
         - puesto: 1
-          modelo: "Claude Opus 5.5 (High)"
-          puntaje: 1509
+          modelo: gemini-4-argon-high
+          puntaje: 1533
+        - puesto: 2
+          modelo: claude-opus-5.5-high
+          puntaje: 1512
+        - puesto: 3
+          modelo: claude-fable-5.1-max
+          puntaje: 1511
+        - puesto: 4
+          modelo: claude-opus-5-max
+          puntaje: 1507
+        - puesto: 5
+          modelo: claude-opus-4-6-high
+          puntaje: 1503
     arena:
       config: text
       split: latest
@@ -518,10 +560,25 @@ categorias:
         cupo: antigravity
         verificado: false
     ranking:
-      fuente: "sin ranking cargado todavía"
-      fecha: null
+      fuente: "Arena (dataset en Hugging Face)"
+      fecha: 2026-10-05
       verificado: false
-      items: []
+      items:
+        - puesto: 1
+          modelo: claude-fable-5-high
+          puntaje: 1325
+        - puesto: 2
+          modelo: claude-opus-5-high
+          puntaje: 1321
+        - puesto: 3
+          modelo: claude-fable-5.1-max
+          puntaje: 1320
+        - puesto: 4
+          modelo: claude-opus-4-7
+          puntaje: 1316
+        - puesto: 5
+          modelo: gemini-3.8-flash-high
+          puntaje: 1316
     arena:
       config: vision
       split: latest
