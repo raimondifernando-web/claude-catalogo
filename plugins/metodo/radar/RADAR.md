@@ -1,6 +1,6 @@
 # Radar de modelos
 
-> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-10-04**.
+> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-10-05**.
 > `[a verificar]` = dato de la investigación que todavía no se leyó de primera mano.
 
 Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B o el C.
@@ -14,6 +14,8 @@ Orden respaldado por 2 fuentes independientes.
 | A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Primero en el índice de agentes de programación de Artificial Analysis (Claude Code). Sonnet 5.5 para lo rutinario: en ese índice rinde igual. | sí |  |
 | B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Codex con GPT-6 Astra es el 1° de Terminal-Bench (58,2%) y Codex con GPT-6.1 Sol queda 4° en el índice de Artificial Analysis (63): otro modelo encuentra otros errores. | sí | Con cuenta gratis, revisá la privacidad de la cuenta antes de mandar código privado. |
 | C | Antigravity (Google, Gemini 3.8 Flash) [a verificar] | Gratis, pero en Terminal-Bench rinde mucho menos (Gemini 3.8 Flash: 19,1%): solo tareas acotadas. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
+
+Ranking (Arena (dataset en Hugging Face), 2026-10-05): 1. claude-opus-5.5-max; 2. gpt-6-astra-max; 3. claude-sonnet-5.5-xhigh; 4. gpt-6.1-sol-max; 5. claude-fable-5.1-max
 
 ## Revisión de código y seguridad
 
@@ -35,6 +37,8 @@ Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoy
 | B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | GPT-6.1 Sol es 4° en Arena WebDev; GPT-6 Astra (también en Codex) es 2° en Arena WebDev y en Design Arena: sirve para una segunda propuesta. | sí |  |
 | C | Antigravity (Google, Gemini 3.8 Flash) [a verificar] | Gratis para bocetos; no para material de clientes. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
+Ranking (Arena (dataset en Hugging Face), 2026-10-05): 1. claude-opus-5.5-max; 2. gpt-6-astra-max; 3. claude-sonnet-5.5-xhigh; 4. gpt-6.1-sol-max; 5. claude-fable-5.1-max
+
 ## Escritura en castellano
 
 Orden respaldado por 2 fuentes independientes.
@@ -45,7 +49,7 @@ Orden respaldado por 2 fuentes independientes.
 | B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | GPT-6 Astra es el 1° de EQ-Bench y GPT-6 Sol el 4°: buena segunda voz. | sí |  |
 | C | app web de Gemini (Google, Gemini 3.8 Flash) [a verificar] | Gratis, pero en EQ-Bench queda bastante más abajo (1748 contra 2050 de Opus 5.5): para borradores sin datos sensibles. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 
-Ranking (Arena texto (contradictorio: a verificar), 2026-09-25): 1. Claude Opus 5.5 (High)
+Ranking (Arena (dataset en Hugging Face), 2026-10-05): 1. gemini-4-argon-high; 2. claude-opus-5.5-high; 3. claude-fable-5.1-max; 4. claude-opus-5-max; 5. claude-opus-4-6-high
 
 ## Investigación web
 
@@ -90,6 +94,8 @@ Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoy
 | A | Claude Code (Anthropic, Opus 5.5) [a verificar] | Primero en MMMU-Pro (88%) y Claude arriba en Arena visión (Fable 5 1°): entiende imágenes dentro de Claude Code. | sí |  |
 | B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Alternativa. | sí |  |
 | C | Antigravity (Google, Gemini 3.8 Flash) [a verificar] | Alternativa gratis. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
+
+Ranking (Arena (dataset en Hugging Face), 2026-10-05): 1. claude-fable-5-high; 2. claude-opus-5-high; 3. claude-fable-5.1-max; 4. claude-opus-4-7; 5. gemini-3.8-flash-high
 
 ## Video
 
