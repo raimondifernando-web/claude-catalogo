@@ -6,6 +6,7 @@
 - **«Poner todo al día» más firme.** Una sola puesta al día a la vez (la manual y la automática no se pisan). En modo automático, un paquete nuevo solo entra si es del propio catálogo o viene de afuera fijado a una versión exacta; si no, queda para cuando pegues el comando a mano.
 - **markitdown arreglado:** en una computadora nueva fallaba al instalarse; ahora queda en una versión fija y funciona. Codex se instala sin correr scripts de instalación.
 - La puesta al día automática corta lo que quede colgado pasados 30 minutos, y las copias de tu ficha global quedan con los mismos permisos que la ficha.
+- **El buzón frena más tipos de clave:** además de las que ya reconocía, ahora no sube un mensaje que tenga algo con forma de clave de Stripe, Notion, Hugging Face, Figma, npm, GitLab o un bot de Telegram.
 
 ## 0.19.0 — 2026-10-03
 - Regla 19: una pieza por función; antes de crear una skill o un agente, Claude se fija si ya existe uno que haga lo mismo. Nunca borra skills para hacer lugar. Te llega sola a tu ficha, sin tocar lo tuyo.
