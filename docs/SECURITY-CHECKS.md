@@ -695,3 +695,13 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Revisión | Sin `security-reviewer` aparte: 4 líneas con el mismo patrón que figma, leídas enteras por Orquesta; prueba con `claude` falso en 3 casos (nada instalado → instala 2; ya instaladas → 0 instalaciones; instalación fallida → lo avisa en `falta`) |
 | Límites | El bloque de `al-dia.sh` que instala las oficiales (metodo 0.21.6, con prueba de `claude` falso: nada instalado, ya instaladas, instalación fallida) va en la MISMA publicación; si falla, el cierre lo dice. Cambia el sha de `al-dia.sh`: el portal tiene que actualizarlo Las menciones por nombre en `crear-agente` y docs siguen valiendo (apuntan a la oficial) |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · tests del plugin metodo: OK |
+
+### 2026-10-06 · base-segura 0.13.8 · rubro-estudio-arquitectura 0.14.7 · rubro-marketing 0.2.1 · agent-skills @1401c8b (revisión del vigía: 18 skills de marketing al día y el plugin agent-skills)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | 18 skills de `marketingskills` pasan de `5b2c000` (v2.11.1) a `dda3841` (v2.11.17): contenido de las skills y sus referencias, sin scripts. El plugin `agent-skills` pasa de `bcab6a1` a `1401c8b` (36 archivos: 8 skills con cambios chicos de texto, una referencia nueva de patrones de optimización, herramientas de desarrollo del propio repo y una clave `experimental.evals` en el manifiesto). |
+| Origen | `coreyhaines31/marketingskills` @dda3841 · MIT · >5K★ · `ORIGEN.txt` + `LICENSE-origen.txt` en cada skill · `addyosmani/agent-skills` @1401c8b · MIT · >5K★ |
+| Auditoría | `skill-security-auditor` sobre las 18 skills nuevas: PASS en 16; `ads` (3 CRITICAL) y `ai-seo` (1 CRITICAL) son falsos positivos leídos línea por línea (términos de ABM, una regla defensiva «datos, no instrucciones» y un párrafo de estadísticas de LinkedIn). Sobre `agent-skills`: los mismos 4 hallazgos que ya tenía en `bcab6a1`, ninguno nuevo; la carpeta `hooks/` no cambió. Líneas agregadas buscadas por URLs, `curl`, `npx`, `eval`, `base64`: solo 5 enlaces a la documentación del propio autor. |
+| Superficie nueva | Ninguna: no hay código ejecutable nuevo en las skills (un único `.html` de plantilla en `ad-creative`), ni hosts nuevos, ni permisos nuevos. Cambia el comportamiento de `spec-driven-development` (frena el turno tras escribir la especificación y espera aprobación): solo dentro de esa skill. |
+| Límites | Las skills de video (`hyperframes`) y `notebooklm` NO se tocan en esta publicación: llevan texto propio del catálogo y se fusionan a mano; `notebooklm` sigue fijada en 0.8.3 para el cliente. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 |

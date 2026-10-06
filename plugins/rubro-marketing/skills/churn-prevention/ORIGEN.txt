@@ -1,5 +1,5 @@
-origen: github:coreyhaines31/marketingskills//skills/churn-prevention@5b2c000 (v2.11.1)
-copiado: 2026-09-27 (copia fija; migración v1→v2 del autor, nombres viejos archivados en skills/_archivo/marketingskills-v1-2026-09/). Licencia MIT → LICENSE-origen.txt
-auditoria: 2026-09-27 skill-security-auditor sobre las 33: PASS salvo ads (3 CRITICAL = falsos positivos: términos ABM y una regla defensiva «datos, no instrucciones»).
+origen: github:coreyhaines31/marketingskills//skills/churn-prevention@dda3841 (v2.11.17)
+copiado: 2026-10-06 (actualizado desde 5b2c000 (v2.11.1); primera copia 2026-09-27; copia fija; migración v1→v2 del autor, nombres viejos archivados en skills/_archivo/marketingskills-v1-2026-09/). Licencia MIT → LICENSE-origen.txt
+auditoria: 2026-10-06 skill-security-auditor sobre el sha dda3841: PASS salvo ads (3 CRITICAL) y ai-seo (1 CRITICAL) = falsos positivos (términos ABM, regla defensiva «datos, no instrucciones», un párrafo de estadísticas de LinkedIn). Anterior: 2026-09-27 skill-security-auditor sobre las 33: PASS salvo ads (3 CRITICAL = falsos positivos: términos ABM y una regla defensiva «datos, no instrucciones»).
 nota: los links ../../tools/ apuntan a la carpeta tools/ del repo del autor, que no se vendoriza (65 CLIs JS de APIs de terceros); ya estaban rotos en v1.
 actualizar: la avisa el vigía; se re-copia desde un sha auditado. Sin modificaciones locales.

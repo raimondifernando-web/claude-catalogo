@@ -1,5 +1,9 @@
 # base-segura
 
+## 0.13.8 — 2026-10-06
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.13.7 — 2026-10-05
 - `skill-creator` ya no viene en este paquete: se instala la versión oficial de Anthropic (la trae «Poner todo al día»). Una sola copia por función, sin repetidas.
 

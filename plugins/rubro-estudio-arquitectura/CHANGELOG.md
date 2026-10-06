@@ -1,5 +1,9 @@
 # rubro-estudio-arquitectura
 
+## 0.14.7 — 2026-10-06
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.14.6 — 2026-10-05
 - `frontend-design` ya no viene en este paquete: se instala la versión oficial de Anthropic (la trae «Poner todo al día»). Una sola copia por función, sin repetidas.
 

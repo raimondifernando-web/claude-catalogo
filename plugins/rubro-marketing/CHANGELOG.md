@@ -1,5 +1,9 @@
 # rubro-marketing
 
+## 0.2.1 — 2026-10-06
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.2.0 — 2026-10-03
 - **Nuevo agente `marketing-analyst`:** mide qué canal te trae clientes, cuánto te cuesta cada uno y dónde conviene poner la plata. Pedile a Claude «que marketing-analyst mire mis campañas».
 
