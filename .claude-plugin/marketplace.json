@@ -36,7 +36,7 @@
     {
       "name": "metodo",
       "source": "./plugins/metodo",
-      "description": "Método de trabajo (L3): /metodo:arrancar, /metodo:planear, /metodo:criticar (sin adular), /metodo:cerrar (handoff + prompt de reanudación + sube el avance en un solo gesto), /metodo:crear-agente (PM de empresa y especialistas, con el criterio para elegir el modelo de cada uno), /metodo:otra-sesion (dos sesiones a la vez sin pisarse), /metodo:darwin-skill (revisa y mejora tus skills; siempre en una copia aparte), /metodo:vigia (avisa al abrir la sesión si hay versiones nuevas de lo instalado; aplica lo revisado que no rompe, pregunta lo demás; se apaga en un paso), /metodo:cowork (tus skills propias en Cowork sin subirlas a mano), /metodo:buzon (mensajes directos con quien te acompaña, sin copiar y pegar por WhatsApp; vos aprobás cada acción) + /metodo:radar (qué IA conviene para cada tarea, con plan B y C) + 19 reglas + mapa de código a pedido + chequeo de seguridad mensual de tus repos. /cerrar deja REANUDAR.md y /arrancar lo levanta solo (sin pegar el texto de arranque). El .gitignore de fábrica ignora .omc/ (estado de oh-my-claudecode-fixed).",
+      "description": "Método de trabajo (L3): /metodo:arrancar, planear, criticar (sin adular), cerrar (handoff + prompt de reanudación), crear-agente, otra-sesion, darwin-skill, vigia (avisa si hay versiones nuevas de lo instalado), cowork, buzon (mensajes con quien te acompaña) y radar (qué IA conviene para cada tarea). 19 reglas del método, mapa de código a pedido y chequeo de seguridad mensual. /cerrar deja REANUDAR.md y /arrancar lo levanta solo.",
       "version": "0.21.6",
       "category": "productivity",
       "tags": [
@@ -48,7 +48,7 @@
     {
       "name": "escala-desarrollo",
       "source": "./plugins/escala-desarrollo",
-      "description": "Capa L4, para cuando empezás a desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive, investigación profunda en 3 etapas) y 14 agentes. Revisores: code-reviewer y security-reviewer, que revisan tu app entera antes de usarla con clientes y explican en castellano qué puede pasar y en qué orden arreglarlo. Para construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer y documentation-engineer. Para decidir: product-manager y technology-scout (¿lo hago o lo compro?). Investigación: research-analyst, data-researcher y knowledge-synthesizer, que arman research-deep-dive, y scientific-literature-researcher para estudios publicados. Pedile a Claude: «revisá mi app con los dos revisores» o «investigación profunda sobre X».",
+      "description": "Capa L4 para desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive, investigación profunda) y 14 agentes. Revisores: code-reviewer y security-reviewer revisan tu app entera y explican en castellano qué puede pasar y en qué orden arreglarlo. Para construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer, documentation-engineer. Para decidir: product-manager, technology-scout. Investigación: research-analyst y afines.",
       "version": "0.14.0",
       "category": "development",
       "tags": [
