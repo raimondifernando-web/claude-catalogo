@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.21.6 — 2026-10-06
+- **«Poner todo al día» instala las skills oficiales de diseño de interfaces y de crear skills.** Antes cada una venía copiada en un paquete del catálogo, y si además tenías la oficial quedaban repetidas. Ahora se instala la oficial de Anthropic (`frontend-design` y `skill-creator`) y los paquetes `base-segura` y `rubro-estudio-arquitectura` ya no traen su copia: una sola pieza por función. Si ya las tenés instaladas, no cambia nada. Si algo no se pudo instalar, el cierre lo dice.
+
 ## 0.21.5 — 2026-10-05
 - **El vigía te avisa si Google cambia el instalador de Antigravity.** Hasta ahora, si Google cambiaba ese instalador, «Poner todo al día» dejaba de instalarlo pero en segundo plano nadie se enteraba. Ahora el vigía (solo si tenés Antigravity instalado) compara el instalador publicado por Google con el que revisamos; si es distinto, te lo anota como novedad para que se lo reportes a quien mantiene el catálogo. No lo instala ni lo ejecuta: solo lo compara. Es el único sitio nuevo con el que habla el vigía (`antigravity.google`).
 
