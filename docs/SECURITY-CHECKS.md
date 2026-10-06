@@ -687,11 +687,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Límites | La lista blanca habilita el host entero, no solo `/cli/install.sh` (hoy solo se construye esa URL). La constante del vigía y `AGYI` deben cambiar juntas: un test las cruza. Un instalador cambiado se avisa al abrir sesión (≤1 vez por semana), no al instante. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE. Grep de clientes: 0. Tests del vigía: 97 OK. |
 
-### 2026-10-05 · base-segura 0.13.7 · rubro-estudio-arquitectura 0.14.6 (una sola copia de skill-creator y frontend-design)
+### 2026-10-06 · metodo 0.21.6 · base-segura 0.13.7 · rubro-estudio-arquitectura 0.14.6 (una sola copia de skill-creator y frontend-design)
 | Ítem | Resultado |
 |---|---|
 | Qué cambia | Se sacan `base-segura:skill-creator` y `rubro-estudio-arquitectura:frontend-design`: eran idénticas byte a byte a las oficiales de Anthropic (Mand. XXVI, una sola pieza por función). Las oficiales las instala `al-dia.sh` (bloque a cargo de Consultoría IA, en la misma publicación) |
-| Superficie nueva | Ninguna: solo se borran archivos del catálogo. La pieza oficial viene de `claude-plugins-official` (organización oficial, Mand. XVI camino 2) |
-| Revisión | Sin `security-reviewer`: no se agrega código; metadatos y conteos corregidos y verificados |
-| Límites | **No publicar sin el bloque de `al-dia.sh`**: sin él, el cliente se queda sin las dos skills hasta que alguien las instale. Las menciones por nombre en `crear-agente` y docs siguen valiendo (apuntan a la oficial) |
+| Superficie nueva | `al-dia.sh` instala `frontend-design` y `skill-creator` desde `claude-plugins-official` (organización oficial, Mand. XVI camino 2) con `claude plugin install`, igual que ya hace con `figma`: 4 líneas de shell sin red propia ni `curl`. De los paquetes solo se borran archivos |
+| Revisión | Sin `security-reviewer` aparte: 4 líneas con el mismo patrón que figma, leídas enteras por Orquesta; prueba con `claude` falso en 3 casos (nada instalado → instala 2; ya instaladas → 0 instalaciones; instalación fallida → lo avisa en `falta`) |
+| Límites | El bloque de `al-dia.sh` que instala las oficiales (metodo 0.21.6, con prueba de `claude` falso: nada instalado, ya instaladas, instalación fallida) va en la MISMA publicación; si falla, el cierre lo dice. Cambia el sha de `al-dia.sh`: el portal tiene que actualizarlo Las menciones por nombre en `crear-agente` y docs siguen valiendo (apuntan a la oficial) |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · tests del plugin metodo: OK |

@@ -256,6 +256,13 @@ claude plugin marketplace list 2>/dev/null | grep -qF claude-plugins-official ||
 claude plugin list 2>/dev/null | grep -qE "❯ figma@claude-plugins-official[[:space:]]*$" || claude plugin install figma@claude-plugins-official >/dev/null 2>&1
 claude plugin list 2>/dev/null | grep -A3 -E "❯ figma@claude-plugins-official[[:space:]]*$" | grep -q "✔ enabled" || falta+=("figma")
 
+# 5d-bis. Skills oficiales de Anthropic que antes viajaban copiadas en el catálogo: una sola pieza por función (Mand. XXVI).
+#         Mismo patrón que figma. Si ya están instaladas y prendidas, no se toca nada.
+for P in frontend-design skill-creator; do
+  claude plugin list 2>/dev/null | grep -qE "❯ $P@claude-plugins-official[[:space:]]*$" || claude plugin install "$P@claude-plugins-official" >/dev/null 2>&1
+  claude plugin list 2>/dev/null | grep -A3 -E "❯ $P@claude-plugins-official[[:space:]]*$" | grep -q "✔ enabled" || falta+=("$P")
+done
+
 # 6. Reglas del método en la ficha global (entre marcas; lo tuyo no se toca)
 local RP; RP=$(ls -d "$CC"/plugins/cache/claude-catalogo/metodo/*/scripts/reglas.py 2>/dev/null | sort -V | tail -1)
 local F="$M/plugins/metodo/templates/REGLAS-DEL-METODO.md" G="$CC/CLAUDE.md"
