@@ -9,7 +9,7 @@
       "name": "base-segura",
       "source": "./plugins/base-segura",
       "description": "Base segura (L1): skills transversales (incluye humanizalo: que tus textos no suenen a IA, y modo-directo: respuestas del largo que corresponde) + auditor de skills externas + academy-guide (te sugiere cursos oficiales cuando aprendés a usar Claude) + agentes básicos + plantillas de CLAUDE.md. Día 1 para cualquier empresa.",
-      "version": "0.13.6",
+      "version": "0.13.7",
       "category": "productivity",
       "tags": [
         "l1",
@@ -22,7 +22,7 @@
       "name": "rubro-estudio-arquitectura",
       "source": "./plugins/rubro-estudio-arquitectura",
       "description": "Pack de rubro (L2): propuestas y honorarios, pliegos, informes de visita, adicionales, punch list, revisión de presupuestos, normativa argentina (sobre PDFs oficiales), plan semanal + ficha A3, identidad visual del estudio (tu marca en cada pieza), investigación de mercado, contenido y diseño para estudios de arquitectura y profesiones similares. Requiere base-segura.",
-      "version": "0.14.5",
+      "version": "0.14.6",
       "category": "productivity",
       "tags": [
         "arquitectura",

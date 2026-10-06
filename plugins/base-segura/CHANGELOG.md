@@ -1,5 +1,8 @@
 # base-segura
 
+## 0.13.7 — 2026-10-05
+- `skill-creator` ya no viene en este paquete: se instala la versión oficial de Anthropic (la trae «Poner todo al día»). Una sola copia por función, sin repetidas.
+
 ## 0.13.6 — 2026-10-03
 - markitdown: se instala con uv (comando «Poner todo al día»); aviso de que pip con el Python 3.9 de la Mac baja una alfa vieja.
 
