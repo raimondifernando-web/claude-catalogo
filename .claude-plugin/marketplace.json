@@ -9,7 +9,7 @@
       "name": "base-segura",
       "source": "./plugins/base-segura",
       "description": "Base segura (L1): skills transversales (incluye humanizalo: que tus textos no suenen a IA, y modo-directo: respuestas del largo que corresponde) + auditor de skills externas + academy-guide (te sugiere cursos oficiales cuando aprendés a usar Claude) + agentes básicos + plantillas de CLAUDE.md. Día 1 para cualquier empresa.",
-      "version": "0.13.7",
+      "version": "0.13.8",
       "category": "productivity",
       "tags": [
         "l1",
@@ -22,7 +22,7 @@
       "name": "rubro-estudio-arquitectura",
       "source": "./plugins/rubro-estudio-arquitectura",
       "description": "Pack de rubro (L2): propuestas y honorarios, pliegos, informes de visita, adicionales, punch list, revisión de presupuestos, normativa argentina (sobre PDFs oficiales), plan semanal + ficha A3, identidad visual del estudio (tu marca en cada pieza), investigación de mercado, contenido y diseño para estudios de arquitectura y profesiones similares. Requiere base-segura.",
-      "version": "0.14.6",
+      "version": "0.14.7",
       "category": "productivity",
       "tags": [
         "arquitectura",
@@ -110,7 +110,7 @@
       "source": {
         "source": "github",
         "repo": "addyosmani/agent-skills",
-        "sha": "bcab6a1b8503100e8618c3b4e32cc78de43de769"
+        "sha": "1401c8b8030e023baeebb31781a6653fe8e93026"
       },
       "description": "Production-grade engineering skills for AI coding agents — covering the full software development lifecycle from spec to ship. (Original de Addy Osmani, 98.7K★, MIT, fijado al commit auditado bcab6a1 — PASS con condiciones, 2026-09-23: preguntar antes de reset --hard, push, deploy, npm/brew/pip install o agregar MCP.)",
       "version": "0.6.10",
@@ -348,7 +348,7 @@
       "name": "rubro-marketing",
       "source": "./plugins/rubro-marketing",
       "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (37 skills y 1 agente: marketing-analyst, que mide qué canal trae clientes y cuánto cuestan). Requiere base-segura.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "productivity",
       "tags": [
         "l2",
