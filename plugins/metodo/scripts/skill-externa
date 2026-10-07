@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+"""Actualiza skills copiadas de un repo ajeno SIN fusión a mano (Mand. XXVI: lo propio en archivo aparte).
+
+Una skill externa queda así:
+  <skill>/            archivos del autor, tal cual el sha de ORIGEN.txt
+  <skill>/NOTA-LOCAL.md          nuestras reglas (texto). Se insertan solas al tope de SKILL.md, entre marcas
+  <skill>/parches-locales/*.patch  nuestros cambios de CÓDIGO (si los hay), en formato git diff
+  <skill>/ORIGEN.txt             origen: github:<dueño>/<repo>//<ruta>@<sha> · frontmatter-local: <clave: valor> ...
+
+Uso:
+  skill-externa separar   <carpeta>        una sola vez: saca lo propio de los archivos del autor a NOTA-LOCAL.md
+                                            y parches-locales/, y deja la copia regenerada (mismo sha)
+  skill-externa actualizar <carpeta> <sha>  baja el sha nuevo y vuelve a aplicar lo propio, sin tocar nada a mano
+  skill-externa revisar   <carpeta>        confirma que la copia = autor@sha + lo propio (sale 1 si alguien editó a mano)
+
+Nunca deja una skill a medias: arma todo en una carpeta aparte y la cambia al final. Si un parche de código no
+entra en la versión nueva, no cambia nada y lo dice (eso es lo único que puede necesitar una mano).
+"""
+import re, shutil, subprocess, sys, tempfile
+from pathlib import Path
+
+INI, FIN = "<!-- reglas-locales:inicio (generado desde NOTA-LOCAL.md; no editar acá) -->", "<!-- reglas-locales:fin -->"
+PROPIOS = {"ORIGEN.txt", "LICENSE-origen.txt", "NOTA-LOCAL.md", "parches-locales"}
+
+
+def falla(msg):
+    print(f"Falta: {msg} ✗", file=sys.stderr)
+    sys.exit(1)
+
+
+def run(*args, cwd=None, check=True):
+    r = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
+    if check and r.returncode:
+        falla(f"{' '.join(args[:3])}… → {r.stderr.strip()[:300]}")
+    return r
+
+
+def leer_origen(carpeta):
+    o = carpeta / "ORIGEN.txt"
+    if not o.exists():
+        falla(f"{carpeta.name} no tiene ORIGEN.txt")
+    txt = o.read_text(encoding="utf-8")
+    m = re.search(r"^origen:\s*github:([^/\s]+/[^/\s]+)//(\S+?)@([0-9a-f]{7,40})", txt, re.M)
+    if not m:
+        falla(f"{carpeta.name}: ORIGEN.txt sin línea «origen: github:dueño/repo//ruta@sha»")
+    fm = re.search(r"^frontmatter-local:\s*(.+)$", txt, re.M)
+    claves = [c.strip() for c in fm.group(1).split("·")] if fm else []
+    return txt, m.group(1), m.group(2), m.group(3), claves
+
+
+def bajar(repo, ruta, sha, destino):
+    """Copia exacta de <ruta> en <sha>, sin .git."""
+    tmp = Path(tempfile.mkdtemp())
+    run("git", "clone", "-q", "--filter=blob:none", "--no-checkout", f"https://github.com/{repo}.git", str(tmp / "r"))
+    run("git", "sparse-checkout", "set", "--no-cone", ruta, cwd=tmp / "r")
+    run("git", "checkout", "-q", sha, cwd=tmp / "r")
+    src = tmp / "r" / ruta
+    if not src.is_dir():
+        falla(f"{repo}@{sha[:7]} no tiene {ruta}")
+    shutil.copytree(src, destino)
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+def partir_frontmatter(texto):
+    if not texto.startswith("---\n"):
+        return "", texto
+    fin = texto.index("\n---\n", 4) + 5
+    return texto[:fin], texto[fin:]
+
+
+def aplicar(autor, carpeta_propia, claves, destino):
+    """destino = copia del autor + frontmatter-local + bloque de NOTA-LOCAL + parches de código."""
+    shutil.copytree(autor, destino)
+    for p in PROPIOS:
+        src = carpeta_propia / p
+        if src.is_dir():
+            shutil.copytree(src, destino / p)
+        elif src.exists():
+            shutil.copy2(src, destino / p)
+    skill = destino / "SKILL.md"
+    fm, cuerpo = partir_frontmatter(skill.read_text(encoding="utf-8"))
+    if claves and fm:
+        extra = "".join(f"{c}\n" for c in claves if c and f"\n{c}\n" not in fm)
+        fm = fm[:-4] + extra + "---\n"
+    nota = carpeta_propia / "NOTA-LOCAL.md"
+    if nota.exists():
+        texto = nota.read_text(encoding="utf-8").strip()
+        bloque = f"\n{INI}\n{texto}\n{FIN}\n"
+        cuerpo = bloque + cuerpo
+    skill.write_text(fm + cuerpo, encoding="utf-8")
+    parches = sorted((carpeta_propia / "parches-locales").glob("*.patch")) if (carpeta_propia / "parches-locales").is_dir() else []
+    for p in parches:
+        r = run("git", "apply", "--check", "-p1", str(p), cwd=destino, check=False)
+        if r.returncode:
+            falla(f"el parche {p.name} no entra en la versión nueva ({r.stderr.strip()[:200]}). No se cambió nada: "
+                  f"hay que rehacer ese parche sobre el código nuevo")
+        run("git", "apply", "-p1", str(p), cwd=destino)
+    # control de Cowork: la description no puede tener < >
+    import yaml
+    fm2, _ = partir_frontmatter(skill.read_text(encoding="utf-8"))
+    try:
+        meta = yaml.safe_load(fm2.strip().strip("-")) or {}
+    except yaml.YAMLError as e:
+        falla(f"el encabezado de SKILL.md no es YAML válido ({str(e)[:120]})")
+    if re.search(r"[<>]", str(meta.get("description", ""))):
+        # Cowork rechaza < > en la description y rompe todo el marketplace: se sacan solo esos signos, solo ahí.
+        lineas, dentro = fm2.splitlines(keepends=True), False
+        for i, l in enumerate(lineas):
+            if l.startswith("description:"):
+                dentro = True
+                cab, _, resto = l.partition(":")
+                lineas[i] = cab + ":" + (resto if resto.strip() in (">", "|", ">-", "|-") else resto.replace("<", "").replace(">", ""))
+                continue
+            if dentro and l[:1] not in (" ", "\t"):
+                dentro = False
+            if dentro:
+                lineas[i] = l.replace("<", "").replace(">", "")
+        texto = skill.read_text(encoding="utf-8")
+        skill.write_text("".join(lineas) + texto[len(fm2):], encoding="utf-8")
+        print(f"  {destino.name}: description sin < > (regla de Cowork)")
+    return len(parches)
+
+
+def sin_bloque(texto):
+    return re.sub(rf"\n?{re.escape(INI)}.*?{re.escape(FIN)}\n", "", texto, flags=re.S)
+
+
+def comparar(a, b):
+    r = run("diff", "-rq", "-x", ".DS_Store", str(a), str(b), check=False)
+    return [l for l in r.stdout.splitlines() if l]
+
+
+def cambiar(carpeta, nueva):
+    viejo = carpeta.with_name(carpeta.name + ".antes-skill-externa")
+    if viejo.exists():
+        shutil.rmtree(viejo)
+    carpeta.rename(viejo)
+    shutil.move(str(nueva), str(carpeta))
+    shutil.rmtree(viejo)
+
+
+def separar(carpeta):
+    """Una sola vez. El TEXTO propio se escribe a mano (curado) en NOTA-LOCAL.md antes de correr esto: las notas
+    sueltas dentro del texto del autor pierden sentido fuera de su lugar. Esto se encarga del resto: frontmatter
+    propio y cambios de código → parches-locales/, y regenera la copia (mismo sha) sin los cambios en el texto."""
+    txt, repo, ruta, sha, _ = leer_origen(carpeta)
+    tmp = Path(tempfile.mkdtemp())
+    bajar(repo, ruta, sha, tmp / "autor")
+    texto_dif, parches, claves = [], [], []
+    for f in sorted(p for p in carpeta.rglob("*") if p.is_file()):
+        rel = f.relative_to(carpeta)
+        if rel.parts[0] in PROPIOS or f.name == ".DS_Store":
+            continue
+        orig = tmp / "autor" / rel
+        if not orig.exists():
+            falla(f"{carpeta.name}/{rel} no existe en el autor: sacalo o pasalo a NOTA-LOCAL")
+        if orig.read_bytes() == f.read_bytes():
+            continue
+        if f.suffix == ".md":
+            if rel.name == "SKILL.md":
+                fa, ca = partir_frontmatter(orig.read_text(encoding="utf-8"))
+                fb, cb = partir_frontmatter(f.read_text(encoding="utf-8"))
+                llaves_autor = {l.split(":", 1)[0] for l in fa.splitlines() if re.match(r"^[A-Za-z_-]+:", l)}
+                for l in fb.splitlines():
+                    m = re.match(r"^([A-Za-z_-]+):", l)
+                    if m and m.group(1) not in llaves_autor:
+                        claves.append(l)
+                    elif l not in fa.splitlines() and l != "---" and not m:
+                        print(f"  {carpeta.name}: aviso — el encabezado tenía un cambio propio dentro de un campo del autor "
+                              f"(se pierde; si hacía falta, que lo cubra NOTA-LOCAL): {l.strip()[:80]}")
+                if ca == cb:  # solo cambió el encabezado
+                    continue
+            texto_dif.append(str(rel))
+        else:
+            r = run("diff", "-u", "--label", f"a/{rel}", "--label", f"b/{rel}", str(orig), str(f), check=False).stdout
+            parches.append((rel, r))
+    if texto_dif and not (carpeta / "NOTA-LOCAL.md").exists():
+        falla(f"{carpeta.name}: tiene texto propio en {', '.join(texto_dif)}: escribí primero NOTA-LOCAL.md con esas reglas")
+    propio = tmp / "propio"
+    propio.mkdir()
+    for p in ("ORIGEN.txt", "LICENSE-origen.txt", "NOTA-LOCAL.md"):
+        if (carpeta / p).exists():
+            shutil.copy2(carpeta / p, propio / p)
+    if parches:
+        (propio / "parches-locales").mkdir()
+        for rel, r in parches:
+            (propio / "parches-locales" / (str(rel).replace("/", "__") + ".patch")).write_text(r, encoding="utf-8")
+    o = re.sub(r"^(frontmatter-local|separado):.*\n", "", (propio / "ORIGEN.txt").read_text(encoding="utf-8"), flags=re.M)
+    extra = (["frontmatter-local: " + " · ".join(claves)] if claves else []) + [
+        "separado: lo propio vive en NOTA-LOCAL.md" + (" y parches-locales/" if parches else "")
+        + "; se actualiza con `~/.claude/scripts/skill-externa actualizar <carpeta> <sha>`, sin fusión a mano"]
+    (propio / "ORIGEN.txt").write_text(o.rstrip("\n") + "\n" + "\n".join(extra) + "\n", encoding="utf-8")
+    aplicar(tmp / "autor", propio, claves, tmp / "final")
+    cambiar(carpeta, tmp / "final")
+    shutil.rmtree(tmp, ignore_errors=True)
+    print(f"{carpeta.name}: separada ✓ (texto propio reemplazado por NOTA-LOCAL en: {', '.join(texto_dif) or 'nada'}; "
+          f"{len(parches)} parche(s) de código" + (f"; frontmatter: {' · '.join(claves)}" if claves else "") + ")")
+
+
+def actualizar(carpeta, sha_nuevo):
+    txt, repo, ruta, sha, claves = leer_origen(carpeta)
+    if not (carpeta / "NOTA-LOCAL.md").exists() and not (carpeta / "parches-locales").exists() and not claves:
+        print(f"{carpeta.name}: aviso — no tiene NOTA-LOCAL ni parches (si tenía cambios a mano, corré «separar» antes)")
+    tmp = Path(tempfile.mkdtemp())
+    bajar(repo, ruta, sha_nuevo, tmp / "autor")
+    n = aplicar(tmp / "autor", carpeta, claves, tmp / "final")
+    o = (tmp / "final" / "ORIGEN.txt").read_text(encoding="utf-8")
+    o = re.sub(rf"(^origen:\s*github:{re.escape(repo)}//{re.escape(ruta)}@)[0-9a-f]+", rf"\g<1>{sha_nuevo}", o, flags=re.M)
+    from datetime import date
+    o = o.rstrip("\n") + f"\nactualizado: {date.today().isoformat()} {sha[:7]} -> {sha_nuevo[:7]} (skill-externa: re-copia + lo propio, sin fusión a mano)\n"
+    (tmp / "final" / "ORIGEN.txt").write_text(o, encoding="utf-8")
+    cambiar(carpeta, tmp / "final")
+    shutil.rmtree(tmp, ignore_errors=True)
+    print(f"{carpeta.name}: {sha[:7]} → {sha_nuevo[:7]} ✓ ({n} parche(s) de código re-aplicado(s))")
+
+
+def revisar(carpeta):
+    txt, repo, ruta, sha, claves = leer_origen(carpeta)
+    tmp = Path(tempfile.mkdtemp())
+    bajar(repo, ruta, sha, tmp / "autor")
+    aplicar(tmp / "autor", carpeta, claves, tmp / "esperado")
+    dif = comparar(tmp / "esperado", carpeta)
+    shutil.rmtree(tmp, ignore_errors=True)
+    if dif:
+        print(f"{carpeta.name}: ✗ distinta de autor@{sha[:7]} + lo propio (¿alguien editó a mano?):", file=sys.stderr)
+        for l in dif[:10]:
+            print("   " + l.replace(str(tmp), "…"), file=sys.stderr)
+        sys.exit(1)
+    print(f"{carpeta.name}: igual a autor@{sha[:7]} + lo propio ✓")
+
+
+def main():
+    if len(sys.argv) < 3 or sys.argv[1] not in ("separar", "actualizar", "revisar"):
+        print(__doc__)
+        sys.exit(2)
+    carpeta = Path(sys.argv[2]).expanduser().resolve()
+    if not (carpeta / "SKILL.md").exists():
+        falla(f"{carpeta} no es una skill (no tiene SKILL.md)")
+    if sys.argv[1] == "separar":
+        separar(carpeta)
+    elif sys.argv[1] == "revisar":
+        revisar(carpeta)
+    else:
+        if len(sys.argv) < 4 or not re.fullmatch(r"[0-9a-f]{7,40}", sys.argv[3]):
+            falla("falta el sha nuevo (7 a 40 caracteres hex)")
+        actualizar(carpeta, sys.argv[3])
+
+
+if __name__ == "__main__":
+    main()

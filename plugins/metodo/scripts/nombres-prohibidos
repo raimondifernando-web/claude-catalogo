@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+"""Frena la subida de nombres de clientes y personas a repos que ve otra gente (Mand. XXV/catálogo: «no nombra clientes»).
+
+Nace del 2026-10-06: un fork público tuvo el nombre de un cliente en un comentario durante 2 semanas sin que nadie lo viera.
+
+Uso:
+  nombres-prohibidos instalar <repo>      instala el control antes de cada push (pre-push) en ese repo
+  nombres-prohibidos revisar  [<repo>]    revisa el contenido actual del repo (HEAD); sale 1 si encuentra algo
+  (como pre-push lo llama git solo; no hace falta correrlo a mano)
+
+La lista sale de dos fuentes, para que un cliente nuevo quede cubierto sin tocar nada:
+  1. ~/.claude/nombres-prohibidos.txt      una palabra o frase por línea (# = comentario)
+  2. las carpetas de ~/Proyectos/Consultoria-*/clientes/*   (cada carpeta nueva = cliente nuevo)
+Compara sin mayúsculas y por palabra entera. Nunca imprime la lista: solo archivo, línea y la palabra que apareció.
+"""
+import os, re, subprocess, sys
+from pathlib import Path
+
+HOME = Path.home()
+LISTA = HOME / ".claude" / "nombres-prohibidos.txt"
+MARCA = "# nombres-prohibidos (Orquesta)"
+CERO = "0" * 40
+
+
+def nombres():
+    out = set()
+    if LISTA.exists():
+        for linea in LISTA.read_text(encoding="utf-8").splitlines():
+            linea = linea.split("#", 1)[0].strip()
+            if linea:
+                out.add(linea.lower())
+    for carpeta in HOME.glob("Proyectos/Consultoria-*/clientes/*"):
+        if carpeta.is_dir() and not carpeta.name.startswith((".", "_")):
+            n = carpeta.name.lower()
+            out.add(n)
+            out.add(n.replace("-", " "))
+    return sorted(out)
+
+
+def partes(lista, sep):
+    return [sep.join(re.escape(p) for p in re.split(r"[-\s_]+", n)) for n in lista]
+
+
+def patron(lista):
+    return re.compile(r"(?<![A-Za-z0-9])(" + "|".join(partes(lista, r"[-\s_.]*")) + r")(?![A-Za-z0-9])", re.I)
+
+
+def patron_git(lista):
+    """Prefiltro ERE para git grep (el git de macOS no trae -P). Sin -w: git trata «_» como letra y
+    dejaría pasar «acme_corp»; el límite de palabra lo decide después el regex de Python."""
+    return "(" + "|".join(partes(lista, "[-[:space:]_.]*")) + ")"
+
+
+def git(repo, *args):
+    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+
+
+def git_ok(repo, *args):
+    """Si git falla, se frena (nunca se deja pasar en silencio)."""
+    r = git(repo, *args)
+    if r.returncode != 0:
+        print(f"✗ Subida frenada: no pude revisar ({r.stderr.strip()[:200] or 'git falló'}). No se subió nada.", file=sys.stderr)
+        sys.exit(1)
+    return r.stdout
+
+
+LISTA_ACTUAL = []
+
+
+def revisar_arbol(repo, sha, rx):
+    """Nombres de archivo y contenido de todos los archivos de texto en ese commit."""
+    hallazgos = []
+    for ruta in git_ok(repo, "ls-tree", "-r", "--name-only", sha).splitlines():
+        m = rx.search(ruta)
+        if m:
+            hallazgos.append(f"nombre de archivo {ruta} → «{m.group(1)}»")
+    r = git(repo, "grep", "-I", "-n", "-i", "-E", "-e", patron_git(LISTA_ACTUAL), sha, "--")
+    if r.returncode not in (0, 1):
+        git_ok(repo, "grep", "-I", "-n", "-i", "-E", "-e", patron_git(LISTA_ACTUAL), sha, "--")
+    for linea in r.stdout.splitlines():
+        # formato: <sha>:<archivo>:<n>:<texto>
+        _, archivo, n, texto = (linea.split(":", 3) + ["", "", ""])[:4]
+        m = rx.search(texto)
+        if m:
+            hallazgos.append(f"{archivo}:{n} → «{m.group(1)}»")
+    return hallazgos
+
+
+def revisar_mensajes(repo, rango, rx):
+    """Mensajes, autor y email de cada commit del rango."""
+    hallazgos = []
+    for bloque in git_ok(repo, "log", "--format=%h %an <%ae> %B%x00", *rango).split("\x00"):
+        m = rx.search(bloque)
+        if m:
+            hallazgos.append(f"mensaje o autor del commit {bloque.strip().split(' ', 1)[0]} → «{m.group(1)}»")
+    return hallazgos
+
+
+def revisar_cambios(repo, rango, rx):
+    """Líneas agregadas y archivos tocados en CADA commit del rango (merges incluidos): un nombre que
+    entra y sale en la misma subida queda igual en el historial."""
+    salida = git_ok(repo, "log", "-p", "--no-color", "--no-ext-diff", "--diff-merges=first-parent",
+                    "--format=@@commit %h", *rango)
+    hallazgos, commit, archivo, encabezado = [], "?", "?", False
+    for linea in salida.splitlines():
+        if linea.startswith("@@commit "):
+            commit, encabezado = linea.split()[1], False
+        elif linea.startswith("diff --git "):
+            encabezado = True
+            m = rx.search(linea)
+            if m:
+                hallazgos.append(f"nombre de archivo en commit {commit} → «{m.group(1)}»")
+        elif encabezado:
+            if linea.startswith("+++ "):
+                archivo = linea[6:] if linea.startswith("+++ b/") else linea[4:]
+            elif linea.startswith("@@"):
+                encabezado = False
+        elif linea.startswith("+"):
+            m = rx.search(linea)
+            if m:
+                hallazgos.append(f"{archivo} (commit {commit}) → «{m.group(1)}»")
+    return hallazgos
+
+
+def frenar(hallazgos, donde):
+    print(f"✗ Subida frenada: aparece el nombre de un cliente o persona en {donde}:", file=sys.stderr)
+    for h in hallazgos[:20]:
+        print("   " + h, file=sys.stderr)
+    if len(hallazgos) > 20:
+        print(f"   … y {len(hallazgos) - 20} más", file=sys.stderr)
+    print("Sacalo (o reemplazalo por <cliente>/<persona>) y volvé a subir. No se subió nada.", file=sys.stderr)
+    sys.exit(1)
+
+
+def pre_push(repo):
+    lista = LISTA_ACTUAL[:] = nombres()
+    if not lista:
+        frenar([f"no encontré la lista ({LISTA}) ni carpetas de clientes: revisá que exista"], "la configuración")
+    rx = patron(lista)
+    for linea in sys.stdin.read().splitlines():
+        campos = linea.split()
+        if len(campos) != 4 or campos[1] == CERO:  # borrado de rama: nada que revisar
+            continue
+        local, remoto = campos[1], campos[3]
+        # Rama o tag nuevos, o remoto desconocido acá (otro clon, force-push): todo lo que el remoto no tenga.
+        if remoto == CERO or git(repo, "cat-file", "-e", f"{remoto}^{{commit}}").returncode != 0:
+            rango = [local, "--not", "--remotes"]
+        else:
+            rango = [f"{remoto}..{local}"]
+        h = revisar_arbol(repo, local, rx) + revisar_mensajes(repo, rango, rx) + revisar_cambios(repo, rango, rx)
+        if git_ok(repo, "cat-file", "-t", local).strip() == "tag":  # etiqueta con mensaje propio
+            m = rx.search(git_ok(repo, "cat-file", "-p", local))
+            if m:
+                h.append(f"mensaje de la etiqueta {campos[0]} → «{m.group(1)}»")
+        if h:
+            frenar(h, campos[2])
+
+
+def instalar(repo):
+    repo = Path(repo).expanduser().resolve()
+    r = git(repo, "rev-parse", "--git-path", "hooks")
+    if r.returncode:
+        sys.exit(f"Falta: {repo} no es un repo de git ✗")
+    if git(repo, "config", "core.hooksPath").stdout.strip():
+        sys.exit("Falta: el repo usa core.hooksPath; instalarlo a mano ahí ✗")
+    hook = (repo / r.stdout.strip()) if not Path(r.stdout.strip()).is_absolute() else Path(r.stdout.strip())
+    hook = hook / "pre-push"
+    if hook.exists() and MARCA not in hook.read_text(errors="ignore"):
+        sys.exit(f"Falta: {hook} ya tiene otro control; no lo piso ✗")
+    hook.parent.mkdir(parents=True, exist_ok=True)
+    hook.write_text(f'#!/bin/sh\n{MARCA}\nexec python3 "$HOME/.claude/scripts/nombres-prohibidos" pre-push "$(git rev-parse --show-toplevel)"\n')
+    hook.chmod(0o755)
+    print(f"Todo al día ✓  (control instalado en {repo.name})")
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        sys.exit(2)
+    cmd = sys.argv[1]
+    repo = Path(sys.argv[2]).expanduser() if len(sys.argv) > 2 else Path.cwd()
+    if cmd == "instalar":
+        instalar(repo)
+    elif cmd == "pre-push":
+        pre_push(repo)
+    elif cmd == "revisar":
+        lista = LISTA_ACTUAL[:] = nombres()
+        h = revisar_arbol(repo, "HEAD", patron(lista)) if lista else []
+        if h:
+            frenar(h, f"{repo.name} (HEAD)")
+        print(f"Todo al día ✓  ({len(lista)} nombres revisados, 0 encontrados)")
+    else:
+        sys.exit(f"Falta: comando desconocido «{cmd}» ✗")
+
+
+if __name__ == "__main__":
+    main()
