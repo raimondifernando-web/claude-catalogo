@@ -1,53 +1,62 @@
 #!/usr/bin/env python3
-"""Frena la subida de nombres de clientes y personas a repos que ve otra gente (Mand. XXV/catálogo: «no nombra clientes»).
-
-Nace del 2026-10-06: un fork público tuvo el nombre de un cliente en un comentario durante 2 semanas sin que nadie lo viera.
+"""Frena la subida de nombres de clientes y personas a repositorios que ve otra gente.
 
 Uso:
-  nombres-prohibidos instalar <repo>      instala el control antes de cada push (pre-push) en ese repo
-  nombres-prohibidos revisar  [<repo>]    revisa el contenido actual del repo (HEAD); sale 1 si encuentra algo
+  nombres-prohibidos agregar  "<nombre>"   suma un nombre o frase a tu lista
+  nombres-prohibidos instalar [<repo>]     instala el control antes de cada push (pre-push) en ese repo
+  nombres-prohibidos revisar  [<repo>]     revisa el contenido actual del repo (HEAD); sale 1 si encuentra algo
   (como pre-push lo llama git solo; no hace falta correrlo a mano)
 
-La lista sale de dos fuentes, para que un cliente nuevo quede cubierto sin tocar nada:
-  1. ~/.claude/nombres-prohibidos.txt      una palabra o frase por línea (# = comentario)
-  2. las carpetas de ~/Proyectos/Consultoria-*/clientes/*   (cada carpeta nueva = cliente nuevo)
+La lista se guarda en <config de Claude>/metodo/nombres-prohibidos.txt (una palabra o frase por línea, # = comentario).
 Compara sin mayúsculas y por palabra entera. Nunca imprime la lista: solo archivo, línea y la palabra que apareció.
 """
-import os, re, subprocess, sys
+import os
+import re
+import shlex
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
-HOME = Path.home()
-LISTA = HOME / ".claude" / "nombres-prohibidos.txt"
-MARCA = "# nombres-prohibidos (Orquesta)"
+MARCA = "# nombres-prohibidos (metodo)"
 CERO = "0" * 40
 
 
+def base_config():
+    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or str(Path.home() / ".claude")) / "metodo"
+
+
+def ruta_lista():
+    return base_config() / "nombres-prohibidos.txt"
+
+
 def nombres():
+    p = ruta_lista()
+    if not p.is_file():
+        return []
     out = set()
-    if LISTA.exists():
-        for linea in LISTA.read_text(encoding="utf-8").splitlines():
-            linea = linea.split("#", 1)[0].strip()
-            if linea:
-                out.add(linea.lower())
-    for carpeta in HOME.glob("Proyectos/Consultoria-*/clientes/*"):
-        if carpeta.is_dir() and not carpeta.name.startswith((".", "_")):
-            n = carpeta.name.lower()
-            out.add(n)
-            out.add(n.replace("-", " "))
+    for linea in p.read_text(encoding="utf-8").splitlines():
+        linea = linea.split("#", 1)[0].strip()
+        if linea:
+            out.add(linea.lower())
     return sorted(out)
 
 
 def partes(lista, sep):
-    return [sep.join(re.escape(p) for p in re.split(r"[-\s_]+", n)) for n in lista]
+    return [sep.join(re.escape(p) for p in re.split(r"[-\s_]+", n)) for n in lista if n]
 
 
 def patron(lista):
+    if not lista:
+        return re.compile(r"(?!x)x")
     return re.compile(r"(?<![A-Za-z0-9])(" + "|".join(partes(lista, r"[-\s_.]*")) + r")(?![A-Za-z0-9])", re.I)
 
 
 def patron_git(lista):
     """Prefiltro ERE para git grep (el git de macOS no trae -P). Sin -w: git trata «_» como letra y
     dejaría pasar «acme_corp»; el límite de palabra lo decide después el regex de Python."""
+    if not lista:
+        return ""
     return "(" + "|".join(partes(lista, "[-[:space:]_.]*")) + ")"
 
 
@@ -74,9 +83,14 @@ def revisar_arbol(repo, sha, rx):
         m = rx.search(ruta)
         if m:
             hallazgos.append(f"nombre de archivo {ruta} → «{m.group(1)}»")
-    r = git(repo, "grep", "-I", "-n", "-i", "-E", "-e", patron_git(LISTA_ACTUAL), sha, "--")
+    if not LISTA_ACTUAL:
+        return hallazgos
+    p_git = patron_git(LISTA_ACTUAL)
+    if not p_git:
+        return hallazgos
+    r = git(repo, "grep", "-I", "-n", "-i", "-E", "-e", p_git, sha, "--")
     if r.returncode not in (0, 1):
-        git_ok(repo, "grep", "-I", "-n", "-i", "-E", "-e", patron_git(LISTA_ACTUAL), sha, "--")
+        git_ok(repo, "grep", "-I", "-n", "-i", "-E", "-e", p_git, sha, "--")
     for linea in r.stdout.splitlines():
         # formato: <sha>:<archivo>:<n>:<texto>
         _, archivo, n, texto = (linea.split(":", 3) + ["", "", ""])[:4]
@@ -135,7 +149,7 @@ def frenar(hallazgos, donde):
 def pre_push(repo):
     lista = LISTA_ACTUAL[:] = nombres()
     if not lista:
-        frenar([f"no encontré la lista ({LISTA}) ni carpetas de clientes: revisá que exista"], "la configuración")
+        return
     rx = patron(lista)
     for linea in sys.stdin.read().splitlines():
         campos = linea.split()
@@ -165,12 +179,79 @@ def instalar(repo):
         sys.exit("Falta: el repo usa core.hooksPath; instalarlo a mano ahí ✗")
     hook = (repo / r.stdout.strip()) if not Path(r.stdout.strip()).is_absolute() else Path(r.stdout.strip())
     hook = hook / "pre-push"
-    if hook.exists() and MARCA not in hook.read_text(errors="ignore"):
-        sys.exit(f"Falta: {hook} ya tiene otro control; no lo piso ✗")
+    if hook.exists():
+        texto_previo = hook.read_text(errors="ignore")
+        if "# nombres-prohibidos" not in texto_previo:
+            sys.exit(f"Falta: {hook} ya tiene otro control; no lo piso ✗")
     hook.parent.mkdir(parents=True, exist_ok=True)
-    hook.write_text(f'#!/bin/sh\n{MARCA}\nexec python3 "$HOME/.claude/scripts/nombres-prohibidos" pre-push "$(git rev-parse --show-toplevel)"\n')
+    script_actual = str(Path(__file__).resolve())
+    contenido = f"""#!/bin/sh
+{MARCA}
+SCRIPT={shlex.quote(script_actual)}
+if [ ! -f "$SCRIPT" ]; then
+  SCRIPT=$(find "${{CLAUDE_CONFIG_DIR:-$HOME/.claude}}/plugins/cache/claude-catalogo/metodo" -name nombres-prohibidos 2>/dev/null | sort -V | tail -1)
+fi
+if [ -n "$SCRIPT" ] && [ -f "$SCRIPT" ]; then
+  exec python3 "$SCRIPT" pre-push "$(git rev-parse --show-toplevel)"
+fi
+echo "Aviso: no encontré nombres-prohibidos; dejo pasar el push." >&2
+exit 0
+"""
+    hook.write_text(contenido)
     hook.chmod(0o755)
     print(f"Todo al día ✓  (control instalado en {repo.name})")
+    if not nombres():
+        print("Lista vacía: sumá nombres con nombres-prohibidos agregar")
+
+
+def agregar(nombre):
+    nombre = nombre.strip()
+    if not nombre:
+        sys.exit("Falta: el nombre a agregar no puede estar vacío ✗")
+    p = ruta_lista()
+    base = p.parent
+    base.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(base, 0o700)
+    except OSError:
+        pass
+
+    lineas = []
+    existentes = set()
+    if p.is_file():
+        lineas = p.read_text(encoding="utf-8").splitlines()
+        for l in lineas:
+            c = l.split("#", 1)[0].strip()
+            if c:
+                existentes.add(c.lower())
+
+    if nombre.lower() in existentes:
+        try:
+            os.chmod(p, 0o600)
+        except OSError:
+            pass
+        print(f"Listo ✓ «{nombre}» ya estaba en la lista")
+        return
+
+    lineas.append(nombre)
+    texto = "\n".join(lineas) + "\n"
+    fd, tmp = tempfile.mkstemp(dir=str(base), prefix=".nombres-")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(texto)
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, str(p))
+    print(f"Listo ✓ «{nombre}» sumado a la lista de nombres prohibidos")
+
+
+def revisar(repo):
+    lista = LISTA_ACTUAL[:] = nombres()
+    if not lista:
+        print("Todo al día ✓  (0 nombres revisados, 0 encontrados)")
+        return
+    h = revisar_arbol(repo, "HEAD", patron(lista))
+    if h:
+        frenar(h, f"{repo.name} (HEAD)")
+    print(f"Todo al día ✓  ({len(lista)} nombres revisados, 0 encontrados)")
 
 
 def main():
@@ -178,17 +259,19 @@ def main():
         print(__doc__)
         sys.exit(2)
     cmd = sys.argv[1]
-    repo = Path(sys.argv[2]).expanduser() if len(sys.argv) > 2 else Path.cwd()
-    if cmd == "instalar":
+    if cmd == "agregar":
+        if len(sys.argv) < 3 or not sys.argv[2].strip():
+            sys.exit("Uso: nombres-prohibidos agregar \"<nombre>\" ✗")
+        agregar(sys.argv[2])
+    elif cmd == "instalar":
+        repo = Path(sys.argv[2]).expanduser() if len(sys.argv) > 2 else Path.cwd()
         instalar(repo)
     elif cmd == "pre-push":
+        repo = Path(sys.argv[2]).expanduser() if len(sys.argv) > 2 else Path.cwd()
         pre_push(repo)
     elif cmd == "revisar":
-        lista = LISTA_ACTUAL[:] = nombres()
-        h = revisar_arbol(repo, "HEAD", patron(lista)) if lista else []
-        if h:
-            frenar(h, f"{repo.name} (HEAD)")
-        print(f"Todo al día ✓  ({len(lista)} nombres revisados, 0 encontrados)")
+        repo = Path(sys.argv[2]).expanduser() if len(sys.argv) > 2 else Path.cwd()
+        revisar(repo)
     else:
         sys.exit(f"Falta: comando desconocido «{cmd}» ✗")
 

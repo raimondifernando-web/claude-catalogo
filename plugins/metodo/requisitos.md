@@ -21,6 +21,10 @@ qué cuesta: `docs/GRAPHIFY.md` del catálogo.
 **Chequeo de seguridad mensual**: `scripts/seguridad.py` necesita **Python 3** y **git**; `gh` (con tu sesión iniciada)
 es opcional, solo para saber si cada repositorio es privado. Sin la lista de repos no hace nada (abajo, cómo se arma).
 
+**Nombres que no salen**: para repositorios que ve otra gente. Claude instala el control (`scripts/nombres-prohibidos`) al crear o publicar un repo público o compartido; revisa cada subida y la frena si aparece un nombre de tu lista. Se suman nombres pidiéndole a Claude «sumá <nombre> a los nombres prohibidos». Necesita **Python 3** y **git**. Sin lista, deja pasar la subida y no frena a nadie.
+
+**Skills copiadas con cambios tuyos**: `scripts/skill-externa` permite usar una skill copiada de otro repo guardando tus reglas y cambios de código en archivos aparte (`NOTA-LOCAL.md` y parches), para poder actualizarla a una versión nueva del autor sin perder lo tuyo ni fusionar a mano. Necesita **Python 3** y **git**.
+
 Si igual querés ver el estado de tu equipo, corré el chequeo del catálogo (`docs/CHEQUEO.md`).
 
 ## El vigía de actualizaciones

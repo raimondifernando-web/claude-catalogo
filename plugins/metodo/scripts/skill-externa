@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Actualiza skills copiadas de un repo ajeno SIN fusión a mano (Mand. XXVI: lo propio en archivo aparte).
+"""Actualiza skills copiadas de otro repo con cambios tuyos: lo tuyo va en archivo aparte para poder actualizar sin perderlo.
 
 Una skill externa queda así:
   <skill>/            archivos del autor, tal cual el sha de ORIGEN.txt
@@ -188,7 +188,7 @@ def separar(carpeta):
     o = re.sub(r"^(frontmatter-local|separado):.*\n", "", (propio / "ORIGEN.txt").read_text(encoding="utf-8"), flags=re.M)
     extra = (["frontmatter-local: " + " · ".join(claves)] if claves else []) + [
         "separado: lo propio vive en NOTA-LOCAL.md" + (" y parches-locales/" if parches else "")
-        + "; se actualiza con `~/.claude/scripts/skill-externa actualizar <carpeta> <sha>`, sin fusión a mano"]
+        + '; se actualiza con `python3 "$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name skill-externa | sort -V | tail -1)" actualizar <carpeta> <sha>`, sin fusión a mano']
     (propio / "ORIGEN.txt").write_text(o.rstrip("\n") + "\n" + "\n".join(extra) + "\n", encoding="utf-8")
     aplicar(tmp / "autor", propio, claves, tmp / "final")
     cambiar(carpeta, tmp / "final")

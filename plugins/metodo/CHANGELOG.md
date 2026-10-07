@@ -1,5 +1,9 @@
 # metodo — qué cambia para vos
 
+## 0.22.0 — 2026-10-07
+- **Nombres prohibidos para cualquiera:** el control que frena la subida de clientes o personas a repositorios públicos o compartidos ya no depende de carpetas del autor. Ahora guarda tu lista en `<config de Claude>/metodo/nombres-prohibidos.txt`, con permisos solo para vos (600), y sumás nombres con `nombres-prohibidos agregar "<nombre>"` o pidiéndoselo a Claude. Si la lista no existe o está vacía, no te traba el push; y si el plugin se actualiza, el control busca solo la versión nueva.
+- **Skills externas fáciles de actualizar:** el actualizador de skills ajenas (`skill-externa`) ahora se invoca directo desde el paquete instalado sin rutas fijas a la máquina del autor. Te permite tener skills copiadas de otros repositorios manteniendo tus reglas en `NOTA-LOCAL.md` y parches de código, para actualizar a versiones nuevas del autor sin perder lo tuyo ni fusionar a mano.
+
 ## 0.21.6 — 2026-10-06
 - **«Poner todo al día» instala las skills oficiales de diseño de interfaces y de crear skills.** Antes cada una venía copiada en un paquete del catálogo, y si además tenías la oficial quedaban repetidas. Ahora se instala la oficial de Anthropic (`frontend-design` y `skill-creator`) y los paquetes `base-segura` y `rubro-estudio-arquitectura` ya no traen su copia: una sola pieza por función. Si ya las tenés instaladas, no cambia nada. Si algo no se pudo instalar, el cierre lo dice.
 
