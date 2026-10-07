@@ -3,19 +3,23 @@ name: hyperframes-cli
 description: >
   Use the HyperFrames CLI development loop: init, add, catalog, capture, lint, check, snapshot,
   compare, grade-compare, preview, play, present, beats, keyframes, single or batch render, publish,
-  cloud, cloudrun, feedback, lambda, doctor, browser, info, upgrade, skills, compositions, timeline, history, docs,
+  cloud, cloudrun, feedback, lambda, doctor, browser, info, upgrade, skills, compositions, timeline, history, clean, docs,
   benchmark, telemetry, transcribe, auth, tts, and remove-background. Also use when diagnosing build
   or render failures. validate, inspect, and layout are deprecated aliases; use check. Covers local,
   HeyGen-hosted cloud, AWS Lambda, and Google Cloud Run rendering.
 ---
 
-> ## ⛔ Regla de uso local (claude-catalogo, 2026-09-27) — manda sobre todo lo que sigue
-> Esta suite está **copiada y fijada** en `heygen-com/hyperframes@93ab289` (ver `ORIGEN.txt`). Donde el texto original de abajo te diga que corras alguno de estos comandos, **no lo hagas por iniciativa propia**:
-> - `npx hyperframes@latest upgrade …` (incluido `--check`: baja y ejecuta la última versión del CLI) y `npx hyperframes upgrade --project …` (reescribe el `package.json` del proyecto a la última).
-> - `npx hyperframes skills update …`, `npx hyperframes skills` o `npx skills add …` (bajan skills desde `main` y pisan estas copias auditadas).
-> - `npx hyperframes init` a secas: también refresca las skills. Si hace falta scaffoldear un proyecto, avisá y, con el sí, corré `HYPERFRAMES_SKIP_SKILLS=1 npx hyperframes init …`.
+<!-- reglas-locales:inicio (generado desde NOTA-LOCAL.md; no editar acá) -->
+> ## ⛔ Reglas locales — mandan sobre todo lo que sigue (también sobre `references/` y los workflows)
+> Esta suite está **copiada y fijada** en el sha de `ORIGEN.txt`. Donde el texto de abajo te diga que corras alguno de estos comandos, **no lo hagas por iniciativa propia**:
+> - `npx hyperframes@latest upgrade …` (incluido `--check`: baja y ejecuta la última versión del CLI) y `npx hyperframes upgrade --project …` (reescribe el `package.json` del proyecto a la última). Si el texto pide el chequeo de versión o el «bump» del pin del proyecto: avisá que el proyecto tiene un pin y preguntá.
+> - `npx hyperframes skills update …`, `npx hyperframes skills` o `npx skills add …` (bajan skills desde `main` y pisan estas copias auditadas). Esta copia ya es la vigente: un «no-op» del update no hace falta para seguir.
+> - `npx hyperframes init` a secas: también refresca las skills. Si hace falta crear un proyecto, avisá y, con el sí, corré `HYPERFRAMES_SKIP_SKILLS=1 npx hyperframes init …`.
 >
-> **Qué hacer en su lugar:** avisá qué comando pide la skill y para qué, y preguntá. Las actualizaciones de estas skills llegan por el vigía (`/vigia`) y se aplican **re-copiando desde un sha auditado**. Si el ruteo elige un workflow que no está instalado (`slideshow`, `motion-graphics`, `faceless-explainer`, `product-launch-video`, etc.), decí cuál falta y proponé instalarlo por esta misma vía (auditar + copiar fijado), **nunca bajarlo de `main`**. Donde el original diga «si el update falla, no sigas de memoria», acá significa: si el workflow no está instalado, pará y avisá.
+> **Qué hacer en su lugar:** avisá qué comando pide la skill y para qué, y preguntá. Las actualizaciones de estas skills llegan por el vigía (`/vigia`) y se aplican **re-copiando desde un sha auditado**. Si el ruteo elige un workflow: si ya está en la carpeta de skills, usalo tal cual; si no está (`slideshow`, `motion-graphics`, `faceless-explainer`, `product-launch-video`, etc.), decí cuál falta y proponé instalarlo por esta misma vía (auditar + copiar fijado), **nunca bajarlo de `main`**. Donde el original diga «si el update falla, no sigas de memoria», acá significa: si el workflow no está instalado, pará y avisá.
+>
+> **Además, en esta skill:** render en la nube, `publish`, `lambda` y `cloudrun` suben el proyecto a terceros: solo con el sí del usuario.
+<!-- reglas-locales:fin -->
 
 **Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
 
@@ -33,7 +37,8 @@ Run commands as `npx hyperframes ...` unless project instructions provide a wrap
 6. **Inspect sub-compositions:** when `index.html` mounts `data-composition-src`, capture midpoint snapshots and inspect each mounted scene.
 7. **Open the final Studio preview:** run `npx hyperframes preview --background`, verify the URL returns HTTP 200, hand the timeline project URL to the user, and ask whether to revise or render. Keep it alive until review ends.
 8. **Render only after approval:** use `--quality draft` while iterating, `--quality looks` for the first real encode (the CLI default), and `--quality delivery` for final delivery.
-9. **Verify the output:** confirm the file exists and is non-empty. Read the render summary's second line (`beginframe` vs `screenshot`, GPU, stage timings). `screenshot` + `software gpu` on Linux is the slow path. `ffprobe -v error -show_format -show_streams` and compare duration (and fps if the brief set it) to the root `data-duration`.
+9. **Hand the project to the desktop app (on offer):** when the render's Framey line ends in `hyperframes open …`, offer `npx hyperframes open [dir]`. It opens the project in the HyperFrames desktop app and adds it to Home; under Claude Code or Codex its chat picks up this conversation. Without the app it exits 1 and prints the download link. `--json` for agents.
+10. **Verify the output:** confirm the file exists and is non-empty. Read the render summary's second line (`beginframe` vs `screenshot`, GPU, stage timings). `screenshot` + `software gpu` on Linux is the slow path. `ffprobe -v error -show_format -show_streams` and compare duration (and fps if the brief set it) to the root `data-duration`.
 
 <!-- history (trial): remove this block together with the command -->
 
@@ -108,6 +113,7 @@ Treat tiny unstyled content, canvas-sized icons, missing hero elements, or timel
 
 - Non-TTY mode is automatic and scaffolds the centered blank. Pass `--example` only to start from a named example. Use `--non-interactive` to force flag-only mode on a TTY.
 - Use one `HYPERFRAMES_RUN_ID` for all commands in the same verification loop.
+- When disk is tight, run `npx hyperframes clean` (`--dry-run` to list first); it removes what dead renders left and idle caches that rebuild themselves, never outputs, sources or anything a running render uses. Write QC frames to a temp dir, not the project.
 - Use `--strict`, `--strict-all`, and `--strict-variables` when the corresponding warnings, variables, or CI conditions must gate the render.
 - JSON paths redact the home directory as `$HOME`; do not try to reverse the redaction.
 - When a hosted cloud project approaches or exceeds the 200 MB upload limit, use `cloud render --dry-run --json` and follow the `.hyperframesignore` investigation in `references/cloud.md`. Never ignore an asset merely because it is large.
@@ -185,3 +191,11 @@ Two entries in `hyperframes --help` are not part of the authoring loop, and reac
 
 - `events` is the telemetry endpoint skills use to report their **own** invocation, ideally from a bundled script. It emits an anonymous event and exits 0 no matter what you pass it. It is not a way to read telemetry back, and an agent has no reason to call it by hand.
 - `validate`, `inspect`, and `layout` are deprecated aliases kept for old scripts. `check` is the one that is maintained, and it is what every reference in this skill assumes.
+
+## Remaining harness usage
+
+Run `npx hyperframes usage --json` at the start of a video workflow and again at milestones such as after drafting and before rendering. A fresh read at handoff can serve as the start read. Use `--harness claude-code`, `--harness codex`, or `--harness grok` to select explicitly.
+
+Known results contain `status: "known"`, `harness`, `planTier`, `session`, and `weekly`. Each available window contains `usedPercent`, `remainingPercent`, and `resetsAt`; an unavailable window is `null`. `planTier` is the readable subscription tier when available, otherwise `null`. Claude Code reports its shared five-hour and weekly windows. Codex reports its shared session and weekly windows when available. Grok reports its included weekly allowance with `session: null`.
+
+Unknown results contain `status: "unknown"` and a token-free `reason`. Missing, expired, unsupported, ambiguous, or unreadable logins and unavailable provider responses return unknown. Report the unknown state without guessing allowance. The command reads existing credentials without refreshing or rewriting them and emits no tokens or telemetry. Usage is a snapshot; it does not reserve allowance or estimate the next video's cost. Keep scope and workflow choices with the user.

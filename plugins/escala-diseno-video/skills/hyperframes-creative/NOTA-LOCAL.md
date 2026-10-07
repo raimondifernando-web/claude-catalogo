@@ -1,0 +1,2 @@
+> ## ⛔ Reglas locales — mandan sobre todo lo que sigue (también sobre `references/`)
+> Copia fijada (ver `ORIGEN.txt`). Cuando una referencia diga `python3 -m http.server <puerto>` (p. ej. el paso 4 de `references/design-picker.md`), corrélo **siempre con `--bind 127.0.0.1`** para no exponer la carpeta del proyecto a la red local: `python3 -m http.server 8723 --bind 127.0.0.1`. `scripts/package-loader.mjs` pide confirmación antes de bajar paquetes npm fijados: no setees `HYPERFRAMES_SKILL_BOOTSTRAP_DEPS=1` por tu cuenta.

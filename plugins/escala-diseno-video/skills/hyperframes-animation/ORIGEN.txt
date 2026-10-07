@@ -1,7 +1,9 @@
-origen: github:heygen-com/hyperframes//skills/hyperframes-animation@93ab2899f13a1120002986793a7b11b657841b69
+origen: github:heygen-com/hyperframes//skills/hyperframes-animation@9c7ff590fe9e1f3fa7bf06cb3bf67ae78c2a993b
 copiado: 2026-09-27 (copia fija, sin npx skills: el instalador del autor baja siempre de main). Licencia Apache-2.0 → LICENSE-origen.txt
 auditoria: 2026-09-27 security-reviewer (Opus) + skill-security-auditor — nada malicioso; los CRITICAL del escáner son falsos positivos (execFileSync/spawn sin shell para ffmpeg/npx, regex.exec). Registro en docs/SECURITY-CHECKS.md.
 telemetria: apagada por HYPERFRAMES_NO_TELEMETRY=1 en ~/.claude/settings.json (env). NO usar DO_NOT_TRACK=1: Claude Code también la lee y deja de andar Remote Control (sesiones en el celular). Corregido 2026-09-28.
 actualizar: la avisa el vigía; se re-copia desde un sha auditado y se RE-APLICAN los cambios de «modificado». Nunca npx hyperframes skills update / @latest upgrade.
 modificado: SKILL.md (regla) y adapters/animate-text.md: pixel-point/animate-text es de terceros, no auditada: no instalar sin auditoría.
 actualizado: 2026-09-28 -> 93ab289 (vigía, Mand. XVI; merge de 3 vías, se conservan los cambios de «modificado»; el autor sumó el modo «plugin», que acá no se usa)
+separado: lo propio vive en NOTA-LOCAL.md; se actualiza con `~/.claude/scripts/skill-externa actualizar <carpeta> <sha>`, sin fusión a mano
+actualizado: 2026-10-06 93ab289 -> 9c7ff59 (skill-externa: re-copia + lo propio, sin fusión a mano)

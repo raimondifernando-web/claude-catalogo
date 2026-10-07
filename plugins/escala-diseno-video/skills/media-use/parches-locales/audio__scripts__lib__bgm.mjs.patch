@@ -1,0 +1,24 @@
+--- a/audio/scripts/lib/bgm.mjs
++++ b/audio/scripts/lib/bgm.mjs
+@@ -40,9 +40,19 @@
+ // actually installs. `-m pip` also guarantees the packages land in the SAME
+ // interpreter pyOk() probes — a bare `pip`/`pip3` could resolve to a
+ // different Python installation than `python3` if more than one is on PATH.
++// PARCHE LOCAL (2026-09-27 — ver ORIGEN.txt): el original corría
++// `python -m pip install -q <deps>` sin versión fija, en silencio y sobre el
++// Python del sistema. Neutralizado: no instala nada; avisa qué falta y devuelve
++// false, así el flujo cae al mensaje `disabled` de abajo en vez de instalar.
++// Original: pythonInvocation(["-m", "pip", "install", "-q", ...deps]) + spawnSync.
+ function pipInstall(deps) {
+-  const { cmd, args } = pythonInvocation(["-m", "pip", "install", "-q", ...deps]);
+-  return spawnSync(cmd, args, { stdio: "ignore" }).status === 0;
++  console.error(
++    `[media-use/bgm] Faltan paquetes de Python: ${deps.join(" ")}. ` +
++      "No se instalan solos: crealos en un venv dedicado con versiones fijas " +
++      "(ej. python3 -m venv ~/.venvs/hf-bgm && ~/.venvs/hf-bgm/bin/pip install <paquete>==<versión>) " +
++      "y corré con ese venv activado (el script usa el primer `python3` del PATH).",
++  );
++  return false;
+ }
+ 
+ // ── retrieval (HeyGen music library) ──────────────────────────────────────────

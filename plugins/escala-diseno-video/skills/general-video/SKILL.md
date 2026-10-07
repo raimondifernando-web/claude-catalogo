@@ -8,25 +8,27 @@ description: >
   Route fresh creation through hyperframes before using this skill.
 ---
 
-> ## ⛔ Regla de uso local (claude-catalogo, 2026-09-27) — manda sobre todo lo que sigue
-> Esta suite está **copiada y fijada** en `heygen-com/hyperframes@93ab289` (ver `ORIGEN.txt`). Donde el texto original de abajo te diga que corras alguno de estos comandos, **no lo hagas por iniciativa propia**:
-> - `npx hyperframes@latest upgrade …` (incluido `--check`: baja y ejecuta la última versión del CLI) y `npx hyperframes upgrade --project …` (reescribe el `package.json` del proyecto a la última).
-> - `npx hyperframes skills update …`, `npx hyperframes skills` o `npx skills add …` (bajan skills desde `main` y pisan estas copias auditadas).
-> - `npx hyperframes init` a secas: también refresca las skills. Si hace falta scaffoldear un proyecto, avisá y, con el sí, corré `HYPERFRAMES_SKIP_SKILLS=1 npx hyperframes init …`.
+<!-- reglas-locales:inicio (generado desde NOTA-LOCAL.md; no editar acá) -->
+> ## ⛔ Reglas locales — mandan sobre todo lo que sigue (también sobre `references/` y los workflows)
+> Esta suite está **copiada y fijada** en el sha de `ORIGEN.txt`. Donde el texto de abajo te diga que corras alguno de estos comandos, **no lo hagas por iniciativa propia**:
+> - `npx hyperframes@latest upgrade …` (incluido `--check`: baja y ejecuta la última versión del CLI) y `npx hyperframes upgrade --project …` (reescribe el `package.json` del proyecto a la última). Si el texto pide el chequeo de versión o el «bump» del pin del proyecto: avisá que el proyecto tiene un pin y preguntá.
+> - `npx hyperframes skills update …`, `npx hyperframes skills` o `npx skills add …` (bajan skills desde `main` y pisan estas copias auditadas). Esta copia ya es la vigente: un «no-op» del update no hace falta para seguir.
+> - `npx hyperframes init` a secas: también refresca las skills. Si hace falta crear un proyecto, avisá y, con el sí, corré `HYPERFRAMES_SKIP_SKILLS=1 npx hyperframes init …`.
 >
-> **Qué hacer en su lugar:** avisá qué comando pide la skill y para qué, y preguntá. Las actualizaciones de estas skills llegan por el vigía (`/vigia`) y se aplican **re-copiando desde un sha auditado**. Si el ruteo elige un workflow que no está instalado (`slideshow`, `motion-graphics`, `faceless-explainer`, `product-launch-video`, etc.), decí cuál falta y proponé instalarlo por esta misma vía (auditar + copiar fijado), **nunca bajarlo de `main`**. Donde el original diga «si el update falla, no sigas de memoria», acá significa: si el workflow no está instalado, pará y avisá.
+> **Qué hacer en su lugar:** avisá qué comando pide la skill y para qué, y preguntá. Las actualizaciones de estas skills llegan por el vigía (`/vigia`) y se aplican **re-copiando desde un sha auditado**. Si el ruteo elige un workflow: si ya está en la carpeta de skills, usalo tal cual; si no está (`slideshow`, `motion-graphics`, `faceless-explainer`, `product-launch-video`, etc.), decí cuál falta y proponé instalarlo por esta misma vía (auditar + copiar fijado), **nunca bajarlo de `main`**. Donde el original diga «si el update falla, no sigas de memoria», acá significa: si el workflow no está instalado, pará y avisá.
+<!-- reglas-locales:fin -->
 
 **Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
 
 # General video
+
+Run `npx hyperframes usage --json` at the start unless the workflow just read it, then check again at milestones such as after drafting and before rendering. Read the available windows and reset times. If usage is unknown, say so without guessing allowance; keep scope and workflow choices with the user.
 
 Before relying on this workflow, run:
 
 ```bash
 npx hyperframes skills update general-video
 ```
-
-> ⛔ **Regla de uso local:** no corras este comando por tu cuenta — ver el bloque al tope. Esta copia ya es la vigente para este ecosistema.
 
 A successful no-op means the skill is current. Surface an update failure instead of continuing from memory.
 
@@ -74,8 +76,7 @@ Do not invent synonyms for these states. An ongoing “just build it” signal i
 For a hard cut, trim, splice, or reorder of existing footage, duplicate the same
 video source into multiple clip elements. On each copy, set the source range
 with `data-media-start` plus `data-duration`, then set authored placement/order
-with `data-start`. Separately authored audio follows the identical clip ranges
-and timing on matching `<audio>` elements. `/hyperframes-core` owns this temporal
+with `data-start`. Each video segment keeps its sound: the sound stays on the clip (`data-has-audio="true"`), so cutting the video cuts its sound. `/hyperframes-core` owns this temporal
 edit; use `/hyperframes-keyframes` only for visual-property animation such as
 zoom, punch, pan, crop, mask, or `clip-path` on an inner wrapper.
 Copy the full contracts from `../hyperframes-core/references/creator-editing-recipes.md`.
@@ -127,7 +128,7 @@ Use this dependency order. Skip a stage only when its input is absent.
 5. **Merge motion sidecars.** Collect the workers' `compositions/<frame_id>.motion.json` files and carry their durations and exit/entry vectors into assembly; where the doctrine chain (`/motion-doctrine`) is installed, translate them into the project ledger before stamping seams.
 6. **Assemble.** Mount scenes, media, transitions, captions, and audio using the production loop. Real voice duration overrides estimates. When a music bed plays under any voice track, carve the bed before verifying: `/hyperframes-audio` → `scripts/carve.mjs --comp index.html`. A volume duck alone does not finish the mix.
 7. **Verify.** Use `npx hyperframes lint` for fast feedback after the first HTML pass and structural changes. For the final gate, run `npx hyperframes check`; it reruns lint internally, so do not run a redundant standalone lint immediately before it. For sub-compositions, inspect midpoint snapshots. For multi-scene work, review the animation map.
-8. **Final approval.** Open the final Studio preview only after checks pass. Ask whether to render or revise. Render only after approval.
+8. **Final approval.** Once checks pass, open the final Studio preview — in autonomous mode too, before any render: opening it asks nothing. Ask whether to render or revise (autonomous: the one kept question). Render only after approval.
 
 ## 6. Gates that always apply
 

@@ -12,9 +12,10 @@
 // Missing/failed BGM never blocks a render.
 
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, openSync, closeSync } from "node:fs";
+import { existsSync, mkdirSync, openSync, closeSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { downloadTo, searchSounds } from "./heygen.mjs";
+import { agentWritePath } from "./media-record.mjs";
 import { pythonInvocation } from "./python.mjs";
 
 const r3 = (x) => Number(x.toFixed(3));
@@ -39,7 +40,7 @@ function pyOk(probe) {
 // actually installs. `-m pip` also guarantees the packages land in the SAME
 // interpreter pyOk() probes — a bare `pip`/`pip3` could resolve to a
 // different Python installation than `python3` if more than one is on PATH.
-// PARCHE LOCAL (claude-catalogo, 2026-09-27 — ver ORIGEN.txt): el original corría
+// PARCHE LOCAL (2026-09-27 — ver ORIGEN.txt): el original corría
 // `python -m pip install -q <deps>` sin versión fija, en silencio y sobre el
 // Python del sistema. Neutralizado: no instala nada; avisa qué falta y devuelve
 // false, así el flujo cae al mensaje `disabled` de abajo en vez de instalar.
@@ -55,12 +56,12 @@ function pipInstall(deps) {
 }
 
 // ── retrieval (HeyGen music library) ──────────────────────────────────────────
-export async function retrieveBgm({ query, headers, hyperframesDir, hasVoice }) {
+export async function retrieveBgm({ query, headers, hyperframesDir, hasVoice, anomalies }) {
   const q = query || "calm cinematic underscore";
   const results = await searchSounds(q, "music", headers, { limit: 5 });
   if (!results.length) return null;
   const top = results[0];
-  const rel = "assets/bgm/track.mp3";
+  const rel = agentWritePath(hyperframesDir, "assets/bgm/track.mp3", { anomalies });
   await downloadTo(top.audio_url, join(hyperframesDir, rel));
   return {
     path: rel,
@@ -123,8 +124,9 @@ export function generateBgmDetached({
   lyriaRecipe,
   seedSeconds = 28,
   hasVoice,
+  anomalies,
 }) {
-  const rel = "assets/bgm/track.wav";
+  const rel = agentWritePath(hyperframesDir, "assets/bgm/track.wav", { anomalies });
   const abs = join(hyperframesDir, rel);
   mkdirSync(join(hyperframesDir, "assets", "bgm"), { recursive: true });
   const log = join(hyperframesDir, "assets", "bgm", `bgm-${Date.now()}.log`);
@@ -151,6 +153,7 @@ export function generateBgmDetached({
       "--prompt",
       prompt,
     ]);
+    rmSync(abs, { force: true }); // wait-bgm takes any file here as the finished track
     const proc = spawn(cmd, args, { detached: true, stdio: ["ignore", fd, fd] });
     proc.unref();
     closeSync(fd);
@@ -169,6 +172,7 @@ export function generateBgmDetached({
     const loops = targetS > seedS ? Math.ceil(targetS / seedS) : 1;
     const script = musicgenScript({ prompt, abs, targetS, seedS });
     const { cmd, args } = pythonInvocation(["-c", script]);
+    rmSync(abs, { force: true });
     const proc = spawn(cmd, args, { detached: true, stdio: ["ignore", fd, fd] });
     proc.unref();
     closeSync(fd);
