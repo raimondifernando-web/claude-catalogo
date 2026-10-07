@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.22.3 — 2026-10-07
+- **«Poner todo al día» deja huashu-design listo para exportar a PDF, PPTX y video:** instala sus librerías cuando cambia el paquete y el navegador interno con el que exporta (con tiempo límite y una segunda forma de bajarlo, verificada contra Google, si el instalador se cuelga). La primera vez baja unos 300 MB. Además, la puesta al día automática vuelve a instalar las skills oficiales de diseño de interfaces y de crear skills (en 0.21.6 solo lo hacía la corrida a mano).
+
 ## 0.22.2 — 2026-10-07
 - **Numerar sesiones también sin grupo:** al arrancar, la sesión nueva toma el número siguiente de la serie aunque tus sesiones no estén en ningún grupo de la barra lateral, o aunque alguna haya cambiado de grupo: la serie se arma por carpeta. Además respeta los ceros adelante y el separador que uses («PM - Estudio . 03» → «PM - Estudio . 04»).
 
