@@ -705,3 +705,12 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Superficie nueva | Ninguna: no hay código ejecutable nuevo en las skills (un único `.html` de plantilla en `ad-creative`), ni hosts nuevos, ni permisos nuevos. Cambia el comportamiento de `spec-driven-development` (frena el turno tras escribir la especificación y espera aprobación): solo dentro de esa skill. |
 | Límites | Las skills de video (`hyperframes`) y `notebooklm` NO se tocan en esta publicación: llevan texto propio del catálogo y se fusionan a mano; `notebooklm` sigue fijada en 0.8.3 para el cliente. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 |
+
+### 2026-10-06 · oh-my-claudecode-fixed 0.12.2 (copia limpia, sin nombres de clientes)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | El plugin pasa del fork `raimondifernando-web/oh-my-claudecode` @4805eca a una copia independiente (no fork) `raimondifernando-web/oh-my-claudecode-fixed` @1307df6, rama `security-fixed`. El fork viejo nombraba a un cliente en un comentario de `scripts/persistent-mode.mjs`. |
+| Contenido | Mismo original auditado (`Yeachan-Heo/oh-my-claudecode` @9fd35ec, MIT, >5K★) + los mismos 2 arreglos de seguridad. `git diff 4805eca 1307df6`: 1 línea, solo el comentario. 0 nombres de clientes en el árbol. |
+| Superficie nueva | Ninguna: mismo código ejecutable, mismos hooks, mismos hosts. |
+| Límites | El fork viejo se borra recién cuando `estable` incluya este cambio (≥48 h): antes rompería las instalaciones. Su commit queda en el historial público de este catálogo; borrarlo del todo de GitHub requiere un pedido a soporte. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 |
