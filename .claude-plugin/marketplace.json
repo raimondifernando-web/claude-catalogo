@@ -9,7 +9,7 @@
       "name": "base-segura",
       "source": "./plugins/base-segura",
       "description": "Base segura (L1): skills transversales (incluye humanizalo: que tus textos no suenen a IA, y modo-directo: respuestas del largo que corresponde) + auditor de skills externas + academy-guide (te sugiere cursos oficiales cuando aprendés a usar Claude) + agentes básicos + plantillas de CLAUDE.md. Día 1 para cualquier empresa.",
-      "version": "0.13.8",
+      "version": "0.13.9",
       "category": "productivity",
       "tags": [
         "l1",
@@ -63,7 +63,7 @@
       "name": "escala-diseno-video",
       "source": "./plugins/escala-diseno-video",
       "description": "Escala de diseño y video (L4): presentaciones, animaciones y videos cortos, prototipos de pantallas, infografías y arte generativo. huashu-design te muestra 3 direcciones antes de hacer nada; el set de video de HyperFrames viene sin actualizaciones solas (la telemetría se apaga con dos variables). 20 skills. Recomendado junto con base-segura.",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "category": "design",
       "tags": [
         "l4",
@@ -348,7 +348,7 @@
       "name": "rubro-marketing",
       "source": "./plugins/rubro-marketing",
       "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (37 skills y 1 agente: marketing-analyst, que mide qué canal trae clientes y cuánto cuestan). Requiere base-segura.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "productivity",
       "tags": [
         "l2",

@@ -1,5 +1,8 @@
 # rubro-marketing
 
+## 0.2.2 — 2026-10-07
+- 5 skills al día con su autor (v2.11.18): `ads`, `ai-seo`, `launch`, `programmatic-seo` y `site-architecture` suman guías nuevas (plataformas para armar sitios, migraciones, revisión antes de lanzar un sitio, WebMCP). Solo texto.
+
 ## 0.2.1 — 2026-10-06
 - Sincronizadas skills desde ~/.claude/skills.
 

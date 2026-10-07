@@ -1,5 +1,8 @@
 # escala-diseno-video — qué cambia para vos
 
+## 0.1.6 — 2026-10-07
+- `hyperframes-animation` al día con su autor: cómo hacer cortes de cámara y luz de relleno en escenas 3D, y cómo renderizar sin placa de video. Solo texto.
+
 ## 0.1.4 — 2026-09-28
 - **Corrección importante:** para apagar la telemetría de HyperFrames alcanza con `HYPERFRAMES_NO_TELEMETRY=1`. La versión anterior pedía además `DO_NOT_TRACK=1`, pero Claude Code también lee esa variable, y con ella deja de funcionar **Remote Control**: no ves ni manejás tus sesiones desde el celular. **Si la cargaste, sacala** del bloque `env` de `~/.claude/settings.json` y reabrí la app.
 

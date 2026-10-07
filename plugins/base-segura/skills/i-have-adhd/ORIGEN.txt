@@ -1,3 +1,3 @@
-origen: github:ayghri/i-have-adhd//skills/i-have-adhd@4c76175b17421d61babfc35c10ab07604ef578d0
+origen: github:ayghri/i-have-adhd//skills/i-have-adhd@723af7d (actualizado 2026-10-07 por el vigía; antes 4c76175)
 licencia: MIT · 53K estrellas · leída entera 2026-10-03 (puro texto; solo se copió SKILL.md + LICENSE, NO hooks/scripts/plugins del repo)
 parche local: 1 línea al final de SKILL.md que apunta a NOTA-LOCAL.md → re-aplicar al actualizar
