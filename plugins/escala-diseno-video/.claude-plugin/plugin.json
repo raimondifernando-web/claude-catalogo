@@ -1,6 +1,6 @@
 {
   "name": "escala-diseno-video",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Capa L4, para hacer piezas visuales con Claude: presentaciones, animaciones y videos, prototipos de pantallas, infografías y arte generativo. 20 skills: huashu-design (estudio de diseño: te muestra 3 direcciones antes de hacer nada), el set de video de HyperFrames (10, sin actualizaciones solas; la telemetría se apaga con dos variables, ver requisitos.md), estilo-de-marca, sistemas de diseño de UI (ui-ux-pro-max, ui-design-system, components-build, frontend-ui-engineering) las de arte y gráfica de Anthropic (canvas-design, algorithmic-art, slack-gif-creator) y video-content-strategist (estrategia de video para redes y YouTube). Pedile a Claude: «armame una presentación de X», «animá esto», «prototipá esta pantalla».",
   "author": {
     "name": "Fernando Raimondi"

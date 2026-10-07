@@ -21,8 +21,8 @@ fi
 local RES="$CC/metodo/al-dia.resultado"; mkdir -p "$CC/metodo"
 if [ -n "$BUZON" ] && ! [[ $BUZON =~ ^[A-Za-z0-9-]+/[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; then echo "✗ El nombre del buzón no es válido. Mandale esta captura a Fernando."; return 1; fi
 local falta=() paquetes=() nuevos=()
-N=""; T=""; LK=""
-trap 'rm -f "${N:-}" "${T:-}"; [ -n "${LK:-}" ] && rm -rf "$LK"' EXIT
+N=""; T=""; LK=""; W=""
+trap 'rm -f "${N:-}" "${T:-}"; [ -n "${W:-}" ] && rm -rf "$W"; [ -n "${LK:-}" ] && rm -rf "$LK"' EXIT
 # Una sola puesta al día a la vez: la automática ya tomó el candado (al-dia-auto.sh); la manual lo toma acá.
 if [ $AUTO -eq 0 ]; then
   local L="$CC/metodo/al-dia.corriendo" P
@@ -241,6 +241,117 @@ if [ -n "$AGB" ] && [ -x "$AGB" ]; then
     || falta+=("Antigravity (la firma no es de Google: no lo uses y avisale a Fernando)")
 fi
 
+# 5h. huashu-design listo para exportar a PDF, PPTX y video (solo si el paquete escala-diseno-video está prendido).
+#     También en --auto: no abre ventanas y corre bajo el mismo candado. Nada de esto corta el resto de la puesta al día.
+#     (1) Sus librerías: `npm ci --ignore-scripts` (manda el lockfile; sin scripts de instalación de terceros), solo cuando
+#         cambia la versión del paquete o faltan. (2) El Chromium que usa Playwright para exportar: si ya está, no se toca;
+#         si falta, el instalador de Playwright (el del lockfile, por ruta directa) con tope de 8 minutos (en la Mac de un
+#         cliente se colgó al 100% del zip) y, si vence o falla, plan B: el MISMO zip, de la dirección que da el propio
+#         Playwright, preparado en una carpeta aparte y movido de una vez a su lugar.
+#     Verificación del plan B: Chrome for Testing NO viene firmado por Google ante Apple (firma «ad hoc», sin Team ID;
+#     verificado 2026-10-07 sobre el que baja Playwright: `codesign -dv` → Signature=adhoc, TeamIdentifier=not set, y
+#     `codesign --verify --deep --strict` falla aun en el original), así que la firma no sirve para decidir. Lo que se exige:
+#     que la descarga termine, solo por https, en el MISMO objeto del depósito de Google
+#     (storage.googleapis.com/chrome-for-testing-public/<versión>/<mac>/<zip>, al que redirige cdn.playwright.dev), que su
+#     md5 sea el que publica Google para ese objeto, `unzip -t`, y que adentro esté el programa. Es el mismo nivel de
+#     confianza que el instalador de Playwright (https, sin huella), más el objeto fijo y el md5.
+#     Si algo no da, no queda nada a medias y sale una línea en el resumen. Tras 2 fallas del plan B para la misma
+#     revisión no se reintenta más (no se bajan 170 MB por día): queda la línea hasta que cambie la versión.
+local HB=escala-diseno-video HD="" HV="" HE="$CC/al-dia/huashu-npm.version" PWB="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/Library/Caches/ms-playwright}"
+local TOPE_PW="${AL_DIA_TOPE_PW:-480}"; [[ $TOPE_PW =~ ^[0-9]+$ ]] || TOPE_PW=480
+# Corre un comando con tiempo límite (macOS no trae «timeout»). Si vence, lo frena con todos sus procesos hijos: 124.
+matar_arbol() { local h; kill -STOP "$1" 2>/dev/null; for h in $(pgrep -P "$1" 2>/dev/null); do matar_arbol "$h"; done; kill -9 "$1" 2>/dev/null; }
+con_tope() {
+  local tope=$1 s=0 pid; shift
+  "$@" </dev/null & pid=$!
+  while kill -0 "$pid" 2>/dev/null && [ $s -lt "$tope" ]; do sleep 1; s=$((s+1)); done
+  if kill -0 "$pid" 2>/dev/null; then matar_arbol "$pid"; wait "$pid" 2>/dev/null; return 124; fi
+  wait "$pid"
+}
+if printf '%s\n' "$lista" | grep -A3 -E "❯ $HB@$CAT[[:space:]]*$" | grep -q "✔ enabled"; then
+  # Carpeta y versión del paquete instalado para el usuario, tal como las registra Claude Code; dentro de su caché.
+  { read -r HD; read -r HV; } < <(/usr/bin/python3 -c 'import json,sys; es=json.load(open(sys.argv[1]))["plugins"][sys.argv[2]]; e=([x for x in es if x.get("scope")=="user"] or es)[0]; print(e["installPath"]); print(e["version"])' "$IP" "$HB@$CAT" 2>/dev/null)
+  case "$HD" in "$CC/plugins/cache/$CAT/$HB/"*) HD="$HD/skills/huashu-design";; *) HD="";; esac
+  case "$HD$HV" in *..*) HD="";; esac
+  local PWC="$HD/node_modules/playwright-core/cli.js" BJ="$HD/node_modules/playwright-core/browsers.json"
+  if [ -z "$HD" ] || [ ! -f "$HD/package-lock.json" ]; then falta+=("huashu-design (no encuentro su carpeta: avisá a Fernando)")
+  elif ! command -v node >/dev/null 2>&1; then :   # sin Node ya avisó 5e
+  elif ! node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 18 ? 0 : 1)' 2>/dev/null; then
+    falta+=("huashu-design necesita Node 18 o más (avisá a Fernando)")
+  else
+    # (1) Librerías, cuando cambia la versión del paquete (o se borraron)
+    if [ "$(cat "$HE" 2>/dev/null)" != "$HV" ] || [ ! -f "$BJ" ] || [ ! -f "$PWC" ]; then
+      if ( cd "$HD" && con_tope 300 npm ci --ignore-scripts --no-audit --no-fund >/dev/null 2>&1 ) && [ -f "$BJ" ] && [ -f "$PWC" ]; then
+        mkdir -p "$CC/al-dia" && printf '%s\n' "$HV" > "$HE"
+      else falta+=("librerías de huashu-design para exportar (avisá a Fernando)"); fi
+    fi
+    # (2) Chromium y chromium-headless-shell, en la revisión que pide la versión de Playwright del lockfile
+    local RC="" RH="" RF="" b rev dir hace=() loc url esp fin md5 ok f st INT nI
+    [ -f "$BJ" ] && read -r RC RH RF < <(node -e 'const b=require(process.argv[1]).browsers, g=n=>(b.find(x=>x.name===n)||{}).revision||"-"; console.log(g("chromium"), g("chromium-headless-shell"), g("ffmpeg"))' "$BJ" 2>/dev/null)
+    if [ ! -f "$BJ" ] || [ ! -f "$PWC" ]; then :   # sin librerías: ya quedó la línea de arriba
+    elif ! [[ ${RC:-} =~ ^[0-9]+$ && ${RH:-} =~ ^[0-9]+$ && ${RF:-} =~ ^[0-9]+$ ]] || [ "${PWB#/}" = "$PWB" ]; then
+      falta+=("Chromium para exportar (avisá a Fernando)")
+    else
+      for b in chromium:$RC chromium-headless-shell:$RH ffmpeg:$RF; do
+        dir="$PWB/$(printf '%s' "${b%%:*}" | tr - _)-${b#*:}"
+        [ -f "$dir/INSTALLATION_COMPLETE" ] || hace+=("${b%%:*}")
+      done
+      if [ ${#hace[@]} -gt 0 ]; then
+        # Plan A: el instalador del Playwright del lockfile, con tope
+        ( cd "$HD" && con_tope "$TOPE_PW" node "$PWC" install chromium chromium-headless-shell >/dev/null 2>&1 )
+        for b in ${hace[@]+"${hace[@]}"}; do
+          case $b in chromium) rev=$RC;; ffmpeg) rev=$RF;; *) rev=$RH;; esac
+          dir="$PWB/$(printf '%s' "$b" | tr - _)-$rev"; INT="$CC/al-dia/pw-$b-$rev.intentos"
+          if [ -f "$dir/INSTALLATION_COMPLETE" ]; then rm -f "$INT"; continue; fi
+          # El grabador de video de Playwright (lo usa recordVideo) sale de la CDN de Microsoft, sin huella publicada:
+          # sin plan B; si el instalador no lo dejó, una línea propia (los PDF y PPTX andan igual).
+          if [ "$b" = ffmpeg ]; then falta+=("grabador de video de huashu-design (avisá a Fernando)"); continue; fi
+          nI=$(cat "$INT" 2>/dev/null); [[ ${nI:-} =~ ^[0-9]+$ ]] || nI=0
+          if [ "$nI" -ge 2 ]; then falta+=("Chromium para exportar (avisá a Fernando)"); break; fi
+          mkdir -p "$CC/al-dia" && echo $((nI+1)) > "$INT"
+          # Plan B: la dirección y la carpeta las da Playwright (nunca escritas a mano)
+          ok=0; loc=""; url=""; esp=""; st=""
+          W=$(mktemp -d) || { falta+=("Chromium para exportar (avisá a Fernando)"); break; }
+          ( cd "$HD" && con_tope 60 node "$PWC" install --dry-run "$b" ) > "$W/dry" 2>/dev/null
+          { read -r loc; read -r url; } < <(awk -v want="$b" '
+            /\(playwright [a-z_-]+ v[0-9]+\)$/ { match($0, /\(playwright [a-z_-]+ v/); cur = (substr($0, RSTART+12, RLENGTH-14) == want); next }
+            cur && /^  Install location:/ { sub(/^  Install location:[ ]+/, ""); l = $0 }
+            cur && /^  Download url:/     { sub(/^  Download url:[ ]+/, "");     u = $0 }
+            END { if (l != "" && u != "") { print l; print u } }' "$W/dry")
+          # Solo builds de Chrome for Testing; la descarga tiene que terminar en ESE objeto de Google, no en otro
+          if [[ $url =~ ^https://cdn\.playwright\.dev/builds/cft/[0-9.]+/mac-(arm64|x64)/chrome(-headless-shell)?-mac-(arm64|x64)\.zip$ ]]; then
+            esp="https://storage.googleapis.com/chrome-for-testing-public/${url#https://cdn.playwright.dev/builds/cft/}"
+          fi
+          if [ "$loc" = "$dir" ] && [ -n "$esp" ] \
+             && fin=$(curl -q --globoff -fsSL --proto '=https' --proto-redir '=https' --max-redirs 3 --max-time 900 -D "$W/h" -o "$W/z.zip" -w '%{url_effective}' "$url") \
+             && [ "$fin" = "$esp" ] \
+             && md5=$(awk 'BEGIN{RS="\r?\n\r?\n"} NF{b=$0} END{print b}' "$W/h" | tr -d '\r' | grep -i '^x-goog-hash: md5=' | tail -1 | sed 's/^[^=]*=//') && [ -n "$md5" ] \
+             && [ "$(/usr/bin/openssl dgst -md5 -binary "$W/z.zip" | /usr/bin/base64)" = "$md5" ] \
+             && con_tope 300 /usr/bin/unzip -tqq "$W/z.zip" >/dev/null 2>&1; then
+            # Se prepara aparte (misma carpeta de Playwright) y se mueve de una vez: nunca queda algo a medias en su lugar
+            st="$PWB/.al-dia-$$-$b"; rm -rf "$st"
+            if mkdir -p "$st" && con_tope 300 /usr/bin/unzip -qq "$W/z.zip" -d "$st" >/dev/null 2>&1; then
+              case $b in
+                chromium) for f in "$st"/chrome-mac-*/"Google Chrome for Testing.app"/Contents/MacOS/"Google Chrome for Testing"; do [ -x "$f" ] && ok=1; done;;
+                *)        for f in "$st"/chrome-headless-shell-mac-*/chrome-headless-shell; do [ -x "$f" ] && ok=1; done;;
+              esac
+            fi
+            if [ $ok -eq 1 ] && : > "$st/INSTALLATION_COMPLETE"; then
+              # lo que haya dejado a medias el plan A (caché de Playwright, sin marcador: no son datos tuyos)
+              [ ! -e "$dir" ] || { mv "$dir" "$dir.viejo.$$" 2>/dev/null && rm -rf "$dir.viejo.$$"; }
+              [ ! -e "$dir" ] && mv "$st" "$dir" 2>/dev/null
+            fi
+            rm -rf "$st"
+          fi
+          rm -rf "$W"; W=""
+          if [ -f "$dir/INSTALLATION_COMPLETE" ]; then rm -f "$INT"
+          else falta+=("Chromium para exportar (avisá a Fernando)"); break; fi
+        done
+      fi
+    fi
+  fi
+fi
+
 # 5c. Datos de uso de HyperFrames: apagados (solo esa variable; nunca una general como DO_NOT_TRACK)
 if [ -f "$S" ]; then
   plutil -extract env json -o /dev/null "$S" >/dev/null 2>&1 || plutil -insert env -dictionary "$S" 2>/dev/null
@@ -255,6 +366,13 @@ fi
 claude plugin marketplace list 2>/dev/null | grep -qF claude-plugins-official || claude plugin marketplace add anthropics/claude-plugins-official >/dev/null 2>&1
 claude plugin list 2>/dev/null | grep -qE "❯ figma@claude-plugins-official[[:space:]]*$" || claude plugin install figma@claude-plugins-official >/dev/null 2>&1
 claude plugin list 2>/dev/null | grep -A3 -E "❯ figma@claude-plugins-official[[:space:]]*$" | grep -q "✔ enabled" || falta+=("figma")
+
+# 5d-bis. Skills oficiales de Anthropic que antes viajaban copiadas en el catálogo: una sola pieza por función (Mand. XXVI).
+#         Mismo patrón que figma. Si ya están instaladas y prendidas, no se toca nada.
+for P in frontend-design skill-creator; do
+  claude plugin list 2>/dev/null | grep -qE "❯ $P@claude-plugins-official[[:space:]]*$" || claude plugin install "$P@claude-plugins-official" >/dev/null 2>&1
+  claude plugin list 2>/dev/null | grep -A3 -E "❯ $P@claude-plugins-official[[:space:]]*$" | grep -q "✔ enabled" || falta+=("$P")
+done
 
 # 6. Reglas del método en la ficha global (entre marcas; lo tuyo no se toca)
 local RP; RP=$(ls -d "$CC"/plugins/cache/claude-catalogo/metodo/*/scripts/reglas.py 2>/dev/null | sort -V | tail -1)
