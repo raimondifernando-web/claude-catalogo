@@ -45,6 +45,74 @@ def dir_vigia():
     return base / "vigia"
 
 
+def dir_config_metodo():
+    propia = os.environ.get("CLAUDE_CONFIG_DIR", "").strip()
+    base = Path(propia).expanduser() if propia else Path.home() / ".claude"
+    return base / "metodo"
+
+
+def ruta_avisos():
+    return dir_config_metodo() / "avisos.json"
+
+
+_CWD_SESION = None
+
+
+def carpeta_sesion():
+    global _CWD_SESION
+    if _CWD_SESION is not None:
+        return _CWD_SESION
+    cwd = None
+    try:
+        if sys.stdin and not sys.stdin.isatty():
+            texto = sys.stdin.read()
+            if texto.strip():
+                datos = json.loads(texto)
+                if isinstance(datos, dict) and datos.get("cwd"):
+                    cwd = str(datos["cwd"]).strip()
+    except Exception:
+        pass
+    if not cwd:
+        try:
+            cwd = os.getcwd()
+        except Exception:
+            cwd = ""
+    _CWD_SESION = cwd
+    return _CWD_SESION
+
+
+def avisar_aca(clave, cwd=None):
+    try:
+        ruta = ruta_avisos()
+        if not ruta.is_file():
+            return True
+        try:
+            datos = json.loads(ruta.read_text(encoding="utf-8"))
+        except Exception:
+            return True
+        if not isinstance(datos, dict) or clave not in datos:
+            return True
+        carpetas = datos[clave]
+        if not isinstance(carpetas, list):
+            return True
+        if not carpetas:
+            return False
+        sesion = cwd if cwd is not None else carpeta_sesion()
+        sesion_real = os.path.realpath(os.path.expanduser(sesion))
+        for item in carpetas:
+            if not isinstance(item, str):
+                continue
+            candidato = os.path.realpath(os.path.expanduser(item))
+            if sesion_real == candidato:
+                return True
+            prefijo = candidato if candidato.endswith(os.sep) else candidato + os.sep
+            if sesion_real.startswith(prefijo):
+                return True
+        return False
+    except Exception:
+        return True
+
+
 def parsear_fecha(valor):
     if not isinstance(valor, str) or not valor:
         return None
@@ -242,19 +310,21 @@ def queda_otro_interprete(posicion):
     return False
 
 
-def python_viejo(posicion):
+def python_viejo(posicion, cwd=None):
     """Python < 3.9: el detector no corre. Sale 1 para que la cadena pruebe el
     siguiente intérprete; si no queda ninguno, avisa (una vez por sesión)."""
     if not queda_otro_interprete(posicion):
-        emitir((
-            "⚠️ Vigía necesita Python 3.9+ (este es {}.{}); la búsqueda de novedades no corre.".format(*sys.version_info[:2]),
-            "El vigía de actualizaciones (plugin metodo) no corre porque Python es anterior a 3.9. "
-            "Si el usuario pregunta, ver requisitos.md del plugin metodo.",
-        ))
+        if avisar_aca("vigia", cwd=cwd):
+            emitir((
+                "⚠️ Vigía necesita Python 3.9+ (este es {}.{}); la búsqueda de novedades no corre.".format(*sys.version_info[:2]),
+                "El vigía de actualizaciones (plugin metodo) no corre porque Python es anterior a 3.9. "
+                "Si el usuario pregunta, ver requisitos.md del plugin metodo.",
+            ))
     return 1
 
 
 def principal():
+    cwd = carpeta_sesion()
     if apagado():
         return 0
     try:
@@ -262,7 +332,7 @@ def principal():
     except ValueError:
         posicion = len(CADENA)
     if sys.version_info < (3, 9):
-        return python_viejo(posicion)
+        return python_viejo(posicion, cwd=cwd)
 
     ahora = datetime.now(timezone.utc)
     lanzamientos = leer_lanzamientos()
@@ -295,7 +365,7 @@ def principal():
                 "⚠️ Vigía: no pude leer su estado ({}).".format(type(exc).__name__),
                 "El estado del vigía de actualizaciones está ilegible: ofrecé revisarlo con la skill `vigia`.",
             )
-    if mensaje:
+    if mensaje and avisar_aca("vigia", cwd=cwd):
         emitir(mensaje)
     return 0
 

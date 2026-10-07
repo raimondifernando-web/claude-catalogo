@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.22.1 — 2026-10-07
+- **Avisos de inicio solo en las carpetas que elijas:** si tenés muchos proyectos y no querés ver los mensajes del vigía o del buzón en todas las sesiones, ahora podés limitarlos con el archivo opcional `<config de Claude>/metodo/avisos.json` (por ejemplo `{"vigia": ["~/Proyectos/Tech"], "buzon": ["~/Proyectos/Consultoria-IA"]}`). En esas carpetas o en cualquiera de sus subcarpetas te avisa; en las demás no te distrae, aunque el detector de fondo del vigía sigue corriendo igual para mantener las novedades al día. Sin ese archivo, sigue funcionando como siempre.
+
 ## 0.22.0 — 2026-10-07
 - **Nombres prohibidos para cualquiera:** el control que frena la subida de clientes o personas a repositorios públicos o compartidos ya no depende de carpetas del autor. Ahora guarda tu lista en `<config de Claude>/metodo/nombres-prohibidos.txt`, con permisos solo para vos (600), y sumás nombres con `nombres-prohibidos agregar "<nombre>"` o pidiéndoselo a Claude. Si la lista no existe o está vacía, no te traba el push; y si el plugin se actualiza, el control busca solo la versión nueva. La regla 3 ahora le pide a Claude instalarlo antes de subir por primera vez un repositorio compartido.
 - **Skills externas fáciles de actualizar:** el actualizador de skills ajenas (`skill-externa`) ahora se invoca directo desde el paquete instalado sin rutas fijas a la máquina del autor. Te permite tener skills copiadas de otros repositorios manteniendo tus reglas en `NOTA-LOCAL.md` y parches de código, para actualizar a versiones nuevas del autor sin perder lo tuyo ni fusionar a mano.

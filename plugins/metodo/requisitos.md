@@ -69,6 +69,19 @@ avisa.
   Microsoft Store no sirve.
 - Sin Python, el vigía simplemente no hace nada: no rompe la sesión.
 
+## Avisos solo en algunas carpetas
+
+Si tenés muchos proyectos y no querés ver los avisos del vigía o del buzón en todos lados, podés limitarlos a las carpetas que te interesen con el archivo opcional `~/.claude/metodo/avisos.json` (en Windows, `%USERPROFILE%\.claude\metodo\avisos.json`; si usás `CLAUDE_CONFIG_DIR`, adentro de esa carpeta):
+
+```json
+{
+  "vigia": ["~/Proyectos/Tech"],
+  "buzon": ["~/Proyectos/Consultoria-IA"]
+}
+```
+
+Cada lista indica en qué carpetas (o adentro de cuáles) querés que avise. Si ponés una lista vacía `[]`, no avisa nunca; y si no existe el archivo o falta una clave, sigue avisando en todas como siempre. En el vigía, la búsqueda en segundo plano sigue corriendo igual para mantener las novedades al día aunque el aviso no se muestre en esa carpeta.
+
 ## El chequeo de seguridad mensual
 
 **Qué hace.** Una vez por mes, en segundo plano y sin que hagas nada, revisa los repositorios que anotaste: que los
