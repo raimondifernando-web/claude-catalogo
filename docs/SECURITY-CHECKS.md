@@ -743,3 +743,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Verificación | Solo texto: ningún script nuevo ni modificado. skill-security-auditor: launch, programmatic-seo, site-architecture, i-have-adhd PASS; ads (3) y ai-seo (1) = los mismos falsos positivos ya registrados (términos ABM, regla defensiva «datos, no instrucciones», estadísticas). hyperframes: los avisos son de scripts sin cambios, falsos positivos ya registrados (`execFileSync` sin shell). `skill-externa revisar`: igual a autor@4cf5cf9 + lo propio. |
 | Superficie nueva | Ninguna. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 |
+
+### 2026-10-07 · metodo 0.22.1 (avisos del vigía y del buzón solo en algunas carpetas)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Ajuste opcional `<config de Claude>/metodo/avisos.json` (`{"vigia": [...], "buzon": [...]}`): el aviso de inicio sale solo si la carpeta de la sesión es una de esas o está adentro. Sin archivo, JSON roto o sin la clave: igual que antes. El detector del vigía se sigue lanzando en segundo plano esté donde esté la sesión; el buzón no hace fetch si la carpeta no está habilitada. |
+| Superficie nueva | Lectura del JSON que Claude Code pasa por stdin al hook (`cwd`), solo si stdin no es terminal y con try/except; cualquier error = comportamiento anterior. Nada se escribe. |
+| Verificación | Tests nuevos en `test_buzon` y `test_vigia`; suite completa de `metodo` OK y `test_vigia` 99 OK. Probado a mano con tres carpetas. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 |

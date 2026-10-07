@@ -113,6 +113,68 @@ def ruta_config():
     return dir_config() / "buzon.json"
 
 
+def ruta_avisos():
+    return dir_config() / "avisos.json"
+
+
+_CWD_SESION = None
+
+
+def carpeta_sesion():
+    global _CWD_SESION
+    if _CWD_SESION is not None:
+        return _CWD_SESION
+    cwd = None
+    try:
+        if sys.stdin and not sys.stdin.isatty():
+            texto = sys.stdin.read()
+            if texto.strip():
+                datos = json.loads(texto)
+                if isinstance(datos, dict) and datos.get("cwd"):
+                    cwd = str(datos["cwd"]).strip()
+    except Exception:
+        pass
+    if not cwd:
+        try:
+            cwd = os.getcwd()
+        except Exception:
+            cwd = ""
+    _CWD_SESION = cwd
+    return _CWD_SESION
+
+
+def avisar_aca(clave, cwd=None):
+    try:
+        ruta = ruta_avisos()
+        if not ruta.is_file():
+            return True
+        try:
+            datos = json.loads(ruta.read_text(encoding="utf-8"))
+        except Exception:
+            return True
+        if not isinstance(datos, dict) or clave not in datos:
+            return True
+        carpetas = datos[clave]
+        if not isinstance(carpetas, list):
+            return True
+        if not carpetas:
+            return False
+        sesion = cwd if cwd is not None else carpeta_sesion()
+        sesion_real = os.path.realpath(os.path.expanduser(sesion))
+        for item in carpetas:
+            if not isinstance(item, str):
+                continue
+            candidato = os.path.realpath(os.path.expanduser(item))
+            if sesion_real == candidato:
+                return True
+            prefijo = candidato if candidato.endswith(os.sep) else candidato + os.sep
+            if sesion_real.startswith(prefijo):
+                return True
+        return False
+    except Exception:
+        return True
+
+
 def ruta_borrador():
     return dir_config() / "buzon-borrador.md"
 
@@ -570,6 +632,8 @@ def emitir(visible, contexto):
 
 
 def cmd_aviso(_args):
+    if not avisar_aca("buzon"):
+        return 0
     try:
         carpeta, yo = leer_config()
     except Apagado:

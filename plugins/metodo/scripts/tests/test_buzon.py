@@ -382,6 +382,57 @@ class TestHook(BaseBuzon):
         self.assertEqual(codigo, 0)
         self.assertEqual(error, "")
 
+    def test_hook_filtro_carpetas_sin_avisos_json_avisa(self):
+        self.configurar_los_dos()
+        self.mandar("acompanante", "uno", "a")
+        codigo, salida, _ = self.correr("cliente", "aviso")
+        self.assertEqual(codigo, 0)
+        datos = json.loads(salida)
+        self.assertIn("1 mensaje nuevo", datos["systemMessage"])
+
+    def test_hook_filtro_carpetas_otra_carpeta_no_emite_y_no_intenta_fetch(self):
+        self.configurar_los_dos()
+        self.mandar("acompanante", "uno", "a")
+        cfg_metodo = self.configs["cliente"] / "metodo"
+        cfg_metodo.mkdir(parents=True, exist_ok=True)
+        otra = self.tmp / "otra-carpeta"
+        otra.mkdir()
+        (cfg_metodo / "avisos.json").write_text(json.dumps({"buzon": [str(otra)]}), encoding="utf-8")
+        git(self.clones["cliente"], "remote", "set-url", "origin", "http://127.0.0.1:9/no-hay-red.git")
+        sesion = self.tmp / "sesion"
+        sesion.mkdir()
+        inicio = time.monotonic()
+        codigo, salida, _ = self.correr("cliente", "aviso", entrada=json.dumps({"cwd": str(sesion)}))
+        duracion = time.monotonic() - inicio
+        self.assertEqual(codigo, 0)
+        self.assertEqual(salida.strip(), "")
+        self.assertLess(duracion, 1.5)
+
+    def test_hook_filtro_carpetas_adentro_de_la_lista_avisa(self):
+        self.configurar_los_dos()
+        self.mandar("acompanante", "uno", "a")
+        cfg_metodo = self.configs["cliente"] / "metodo"
+        cfg_metodo.mkdir(parents=True, exist_ok=True)
+        carpeta_padre = self.tmp / "trabajo"
+        sesion = carpeta_padre / "subproyecto"
+        sesion.mkdir(parents=True)
+        (cfg_metodo / "avisos.json").write_text(json.dumps({"buzon": [str(carpeta_padre)]}), encoding="utf-8")
+        codigo, salida, _ = self.correr("cliente", "aviso", entrada=json.dumps({"cwd": str(sesion)}))
+        self.assertEqual(codigo, 0)
+        datos = json.loads(salida)
+        self.assertIn("1 mensaje nuevo", datos["systemMessage"])
+
+    def test_hook_filtro_carpetas_json_roto_avisa(self):
+        self.configurar_los_dos()
+        self.mandar("acompanante", "uno", "a")
+        cfg_metodo = self.configs["cliente"] / "metodo"
+        cfg_metodo.mkdir(parents=True, exist_ok=True)
+        (cfg_metodo / "avisos.json").write_text("{roto", encoding="utf-8")
+        codigo, salida, _ = self.correr("cliente", "aviso")
+        self.assertEqual(codigo, 0)
+        datos = json.loads(salida)
+        self.assertIn("1 mensaje nuevo", datos["systemMessage"])
+
     def test_hooks_json_tiene_el_buzon_sin_tocar_el_vigia(self):
         datos = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))
         inicio = datos["hooks"]["SessionStart"]

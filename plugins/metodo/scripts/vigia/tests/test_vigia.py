@@ -637,11 +637,11 @@ class TestAviso(ConHomeTemporal):
             },
         )
 
-    def correr_aviso(self, env_extra=None, ruta=AVISO_PY, path_extra=()):
+    def correr_aviso(self, env_extra=None, ruta=AVISO_PY, path_extra=(), entrada=None):
         env = entorno_hermetico(self.home, path_extra)
         env.update(env_extra or {})
         t0 = time.monotonic()
-        r = subprocess.run([sys.executable, str(ruta)], env=env, capture_output=True, text=True, timeout=30)
+        r = subprocess.run([sys.executable, str(ruta)], input=entrada, env=env, capture_output=True, text=True, timeout=30)
         return r, time.monotonic() - t0
 
     def test_apagado_por_archivo(self):
@@ -794,6 +794,25 @@ class TestAviso(ConHomeTemporal):
         self.assertEqual(r.stdout.strip(), "")  # primera vez: no hay nada que decir
         e = self.esperar_ultima_corrida()
         self.assertIsNotNone(e and e.get("ultima_corrida"), "el detector no arrancó desde la ruta con espacios")
+
+    def test_filtro_carpetas_vacio_no_emite_pero_lanza_detector(self):
+        self.estado_viejo()
+        self.escribir(".claude/metodo/avisos.json", {"vigia": []})
+        r, _ = self.correr_aviso()
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), "")
+        self.assertTrue((self.dir_vigia / "lanzamiento.json").exists())
+
+    def test_filtro_carpetas_incluida_emite(self):
+        self.estado_viejo()
+        proyecto = self.home / "proyectos" / "mi-app"
+        proyecto.mkdir(parents=True, exist_ok=True)
+        self.escribir(".claude/metodo/avisos.json", {"vigia": [str(self.home / "proyectos")]})
+        r, _ = self.correr_aviso(entrada=json.dumps({"cwd": str(proyecto)}))
+        self.assertEqual(r.returncode, 0)
+        salida = json.loads(r.stdout)
+        self.assertIn("3 novedad", salida["systemMessage"])
+        self.assertTrue((self.dir_vigia / "lanzamiento.json").exists())
 
 
 
