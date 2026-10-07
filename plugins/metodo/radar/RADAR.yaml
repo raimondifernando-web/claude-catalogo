@@ -1,6 +1,6 @@
 # RADAR.yaml — qué IA usar para cada cosa, con plan A, B y C. Lo lee `scripts/radar.py`.
 # Lo mantiene un PR automático (.github/workflows/radar.yml) que una persona aprueba; el RADAR.md se genera con `radar.py md`.
-actualizado: 2026-10-05
+actualizado: 2026-10-07
 nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual."
 categorias:
   - id: desarrollo
@@ -1048,4 +1048,4 @@ fuentes_auto:
       hash: 6f8205f4f93024d4
     google:
       url: "https://ai.google.dev/gemini-api/docs/deprecations"
-      hash: 621f84c1f3fa18cb
+      hash: c694825bf8d72ff9

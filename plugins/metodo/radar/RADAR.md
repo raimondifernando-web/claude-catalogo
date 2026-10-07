@@ -1,6 +1,6 @@
 # Radar de modelos
 
-> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-10-05**.
+> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-10-07**.
 > `[a verificar]` = dato de la investigación que todavía no se leyó de primera mano.
 
 Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B o el C.
