@@ -724,3 +724,13 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Superficie nueva | Ninguna propia. Del autor: pruebas internas y cambios de texto entre `93ab289` y `9c7ff59`. |
 | Límites | Las referencias del autor (`capability-menu.md`, `skill-lifecycle.md`, `design-picker.md`, `animate-text.md`) vuelven al original: sus reglas viven ahora en el bloque al tope de `SKILL.md`, que dice que manda también sobre esas referencias. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 |
+
+### 2026-10-07 · metodo 0.22.0 (nombres-prohibidos y skill-externa para el cliente)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Dos programas que ya usaba el ecosistema de origen pasan al paquete. `nombres-prohibidos`: control antes de cada push que frena nombres de clientes o personas en repos que ve otra gente; la lista vive en `<config de Claude>/metodo/nombres-prohibidos.txt` (600) y se suma con `agregar`. `skill-externa`: mantiene lo propio de una skill copiada en `NOTA-LOCAL.md` y `parches-locales/` para actualizar sin fusión a mano. La regla 3 suma una línea: instalar el control antes de la primera subida de un repo compartido. |
+| Origen | Propio (ecosistema de origen, 2026-10-06). Sin dependencias nuevas: Python 3 y git. |
+| Verificación | Tests nuevos con HOME, config y git aislados (`test_nombres_prohibidos`: lista 600 sin duplicados, palabra entera, lista vacía no traba, push a remoto local rechazado/aceptado; `test_skill_externa`: separar → revisar → actualizar). Suite completa de `metodo`: 217 OK. |
+| Superficie nueva | El pre-push que se instala en cada repo: ruta del script con `shlex.quote`; si la ruta ya no existe busca la versión instalada más nueva y, si no hay, deja pasar con aviso. Nunca imprime la lista. |
+| Límites | Sin lista, el control no frena nada (a propósito: no rompe el push de nadie). Si el repo usa `core.hooksPath`, no se instala solo y lo dice. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 |
