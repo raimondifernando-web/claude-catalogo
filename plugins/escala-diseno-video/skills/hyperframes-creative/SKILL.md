@@ -3,8 +3,10 @@ name: hyperframes-creative
 description: Non-animation creative direction for HyperFrames videos. Use for design spec (frame.md / design.md) handling, palettes, typography, narration, beat planning, audio-reactive visuals, composition patterns, and brand / style decisions. For atomic motion patterns and scene blueprints, use `hyperframes-animation`.
 ---
 
-> ## ⛔ Regla de uso local (claude-catalogo, 2026-09-27)
-> Copia fijada (ver `ORIGEN.txt`). Cuando una referencia diga `python3 -m http.server <puerto>` (p. ej. `references/design-picker.md`), corrélo **siempre con `--bind 127.0.0.1`** para no exponer la carpeta del proyecto a la red local: `python3 -m http.server 8723 --bind 127.0.0.1`. `scripts/package-loader.mjs` pide confirmación antes de bajar paquetes npm fijados: no setees `HYPERFRAMES_SKILL_BOOTSTRAP_DEPS=1` por tu cuenta.
+<!-- reglas-locales:inicio (generado desde NOTA-LOCAL.md; no editar acá) -->
+> ## ⛔ Reglas locales — mandan sobre todo lo que sigue (también sobre `references/`)
+> Copia fijada (ver `ORIGEN.txt`). Cuando una referencia diga `python3 -m http.server <puerto>` (p. ej. el paso 4 de `references/design-picker.md`), corrélo **siempre con `--bind 127.0.0.1`** para no exponer la carpeta del proyecto a la red local: `python3 -m http.server 8723 --bind 127.0.0.1`. `scripts/package-loader.mjs` pide confirmación antes de bajar paquetes npm fijados: no setees `HYPERFRAMES_SKILL_BOOTSTRAP_DEPS=1` por tu cuenta.
+<!-- reglas-locales:fin -->
 
 **Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
 
@@ -60,10 +62,10 @@ For motion patterns, scene blueprints, transitions, and CSS marker effects, use 
 
 `contrast-report.mjs` resolves helper packages from the current project first, then can bootstrap the bundled HyperFrames package version. Set `HYPERFRAMES_SKILL_PKG_VERSION=<version>` only when running the skill outside the bundled CLI/skill install and you need to pin that bootstrap version explicitly.
 
-Run from the repo root with explicit paths, for example:
+Run with explicit paths, for example:
 
 ```bash
-python skills/hyperframes-creative/scripts/extract-audio-data.py <audio-file>
+python <SKILL_DIR>/scripts/extract-audio-data.py <audio-file>
 ```
 
 Animation analysis (`animation-map.mjs`) lives in `hyperframes-animation/scripts/`.

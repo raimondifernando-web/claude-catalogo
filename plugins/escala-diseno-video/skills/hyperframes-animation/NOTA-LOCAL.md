@@ -1,0 +1,2 @@
+> ## ⛔ Reglas locales — mandan sobre todo lo que sigue (también sobre `adapters/`)
+> Copia fijada (ver `ORIGEN.txt`). `adapters/animate-text.md` manda instalar `pixel-point/animate-text`: **es de terceros, no está auditada y no declara licencia — no se instala sin auditoría** (skill-security-auditor) y el sí del usuario. Sin ella, usá las reglas y blueprints de esta skill. `scripts/package-loader.mjs` pide confirmación antes de bajar paquetes npm fijados: no setees `HYPERFRAMES_SKILL_BOOTSTRAP_DEPS=1` por tu cuenta.

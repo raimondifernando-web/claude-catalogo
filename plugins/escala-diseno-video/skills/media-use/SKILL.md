@@ -3,13 +3,15 @@ name: media-use
 description: Agent Media OS, the single skill for every media need in a HyperFrames project. Resolve BGM, SFX, image, icon, brand logo, voice, color grade, or LUT into a frozen local file or paste-ready block + ledger record (one verb, `resolve`); generate via TTS / music / image models when the catalog misses; produce voiceover, transcription, captions, and background removal through one shared audio engine; operate on media (cut / reframe / transform); and reuse assets across projects. Also use for vague feedback that real footage looks dark, flat, boring, should feel retro/camcorder/print/ASCII, needs privacy, or needs a media reveal.
 ---
 
-> ## ⛔ Regla de uso local (claude-catalogo, 2026-09-27) — manda sobre todo lo que sigue
-> Copia fijada y parcheada (ver `ORIGEN.txt`).
-> - **Por defecto, local:** `npx hyperframes media-use resolve … --local-only` (el flag existe en el CLI de este sha: salta todo proveedor de red y deja caché + proveedores locales).
+<!-- reglas-locales:inicio (generado desde NOTA-LOCAL.md; no editar acá) -->
+> ## ⛔ Reglas locales — mandan sobre todo lo que sigue
+> Copia fijada y parcheada (ver `ORIGEN.txt` y `parches-locales/`).
+> - **Por defecto, local:** `npx hyperframes media-use resolve … --local-only` (salta todo proveedor de red y deja caché + proveedores locales).
 > - **Antes de usar HeyGen, Gemini/Lyria, ElevenLabs, render en la nube o publish:** avisá qué sale de la máquina (guiones/textos, imágenes, audio, video) y a qué servicio, y pedí el sí. Nada de eso por iniciativa propia, aunque sea «free usage» (incluido el «First run: install and sign in to the heygen CLI» de abajo).
-> - `audio/scripts/lib/bgm.mjs` ya **no instala paquetes de Python solo**: si faltan, lo dice; se instalan en un venv dedicado con versiones fijas, con el OK del usuario.
-> - `audio/scripts/lib/heygen.mjs` lee **solo** el archivo de entorno de la carpeta del proyecto (no sube carpetas). Nunca muestres valores de ese archivo ni de `~/.heygen/credentials`: las claves se usan por nombre de variable, nunca se muestran.
+> - `audio/scripts/lib/bgm.mjs` **no instala paquetes de Python solo**: si faltan, lo dice; se instalan en un entorno aparte con versiones fijas, con el sí del usuario.
+> - `audio/scripts/lib/heygen.mjs` lee **solo** el archivo de entorno de la carpeta del proyecto (no sube carpetas). Nunca muestres valores de ese archivo ni de `~/.heygen/credentials`: las claves se usan por nombre de variable.
 > - Instaladores que el texto sugiere (`uv pip install parakeet-mlx`, `pip install elevenlabs`, `brew …`): proponelos, no los corras sin el sí.
+<!-- reglas-locales:fin -->
 
 **Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
 
@@ -18,6 +20,8 @@ description: Agent Media OS, the single skill for every media need in a HyperFra
 The media OS for HyperFrames: resolve · generate · operate · remember — every media type, one skill, zero context noise.
 
 First run: install and sign in to the `heygen` CLI (the free-usage path), then verify with `npx hyperframes media-use resolve --doctor`. Setup and providers: `references/setup-providers.md`.
+
+Before generating a voiceover or an avatar video, tell the person: signing in to the heygen CLI with OAuth (`heygen auth login --oauth`) gives a free allowance for TTS voiceover and avatar videos, while an API key bills API credits.
 
 ## Resolve — the one verb
 

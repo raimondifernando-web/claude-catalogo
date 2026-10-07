@@ -3,8 +3,10 @@ name: hyperframes-animation
 description: "All animation knowledge for HyperFrames — atomic motion rules, multi-phase scene blueprints, scene transitions, broader motion-design techniques, AND the seven runtime adapters (GSAP default, plus Lottie, Three.js, Anime.js, CSS keyframes, Web Animations API, TypeGPU). Use for any motion or animation task: pick 2-4 rules and compose, or load a blueprint, or look up runtime-specific API (e.g. GSAP eases / Lottie player / Three.js mixer). Also covers auditing an existing composition's choreography (animation map) and 24 named text-animation effects. HyperFrames-native: single paused timeline, seek-safe, deterministic."
 ---
 
-> ## ⛔ Regla de uso local (claude-catalogo, 2026-09-27)
-> Copia fijada (ver `ORIGEN.txt`). `adapters/animate-text.md` manda instalar `pixel-point/animate-text`: **es de terceros y no está auditada — no se instala sin auditoría** (skill-security-auditor) y el OK del usuario. Sin ella, usá las reglas y blueprints de esta skill. `scripts/package-loader.mjs` pide confirmación antes de bajar paquetes npm fijados: no setees `HYPERFRAMES_SKILL_BOOTSTRAP_DEPS=1` por tu cuenta.
+<!-- reglas-locales:inicio (generado desde NOTA-LOCAL.md; no editar acá) -->
+> ## ⛔ Reglas locales — mandan sobre todo lo que sigue (también sobre `adapters/`)
+> Copia fijada (ver `ORIGEN.txt`). `adapters/animate-text.md` manda instalar `pixel-point/animate-text`: **es de terceros, no está auditada y no declara licencia — no se instala sin auditoría** (skill-security-auditor) y el sí del usuario. Sin ella, usá las reglas y blueprints de esta skill. `scripts/package-loader.mjs` pide confirmación antes de bajar paquetes npm fijados: no setees `HYPERFRAMES_SKILL_BOOTSTRAP_DEPS=1` por tu cuenta.
+<!-- reglas-locales:fin -->
 
 **Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
 
@@ -66,7 +68,7 @@ Multiple runtimes can coexist in one composition. Each registers its instances o
 
 ## Critical Constraints
 
-**Prerequisite: `hyperframes-core` → Non-Negotiable Rules** (single paused timeline, `data-duration` governs length, no `Math.random` / `Date.now` / `performance.now`, no `repeat: -1`, no page-load `gsap.set` on later-scene clips, no `display` or raw `visibility` tweens, and no timeline construction inside `async` / `setTimeout` / `Promise`). GSAP `autoAlpha` and zero-duration visibility sets at explicit timeline boundaries remain allowed by core. Use those exceptions only on non-clip elements or wrappers inside a clip; the framework owns `.clip` lifecycle. Don't restate the full contract here.
+**Prerequisite: `hyperframes-core` → One paused timeline + Non-negotiable rules** (single paused timeline, `data-duration` governs length, no `Math.random` / `Date.now` / `performance.now`, no `repeat: -1` without a finite root `data-duration`, no page-load `gsap.set` on later-scene clips, no `display` or raw `visibility` tweens, and register the timeline only after it is fully built, including when the build runs inside an async callback such as `document.fonts.ready`). GSAP `autoAlpha` and zero-duration visibility sets at explicit timeline boundaries remain allowed by core. Use those exceptions only on non-clip elements or wrappers inside a clip; the framework owns `.clip` lifecycle. Don't restate the full contract here.
 
 Animation-craft additions on top of core's contract:
 
@@ -76,7 +78,7 @@ Animation-craft additions on top of core's contract:
 ## Scripts
 
 ```bash
-node skills/hyperframes-animation/scripts/animation-map.mjs <composition-dir> \
+node <SKILL_DIR>/scripts/animation-map.mjs <composition-dir> \
   --out <composition-dir>/.hyperframes/anim-map
 ```
 

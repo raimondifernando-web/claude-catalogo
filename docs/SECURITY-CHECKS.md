@@ -714,3 +714,13 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Superficie nueva | Ninguna: mismo código ejecutable, mismos hooks, mismos hosts. |
 | Límites | El fork viejo se borra recién cuando `estable` incluya este cambio (≥48 h): antes rompería las instalaciones. Su commit queda en el historial público de este catálogo; borrarlo del todo de GitHub requiere un pedido a soporte. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 |
+
+### 2026-10-06 · escala-diseno-video 0.1.5 (skills de video a 9c7ff59, lo propio separado)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Las 10 skills de HyperFrames pasan de `93ab289` a `9c7ff59` (misma versión que ya usa el ecosistema de origen desde el 2026-10-06, auditada por el vigía: skill-security-auditor sin hallazgos nuevos; lo nuevo son pruebas con carpetas temporales). Lo propio deja de estar mezclado en los archivos del autor: reglas en `NOTA-LOCAL.md` (se insertan solas al tope de `SKILL.md` entre marcas) y los 2 arreglos de código de `media-use` en `parches-locales/`. |
+| Origen | `heygen-com/hyperframes` @9c7ff59 · Apache-2.0 · `ORIGEN.txt` + `LICENSE-origen.txt` en cada skill |
+| Verificación | `skill-externa revisar`: las 10 = autor@9c7ff59 + lo propio, byte a byte. Los 2 parches de código (`bgm.mjs` no instala paquetes solo; `heygen.mjs` lee solo el archivo de entorno de la carpeta del proyecto) re-aplicados y presentes. Las reglas son las mismas de antes, en texto genérico. |
+| Superficie nueva | Ninguna propia. Del autor: pruebas internas y cambios de texto entre `93ab289` y `9c7ff59`. |
+| Límites | Las referencias del autor (`capability-menu.md`, `skill-lifecycle.md`, `design-picker.md`, `animate-text.md`) vuelven al original: sus reglas viven ahora en el bloque al tope de `SKILL.md`, que dice que manda también sobre esas referencias. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 |

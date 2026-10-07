@@ -6,8 +6,6 @@ For deterministic text-animation specs (e.g., `typewriter` at exact `240ms / 46m
 
 ## How to use it
 
-> ⛔ **Regla de uso local (claude-catalogo, 2026-09-27):** `pixel-point/animate-text` es de terceros, **no está auditada** y no declara licencia: no se instala sin auditoría (skill-security-auditor) y el OK del usuario.
-
 When a beat needs a deterministic text animation, load the upstream skill alongside this one:
 
 ```bash
