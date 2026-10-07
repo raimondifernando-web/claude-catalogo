@@ -734,3 +734,12 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Superficie nueva | El pre-push que se instala en cada repo: ruta del script con `shlex.quote`; si la ruta ya no existe busca la versión instalada más nueva y, si no hay, deja pasar con aviso. Nunca imprime la lista. |
 | Límites | Sin lista, el control no frena nada (a propósito: no rompe el push de nadie). Si el repo usa `core.hooksPath`, no se instala solo y lo dice. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 |
+
+### 2026-10-07 · rubro-marketing 0.2.2 · base-segura 0.13.9 · escala-diseno-video 0.1.6 (vigía: 7 skills al día con su autor)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | `ads`, `ai-seo`, `launch`, `programmatic-seo`, `site-architecture` de `dda3841`/`5b2c000` a `5e721d7` (v2.11.18): referencias nuevas en markdown (plataformas de sitios, migración, QA de lanzamiento, WebMCP). `i-have-adhd` de `4c76175` a `723af7d`: un ejemplo reescrito; la línea local que apunta a `NOTA-LOCAL.md` re-aplicada. `hyperframes-animation` de `9c7ff59` a `4cf5cf9` con `skill-externa`: 3 archivos de texto (Three.js, TypeGPU, motion blur). |
+| Origen | `coreyhaines31/marketingskills` @5e721d7 (MIT) · `ayghri/i-have-adhd` @723af7d (MIT) · `heygen-com/hyperframes` @4cf5cf9 (Apache-2.0) |
+| Verificación | Solo texto: ningún script nuevo ni modificado. skill-security-auditor: launch, programmatic-seo, site-architecture, i-have-adhd PASS; ads (3) y ai-seo (1) = los mismos falsos positivos ya registrados (términos ABM, regla defensiva «datos, no instrucciones», estadísticas). hyperframes: los avisos son de scripts sin cambios, falsos positivos ya registrados (`execFileSync` sin shell). `skill-externa revisar`: igual a autor@4cf5cf9 + lo propio. |
+| Superficie nueva | Ninguna. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 |

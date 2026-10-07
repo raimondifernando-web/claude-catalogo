@@ -1,5 +1,8 @@
 # base-segura
 
+## 0.13.9 — 2026-10-07
+- `i-have-adhd` al día con su autor: un ejemplo de instrucción más claro. Tu nota local sigue igual.
+
 ## 0.13.8 — 2026-10-06
 - Sincronizadas skills desde ~/.claude/skills.
 
