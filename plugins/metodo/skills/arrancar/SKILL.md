@@ -45,17 +45,20 @@ dejó. Este protocolo cuesta dos minutos y evita todo eso.
 - Cualquier número que vayas a usar ("hay N archivos", "son N clientes") se cuenta ahora, no se recuerda.
 
 ### 3 bis. Numerar la sesión (solo en la app de escritorio)
-Quien abre cada sesión nueva desde el «+» de un grupo de la barra lateral suele copiar a mano el nombre de
+Quien abre cada sesión nueva (desde el «+» de un grupo de la barra lateral o sin grupo) suele copiar a mano el nombre de
 la anterior subiéndole el número («Ventas 7» → «Ventas 8»). Eso lo hace este paso:
 - Si no están las herramientas de sesiones de la app (`ccd_session_mgmt`: terminal, Cowork, otra máquina) →
   saltá este paso sin avisar.
 - `get_session("self")` → si el título YA termina en número, alguien lo nombró: no lo toques.
-- `list_sessions` con `group` = el grupo de esta sesión, `include_archived: true`, `limit: 50` (la anterior
-  casi siempre está archivada; sin eso la numeración vuelve atrás). Quedate con las que tienen **la misma
-  carpeta (`cwd`)** —en un grupo pueden convivir series de carpetas distintas— y título `<base> <n>`.
-- Tomá la de `n` más alto y `set_session_title("self", "<base> <n+1>")`. Si no hay ninguna con número, no
-  inventes una serie. Mencioná el nombre nuevo en la confirmación del paso 4 (una línea).
-- **Sesiones anteriores abiertas:** si en la misma serie (mismo grupo, misma carpeta, número menor) quedan
+- `list_sessions` con `include_archived: true`, `limit: 50` y **sin filtrar por grupo** (la anterior casi siempre
+  está archivada, y una serie puede estar repartida: sesiones sin grupo, o que cambiaron de grupo). Quedate con las
+  que tienen **la misma carpeta (`cwd`)** y un título que termina en número: `<base><n>`, donde `<base>` es todo lo
+  que va antes de los dígitos, separador incluido («Ventas 7», «PM - Estudio . 03»).
+- Si en esa carpeta hay más de una base, la serie es la de la sesión numerada **más reciente**. Tomá la de `n` más
+  alto de esa serie y `set_session_title("self", "<base><n+1>")`, **con el mismo ancho**: si la serie usa «03», la
+  siguiente es «04» (no «4»); «09» → «10»; «99» → «100». Si no hay ninguna con número, no inventes una serie.
+  Mencioná el nombre nuevo en la confirmación del paso 4 (una línea).
+- **Sesiones anteriores abiertas:** si en la misma serie (misma carpeta, misma base, número menor) quedan
   sesiones sin archivar que **no están corriendo**, sumá una sola línea a la confirmación del paso 4:
   «Hay N sesiones anteriores de "<base>" abiertas (<n1>, <n2>…). ¿Las archivo? Se pueden recuperar cuando
   quieras.» Archivá (`archive_session`) **solo si el usuario dice que sí**; sin respuesta no toques nada.

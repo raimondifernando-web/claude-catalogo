@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.22.2 — 2026-10-07
+- **Numerar sesiones también sin grupo:** al arrancar, la sesión nueva toma el número siguiente de la serie aunque tus sesiones no estén en ningún grupo de la barra lateral, o aunque alguna haya cambiado de grupo: la serie se arma por carpeta. Además respeta los ceros adelante y el separador que uses («PM - Estudio . 03» → «PM - Estudio . 04»).
+
 ## 0.22.1 — 2026-10-07
 - **Avisos de inicio solo en las carpetas que elijas:** si tenés muchos proyectos y no querés ver los mensajes del vigía o del buzón en todas las sesiones, ahora podés limitarlos con el archivo opcional `<config de Claude>/metodo/avisos.json` (por ejemplo `{"vigia": ["~/Proyectos/Tech"], "buzon": ["~/Proyectos/Consultoria-IA"]}`). En esas carpetas o en cualquiera de sus subcarpetas te avisa; en las demás no te distrae, aunque el detector de fondo del vigía sigue corriendo igual para mantener las novedades al día. Sin ese archivo, sigue funcionando como siempre.
 
