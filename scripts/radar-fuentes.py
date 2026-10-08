@@ -13,7 +13,10 @@ Qué cuenta como cambio relevante:
     sección `vigentes` (es un dato; el robot la puede escribir) y el PR avisa qué planes siguen en la versión vieja.
     El orden A/B/C NO se toca: lo decide una persona (spec §7);
   - cambió una guía oficial de prompting o de migración de Anthropic, OpenAI o Google (huella diaria del texto, sin IA).
-    Los resúmenes de `plugins/metodo/radar/consejos/` NO los hace el robot: el aviso del PR dice qué comando correr.
+    Los resúmenes de `plugins/metodo/radar/consejos/` NO los hace el robot: el aviso del PR dice qué comando correr;
+  - huella diaria del índice de páginas de la doc de Claude Code, de las páginas de funciones y de los registros de cambios
+    de Claude Code, Codex y Gemini CLI; el aviso del PR dice qué fila de FUNCIONES.md rehacer; este tipo de cambio no se
+    publica solo.
 
 Uso:
     radar-fuentes.py --modo diario|semanal|todo [--yaml RUTA] [--motivo RUTA] [--seco]
@@ -146,6 +149,69 @@ def hash_texto(texto):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()[:16] if len(t) >= 200 else None
 
 
+RE_INDICE_SLUG = re.compile(r"\]\(https://code\.claude\.com/docs/en/([A-Za-z0-9_./-]+?)\.md\)")
+RE_SLUG_VALIDO = re.compile(r"^[A-Za-z0-9_./-]{1,120}$")
+RE_ATOM_VERSION = re.compile(r"<title>\s*v?(\d+\.\d+\.\d+)\s*</title>")
+RE_GEMINI_VERSION = re.compile(r"Latest stable release:\s*v?(\d+\.\d+\.\d+)")
+
+
+def slugs_de_indice(texto):
+    """Lista ordenada sin repetidos de slugs de la doc de Claude Code desde llms.txt.
+    Descarta whats-new/ y changelog. Si hay menos de 50 slugs devuelve None (lectura fallida)."""
+    if not texto:
+        return None
+    encontrados = set()
+    for s in RE_INDICE_SLUG.findall(texto):
+        if s.startswith("whats-new/") or s == "changelog":
+            continue
+        if not RE_SLUG_VALIDO.match(s):
+            continue
+        encontrados.add(s)
+    ordenados = sorted(encontrados)
+    return ordenados if len(ordenados) >= 50 else None
+
+
+def version_de_changelog(tipo, texto):
+    """Extrae la versión 'x.y.z' según el tipo ('atom_estable' o 'gemini_latest')."""
+    if not tipo or not texto:
+        return None
+    if tipo == "atom_estable":
+        m = RE_ATOM_VERSION.search(texto)
+        return m.group(1) if m else None
+    if tipo == "gemini_latest":
+        m = RE_GEMINI_VERSION.search(texto)
+        return m.group(1) if m else None
+    return None
+
+
+def clave_version(version, corte=None, paso=None):
+    """Clave de comparación para detectar versiones relevantes.
+    Con corte=2 toma los 2 primeros enteros; si paso > 0 reemplaza el 3° por (3° // paso) y tiene 3 componentes."""
+    if not version:
+        return ()
+    nums = tuple(int(x) for x in re.findall(r"\d+", str(version)))
+    if not nums:
+        return ()
+    try:
+        paso_int = int(paso) if paso is not None else None
+    except (ValueError, TypeError):
+        paso_int = None
+    if paso_int and paso_int > 0:
+        n0 = nums[0] if len(nums) > 0 else 0
+        n1 = nums[1] if len(nums) > 1 else 0
+        n2 = nums[2] if len(nums) > 2 else 0
+        return (n0, n1, n2 // paso_int)
+    if corte == 2:
+        return (nums[0] if len(nums) > 0 else 0, nums[1] if len(nums) > 1 else 0)
+    if corte:
+        try:
+            return nums[:int(corte)]
+        except (ValueError, TypeError):
+            pass
+    return nums[:3]
+
+
+
 # --------------------------------------------------------------------------- #
 # Comparación
 # --------------------------------------------------------------------------- #
@@ -256,6 +322,114 @@ def novedades_de_guias(nuevo, fuentes, hoy_s):
     return motivos
 
 
+def _formato_lista_slugs(slugs):
+    if len(slugs) <= 8:
+        return ", ".join(slugs)
+    return ", ".join(slugs[:8]) + " y %d más" % (len(slugs) - 8)
+
+
+def _podar_nuevas(nuevas, hoy_s):
+    try:
+        hoy_d = datetime.strptime(str(hoy_s)[:10], "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        hoy_d = date.today()
+    limite = hoy_d - timedelta(days=60)
+    resultado = []
+    for item in nuevas or []:
+        if not isinstance(item, str):
+            continue
+        partes = item.rsplit(" ", 1)
+        if len(partes) == 2:
+            try:
+                f = datetime.strptime(partes[1], "%Y-%m-%d").date()
+                if f < limite:
+                    continue
+            except (ValueError, TypeError):
+                pass
+        resultado.append(item)
+    return resultado
+
+
+def novedades_de_docs(nuevo, fuentes, hoy_s):
+    """Compara índice, páginas de funciones y changelogs de `fuentes_auto.docs`.
+    Devuelve los motivos para el PR y actualiza la sección en `nuevo`."""
+    fa = nuevo.get("fuentes_auto") or {}
+    docs = fa.get("docs")
+    if not isinstance(docs, dict):
+        return []
+    f_docs = fuentes.get("docs")
+    if not isinstance(f_docs, dict):
+        return []
+    motivos = []
+
+    # 1) Índice de docs
+    indice_cfg = docs.get("indice")
+    f_indice = f_docs.get("indice")
+    if isinstance(indice_cfg, dict) and isinstance(f_indice, list):
+        if "nuevas" in indice_cfg:
+            indice_cfg["nuevas"] = _podar_nuevas(indice_cfg.get("nuevas") or [], hoy_s)
+        slugs_validos = [s for s in f_indice if isinstance(s, str) and RE_SLUG_VALIDO.match(s)]
+        conocidas = list(indice_cfg.get("conocidas") or [])
+        if not conocidas:
+            indice_cfg["conocidas"] = sorted(set(slugs_validos))
+            motivos.append("Línea base del índice de la doc oficial de Claude Code: %d páginas." % len(indice_cfg["conocidas"]))
+        else:
+            conocidas_set = set(conocidas)
+            nuevos = [s for s in sorted(set(slugs_validos)) if s not in conocidas_set]
+            if nuevos:
+                indice_cfg["conocidas"] = sorted(conocidas_set | set(nuevos))
+                nuevas_lista = list(indice_cfg.get("nuevas") or [])
+                for s in nuevos:
+                    nuevas_lista.append("%s %s" % (s, hoy_s))
+                indice_cfg["nuevas"] = nuevas_lista
+                motivos.append(
+                    "Páginas nuevas en la doc oficial de Claude Code: %s. Revisar si hay una función que sumar a plugins/metodo/radar/FUNCIONES.md." %
+                    _formato_lista_slugs(nuevos)
+                )
+
+    # 2) Páginas de funciones
+    paginas = docs.get("paginas") or {}
+    f_paginas = f_docs.get("paginas") or {}
+    for pid, h in sorted(f_paginas.items()):
+        entrada = paginas.get(pid)
+        if not isinstance(entrada, dict) or not h or entrada.get("hash") == h:
+            continue
+        titulo = entrada.get("titulo", pid)
+        if not entrada.get("hash"):
+            motivos.append("Línea base de la página oficial «%s»: desde acá se avisa si cambia." % titulo)
+        else:
+            motivos.append("Cambió la página oficial «%s» (%s): rehacer su fila de plugins/metodo/radar/FUNCIONES.md." % (
+                titulo, entrada.get("url", "")))
+            entrada["cambio"] = hoy_s
+        entrada["hash"] = h
+
+    # 3) Changelogs
+    changelogs = docs.get("changelogs") or {}
+    f_changelogs = f_docs.get("changelogs") or {}
+    for cid, ver_nueva in sorted(f_changelogs.items()):
+        entrada = changelogs.get(cid)
+        if not isinstance(entrada, dict) or not ver_nueva:
+            continue
+        titulo = entrada.get("titulo", cid)
+        ver_guardada = entrada.get("version")
+        if not ver_guardada:
+            entrada["version"] = ver_nueva
+            motivos.append("Línea base del registro de cambios de «%s»: v%s." % (titulo, ver_nueva))
+        else:
+            corte = entrada.get("corte")
+            paso = entrada.get("paso")
+            clave_guardada = clave_version(ver_guardada, corte, paso)
+            clave_nueva = clave_version(ver_nueva, corte, paso)
+            if clave_guardada != clave_nueva:
+                motivos.append("Nueva versión de «%s»: antes %s, ahora %s: leer qué funciones trae y actualizar plugins/metodo/radar/FUNCIONES.md." % (
+                    titulo, ver_guardada, ver_nueva))
+                entrada["version"] = ver_nueva
+                entrada["cambio"] = hoy_s
+
+    return motivos
+
+
+
 def analizar(radar, fuentes, hoy_f=None):
     """radar: dict cargado. fuentes: {'litellm':{}, 'openrouter':{}, 'modelsdev':{}, 'arena':{cat:[(m,p)]}, 'paginas':{id:hash}}.
     Devuelve (radar_nuevo, motivos). Si motivos == [], radar_nuevo es igual al de entrada y no hay que tocar nada."""
@@ -326,6 +500,9 @@ def analizar(radar, fuentes, hoy_f=None):
     # 5) guías oficiales de prompting y de migración (huella del texto)
     motivos += novedades_de_guias(nuevo, fuentes, hoy_s)
 
+    # 6) vigía de la documentación oficial (índice, páginas de funciones y changelogs)
+    motivos += novedades_de_docs(nuevo, fuentes, hoy_s)
+
     if not motivos:
         return radar, []
     nuevo["actualizado"] = hoy_s
@@ -367,6 +544,27 @@ def juntar(radar, modo, traer_fn=traer, avisar=_avisar_actions):
                 fuentes["guias"][gid] = hash_texto(traer_fn(g["url"], "texto"))
             except Exception as ex:
                 avisar("Aviso: no pude leer la guía %s (%s)." % (gid, type(ex).__name__))
+        if fa.get("docs"):
+            docs_cfg = fa["docs"]
+            docs_out = {"indice": None, "paginas": {}, "changelogs": {}}
+            if isinstance(docs_cfg.get("indice"), dict) and docs_cfg["indice"].get("url"):
+                try:
+                    docs_out["indice"] = slugs_de_indice(traer_fn(docs_cfg["indice"]["url"], "texto"))
+                except Exception as ex:
+                    avisar("Aviso: no pude leer el índice de docs (%s)." % type(ex).__name__)
+            for pid, p in sorted((docs_cfg.get("paginas") or {}).items()):
+                if isinstance(p, dict) and p.get("url"):
+                    try:
+                        docs_out["paginas"][pid] = hash_texto(traer_fn(p["url"], "texto"))
+                    except Exception as ex:
+                        avisar("Aviso: no pude leer la página de docs %s (%s)." % (pid, type(ex).__name__))
+            for cid, c in sorted((docs_cfg.get("changelogs") or {}).items()):
+                if isinstance(c, dict) and c.get("url"):
+                    try:
+                        docs_out["changelogs"][cid] = version_de_changelog(c.get("tipo"), traer_fn(c["url"], "texto"))
+                    except Exception as ex:
+                        avisar("Aviso: no pude leer el changelog %s (%s)." % (cid, type(ex).__name__))
+            fuentes["docs"] = docs_out
     if modo in ("semanal", "todo") and fa.get("arena"):
         fuentes["arena"] = {}
         for c in radar.get("categorias") or []:
