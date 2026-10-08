@@ -20,7 +20,7 @@ def main():
     env = dict(os.environ, HEADROOM_BEACON="off", HEADROOM_OFFLINE="true", ACHICAR_DENTRO="1")
     if not os.environ.get("ACHICAR_DENTRO"):
         if not os.path.exists(VENV_PY):
-            sys.exit("Headroom no está instalado. Corré: bash " + os.path.join(os.path.dirname(__file__), "instalar.sh") + "  ✗")
+            sys.exit("Headroom no está instalado. Corré: bash " + os.path.join(os.path.dirname(os.path.abspath(__file__)), "instalar.sh") + "  ✗")
         sys.exit(subprocess.call([VENV_PY, "-I", os.path.abspath(__file__)] + sys.argv[1:], env=env))
     from headroom import densify
     data = open(a.archivo, encoding="utf-8").read()

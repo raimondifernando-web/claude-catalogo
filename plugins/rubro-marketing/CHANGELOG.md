@@ -1,5 +1,8 @@
 # rubro-marketing
 
+## 0.2.4 — 2026-10-08
+- `achicar-datos-grandes` para instalaciones por plugin: las rutas de los scripts ya no dependen de `~/.claude/skills/`, el instalador encuentra `uv` aunque la app no vea `~/.local/bin` (y si falta dice «corré Poner todo al día»), y todo se instala verificado por hash (`requisitos.txt`).
+
 ## 0.2.3 — 2026-10-08
 - Skill nueva `achicar-datos-grandes`: cuando una consulta devuelve miles de filas (Ads, tienda, ERP/CRM, logs), las recodifica sin perder ninguna para gastar menos tokens (40-67 % medido en listas de filas; 0 % en código y texto). Usa Headroom 0.40.0 en un entorno aparte, con telemetría apagada y sin conexión propia. La primera vez corre un instalador de un comando.
 

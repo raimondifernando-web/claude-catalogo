@@ -760,3 +760,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Verificación | skill-security-auditor sobre el sdist completo: FAIL (88 críticos, 184 altos) esperable en una librería de 270 hallazgos; leídos contra el propósito: los de la ruta que se usa (`compress.py`, `content_router`, `ml_models`, `kompress`, `code_compressor`) son falsos positivos (ejemplo en docstring, `model.eval()` leído como `eval`, `compile()` para validar sintaxis, variables de entorno). El resto cae en funciones que la skill no llama: proxy, `learn`, `wrap`, supervisores/instalación de servicios, autenticación de Copilot. Prueba real: 67 % de ahorro en listas planas, idéntico verificado; cuando no puede probar que es idéntico, devuelve el original. |
 | Superficie nueva | Descarga de PyPI con versión fija al instalar (una vez). Telemetría `HEADROOM_BEACON=off` y `HEADROOM_OFFLINE=true` fijadas dentro de `achicar.py`. Nunca proxy global, `wrap` ni `learn` (la skill lo prohíbe). Beacon por defecto ENCENDIDO en el programa: apagado por el script, no por el usuario. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 |
+
+### 2026-10-08 · rubro-marketing 0.2.4 (`achicar-datos-grandes`: rutas de plugin, uv y hashes — pedido de Consultoría)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | `SKILL.md` usa `${CLAUDE_SKILL_DIR}`; `instalar.sh` busca `uv` en PATH, `~/.local/bin` y `/opt/homebrew/bin`, y su error remite a «Poner todo al día»; instala con `--require-hashes -r requisitos.txt` (68 paquetes con hashes, `uv pip compile --universal`). |
+| Superficie nueva | Las dependencias de Headroom pasan de «sin fijar» a fijadas por hash. Nada más. |
+| Verificación | Instalación en entorno limpio con hashes OK y repetida sin romper; sin `uv` en PATH usa `~/.local/bin/uv`. Prueba como plugin en HOME temporal: a cargo de Consultoría. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 |

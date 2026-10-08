@@ -24,8 +24,8 @@ listas de filas (JSON plano); 0 % en código y texto.
 - Si el resultado ya entró al contexto (una herramienta lo devolvió inline), no hay nada que achicar: la próxima vez guardalo a archivo.
 
 ## Cómo
-1. Primera vez en la máquina: `bash ~/.claude/skills/achicar-datos-grandes/scripts/instalar.sh` (versión fija 0.40.0, entorno aislado en `~/.cache/headroom`, no toca nada más).
-2. `python3 ~/.claude/skills/achicar-datos-grandes/scripts/achicar.py <datos.json> --salida <datos.achicado.txt>`
+1. Primera vez en la máquina: `bash ${CLAUDE_SKILL_DIR}/scripts/instalar.sh` (versión fija 0.40.0 con hashes verificados, entorno aislado en `~/.cache/headroom`, no toca nada más).
+2. `python3 ${CLAUDE_SKILL_DIR}/scripts/achicar.py <datos.json> --salida <datos.achicado.txt>`
 3. Leé el archivo achicado. Formato: columnas (`@campo=[valores…]`) en vez de una fila por registro; cada columna tiene todos los valores, en orden.
 4. Mirá la línea final: `idéntico: True · revertidos: 0`. Si `revertidos` > 0 o no ahorró, usá el archivo original.
 
