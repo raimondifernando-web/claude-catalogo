@@ -98,6 +98,14 @@ fi
 [ "$(plutil -extract "extraKnownMarketplaces.$CAT.autoUpdate" raw "$S" 2>/dev/null)" = "true" ] \
   || plutil -replace "extraKnownMarketplaces.$CAT.autoUpdate" -bool true "$S" 2>/dev/null
 [ "$(plutil -extract "extraKnownMarketplaces.$CAT.autoUpdate" raw "$S" 2>/dev/null)" = "true" ] || falta+=("actualización automática")
+# La app de escritorio arranca Claude Code con DISABLE_AUTOUPDATER, que apaga también la actualización de paquetes.
+# FORCE_AUTOUPDATE_PLUGINS (la lee solo Claude Code, regla 12b) la vuelve a prender al abrir cada sesión.
+if [ -f "$S" ]; then
+  [ "$(plutil -extract env.FORCE_AUTOUPDATE_PLUGINS raw "$S" 2>/dev/null)" = "1" ] || {
+    plutil -extract env json -o /dev/null "$S" 2>/dev/null || plutil -insert env -dictionary "$S" 2>/dev/null
+    plutil -replace env.FORCE_AUTOUPDATE_PLUGINS -string 1 "$S" 2>/dev/null; }
+  [ "$(plutil -extract env.FORCE_AUTOUPDATE_PLUGINS raw "$S" 2>/dev/null)" = "1" ] || falta+=("actualización de paquetes en la app")
+fi
 
 # 4. Conexión con GitHub para los paquetes que vienen directo de GitHub (solo si hace falta)
 if ! ssh -T -o BatchMode=yes -o ConnectTimeout=10 git@github.com 2>&1 | grep -q "successfully authenticated"; then

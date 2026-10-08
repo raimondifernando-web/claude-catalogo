@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.22.5 — 2026-10-08
+- **al-dia v8: en la app de escritorio los paquetes vuelven a actualizarse al abrir sesión.** La app arranca Claude Code con la actualización automática apagada, y eso frenaba también la de los paquetes del catálogo. «Poner todo al día» ahora deja prendida `FORCE_AUTOUPDATE_PLUGINS` en tu configuración (la lee solo Claude Code) y avisa si no pudo.
+
 ## 0.22.4 — 2026-10-08
 - **Regla 16, tareas que se repiten solas:** cuándo usar `/loop` (vigilar algo, cada 15 minutos o más) y el «Ralph» del catálogo (repetir hasta que salga bien, siempre con tope de vueltas y solo con pruebas o informes que solo leen). Nunca un bucle que escriba solo en el sistema de gestión, las publicidades o la lista de clientes.
 
