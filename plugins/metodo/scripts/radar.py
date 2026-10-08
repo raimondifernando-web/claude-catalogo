@@ -1020,10 +1020,12 @@ def skills_de_prompting_viejas(radar, base=None):
     return sorted(set(out))
 
 
-def texto_pedido_consejos(radar, modelos, carpeta_guias):
+def texto_pedido_consejos(radar, modelos, carpeta_guias, extras=()):
+    """Texto del pedido para la IA barata. `extras`: [(url, nombre de archivo)] de guías por modelo que se bajaron aparte."""
     guias = (radar.get("fuentes_auto") or {}).get("guias") or {}
-    lista = "\n".join("- %s — %s (%s): archivo %s" % (g.get("proveedor"), g.get("titulo"), g.get("url"), "%s/%s.md" % (carpeta_guias, gid))
-                      for gid, g in sorted(guias.items()))
+    filas = ["- %s — %s (%s): archivo %s/%s.md" % (g.get("proveedor"), g.get("titulo"), g.get("url"), carpeta_guias, gid)
+             for gid, g in sorted(guias.items())]
+    filas += ["- Guía de un modelo (%s): archivo %s/%s" % (url, carpeta_guias, nombre) for url, nombre in extras]
     pedir = "\n".join("- plugins/metodo/radar/consejos/%s.md" % m for m in modelos)
     return ("Tarea: escribir resúmenes cortos de CÓMO USAR cada modelo, a partir de las guías oficiales de prompting y de migración "
             "que ya están bajadas como archivos de texto (leelas desde el disco; no uses internet).\n\n"
@@ -1037,7 +1039,33 @@ def texto_pedido_consejos(radar, modelos, carpeta_guias):
             "si las guías no dicen nada propio de ese modelo, una sola línea `- La guía oficial no trae consejos propios para este "
             "modelo; ver la guía de la familia.` más la fuente; castellano simple; no copies párrafos enteros; no escribas claves ni "
             "datos personales. No toques ningún otro archivo y no corras comandos.\n" % (
-                pedir, lista, hoy().isoformat(), MAX_LINEAS_CONSEJO, MAX_LINEAS_CONSEJO))
+                pedir, "\n".join(filas), hoy().isoformat(), MAX_LINEAS_CONSEJO, MAX_LINEAS_CONSEJO))
+
+
+# Guías por modelo que las páginas índice apuntan (se bajan junto con las generales para que la IA las lea del disco).
+_ENLACES_POR_MODELO = (
+    re.compile(r"https://platform\.claude\.com/docs/en/models/([a-z0-9-]{2,40})/migration-guide"),
+    re.compile(r"/api/docs/guides/latest-model/([a-z0-9.-]{2,40})\.md"),
+)
+MAX_GUIAS_POR_MODELO = 8
+
+
+def guias_por_modelo(textos):
+    """[(url .md, nombre de archivo)] a partir del texto de las guías generales."""
+    vistos, out = set(), []
+    for texto in textos:
+        for patron in _ENLACES_POR_MODELO:
+            for m in patron.finditer(texto):
+                url = m.group(0)
+                if url.startswith("/"):
+                    url = "https://developers.openai.com" + url
+                if not url.endswith(".md"):
+                    url += ".md"
+                nombre = re.sub(r"[^a-z0-9.-]+", "_", "%s_%s" % (url.split("/")[2].split(".")[-2], m.group(1))) + ".md"
+                if url not in vistos and len(out) < MAX_GUIAS_POR_MODELO:
+                    vistos.add(url)
+                    out.append((url, nombre))
+    return out
 
 
 def cmd_consejos(a):
@@ -1060,20 +1088,30 @@ def cmd_consejos(a):
         return 0
     carpeta = CONSEJOS_DIR / "_guias"
     carpeta.mkdir(parents=True, exist_ok=True)
-    bajadas = 0
+    bajadas, textos = 0, []
     for gid, g in sorted(((radar.get("fuentes_auto") or {}).get("guias") or {}).items()):
         try:
             _, cuerpo = abrir(g["url"], timeout=40)
             (carpeta / ("%s.md" % gid)).write_bytes(cuerpo[:3000000])
+            textos.append(cuerpo[:3000000].decode("utf-8", "replace"))
             bajadas += 1
         except Exception as ex:
             print("Aviso: no pude bajar la guía %s (%s)." % (gid, type(ex).__name__))
+    extras = []
+    for url, nombre in guias_por_modelo(textos):
+        try:
+            _, cuerpo = abrir(url, timeout=40)
+            (carpeta / nombre).write_bytes(cuerpo[:3000000])
+            extras.append((url, nombre))
+            bajadas += 1
+        except Exception as ex:
+            print("Aviso: no pude bajar %s (%s)." % (url, type(ex).__name__))
     ruta = Path(a.pedido)
     try:
         mostrar = os.path.relpath(str(carpeta))
     except ValueError:
         mostrar = str(carpeta)
-    ruta.write_text(texto_pedido_consejos(radar, modelos, mostrar), encoding="utf-8")
+    ruta.write_text(texto_pedido_consejos(radar, modelos, mostrar, extras), encoding="utf-8")
     print("Listo: %d guías bajadas en %s y el pedido para %d modelos en %s." % (bajadas, carpeta, len(modelos), ruta))
     print("Siguiente: python3 plugins/metodo/scripts/delegar.py desarrollo . %s --archivo   (elige Codex o Gemini según el cupo; "
           "si solo queda Claude: un subagente con model haiku y effort low; nunca Opus). Después revisá cada archivo contra su fuente." % ruta)
