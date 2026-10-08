@@ -181,7 +181,7 @@ class TestHoy(Base):
                          "Codex 100% (agotado)", "Gemini 10%", "Con cupo libre: Gemini", "mandale", "claude-haiku-4-5-20251001"):
             self.assertIn(esperado, todo)
         self.assertNotIn("Codex;", todo)   # Codex está agotado: no se lo ofrece
-        self.assertIn("(* = sin dato independiente", todo)
+        self.assertIn("(* = sin medición independiente: vale la política de modelos)", todo)
         self.assertTrue(all("\n" not in x for x in lineas))
 
     def test_sin_cache_dice_sin_dato_y_no_inventa(self):
@@ -687,6 +687,28 @@ class TestSegundaRevision(Base):
         with contextlib.redirect_stdout(salida):
             FU._avisar_actions("Aviso: otra")
         self.assertFalse(salida.getvalue().startswith("::warning::"))
+
+
+class TestRadarYml(unittest.TestCase):
+    def test_una_version_nueva_no_se_publica_sola(self):
+        texto = (PLUGIN.parent.parent / ".github" / "workflows" / "radar.yml").read_text(encoding="utf-8")
+        self.assertIn("radar/consejos/", texto)
+        self.assertIn('ahora.get("vigentes")', texto)
+        self.assertIn('[ "$vigentes" != "igual" ]', texto)          # si no se puede comparar, tampoco se publica
+        guardia = texto.index('[ "$vigentes" != "igual" ]')
+        self.assertLess(guardia, texto.index('if [ "$publicar" = si ]'))
+        self.assertIn("test_ruteo.py", texto)
+
+
+class TestRuteoSinEvidencia(unittest.TestCase):
+    def test_sin_evidencia_vale_la_politica_de_modelos_tal_cual(self):
+        """Pedido de Fernando (2026-10-08): sin dato se usa el valor del Mand. III; el escalón de abajo, solo si hay duda entre dos."""
+        radar = R.leer_yaml(YAML_REAL)
+        filas = {f["id"]: f for f in radar["ruteo_claude"]["tareas"]}
+        esperado = {"buscar_mover": ("haiku", "low"), "implementar_acotado": ("sonnet", "low"), "planillas": ("sonnet", "low"),
+                    "revisar": ("sonnet", "medium"), "investigar": ("sonnet", "low"), "arquitectura_seguridad_plata": ("opus", "high")}
+        self.assertEqual({k: (v["nivel"], v["esfuerzo"]) for k, v in filas.items()}, esperado)
+        self.assertNotIn("escalón de abajo del valor por defecto", radar["ruteo_claude"]["nota"])
 
 
 class TestHooksJson(unittest.TestCase):

@@ -844,8 +844,8 @@ def hoy_lineas(radar, cupos=None):
         _limpio(radar.get("actualizado", "?"), 10), " · ".join(modelos) if modelos else "sin lista en el radar"))
     ruteo = ruteo_en_una_linea(radar)
     if ruteo:
-        lineas.append("Punto de partida de nivel/esfuerzo: %s (* = sin dato independiente, provisorio). Cada «sí» a ¿hay que juzgar o decidir?, "
-                      "¿equivocarse sale caro? o ¿hay mucho contexto? sube un escalón." % ruteo)
+        lineas.append("Nivel/esfuerzo por tipo de tarea: %s (* = sin medición independiente: vale la política de modelos). Si la tarea tiene más "
+                      "«sí» de los que supone la fila (¿hay que juzgar o decidir?, ¿equivocarse sale caro?, ¿hay mucho contexto?), subí un escalón por cada uno." % ruteo)
     nombres = (("claude", "Claude"), ("codex", "Codex"), ("antigravity", "Gemini"))
     libres = [n for k, n in nombres if k != "claude" and cupos.get(k, ("sin_dato",))[0] == "ok"]
     linea = "Cupo: " + " · ".join(_texto_cupo(n, *cupos.get(k, ("sin_dato", None))) for k, n in nombres) + "."

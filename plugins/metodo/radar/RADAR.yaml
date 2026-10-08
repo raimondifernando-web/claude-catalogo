@@ -60,7 +60,7 @@ vigentes:
       alta: 2026-02-19
       fuente: models.dev
 ruteo_claude:
-  nota: "Punto de partida de nivel y esfuerzo de Claude por tipo de tarea, sacado de la evidencia INDEPENDIENTE de este mismo radar (cada fila apunta a las evidencias de sus categorías, spec §7). Donde no hay dato, la fila queda verificado: false y usa el escalón de abajo del valor por defecto de la política de modelos (0 «sí» = low · 1 = medium · 2 = high · 3 = xhigh; ante la duda, el de abajo). Cada «sí» a ¿hay que juzgar o decidir?, ¿equivocarse sale caro? o ¿hay mucho contexto? sube un escalón desde acá. Fable solo a pedido, max solo a pedido. Lo escribe una persona a mano: el robot no lo toca."
+  nota: "Punto de partida de nivel y esfuerzo de Claude por tipo de tarea. Cada fila cita la evidencia INDEPENDIENTE de este mismo radar que la respalda (spec §7). Donde no hay medición, la fila queda verificado: false y vale el valor por defecto de la política de modelos tal cual (0 «sí» a ¿hay que juzgar o decidir?, ¿equivocarse sale caro?, ¿hay mucho contexto? = haiku/low · 1 = sonnet/medium · 2 = opus/high · 3 = fable/xhigh): se baja un escalón solo cuando hay duda entre dos, no por falta de datos. Si la tarea tiene más «sí» de los que supone la fila, se sube un escalón por cada uno. Fable solo a pedido, max solo a pedido. Lo escribe una persona a mano: el robot no lo toca."
   tareas:
     - id: buscar_mover
       corto: "buscar, contar, mover o resumir"
@@ -79,7 +79,7 @@ ruteo_claude:
       esfuerzo: low
       otra_ia: desarrollo
       verificado: false
-      sin_dato: "Nivel: dos fuentes independientes. Esfuerzo: las mediciones solo traen variantes xhigh y max (Arena) y no comparan medium ni low; sin dato se usa el escalón de abajo de medium."
+      sin_dato: "Nivel: dos fuentes independientes. Esfuerzo: las mediciones solo traen variantes xhigh y max (Arena) y no comparan medium ni low; sin dato, ante la duda entre low y medium, el de abajo."
       evidencia:
         - dato: nivel
           categoria: desarrollo
@@ -91,11 +91,11 @@ ruteo_claude:
     - id: revisar
       corto: "revisar o dar segunda opinión"
       tarea: "Revisar un cambio o dar una segunda opinión"
-      nivel: haiku
-      esfuerzo: low
+      nivel: sonnet
+      esfuerzo: medium
       otra_ia: revision
       verificado: false
-      sin_dato: "La categoría «revisión de código y seguridad» no tiene evidencia independiente cargada (orden provisorio): se usa el escalón de abajo de sonnet/medium. La segunda opinión conviene mandarla a otra IA."
+      sin_dato: "La categoría «revisión de código y seguridad» no tiene evidencia independiente cargada (orden provisorio): vale la política de modelos. Revisar juzga y el error sale caro (2 «sí» de 3 se cumplen a medias): sonnet/medium. La segunda opinión conviene mandarla antes a otra IA con cupo."
       evidencia: []
       palabras: [revis*, review, critic, segunda opinion, verific*, chequear]
     - id: planillas
@@ -105,7 +105,7 @@ ruteo_claude:
       esfuerzo: low
       otra_ia: datos_planillas
       verificado: false
-      sin_dato: "Nivel: una fuente independiente (Claude Sonnet 5.5 queda 2° en AnalystAgent). Esfuerzo: sin medición, escalón de abajo de medium."
+      sin_dato: "Nivel: una fuente independiente (Claude Sonnet 5.5 queda 2° en AnalystAgent). Esfuerzo: sin medición; ante la duda entre low y medium, el de abajo."
       evidencia:
         - dato: nivel
           categoria: datos_planillas
@@ -114,21 +114,21 @@ ruteo_claude:
     - id: investigar
       corto: "investigar en la web"
       tarea: "Investigar en la web y juntar fuentes"
-      nivel: haiku
+      nivel: sonnet
       esfuerzo: low
       otra_ia: investigacion_web
       verificado: false
-      sin_dato: "Arena búsqueda no trae modelos Claude de septiembre (el único Claude es Opus 4.6): sin dato, escalón de abajo de sonnet/medium."
+      sin_dato: "Arena búsqueda no trae modelos Claude de septiembre (el único Claude es Opus 4.6): sin dato vale la política de modelos (una pregunta con «sí»: hay que juntar y contrastar fuentes → sonnet; ante la duda entre low y medium, el de abajo)."
       evidencia: []
       palabras: [investig*, research, en la web, relevar, relevamiento, scrap*]
     - id: arquitectura_seguridad_plata
       corto: "arquitectura, seguridad o plata"
       tarea: "Arquitectura, seguridad, dinero o algo irreversible (planear en Claude; la revisión puede ir a otra IA)"
-      nivel: sonnet
-      esfuerzo: medium
+      nivel: opus
+      esfuerzo: high
       otra_ia: revision
       verificado: false
-      sin_dato: "No hay evidencia independiente de arquitectura ni de seguridad (revisión sin fuentes): escalón de abajo de opus/high. Acá casi siempre corresponde subir: ¿hay que juzgar? ¿el error sale caro? ¿mucho contexto? Con dos «sí» es opus/high."
+      sin_dato: "No hay evidencia independiente de arquitectura ni de seguridad (revisión sin fuentes): vale la política de modelos tal cual. Hay que juzgar y el error sale caro (2 «sí») → opus/high."
       evidencia: []
       palabras: [arquitectur*, architect, seguridad, security, vulnerab*, dinero, plata, pago, payment, finanz*, financ*, legal, legales, contrato, irreversible, produccion, production, migracion, diseno de sistema]
 categorias:

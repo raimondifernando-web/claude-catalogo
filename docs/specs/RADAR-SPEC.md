@@ -78,8 +78,9 @@ y el recordatorio sin red, sin IA, en menos de 1 s y con 5 líneas o menos).
    Si una familia sube, el PR dice «Salió X» y, por cada plan que sigue en la versión vieja, «el plan C de … sigue en …: el orden
    A/B/C se cambia a mano». **Ese orden no lo toca el robot (§7).** Los ids y precios de Claude se verifican con la skill
    `claude-api`, nunca de memoria. Riesgo conocido: lo que llega a `vigentes` termina en el contexto de cada sesión; los filtros
-   de arriba lo reducen a ids con forma `claude-haiku-5-5`, pero el PR del robot se publica solo si toca únicamente
-   `RADAR.yaml`/`RADAR.md` (las guardias de `radar.yml` no leen el contenido).
+   de arriba lo reducen a ids con forma `claude-haiku-5-5`, y además **una versión nueva no se publica sola**: si el diff cambia
+   `vigentes:` (o toca `radar/consejos/`), `radar.yml` abre el PR pero no lo fusiona y queda para revisión humana (decisión del dueño,
+   2026-10-08). Precios, rankings y retiros siguen automáticos.
 2. **`ruteo_claude`** (a mano, por PR). `tareas[]`: `id`, `corto`, `tarea`, `nivel` (haiku|sonnet|opus|fable), `esfuerzo`
    (low|medium|high|xhigh|max), `otra_ia` (id de una categoría del radar, o null), `palabras` (para reconocer la tarea en
    el pedido; sin tildes; una palabra calza entera o con un sufijo corto —«plata» no calza con «plataforma», «count» no con «country»—;
@@ -87,10 +88,13 @@ y el recordatorio sin red, sin IA, en menos de 1 s y con 5 líneas o menos).
    `evidencia[]` y `sin_dato`. **El nivel y el esfuerzo salen de la evidencia que ya tiene el radar (pedido del dueño,
    2026-10-08)**: cada `evidencia` apunta (`categoria` + `fuente`) a una evidencia `tipo: independiente` de esa categoría
    (§7.2: lo del fabricante no cuenta). Lo que no tiene evidencia no se inventa: la fila queda `verificado: false`, `sin_dato`
-   dice qué falta y se usa el escalón de abajo del valor por defecto de la política de modelos (0 «sí» → low · 1 → medium · 2 →
-   high · 3 → xhigh; fable y max, solo a pedido). La tabla es el **punto de partida**: cada «sí» a las 3 preguntas (¿juzgar o
-   decidir?, ¿el error sale caro?, ¿mucho contexto?) lo sube un escalón. Hoy ninguna fila es `verificado: true`: las mediciones
-   independientes que hay (Artificial Analysis, Arena) solo traen variantes xhigh y max y no comparan medium ni low. Las filas
+   dice qué falta y vale el valor por defecto de la política de modelos **tal cual** (0 «sí» → haiku/low · 1 → sonnet/medium · 2 →
+   opus/high · 3 → fable/xhigh; fable y max, solo a pedido). No se baja un escalón por falta de datos —dejaría subequipadas justo las
+   tareas donde el error sale caro—; se baja solo cuando hay duda entre dos escalones. La tabla es el **punto de partida**: si la
+   tarea tiene más «sí» de los que supone la fila (¿juzgar o decidir?, ¿el error sale caro?, ¿mucho contexto?), se sube un escalón por
+   cada uno. Hoy ninguna fila es `verificado: true`: las mediciones
+   independientes que hay (Artificial Analysis, Arena) solo traen variantes xhigh y max y no comparan medium ni low. Con evidencia
+   respaldada por 2 fuentes independientes la fila pasa a `verificado: true`. Las filas
    provisorias se marcan con `*` en `hoy` y el recordatorio les tolera un escalón de más.
 3. **`radar.py hoy`** (hook SessionStart). 4-5 líneas en castellano simple: modelos vigentes por alias · punto de partida de
    nivel/esfuerzo · cupo de las 3 IA · aviso (radar viejo, retiro próximo, planes con modelo viejo, consejos nuevos, skills de
