@@ -73,7 +73,7 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
 ## Cuando elegís qué IA usar (regla 18)
 
 18. **Para elegir qué IA, qué modelo de Claude y qué esfuerzo usar, consultá el radar; nunca de memoria.** Al abrir cada
-    sesión ya te muestra 4-5 líneas (`radar.py hoy`): qué modelo es hoy cada nivel (haiku, sonnet, opus), qué nivel y
+    sesión ya te muestra 5-6 líneas (`radar.py hoy`): qué modelo es hoy cada nivel (haiku, sonnet, opus), qué nivel y
     esfuerzo conviene por tipo de tarea y cuánto cupo queda en Claude, Codex y Gemini. Antes de abrir un subagente o una
     sesión nueva, poné `model` y `effort` según esa tabla, no según lo que recordás: la tabla se actualiza sola y tu
     memoria no. Un aviso del hook al delegar es solo un recordatorio, nunca te frena. Para elegir otra IA, corré

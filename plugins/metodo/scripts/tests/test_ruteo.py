@@ -170,12 +170,12 @@ class TestHoy(Base):
         datos.setdefault("ts", time.time())
         (d / nombre).write_text(json.dumps(datos), encoding="utf-8")
 
-    def test_son_de_4_a_5_lineas_con_lo_importante(self):
+    def test_son_de_5_a_6_lineas_con_lo_importante(self):
         self.cache("cupo.json", five_hour={"pct": 12}, seven_day={"pct": 81})
         self.cache("cupo-agy.json", five_hour={"pct": 0}, seven_day={"pct": 10})
         self.cache("cupo-codex.json", pct=100)
         lineas = R.hoy_lineas(radar_con_versiones())
-        self.assertTrue(4 <= len(lineas) <= 5, lineas)
+        self.assertTrue(5 <= len(lineas) <= 6, lineas)
         todo = "\n".join(lineas)
         for esperado in ("claude-haiku-5-5", "claude-opus-5-5", "haiku/low", "sonnet/medium", "opus/high", "Claude 81%",
                          "Codex 100% (agotado)", "Gemini 10%", "Con cupo libre: Gemini", "mandale", "claude-haiku-4-5-20251001"):
@@ -183,6 +183,34 @@ class TestHoy(Base):
         self.assertNotIn("Codex;", todo)   # Codex está agotado: no se lo ofrece
         self.assertIn("(* = sin medición independiente: vale la política de modelos)", todo)
         self.assertTrue(all("\n" not in x for x in lineas))
+
+    def test_otras_ia_linea(self):
+        radar = radar_con_versiones()
+        radar["categorias"] = [
+            {"id": "imagenes_generar", "nombre": "Imágenes", "planes": [
+                {"plan": "A", "proveedor": "OpenAI", "modelo": "gpt-image-2.5", "verificado": True},
+            ]},
+            {"id": "desarrollo", "nombre": "Desarrollo", "planes": [
+                {"plan": "A", "proveedor": "Anthropic", "modelo": "claude-opus-5-5", "verificado": True},
+            ]},
+        ]
+        lineas = R.hoy_lineas(radar)
+        linea_otra = next((x for x in lineas if x.startswith("Otras IA")), None)
+        self.assertIsNotNone(linea_otra)
+        self.assertIn("imágenes = gpt-image-2.5 (OpenAI)", linea_otra)
+        self.assertNotIn("Anthropic", linea_otra)
+        self.assertNotIn("claude-opus-5-5", linea_otra)
+        self.assertTrue(all("\n" not in x for x in lineas))
+
+        # con todos los planes A de Anthropic no hay línea
+        radar["categorias"] = [
+            {"id": "desarrollo", "nombre": "Desarrollo", "planes": [
+                {"plan": "A", "proveedor": "Anthropic", "modelo": "claude-opus-5-5", "verificado": True},
+            ]},
+        ]
+        lineas_sin = R.hoy_lineas(radar)
+        self.assertIsNone(next((x for x in lineas_sin if x.startswith("Otras IA")), None))
+        self.assertTrue(all("\n" not in x for x in lineas_sin))
 
     def test_sin_cache_dice_sin_dato_y_no_inventa(self):
         lineas = R.hoy_lineas(radar_con_versiones())
@@ -223,7 +251,7 @@ class TestHoy(Base):
     def test_con_el_yaml_real_entra_en_5_lineas(self):
         codigo, salida = self.correr("hoy")
         self.assertEqual(codigo, 0)
-        self.assertTrue(4 <= len(salida.strip().splitlines()) <= 5, salida)
+        self.assertTrue(5 <= len(salida.strip().splitlines()) <= 6, salida)
         self.assertIn(R.modelo_de_alias(R.leer_yaml(YAML_REAL), "haiku"), salida)
 
     def test_nunca_rompe_el_arranque(self):
@@ -490,7 +518,7 @@ class TestGuiasYConsejos(Base):
         aviso = next(x for x in lineas if x.startswith("Aviso:"))
         self.assertIn("consejos de uso nuevos para claude-haiku-5-5", aviso)
         self.assertIn(str(carpeta), aviso)
-        self.assertLessEqual(len(lineas), 5)
+        self.assertLessEqual(len(lineas), 6)
 
     def test_skill_de_prompting_vieja(self):
         base = self.tmp / "config"
@@ -730,6 +758,135 @@ class TestHooksJson(unittest.TestCase):
         for prohibido in ("permissionDecision", "exit 2", "deny"):
             self.assertNotIn(prohibido, crudo)
         self.assertTrue(orden["command"].rstrip().endswith("|| true"))
+
+
+class TestFunciones(Base):
+    def test_cargar_funciones_con_markdown_de_prueba(self):
+        ruta = self.tmp / "FUNCIONES_prueba.md"
+        contenido = (
+            "# Mapa de funciones oficiales de Claude Code\n"
+            "Revisado contra la doc oficial el 2026-10-08. Cada fila sale de su página.\n\n"
+            "| Función | Qué es | Cuándo conviene | Cuándo no | Doc |\n"
+            "|---|---|---|---|---|\n"
+            "|   Mods   |   Plugins en JS   |   Para UI propia   |   En WSL   |   https://code.claude.com/docs/en/mods.md   |\n"
+            "|   /goal   |   Comando objetivo   |   Tareas grandes   |   Con /loop   |   https://code.claude.com/docs/en/goal.md   |\n"
+        )
+        ruta.write_text(contenido, encoding="utf-8")
+        revisado, filas = R.cargar_funciones(ruta)
+        self.assertEqual(revisado, "2026-10-08")
+        self.assertEqual(len(filas), 2)
+        self.assertEqual(filas[0], {
+            "funcion": "Mods",
+            "que": "Plugins en JS",
+            "conviene": "Para UI propia",
+            "no": "En WSL",
+            "doc": "https://code.claude.com/docs/en/mods.md",
+        })
+        self.assertEqual(filas[1], {
+            "funcion": "/goal",
+            "que": "Comando objetivo",
+            "conviene": "Tareas grandes",
+            "no": "Con /loop",
+            "doc": "https://code.claude.com/docs/en/goal.md",
+        })
+
+    def test_archivo_ausente_devuelve_none_y_vacio(self):
+        revisado, filas = R.cargar_funciones(self.tmp / "no_existe.md")
+        self.assertIsNone(revisado)
+        self.assertEqual(filas, [])
+
+    def test_busqueda_por_palabra_con_y_sin_tilde(self):
+        cod1, out1 = self.correr("funciones", "móvil")
+        self.assertEqual(cod1, 0)
+        self.assertIn("▸ Sesiones en la nube:", out1)
+        self.assertIn("Conviene:", out1)
+        self.assertIn("No conviene:", out1)
+        self.assertIn("Doc:", out1)
+
+        cod2, out2 = self.correr("funciones", "movil")
+        self.assertEqual(cod2, 0)
+        self.assertEqual(out1, out2)
+
+    def test_busqueda_sin_coincidencia(self):
+        cod, out = self.correr("funciones", "termino_totalmente_inexistente_xyz")
+        self.assertEqual(cod, 0)
+        self.assertIn("No hay una función con esas palabras. Probá `radar.py funciones` para ver la lista.", out)
+
+    def test_pendientes_con_radar_segun_fecha(self):
+        radar = radar_con_versiones()
+        radar["fuentes_auto"] = {
+            "docs": {
+                "indice": {"nuevas": ["mods/overview 2026-10-09"]}
+            }
+        }
+        pend1 = R.funciones_pendientes(radar, "2026-10-08")
+        self.assertEqual(len(pend1), 1)
+        self.assertEqual(pend1[0], "página nueva: mods/overview (2026-10-09)")
+
+        pend0 = R.funciones_pendientes(radar, "2026-10-10")
+        self.assertEqual(len(pend0), 0)
+
+        temp_md = self.tmp / "FUNCIONES.md"
+        temp_md.write_text("Revisado contra la doc oficial el 2026-10-08.\n\n| Función | Qué es | Cuándo conviene | Cuándo no | Doc |\n|---|---|---|---|---|\n| Mods | q | c | n | https://code.claude.com/docs/en/x |\n", encoding="utf-8")
+        antes_md, antes_cargar = R.FUNCIONES_MD, R.cargar
+        R.FUNCIONES_MD = temp_md
+        R.cargar = lambda: (radar, "plugin")
+        try:
+            cod, out = self.correr("funciones", "--pendientes")
+            self.assertEqual(cod, 0)
+            self.assertIn("página nueva: mods/overview (2026-10-09)", out)
+
+            temp_md.write_text("Revisado contra la doc oficial el 2026-10-10.\n\n| Función | Qué es | Cuándo conviene | Cuándo no | Doc |\n|---|---|---|---|---|\n| Mods | q | c | n | https://code.claude.com/docs/en/x |\n", encoding="utf-8")
+            cod, out2 = self.correr("funciones", "--pendientes")
+            self.assertEqual(cod, 0)
+            self.assertIn("Nada pendiente: FUNCIONES.md está al día con la doc.", out2)
+        finally:
+            R.FUNCIONES_MD, R.cargar = antes_md, antes_cargar
+
+    def test_aviso_en_hoy_menciona_funciones_md_cuando_hay_pendientes(self):
+        radar = radar_con_versiones()
+        radar["fuentes_auto"] = {
+            "docs": {
+                "indice": {"nuevas": ["mods/overview 2026-10-09"]}
+            }
+        }
+        temp_md = self.tmp / "FUNCIONES.md"
+        temp_md.write_text(
+            "Revisado contra la doc oficial el 2026-10-08.\n\n"
+            "| Función | Qué es | Cuándo conviene | Cuándo no | Doc |\n"
+            "|---|---|---|---|---|\n"
+            "| Mods | q | c | n | https://code.claude.com/docs/en/x |\n",
+            encoding="utf-8"
+        )
+        antes = R.FUNCIONES_MD
+        R.FUNCIONES_MD = temp_md
+        try:
+            lineas = R.hoy_lineas(radar)
+            aviso = next((x for x in lineas if x.startswith("Aviso:")), "")
+            self.assertIn("FUNCIONES.md", aviso)
+            self.assertIn("hay 1 cambios en la doc oficial", aviso)
+
+            temp_md.write_text(
+                "Revisado contra la doc oficial el 2026-10-10.\n\n"
+                "| Función | Qué es | Cuándo conviene | Cuándo no | Doc |\n"
+                "|---|---|---|---|---|\n"
+                "| Mods | q | c | n | https://code.claude.com/docs/en/x |\n",
+                encoding="utf-8"
+            )
+            lineas2 = R.hoy_lineas(radar)
+            aviso2 = next((x for x in lineas2 if x.startswith("Aviso:")), "")
+            self.assertNotIn("FUNCIONES.md", aviso2)
+        finally:
+            R.FUNCIONES_MD = antes
+
+    def test_funciones_md_real_del_repo(self):
+        revisado, filas = R.cargar_funciones(R.FUNCIONES_MD)
+        self.assertIsNotNone(revisado)
+        self.assertGreaterEqual(len(filas), 10)
+        for f in filas:
+            for campo in ("funcion", "que", "conviene", "no", "doc"):
+                self.assertTrue(bool(f.get(campo) and f[campo].strip()), "%s vacío en %s" % (campo, f))
+            self.assertTrue(f["doc"].startswith("https://code.claude.com/docs/en/"), "%s no empieza con https://code.claude.com/docs/en/" % f["doc"])
 
 
 if __name__ == "__main__":

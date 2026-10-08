@@ -96,8 +96,8 @@ y el recordatorio sin red, sin IA, en menos de 1 s y con 5 líneas o menos).
    independientes que hay (Artificial Analysis, Arena) solo traen variantes xhigh y max y no comparan medium ni low. Con evidencia
    respaldada por 2 fuentes independientes la fila pasa a `verificado: true`. Las filas
    provisorias se marcan con `*` en `hoy` y el recordatorio les tolera un escalón de más.
-3. **`radar.py hoy`** (hook SessionStart). 4-5 líneas en castellano simple: modelos vigentes por alias · punto de partida de
-   nivel/esfuerzo · cupo de las 3 IA · aviso (radar viejo, retiro próximo, planes con modelo viejo, consejos nuevos, skills de
+3. **`radar.py hoy`** (hook SessionStart). 5-6 líneas en castellano simple: modelos vigentes por alias · punto de partida de
+   nivel/esfuerzo · cupo de las 3 IA · qué IA de otro proveedor conviene (plan A de cada categoría que Claude no cubre) · aviso (radar viejo, retiro próximo, planes con modelo viejo, consejos nuevos, skills de
    prompting viejas) · recordatorio de poner `model`/`effort`.
    **Sin red y sin lanzar programas**: el cupo sale de cachés locales (`cupo.json`, `cupo-codex.json`, `cupo-agy.json` en
    `$CEREBRO_HOME` o `~/.cerebro`, que deja el Bicho; más de 30 min —24 h para Codex— cuenta como «sin dato»). Nunca corre
@@ -156,3 +156,24 @@ cuando una skill `gpt|gemini|claude-<versión>-prompting` instalada es de una ge
 marca (regla 19: una sola pieza por función; gana la oficial del fabricante). Como esa skill suele venir de un plugin oficial y no se
 puede arreglar de un día para otro, el aviso sale **una vez por semana** (única cosa que `hoy` escribe: `<config>/metodo/avisos-radar.json`,
 solo la fecha del último aviso); `radar.py consejos` la muestra siempre. No se inyecta la guía entera.
+
+## 10. Documentación oficial, mapa de funciones y control del ruteo (2026-10-08)
+Tres huecos que marcó el dueño: (1) el ecosistema no leía la doc oficial, así que funciones nuevas (Mods, `/goal`, canales,
+rutinas…) no estaban registradas con «cuándo usarlas»; (2) al abrir la sesión no se decía qué IA de otro proveedor conviene;
+(3) no se medía si el ruteo se cumple.
+
+1. **Vigía de la doc** (`scripts/radar-fuentes.py`, sección `fuentes_auto.docs` de `RADAR.yaml`; sin IA, sin claves). Cada día:
+   huella del índice `https://code.claude.com/docs/llms.txt` (páginas nuevas, sin contar `whats-new/` ni `changelog`), huella
+   del texto de las 15 páginas que respaldan cada fila de `radar/FUNCIONES.md`, y la versión estable más nueva de Claude Code,
+   Codex CLI y Gemini CLI (feeds de releases de GitHub y `latest.md` de Gemini). Un parche suelto no abre PR: Claude Code avisa
+   cada 25 parches y Codex y Gemini cada versión menor. Si algo cambia, el PR lo dice y **no se fusiona solo** (misma guardia que
+   `vigentes:`). Antigravity no tiene un registro de cambios público y verificable: queda sin vigilar.
+2. **Mapa de funciones** (`plugins/metodo/radar/FUNCIONES.md`): una fila por función oficial (qué es, cuándo conviene, cuándo no, URL).
+   Lo escribe una IA barata desde las páginas oficiales y una persona o Claude lo revisa contra la doc (`curl -sL <url>.md | grep`).
+   `radar.py funciones <palabra>` lo consulta; `radar.py funciones --pendientes` lista lo que cambió en la doc después de la fecha
+   «Revisado» del archivo; `radar.py hoy` avisa en una línea si hay pendientes. Para limpiar el aviso se rehace la fila y se sube la fecha.
+3. **Otras IA al abrir la sesión**: `radar.py hoy` suma una línea con el plan A de cada categoría que Claude no cubre
+   (imágenes, video, investigación web, transcripción, voz, tareas baratas). Total: 5-6 líneas.
+4. **Control mensual** (`plugins/metodo/scripts/control-ruteo.py`, solo lectura): recorre los transcripts de Claude Code y devuelve
+   3 líneas con números (modelo y esfuerzo de los subagentes y sesiones derivadas, tareas mandadas a Codex y a Gemini, cuántas
+   quedaron sobredimensionadas según `ruteo_claude`). Nunca copia texto de las conversaciones.

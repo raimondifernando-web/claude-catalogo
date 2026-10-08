@@ -17,7 +17,7 @@ Comandos (los corre Claude desde la skill `radar`; el usuario no toca la termina
                                          con TUS claves (variables de entorno, por nombre; nunca se imprimen)
     aviso                                una línea si el radar tiene más de 14 días o hay un retiro próximo de un modelo
                                          que usamos; nunca falla el arranque
-    hoy                                  4-5 líneas para empezar la sesión: modelos vigentes, ruteo por tipo de tarea, cupo de
+    hoy                                  5-6 líneas para empezar la sesión: modelos vigentes, ruteo por tipo de tarea, cupo de
                                          las 3 IA y avisos. SIN red y SIN comandos lentos (solo cachés locales); nunca falla
     consejos [--pedido RUTA] [--todo]    estado de los resúmenes de consejos de uso (radar/consejos/<modelo>.md, ≤10 líneas con la
                                          fuente arriba). --pedido baja las guías oficiales y deja el texto para que la IA más
@@ -25,6 +25,8 @@ Comandos (los corre Claude desde la skill `radar`; el usuario no toca la termina
     recordar                             (lo llama el hook PreToolUse de Agent / start_session; lee el JSON del hook por stdin)
                                          agrega una línea de contexto si al delegar falta el modelo o sobra nivel/esfuerzo.
                                          NUNCA bloquea ni decide permisos: solo recuerda
+    funciones [palabras ...] [--pendientes] mapa de funciones oficiales de Claude Code (FUNCIONES.md) o cambios pendientes
+                                         de la doc oficial. Nunca falla
 
 `<config>` es $CLAUDE_CONFIG_DIR si está definida; si no, ~/.claude.
 Códigos de salida: 0 bien · 1 no hay ningún plan disponible / error de uso · 2 categoría desconocida.
@@ -50,6 +52,15 @@ AQUI = Path(__file__).resolve().parent
 RADAR_EMPAQUETADO = AQUI.parent / "radar" / "RADAR.yaml"
 CODEX_CUPO = AQUI / "codex-cupo"
 CONSEJOS_DIR = AQUI.parent / "radar" / "consejos"
+FUNCIONES_MD = AQUI.parent / "radar" / "FUNCIONES.md"
+ETIQUETAS_OTRA_IA = {
+    "imagenes_generar": "imágenes",
+    "investigacion_web": "investigar en la web",
+    "video": "video",
+    "transcripcion": "transcribir audio",
+    "voz_tts": "voz",
+    "tareas_baratas": "tareas mecánicas baratas",
+}
 DIAS_CONSEJO_NUEVO = 14
 MAX_LINEAS_CONSEJO = 10
 URL_PUBLICADO = "https://raw.githubusercontent.com/raimondifernando-web/claude-catalogo/main/plugins/metodo/radar/RADAR.yaml"
@@ -834,6 +845,37 @@ def ruteo_en_una_linea(radar):
     return " · ".join("%s%s = %s" % (c, "*" if prov else "", ", ".join(x)) for c, x, prov in grupos)
 
 
+def otras_ia_linea(radar):
+    """El plan A de cada categoría que Claude no cubre (proveedor distinto de Anthropic). Vacío si no corresponde."""
+    try:
+        partes = []
+        for c in (radar.get("categorias") or []):
+            if not isinstance(c, dict):
+                continue
+            plan_a = next((p for p in (c.get("planes") or []) if isinstance(p, dict) and p.get("plan") == "A"), None)
+            if not plan_a:
+                continue
+            prov = str(plan_a.get("proveedor") or "").strip()
+            if not prov or prov.lower() == "anthropic":
+                continue
+            cid = str(c.get("id") or "")
+            etiqueta = ETIQUETAS_OTRA_IA.get(cid)
+            if not etiqueta:
+                etiqueta = _limpio(c.get("nombre", cid), 30).lower()
+            mod = str(plan_a.get("modelo") or plan_a.get("herramienta") or "").strip()
+            if plan_a.get("verificado") is not True:
+                mod += "*"
+            partes.append("%s = %s (%s)" % (etiqueta, mod, prov))
+            if len(partes) >= 8:
+                break
+        if not partes:
+            return ""
+        return ("Otras IA (el plan A de cada categoría que Claude no cubre; * = sin verificar): %s. "
+                "Con datos privados o de clientes: `radar.py elegir <categoría> --sensible`." % " · ".join(partes))
+    except Exception:
+        return ""
+
+
 def hoy_lineas(radar, cupos=None):
     """Las líneas de `radar.py hoy`. Sin red, sin comandos lentos."""
     cupos = cupos or cupos_rapidos()
@@ -853,6 +895,9 @@ def hoy_lineas(radar, cupos=None):
         linea += " Con cupo libre: %s; %s revisiones y trabajo acotado con delegar.py." % (
             " y ".join(libres), "mandale" if len(libres) == 1 else "mandales")
     lineas.append(linea)
+    otra = otras_ia_linea(radar)
+    if otra:
+        lineas.append(otra)
     avisos = []
     base = _limpio(aviso_linea(radar), 300)
     if base:
@@ -869,10 +914,17 @@ def hoy_lineas(radar, cupos=None):
     for a in planes_atrasados(radar)[:2]:
         avisos.append("salió %s y el plan %s de «%s» sigue en %s" % (
             _limpio(a["vigente"], 64), _limpio(a["plan"], 2), _limpio(a["categoria"], 40), _limpio(a["usa"], 64)))
+    try:
+        rev_func, _ = cargar_funciones()
+        pend = funciones_pendientes(radar, rev_func)
+        if pend:
+            avisos.append("hay %d cambios en la doc oficial de Claude Code que FUNCIONES.md todavía no refleja (radar.py funciones --pendientes)" % len(pend))
+    except Exception:
+        pass
     if avisos:
         lineas.append("Aviso: " + "; ".join(avisos) + ".")
     lineas.append("Al abrir un subagente o una sesión: poné `model` y `effort` según este ruteo y lo acotado mandalo a la IA con cupo "
-                  "(regla 18: `radar.py elegir <categoría>`).")
+                  "(regla 18: `radar.py elegir <categoría>`). Antes de armar algo a mano, mirá si Claude Code ya lo trae: `radar.py funciones <palabra>`.")
     return [_limpio(x, 700) for x in lineas]
 
 
@@ -1494,6 +1546,134 @@ def cmd_aviso(_a):
     return 0
 
 
+# --------------------------------------------------------------------------- #
+# Mapa de funciones oficiales de Claude Code (FUNCIONES.md)
+# --------------------------------------------------------------------------- #
+def cargar_funciones(ruta=None):
+    """Devuelve (revisado, filas). revisado es la fecha YYYY-MM-DD (str o None).
+    filas es [{"funcion", "que", "conviene", "no", "doc"}, ...]. Nunca lanza."""
+    try:
+        p = Path(ruta) if ruta else FUNCIONES_MD
+        if not p.is_file():
+            return None, []
+        texto = p.read_text(encoding="utf-8")
+        m = re.search(r"Revisado contra la doc oficial el (\d{4}-\d{2}-\d{2})", texto)
+        revisado = m.group(1) if m else None
+        filas = []
+        for linea in texto.splitlines():
+            s = linea.strip()
+            if not s.startswith("|"):
+                continue
+            celdas = [c.strip() for c in s.split("|")]
+            if celdas and celdas[0] == "":
+                celdas = celdas[1:]
+            if celdas and celdas[-1] == "":
+                celdas = celdas[:-1]
+            if len(celdas) < 5:
+                continue
+            if celdas[0].lower() in ("función", "funcion") or all(set(c) <= {"-", ":"} for c in celdas):
+                continue
+            filas.append({
+                "funcion": celdas[0],
+                "que": celdas[1],
+                "conviene": celdas[2],
+                "no": celdas[3],
+                "doc": celdas[4],
+            })
+        return revisado, filas
+    except Exception:
+        return None, []
+
+
+def funciones_pendientes(radar, revisado):
+    """Cambios en la doc oficial posteriores a `revisado`. Lista de textos cortos. Nunca lanza."""
+    try:
+        docs = (radar.get("fuentes_auto") or {}).get("docs")
+        if not isinstance(docs, dict):
+            return []
+        f_rev = a_fecha(revisado)
+        out = []
+
+        nuevas = (docs.get("indice") or {}).get("nuevas") or []
+        for item in nuevas:
+            if not isinstance(item, str):
+                continue
+            partes = item.strip().rsplit(None, 1)
+            if len(partes) != 2:
+                continue
+            slug, f_str = partes
+            f = a_fecha(f_str)
+            if f and (f_rev is None or f > f_rev):
+                out.append("página nueva: %s (%s)" % (slug, f.isoformat()))
+
+        paginas = docs.get("paginas") or {}
+        if isinstance(paginas, dict):
+            for pid, p in paginas.items():
+                if not isinstance(p, dict) or not p.get("cambio"):
+                    continue
+                f = a_fecha(p.get("cambio"))
+                if f and (f_rev is None or f > f_rev):
+                    titulo = str(p.get("titulo") or pid)
+                    out.append("cambió la página: %s (%s)" % (titulo, f.isoformat()))
+
+        changelogs = docs.get("changelogs") or {}
+        if isinstance(changelogs, dict):
+            for cid, cl in changelogs.items():
+                if not isinstance(cl, dict) or not cl.get("cambio"):
+                    continue
+                f = a_fecha(cl.get("cambio"))
+                if f and (f_rev is None or f > f_rev):
+                    titulo = str(cl.get("titulo") or cid)
+                    version = str(cl.get("version") or "?")
+                    out.append("nueva versión de %s: %s (%s)" % (titulo, version, f.isoformat()))
+
+        return out
+    except Exception:
+        return []
+
+
+def cmd_funciones(a):
+    if getattr(a, "pendientes", False):
+        try:
+            radar, _ = cargar()
+        except BaseException:
+            radar = {}
+        revisado, _ = cargar_funciones()
+        pend = funciones_pendientes(radar, revisado)
+        if pend:
+            for p in pend:
+                print(p)
+        else:
+            print("Nada pendiente: FUNCIONES.md está al día con la doc.")
+        return 0
+
+    revisado, filas = cargar_funciones()
+    palabras = [w for w in (getattr(a, "palabras", None) or []) if w.strip()]
+    palabras_norm = [_norm(w) for w in palabras if _norm(w)]
+    if not palabras_norm:
+        for f in filas:
+            print(f["funcion"])
+        print("%d funciones (revisado %s)." % (len(filas), revisado or "sin fecha"))
+        return 0
+
+    coincidencias = []
+    for f in filas:
+        celdas_norm = [_norm(f.get(k, "")) for k in ("funcion", "que", "conviene", "no", "doc")]
+        if all(any(p in c for c in celdas_norm) for p in palabras_norm):
+            coincidencias.append(f)
+
+    if not coincidencias:
+        print("No hay una función con esas palabras. Probá `radar.py funciones` para ver la lista.")
+        return 0
+
+    for f in coincidencias:
+        print("▸ %s: %s" % (f["funcion"], f["que"]))
+        print("  Conviene: %s" % f["conviene"])
+        print("  No conviene: %s" % f["no"])
+        print("  Doc: %s" % f["doc"])
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="radar.py", description="Radar de modelos: qué IA usar para cada cosa, con plan B y C.")
     sub = ap.add_subparsers(dest="cmd")
@@ -1510,6 +1690,7 @@ def main(argv=None):
     sub.add_parser("hoy").set_defaults(f=cmd_hoy)
     s = sub.add_parser("consejos"); s.add_argument("--pedido"); s.add_argument("--todo", action="store_true"); s.set_defaults(f=cmd_consejos)
     sub.add_parser("recordar").set_defaults(f=cmd_recordar)
+    s = sub.add_parser("funciones"); s.add_argument("palabras", nargs="*"); s.add_argument("--pendientes", action="store_true"); s.set_defaults(f=cmd_funciones)
     a = ap.parse_args(argv)
     if not getattr(a, "f", None):
         ap.print_help()
