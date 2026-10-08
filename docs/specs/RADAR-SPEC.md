@@ -124,7 +124,7 @@ Gemini* (`latest-model`) y *Prompt design strategies*. Si cambia una huella, el 
 qué comando correr; la primera vez fija la línea base. Una guía que no se pudo leer se ignora ese día (nunca borra la huella).
 
 **Qué hay en `radar/consejos/`.** Un archivo por modelo vigente: `<modelo_api>.md`. Primera línea
-`Fuente: <URL> (consultada AAAA-MM-DD)`; después de 2 a 10 líneas que empiezan con `- `, cada una con UNA cosa concreta que cambia
+`Fuente: <URL> (consultada AAAA-MM-DD)`; después de 1 a 10 líneas que empiezan con `- `, cada una con UNA cosa concreta que cambia
 en cómo usar ese modelo. Solo lo que dicen las guías. Si la guía no trae nada propio del modelo, una línea que lo dice. Lo controla
 un test (formato, largo, que existan todos los vigentes).
 

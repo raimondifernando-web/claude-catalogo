@@ -537,7 +537,7 @@ class TestGuiasYConsejos(Base):
             lineas = [x for x in e["ruta"].read_text(encoding="utf-8").splitlines() if x.strip()]
             self.assertTrue(lineas[0].startswith("Fuente: https://"), e["modelo"])
             self.assertIsNotNone(e["fecha"], e["modelo"])
-            self.assertTrue(2 <= len(lineas) - 1 <= R.MAX_LINEAS_CONSEJO, "%s: %d líneas" % (e["modelo"], len(lineas) - 1))
+            self.assertTrue(1 <= len(lineas) - 1 <= R.MAX_LINEAS_CONSEJO, "%s: %d líneas" % (e["modelo"], len(lineas) - 1))
             self.assertTrue(all(x.startswith("- ") for x in lineas[1:]), e["modelo"])
             self.assertNotRegex(e["ruta"].read_text(encoding="utf-8"), r"[`\x00-\x08\x0b-\x1f]")
 
