@@ -11,7 +11,9 @@ Qué cuenta como cambio relevante:
   - cambió la tabla de una página de retiros (se guarda un hash; la primera vez fija la línea base);
   - salió una versión más nueva de una familia de modelos que sigue el radar (models.dev y OpenRouter): se actualiza la
     sección `vigentes` (es un dato; el robot la puede escribir) y el PR avisa qué planes siguen en la versión vieja.
-    El orden A/B/C NO se toca: lo decide una persona (spec §7).
+    El orden A/B/C NO se toca: lo decide una persona (spec §7);
+  - cambió una guía oficial de prompting o de migración de Anthropic, OpenAI o Google (huella diaria del texto, sin IA).
+    Los resúmenes de `plugins/metodo/radar/consejos/` NO los hace el robot: el aviso del PR dice qué comando correr.
 
 Uso:
     radar-fuentes.py --modo diario|semanal|todo [--yaml RUTA] [--motivo RUTA] [--seco]
@@ -26,7 +28,7 @@ import os
 import re
 import sys
 import urllib.parse
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -88,15 +90,17 @@ def leer_openrouter(datos):
     out = {}
     for m in (datos or {}).get("data", []):
         pr = m.get("pricing") or {}
-        out[str(m.get("id", "")).split("/")[-1]] = {
+        mid = str(m.get("id", ""))
+        out[mid.split("/")[-1]] = {
             "retiro": _fecha(m.get("expiration_date")), "entrada": _por_millon(pr.get("prompt")),
-            "salida": _por_millon(pr.get("completion")), "alta": _fecha_de_timestamp(m.get("created"))}
+            "salida": _por_millon(pr.get("completion")), "alta": _fecha_de_timestamp(m.get("created")),
+            "proveedores": [mid.split("/")[0]] if "/" in mid else []}
     return out
 
 
 def leer_modelsdev(datos):
     out = {}
-    for prov in (datos or {}).values():
+    for pid, prov in (datos or {}).items():
         modelos = prov.get("models", {}) if isinstance(prov, dict) else {}
         for mid, m in modelos.items():
             if not isinstance(m, dict):
@@ -105,9 +109,10 @@ def leer_modelsdev(datos):
             retiro = m.get("deprecation_date") or m.get("retirement_date") or m.get("sunset_date")
             clave = str(mid).split("/")[-1]
             alta = _fecha(m.get("release_date"))
-            previa = (out.get(clave) or {}).get("alta")
+            previa = out.get(clave) or {}
             out[clave] = {"retiro": _fecha(retiro), "entrada": costo.get("input"), "salida": costo.get("output"),
-                          "alta": min([x for x in (alta, previa) if x], default=None)}
+                          "alta": min([x for x in (alta, previa.get("alta")) if x], default=None),
+                          "proveedores": sorted(set(previa.get("proveedores", [])) | {str(pid)})}
     return out
 
 
@@ -135,6 +140,12 @@ def hash_tablas(html):
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()[:16]
 
 
+def hash_texto(texto):
+    """Huella del TEXTO de una guía (se baja la versión .md, sin menús ni scripts). Una página de error o vacía no cuenta."""
+    t = re.sub(r"\s+", " ", texto or "").strip()
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()[:16] if len(t) >= 200 else None
+
+
 # --------------------------------------------------------------------------- #
 # Comparación
 # --------------------------------------------------------------------------- #
@@ -147,22 +158,28 @@ def modelos_nombrados(radar):
     return out
 
 
-def detectar_vigentes(radar, fuentes):
+def detectar_vigentes(radar, fuentes, hoy_s=None):
     """Último modelo de cada familia de `fuentes_auto.familias`, mirando models.dev y OpenRouter.
-    Devuelve [{id, nombre, alias, modelo_api, alta, fuente}]. Una familia sin candidatos queda fuera (no se inventa nada)."""
+    Devuelve [{id, nombre, alias, modelo_api, alta, fuente}]. Una familia sin candidatos queda fuera (no se inventa nada).
+    Un candidato solo vale si lo publica el proveedor de la familia (`proveedor`), calza el patrón anclado, no es una vista
+    previa y trae una fecha de alta que no sea futura: lo que llega a las sesiones de los clientes pasa por estos filtros."""
+    tope = R.a_fecha(hoy_s) or date.today()
     out = []
     for f in (radar.get("fuentes_auto") or {}).get("familias") or []:
         mejor = None
         for fuente, rotulo in (("modelsdev", "models.dev"), ("openrouter", "OpenRouter")):
             for mid, info in (fuentes.get(fuente) or {}).items():
                 hit = R.familia_de(mid, [f])
-                if not hit or not R.ID_MODELO.match(hit[2]):
+                if not hit or not R.ID_MODELO.match(hit[2]) or "preview" in hit[2]:
                     continue
-                clave = (R._comparable(hit[1]), -len(hit[2]))   # misma versión: gana el id más corto (sin «-preview»)
+                if f.get("proveedor") and f["proveedor"] not in ((info or {}).get("proveedores") or []):
+                    continue
+                alta = R.a_fecha((info or {}).get("alta"))
+                if alta is None or alta > tope + timedelta(days=1):
+                    continue
+                clave = (R._comparable(hit[1]), -len(hit[2]))   # misma versión: gana el id más corto
                 if mejor is None or clave > mejor[0]:
-                    mejor = (clave, hit[2], (info or {}).get("alta"), rotulo)
-                elif clave == mejor[0] and not mejor[2] and (info or {}).get("alta"):
-                    mejor = (clave, mejor[1], info["alta"], mejor[3])
+                    mejor = (clave, hit[2], alta.isoformat(), rotulo)
         if mejor:
             fila = {"id": f.get("id"), "nombre": f.get("nombre") or f.get("id"), "modelo_api": mejor[1],
                     "alta": mejor[2], "fuente": mejor[3]}
@@ -178,16 +195,18 @@ def novedades_de_versiones(nuevo, fuentes, hoy_s):
     familias = (nuevo.get("fuentes_auto") or {}).get("familias") or []
     if not familias:
         return []
-    hallados = detectar_vigentes(nuevo, fuentes)
+    hallados = detectar_vigentes(nuevo, fuentes, hoy_s)
     if not hallados:
         return []
     previas = {f["id"]: f for f in ((nuevo.get("vigentes") or {}).get("familias") or []) if isinstance(f, dict) and f.get("id")}
     motivos, resultado, cambio = [], [], False
-    orden = [f.get("id") for f in familias]
+    orden = list(dict.fromkeys(f.get("id") for f in familias))
     for fila in hallados:
         vieja = previas.get(fila["id"])
         if vieja:
             a, b = R.familia_de(vieja.get("modelo_api"), familias), R.familia_de(fila["modelo_api"], familias)
+            if a and b and b[1][0] > a[1][0] + 1:
+                continue   # salto de más de una versión mayor: sospechoso, lo anota una persona
             if a and b and R._comparable(b[1]) <= R._comparable(a[1]):
                 if R._comparable(b[1]) == R._comparable(a[1]) and not vieja.get("alta") and fila.get("alta"):
                     vieja["alta"] = fila["alta"]   # misma versión: solo se completa la fecha que faltaba
@@ -207,6 +226,32 @@ def novedades_de_versiones(nuevo, fuentes, hoy_s):
         if any(a["vigente"] == f["modelo_api"] for f in resultado):
             motivos.append("El plan %s de «%s» sigue en %s y ya salió %s: el orden A/B/C se cambia a mano (spec §7)." % (
                 a["plan"], a["categoria"], a["usa"], a["vigente"]))
+    return motivos
+
+
+COMANDO_CONSEJOS = ("Para resumir los consejos nuevos con la IA más barata: `python3 plugins/metodo/scripts/radar.py consejos --pedido "
+                    "pedido-consejos.txt`, después `python3 plugins/metodo/scripts/delegar.py desarrollo . pedido-consejos.txt --archivo` "
+                    "(elige Codex o Gemini según el cupo; si solo queda Claude, un subagente con model haiku y effort low; nunca Opus) y "
+                    "revisar el resultado a mano (spec §9).")
+
+
+def novedades_de_guias(nuevo, fuentes):
+    """Compara la huella de cada guía de `fuentes_auto.guias`. Guarda la nueva y devuelve los motivos para el PR."""
+    guias = (nuevo.get("fuentes_auto") or {}).get("guias") or {}
+    motivos = []
+    for gid, h in sorted((fuentes.get("guias") or {}).items()):
+        entrada = guias.get(gid)
+        if not isinstance(entrada, dict) or not h or entrada.get("hash") == h:
+            continue
+        nombre = "%s — %s" % (entrada.get("proveedor", gid), entrada.get("titulo", gid))
+        if not entrada.get("hash"):
+            motivos.append("Línea base de la guía «%s»: desde acá se avisa si cambia." % nombre)
+        else:
+            motivos.append("Cambió la guía oficial «%s» (%s): revisar si cambian los consejos de uso de `plugins/metodo/radar/consejos/`." % (
+                nombre, entrada.get("url", "")))
+        entrada["hash"] = h
+    if any(m.startswith("Cambió la guía") for m in motivos):
+        motivos.append(COMANDO_CONSEJOS)
     return motivos
 
 
@@ -277,6 +322,9 @@ def analizar(radar, fuentes, hoy_f=None):
     # 4) versiones nuevas de las familias que sigue el radar
     motivos += novedades_de_versiones(nuevo, fuentes, hoy_s)
 
+    # 5) guías oficiales de prompting y de migración (huella del texto)
+    motivos += novedades_de_guias(nuevo, fuentes)
+
     if not motivos:
         return radar, []
     nuevo["actualizado"] = hoy_s
@@ -294,7 +342,7 @@ def traer(url, como="json"):
 
 def juntar(radar, modo, traer_fn=traer, avisar=print):
     fa = radar.get("fuentes_auto") or {}
-    fuentes = {"paginas": {}}
+    fuentes = {"paginas": {}, "guias": {}}
     if modo in ("diario", "todo"):
         for clave, lector in (("litellm", leer_litellm), ("openrouter", leer_openrouter), ("modelsdev", leer_modelsdev)):
             if fa.get(clave):
@@ -307,6 +355,12 @@ def juntar(radar, modo, traer_fn=traer, avisar=print):
                 fuentes["paginas"][pid] = hash_tablas(traer_fn(p["url"], "texto"))
             except Exception as ex:
                 avisar("Aviso: no pude leer la página de retiros de %s (%s)." % (pid, type(ex).__name__))
+        fuentes["guias"] = {}
+        for gid, g in sorted((fa.get("guias") or {}).items()):
+            try:
+                fuentes["guias"][gid] = hash_texto(traer_fn(g["url"], "texto"))
+            except Exception as ex:
+                avisar("Aviso: no pude leer la guía %s (%s)." % (gid, type(ex).__name__))
     if modo in ("semanal", "todo") and fa.get("arena"):
         fuentes["arena"] = {}
         for c in radar.get("categorias") or []:

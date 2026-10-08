@@ -60,7 +60,7 @@ vigentes:
       alta: 2026-02-19
       fuente: models.dev
 ruteo_claude:
-  nota: "Qué nivel de Claude y qué esfuerzo usar por tipo de tarea, con las 3 preguntas de siempre: ¿hay que juzgar o decidir?, ¿equivocarse sale caro?, ¿hay que sostener mucho contexto? Ninguna sí = haiku/low; una = sonnet/medium; dos = opus/high; las tres y tarea larga = fable/xhigh, solo a pedido (no se rutea). max, solo a pedido. Ante la duda, el de abajo y medir. Lo escribe una persona a mano: el robot no lo toca."
+  nota: "Punto de partida de nivel y esfuerzo de Claude por tipo de tarea, sacado de la evidencia INDEPENDIENTE de este mismo radar (cada fila apunta a las evidencias de sus categorías, spec §7). Donde no hay dato, la fila queda verificado: false y usa el escalón de abajo del valor por defecto de la política de modelos (0 «sí» = low · 1 = medium · 2 = high · 3 = xhigh; ante la duda, el de abajo). Cada «sí» a ¿hay que juzgar o decidir?, ¿equivocarse sale caro? o ¿hay mucho contexto? sube un escalón desde acá. Fable solo a pedido, max solo a pedido. Lo escribe una persona a mano: el robot no lo toca."
   tareas:
     - id: buscar_mover
       corto: "buscar, contar, mover o resumir"
@@ -68,41 +68,68 @@ ruteo_claude:
       nivel: haiku
       esfuerzo: low
       otra_ia: tareas_baratas
+      verificado: false
+      sin_dato: "El radar no mide a Claude Haiku en esta categoría (solo GPT-6 Luna y GPT-6.1 Sol). haiku/low es el piso de la escala."
+      evidencia: []
       palabras: [buscar, search, listar, listado, contar, count, renombrar, rename, mover, resumir, resumen, summar, inventario, grep, encontrar, ubicar]
     - id: implementar_acotado
       corto: "implementar algo acotado"
       tarea: "Implementar algo acotado: un arreglo claro, un script, una función, tests"
       nivel: sonnet
-      esfuerzo: medium
+      esfuerzo: low
       otra_ia: desarrollo
+      verificado: false
+      sin_dato: "Nivel: dos fuentes independientes. Esfuerzo: las mediciones solo traen variantes xhigh y max (Arena) y no comparan medium ni low; sin dato se usa el escalón de abajo de medium."
+      evidencia:
+        - dato: nivel
+          categoria: desarrollo
+          fuente: "Artificial Analysis Coding Agent Index v1.5"
+        - dato: nivel
+          categoria: diseno
+          fuente: "Arena WebDev"
       palabras: [implement, arreglar, corregir, fix, bug, refactor, agregar, test, script, codigo, code, parche, patch, funcion]
     - id: revisar
       corto: "revisar o dar segunda opinión"
       tarea: "Revisar un cambio o dar una segunda opinión"
-      nivel: sonnet
-      esfuerzo: medium
+      nivel: haiku
+      esfuerzo: low
       otra_ia: revision
+      verificado: false
+      sin_dato: "La categoría «revisión de código y seguridad» no tiene evidencia independiente cargada (orden provisorio): se usa el escalón de abajo de sonnet/medium. La segunda opinión conviene mandarla a otra IA."
+      evidencia: []
       palabras: [revis, review, critic, segunda opinion, verific, chequear]
     - id: planillas
       corto: "planillas y datos"
       tarea: "Planillas, conciliaciones y análisis de datos"
       nivel: sonnet
-      esfuerzo: medium
+      esfuerzo: low
       otra_ia: datos_planillas
+      verificado: false
+      sin_dato: "Nivel: una fuente independiente (Claude Sonnet 5.5 queda 2° en AnalystAgent). Esfuerzo: sin medición, escalón de abajo de medium."
+      evidencia:
+        - dato: nivel
+          categoria: datos_planillas
+          fuente: "Artificial Analysis AnalystAgent y GDP.pdf"
       palabras: [planilla, excel, xlsx, csv, spreadsheet, conciliar, conciliacion]
     - id: investigar
       corto: "investigar en la web"
       tarea: "Investigar en la web y juntar fuentes"
-      nivel: sonnet
-      esfuerzo: medium
+      nivel: haiku
+      esfuerzo: low
       otra_ia: investigacion_web
+      verificado: false
+      sin_dato: "Arena búsqueda no trae modelos Claude de septiembre (el único Claude es Opus 4.6): sin dato, escalón de abajo de sonnet/medium."
+      evidencia: []
       palabras: [investig, research, en la web, relevar, scrap]
     - id: arquitectura_seguridad_plata
       corto: "arquitectura, seguridad o plata"
       tarea: "Arquitectura, seguridad, dinero o algo irreversible (planear en Claude; la revisión puede ir a otra IA)"
-      nivel: opus
-      esfuerzo: high
+      nivel: sonnet
+      esfuerzo: medium
       otra_ia: revision
+      verificado: false
+      sin_dato: "No hay evidencia independiente de arquitectura ni de seguridad (revisión sin fuentes): escalón de abajo de opus/high. Acá casi siempre corresponde subir: ¿hay que juzgar? ¿el error sale caro? ¿mucho contexto? Con dos «sí» es opus/high."
+      evidencia: []
       palabras: [arquitectur, architect, seguridad, security, vulnerab, dinero, plata, pago, payment, finanz, legal, contrato, irreversible, produccion, production, migracion, diseno de sistema]
 categorias:
   - id: desarrollo
@@ -1155,42 +1182,83 @@ fuentes_auto:
     google:
       url: "https://ai.google.dev/gemini-api/docs/deprecations"
       hash: c694825bf8d72ff9
+  guias:
+    anthropic_prompting:
+      proveedor: Anthropic
+      titulo: "Prompting best practices"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices.md"
+      hash: 26d19de8ec4443d2
+    anthropic_migracion:
+      proveedor: Anthropic
+      titulo: "Guías de migración por modelo (índice)"
+      url: "https://platform.claude.com/docs/en/about-claude/models/migration-guide.md"
+      hash: 18cdfad98c3be3f3
+    openai_ultimo_modelo:
+      proveedor: OpenAI
+      titulo: "Using GPT-6 (último modelo, prompting y migración)"
+      url: "https://developers.openai.com/api/docs/guides/latest-model.md"
+      hash: 913ff184a3e9820e
+    openai_prompting:
+      proveedor: OpenAI
+      titulo: "Prompt engineering"
+      url: "https://developers.openai.com/api/docs/guides/prompt-engineering.md"
+      hash: f4e96377a56bc067
+    google_ultimo_modelo:
+      proveedor: Google
+      titulo: "Novedades y migración del último Gemini"
+      url: "https://ai.google.dev/gemini-api/docs/latest-model.md.txt"
+      hash: 6f2aef33df82fff7
+    google_prompting:
+      proveedor: Google
+      titulo: "Prompt design strategies"
+      url: "https://ai.google.dev/gemini-api/docs/prompting-strategies.md.txt"
+      hash: 4aaf698c290acb61
   familias:
     - id: claude-haiku
       nombre: "Claude Haiku"
+      proveedor: anthropic
       alias: haiku
       puntos_a_guion: true
-      patron: '^claude-haiku-(\d+(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+      patron: '^claude-haiku-(\d{1,2}(?:[.-]\d{1,2})?)(?:-\d{8})?$'
     - id: claude-sonnet
       nombre: "Claude Sonnet"
+      proveedor: anthropic
       alias: sonnet
       puntos_a_guion: true
-      patron: '^claude-sonnet-(\d+(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+      patron: '^claude-sonnet-(\d{1,2}(?:[.-]\d{1,2})?)(?:-\d{8})?$'
     - id: claude-opus
       nombre: "Claude Opus"
+      proveedor: anthropic
       alias: opus
       puntos_a_guion: true
-      patron: '^claude-opus-(\d+(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+      patron: '^claude-opus-(\d{1,2}(?:[.-]\d{1,2})?)(?:-\d{8})?$'
     - id: claude-fable
       nombre: "Claude Fable"
+      proveedor: anthropic
       alias: fable
       puntos_a_guion: true
-      patron: '^claude-fable-(\d+(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+      patron: '^claude-fable-(\d{1,2}(?:[.-]\d{1,2})?)(?:-\d{8})?$'
     - id: gpt-sol
       nombre: "GPT Sol"
-      patron: '^gpt-(\d+(?:\.\d{1,2})?)-sol$'
+      proveedor: openai
+      patron: '^gpt-(\d{1,2}(?:\.\d{1,2})?)-sol$'
     - id: gpt-astra
       nombre: "GPT Astra"
-      patron: '^gpt-(\d+(?:\.\d{1,2})?)-astra$'
+      proveedor: openai
+      patron: '^gpt-(\d{1,2}(?:\.\d{1,2})?)-astra$'
     - id: gpt-luna
       nombre: "GPT Luna"
-      patron: '^gpt-(\d+(?:\.\d{1,2})?)-luna$'
+      proveedor: openai
+      patron: '^gpt-(\d{1,2}(?:\.\d{1,2})?)-luna$'
     - id: gemini-flash
       nombre: "Gemini Flash"
-      patron: '^gemini-(\d+(?:\.\d{1,2})?)-flash$'
+      proveedor: google
+      patron: '^gemini-(\d{1,2}(?:\.\d{1,2})?)-flash$'
     - id: gemini-flash-lite
       nombre: "Gemini Flash-Lite"
-      patron: '^gemini-(\d+(?:\.\d{1,2})?)-flash-lite$'
+      proveedor: google
+      patron: '^gemini-(\d{1,2}(?:\.\d{1,2})?)-flash-lite$'
     - id: gemini-pro
       nombre: "Gemini Pro"
-      patron: '^gemini-(\d+(?:\.\d{1,2})?)-pro(?:-preview)?$'
+      proveedor: google
+      patron: '^gemini-(\d{1,2}(?:\.\d{1,2})?)-pro(?:-preview)?$'

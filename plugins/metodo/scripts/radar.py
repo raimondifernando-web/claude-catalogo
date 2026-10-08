@@ -19,6 +19,9 @@ Comandos (los corre Claude desde la skill `radar`; el usuario no toca la termina
                                          que usamos; nunca falla el arranque
     hoy                                  4-5 líneas para empezar la sesión: modelos vigentes, ruteo por tipo de tarea, cupo de
                                          las 3 IA y avisos. SIN red y SIN comandos lentos (solo cachés locales); nunca falla
+    consejos [--pedido RUTA] [--todo]    estado de los resúmenes de consejos de uso (radar/consejos/<modelo>.md, ≤10 líneas con la
+                                         fuente arriba). --pedido baja las guías oficiales y deja el texto para que la IA más
+                                         barata escriba los que faltan (con --todo, todos). No usa IA por sí mismo
     recordar                             (lo llama el hook PreToolUse de Agent / start_session; lee el JSON del hook por stdin)
                                          agrega una línea de contexto si al delegar falta el modelo o sobra nivel/esfuerzo.
                                          NUNCA bloquea ni decide permisos: solo recuerda
@@ -46,6 +49,9 @@ from pathlib import Path
 AQUI = Path(__file__).resolve().parent
 RADAR_EMPAQUETADO = AQUI.parent / "radar" / "RADAR.yaml"
 CODEX_CUPO = AQUI / "codex-cupo"
+CONSEJOS_DIR = AQUI.parent / "radar" / "consejos"
+DIAS_CONSEJO_NUEVO = 14
+MAX_LINEAS_CONSEJO = 10
 URL_PUBLICADO = "https://raw.githubusercontent.com/raimondifernando-web/claude-catalogo/main/plugins/metodo/radar/RADAR.yaml"
 DIAS_VIEJO = 14
 DIAS_SIN_CAMBIOS = 30   # datos publicados sin moverse en un mes: el actualizador automático puede estar roto
@@ -652,7 +658,7 @@ def aviso_linea(radar):
 NIVELES = {"haiku": 1, "sonnet": 2, "opus": 3, "fable": 4}
 ESFUERZOS = {"low": 1, "medium": 2, "high": 3, "xhigh": 4, "max": 5}
 ID_MODELO = re.compile(r"^[a-z0-9][a-z0-9._-]{1,63}$")
-EDAD_MAX_CUPO = {"claude": 3 * 3600, "codex": 24 * 3600, "antigravity": 3 * 3600}   # segundos
+EDAD_MAX_CUPO = {"claude": 1800, "codex": 24 * 3600, "antigravity": 1800}   # segundos
 CACHE_CUPO = {"claude": "cupo.json", "codex": "cupo-codex.json", "antigravity": "cupo-agy.json"}
 MAX_AVISOS_POR_SESION = {"generico": 1, "sobra": 3}
 
@@ -748,8 +754,9 @@ def fila_para(radar, texto):
                 hit = (" %s " % k) in norm
             elif len(k) < 4:
                 hit = k in palabras
-            else:
-                hit = any(w.startswith(k) for w in palabras)
+            else:   # raíz + sufijo corto: «plata» no calza con «plataforma» ni «test» con «testimonios»
+                tope = len(k) + (1 if len(k) == 4 else 4 if len(k) < 8 else 6)
+                hit = any(w.startswith(k) and len(w) <= tope for w in palabras)
             if hit:
                 clave = (NIVELES[t["nivel"]], ESFUERZOS[t["esfuerzo"]])
                 if elegida is None or clave > elegida[0]:
@@ -786,45 +793,40 @@ def _nivel_pct(x):
 
 
 def cupos_rapidos():
-    """{clave: (nivel, porcentaje|None)} de las 3 IA SIN correr nada lento: cachés locales y, para Codex, su lector local.
-    nivel: ok | alto | agotado | sin_dato | no_disponible."""
+    """{clave: (nivel, porcentaje|None)} de las 3 IA leyendo SOLO cachés locales (las deja el Bicho). No lanza ningún programa:
+    sin caché, o con una vieja, queda «sin dato». nivel: ok | alto | agotado | sin_dato."""
     out = {}
     for clave in ("claude", "codex", "antigravity"):
         x = _cupo_de_cache(clave)
-        if x is not None:
-            out[clave] = (_nivel_pct(x), x)
-    if "codex" not in out:   # su lector es local y tarda milisegundos; las otras dos IA necesitarían correr su CLI
-        nivel, texto = cupo_codex()
-        m = re.search(r"(\d+(?:\.\d+)?)\s*%", texto)
-        out["codex"] = ("no_disponible", None) if nivel == "no_disponible" else (
-            (_nivel_pct(float(m.group(1))), float(m.group(1))) if m else ("sin_dato", None))
-    if "antigravity" not in out:
-        out["antigravity"] = ("no_disponible", None) if not _buscar_bin("agy", "RADAR_AGY_BIN") else ("sin_dato", None)
-    out.setdefault("claude", ("sin_dato", None))
+        out[clave] = (_nivel_pct(x), x) if x is not None else ("sin_dato", None)
     return out
 
 
 def _texto_cupo(nombre, nivel, pct):
-    if nivel == "no_disponible":
-        return "%s no está" % nombre
     if nivel == "sin_dato":
         return "%s sin dato" % nombre
     nota = {"agotado": " (agotado)", "alto": " (solo tareas chicas)"}.get(nivel, "")
     return "%s %d%%%s" % (nombre, round(pct), nota)
 
 
+MAX_FILAS_RUTEO = 12
+
+
 def ruteo_en_una_linea(radar):
+    """Filas del ruteo agrupadas por nivel/esfuerzo. Un «*» marca el grupo con alguna fila sin dato independiente (provisoria)."""
     grupos = []
-    for t in ruteo_filas(radar):
+    for t in ruteo_filas(radar)[:MAX_FILAS_RUTEO]:
         clave = "%s/%s" % (t["nivel"], t["esfuerzo"])
+        provisoria = t.get("verificado") is not True
         for g in grupos:
             if g[0] == clave:
                 g[1].append(_limpio(t.get("corto") or t.get("id")))
+                g[2] = g[2] or provisoria
                 break
         else:
-            grupos.append((clave, [_limpio(t.get("corto") or t.get("id"))]))
+            grupos.append([clave, [_limpio(t.get("corto") or t.get("id"))], provisoria])
     grupos.sort(key=lambda g: (NIVELES[g[0].split("/")[0]], ESFUERZOS[g[0].split("/")[1]]))
-    return " · ".join("%s = %s" % (c, ", ".join(x)) for c, x in grupos)
+    return " · ".join("%s%s = %s" % (c, "*" if prov else "", ", ".join(x)) for c, x, prov in grupos)
 
 
 def hoy_lineas(radar, cupos=None):
@@ -837,7 +839,8 @@ def hoy_lineas(radar, cupos=None):
         _limpio(radar.get("actualizado", "?"), 10), " · ".join(modelos) if modelos else "sin lista en el radar"))
     ruteo = ruteo_en_una_linea(radar)
     if ruteo:
-        lineas.append("Qué nivel/esfuerzo usar: %s. Cada «sí» a ¿hay que juzgar o decidir?, ¿equivocarse sale caro? o ¿hay mucho contexto? sube un escalón." % ruteo)
+        lineas.append("Punto de partida de nivel/esfuerzo: %s (* = sin dato independiente, provisorio). Cada «sí» a ¿hay que juzgar o decidir?, "
+                      "¿equivocarse sale caro? o ¿hay mucho contexto? sube un escalón." % ruteo)
     nombres = (("claude", "Claude"), ("codex", "Codex"), ("antigravity", "Gemini"))
     libres = [n for k, n in nombres if k != "claude" and cupos.get(k, ("sin_dato",))[0] == "ok"]
     linea = "Cupo: " + " · ".join(_texto_cupo(n, *cupos.get(k, ("sin_dato", None))) for k, n in nombres) + "."
@@ -846,9 +849,15 @@ def hoy_lineas(radar, cupos=None):
             " y ".join(libres), "mandale" if len(libres) == 1 else "mandales")
     lineas.append(linea)
     avisos = []
-    base = aviso_linea(radar)
+    base = _limpio(aviso_linea(radar), 300)
     if base:
-        avisos.append(base)
+        avisos.append(base[len("Radar: "):] if base.startswith("Radar: ") else base)
+    nuevos = [e for e in consejos_estado(radar) if e["nuevo"]]
+    if nuevos:
+        avisos.append("hay consejos de uso nuevos para %s (resumen en %s)" % (
+            ", ".join(e["modelo"] for e in nuevos[:3]), _limpio(CONSEJOS_DIR, 160)))
+    for nombre, v, vig in skills_de_prompting_viejas(radar)[:2]:
+        avisos.append("la skill %s es de la versión %s y la vigente es %s: actualizala o apagala" % (_limpio(nombre, 60), v, vig))
     for a in planes_atrasados(radar)[:2]:
         avisos.append("salió %s y el plan %s de «%s» sigue en %s" % (
             _limpio(a["vigente"], 64), _limpio(a["plan"], 2), _limpio(a["categoria"], 40), _limpio(a["usa"], 64)))
@@ -856,7 +865,7 @@ def hoy_lineas(radar, cupos=None):
         lineas.append("Aviso: " + "; ".join(avisos) + ".")
     lineas.append("Al abrir un subagente o una sesión: poné `model` y `effort` según este ruteo y lo acotado mandalo a la IA con cupo "
                   "(regla 18: `radar.py elegir <categoría>`).")
-    return lineas
+    return [_limpio(x, 700) for x in lineas]
 
 
 def cmd_hoy(_a):
@@ -891,7 +900,9 @@ def _ya_se_dijo(sesion, tipo):
             return True
         s[tipo] = s.get(tipo, 0) + 1
         s["t"] = ahora
-        escribir(ruta, json.dumps(dict(list(estado.items())[-200:]), ensure_ascii=False))
+        tmp = ruta.with_name("%s.%d.tmp" % (ruta.name, os.getpid()))
+        escribir(tmp, json.dumps(dict(list(estado.items())[-200:]), ensure_ascii=False))
+        os.replace(str(tmp), str(ruta))
     except Exception:
         pass
     return False
@@ -906,12 +917,13 @@ def recordatorio_ruteo(radar, entrada, cupos=None):
     esfuerzo = str(ti.get("effort") or "").strip().lower()
     partes, tipo = [], "sobra"
     if fila:
-        ok_nivel = NIVELES[fila["nivel"]]
+        holgura = 0 if fila.get("verificado") is True else 1   # fila sin dato independiente: se tolera un escalón de más
+        ok_nivel = NIVELES[fila["nivel"]] + holgura
         if pedido and pedido > ok_nivel:
             partes.append("pediste %s y para «%s» el ruteo de hoy dice %s (%s)" % (
                 nombre_pedido, _limpio(fila.get("corto") or fila.get("id")), fila["nivel"],
                 modelo_de_alias(radar, fila["nivel"]) or "alias " + fila["nivel"]))
-        if ESFUERZOS.get(esfuerzo, 0) > ESFUERZOS[fila["esfuerzo"]]:
+        if ESFUERZOS.get(esfuerzo, 0) > ESFUERZOS[fila["esfuerzo"]] + holgura:
             partes.append("esfuerzo %s: para eso el ruteo dice %s" % (esfuerzo, fila["esfuerzo"]))
     if not partes and not pedido:
         tipo = "generico"
@@ -936,8 +948,12 @@ def cmd_recordar(_a):
     try:
         if sys.stdin is None or sys.stdin.isatty():
             return 0
-        entrada = json.loads(sys.stdin.read(1000000) or "{}")
-        if not isinstance(entrada, dict):
+        crudo = getattr(sys.stdin, "buffer", None)
+        texto = crudo.read(1000000).decode("utf-8", "replace") if crudo else sys.stdin.read(1000000)
+        if not texto.strip():
+            return 0
+        entrada = json.loads(texto)
+        if not isinstance(entrada, dict) or not isinstance(entrada.get("tool_input"), dict) or not entrada["tool_input"]:
             return 0
         radar, _ = cargar()
         msg = recordatorio_ruteo(radar, entrada)
@@ -945,6 +961,122 @@ def cmd_recordar(_a):
             print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": msg}}))
     except BaseException:
         pass
+    return 0
+
+
+# --------------------------------------------------------------------------- #
+# Consejos de uso por modelo (spec §9) y skills de prompting viejas
+# --------------------------------------------------------------------------- #
+def _fecha_consejo(texto):
+    m = re.search(r"consultada\s+(\d{4}-\d{2}-\d{2})", texto or "")
+    return a_fecha(m.group(1)) if m else None
+
+
+def consejos_estado(radar, carpeta=None):
+    """Por cada modelo vigente: si tiene resumen en radar/consejos/<modelo>.md, de qué fecha y si es reciente."""
+    carpeta = Path(carpeta) if carpeta else CONSEJOS_DIR
+    out = []
+    for f in vigentes_por_familia(radar).values():
+        api = str(f.get("modelo_api", ""))
+        if not ID_MODELO.match(api):
+            continue
+        ruta, fecha = carpeta / (api + ".md"), None
+        try:
+            if ruta.is_file() and ruta.stat().st_size < 20000:
+                fecha = _fecha_consejo(ruta.read_text(encoding="utf-8")[:400])
+        except Exception:
+            pass
+        out.append({"modelo": api, "familia": f["id"], "ruta": ruta, "existe": ruta.is_file(), "fecha": fecha,
+                    "nuevo": bool(fecha and 0 <= (hoy() - fecha).days <= DIAS_CONSEJO_NUEVO)})
+    return out
+
+
+def skills_de_prompting_viejas(radar, base=None):
+    """Skills `<gpt|gemini|claude>-<versión>-prompting` instaladas cuya versión es anterior a la vigente de esa marca.
+    Solo mira nombres de carpeta (rápido, sin abrir archivos). Devuelve [(nombre, versión de la skill, versión vigente)]."""
+    base = Path(base) if base else carpeta_config()
+    vigentes = {}
+    for f in vigentes_por_familia(radar).values():
+        hit = familia_de(f.get("modelo_api"), (radar.get("fuentes_auto") or {}).get("familias") or [])
+        marca = str(f.get("modelo_api", "")).split("-")[0]
+        if hit and (marca not in vigentes or _comparable(hit[1]) > _comparable(vigentes[marca])):
+            vigentes[marca] = hit[1]
+    out = []
+    patrones = ("skills/*-prompting", "plugins/cache/*/*/*/skills/*-prompting")
+    for patron in patrones:
+        try:
+            carpetas = sorted(base.glob(patron))[:200]
+        except Exception:
+            continue
+        for c in carpetas:
+            m = re.fullmatch(r"(gpt|gemini|claude)-(\d{1,2}(?:-\d{1,2})?)-prompting", c.name)
+            if not m or m.group(1) not in vigentes:
+                continue
+            v = _tupla_version(m.group(2))
+            if v and _comparable(v) < _comparable(vigentes[m.group(1)]):
+                partes = c.relative_to(base).parts
+                nombre = "%s:%s" % (partes[3], c.name) if partes[0] == "plugins" and len(partes) > 3 else c.name
+                out.append((nombre, ".".join(map(str, v)), ".".join(map(str, vigentes[m.group(1)]))))
+    return sorted(set(out))
+
+
+def texto_pedido_consejos(radar, modelos, carpeta_guias):
+    guias = (radar.get("fuentes_auto") or {}).get("guias") or {}
+    lista = "\n".join("- %s — %s (%s): archivo %s" % (g.get("proveedor"), g.get("titulo"), g.get("url"), "%s/%s.md" % (carpeta_guias, gid))
+                      for gid, g in sorted(guias.items()))
+    pedir = "\n".join("- plugins/metodo/radar/consejos/%s.md" % m for m in modelos)
+    return ("Tarea: escribir resúmenes cortos de CÓMO USAR cada modelo, a partir de las guías oficiales de prompting y de migración "
+            "que ya están bajadas como archivos de texto (leelas desde el disco; no uses internet).\n\n"
+            "Archivos a crear (uno por modelo; si existen, reemplazalos):\n%s\n\n"
+            "Guías (leé solo estas):\n%s\n\n"
+            "Formato exacto de cada archivo:\n"
+            "  - Línea 1: `Fuente: <URL de la guía de donde sale> (consultada %s)`\n"
+            "  - Después, de 3 a %d líneas, cada una empieza con `- ` y dice UNA cosa concreta que cambia en cómo usar ESE modelo "
+            "(qué conviene escribir o configurar, qué dejó de andar, qué esfuerzo o parámetro usar, qué evitar).\n"
+            "Reglas: máximo %d líneas en total después de la Fuente; solo lo que dicen las guías, sin inventar ni completar de memoria; "
+            "si las guías no dicen nada propio de ese modelo, una sola línea `- La guía oficial no trae consejos propios para este "
+            "modelo; ver la guía de la familia.` más la fuente; castellano simple; no copies párrafos enteros; no escribas claves ni "
+            "datos personales. No toques ningún otro archivo y no corras comandos.\n" % (
+                pedir, lista, hoy().isoformat(), MAX_LINEAS_CONSEJO, MAX_LINEAS_CONSEJO))
+
+
+def cmd_consejos(a):
+    radar, _ = cargar()
+    estado = consejos_estado(radar)
+    faltan = [e for e in estado if not e["existe"]]
+    print("Consejos de uso (%s): %d de %d modelos vigentes tienen resumen." % (CONSEJOS_DIR, len(estado) - len(faltan), len(estado)))
+    for e in estado:
+        print("  %-24s %s" % (e["modelo"], ("al %s" % e["fecha"]) if e["fecha"] else ("sin fecha" if e["existe"] else "FALTA")))
+    viejas = skills_de_prompting_viejas(radar)
+    for nombre, v, vig in viejas:
+        print("  skill vieja: %s es de la versión %s y la vigente es %s: actualizala o apagala (regla 19)" % (nombre, v, vig))
+    if not a.pedido:
+        if faltan or a.todo:
+            print("Para que la IA más barata los escriba: radar.py consejos --pedido pedido-consejos.txt%s" % (" --todo" if a.todo else ""))
+        return 0
+    modelos = [e["modelo"] for e in (estado if a.todo else faltan)]
+    if not modelos:
+        print("No falta ninguno (con --todo se rehacen todos).")
+        return 0
+    carpeta = CONSEJOS_DIR / "_guias"
+    carpeta.mkdir(parents=True, exist_ok=True)
+    bajadas = 0
+    for gid, g in sorted(((radar.get("fuentes_auto") or {}).get("guias") or {}).items()):
+        try:
+            _, cuerpo = abrir(g["url"], timeout=40)
+            (carpeta / ("%s.md" % gid)).write_bytes(cuerpo[:3000000])
+            bajadas += 1
+        except Exception as ex:
+            print("Aviso: no pude bajar la guía %s (%s)." % (gid, type(ex).__name__))
+    ruta = Path(a.pedido)
+    try:
+        mostrar = os.path.relpath(str(carpeta))
+    except ValueError:
+        mostrar = str(carpeta)
+    ruta.write_text(texto_pedido_consejos(radar, modelos, mostrar), encoding="utf-8")
+    print("Listo: %d guías bajadas en %s y el pedido para %d modelos en %s." % (bajadas, carpeta, len(modelos), ruta))
+    print("Siguiente: python3 plugins/metodo/scripts/delegar.py desarrollo . %s --archivo   (elige Codex o Gemini según el cupo; "
+          "si solo queda Claude: un subagente con model haiku y effort low; nunca Opus). Después revisá cada archivo contra su fuente." % ruta)
     return 0
 
 
@@ -1258,6 +1390,7 @@ def main(argv=None):
     s = sub.add_parser("probar"); s.add_argument("--si", action="store_true"); s.set_defaults(f=cmd_probar)
     sub.add_parser("aviso").set_defaults(f=cmd_aviso)
     sub.add_parser("hoy").set_defaults(f=cmd_hoy)
+    s = sub.add_parser("consejos"); s.add_argument("--pedido"); s.add_argument("--todo", action="store_true"); s.set_defaults(f=cmd_consejos)
     sub.add_parser("recordar").set_defaults(f=cmd_recordar)
     a = ap.parse_args(argv)
     if not getattr(a, "f", None):

@@ -2,3 +2,7 @@
 .omc/
 __pycache__/
 *.pyc
+
+# guías oficiales bajadas por `radar.py consejos --pedido` (material de trabajo, no se publica)
+plugins/metodo/radar/consejos/_guias/
+pedido-consejos.txt
