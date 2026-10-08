@@ -752,6 +752,38 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Verificación | Tests nuevos en `test_buzon` y `test_vigia`; suite completa de `metodo` OK y `test_vigia` 99 OK. Probado a mano con tres carpetas. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 |
 
+### 2026-10-07 · metodo 0.22.2 (arrancar numera sesiones sin grupo)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Solo texto de `skills/arrancar/SKILL.md`: la serie de sesiones se arma por carpeta y respeta ceros y separador. |
+| Superficie nueva | Ninguna: instrucciones, sin código. |
+| Registro | Línea agregada a posteriori (2026-10-08): la versión salió sin su línea acá. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido 2026-10-08 sobre `main` 3c5e155) |
+
+### 2026-10-07 · metodo 0.22.3 (al-dia v7: huashu-design listo para exportar)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | `al-dia.sh` (las dos copias) instala las librerías de huashu-design cuando cambia el paquete y el navegador de exportación, con tiempo límite y descarga alternativa verificada contra Google; reinstala las skills oficiales de diseño y de crear skills. |
+| Superficie nueva | Descarga de ~300 MB la primera vez (navegador de Playwright, fuente oficial). Nada corre fuera de la puesta al día. |
+| Registro | Línea agregada a posteriori (2026-10-08): la versión salió sin su línea acá. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido 2026-10-08 sobre `main` 3c5e155) |
+
+### 2026-10-08 · metodo 0.22.4 (regla 16: tareas que se repiten solas)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Solo texto en `templates/REGLAS-DEL-METODO.md`: `/loop` ≥15 min y Ralph del catálogo siempre con tope; nunca bucles que escriban en sistemas del negocio. |
+| Superficie nueva | Ninguna: instrucciones, sin código. |
+| Registro | Línea agregada a posteriori (2026-10-08): la versión salió sin su línea acá. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido 2026-10-08 sobre `main` 3c5e155) |
+
+### 2026-10-08 · metodo 0.22.5 (al-dia v8: FORCE_AUTOUPDATE_PLUGINS)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | `al-dia.sh` (las dos copias) deja `env.FORCE_AUTOUPDATE_PLUGINS=1` en la configuración del usuario y avisa si no pudo. |
+| Superficie nueva | Escribe una variable con prefijo de la herramienta en `settings.json` (regla de la casa: nunca variables generales). Arreglo oficial según la doc `plugins/loading.md`. |
+| Registro | Línea agregada a posteriori (2026-10-08): la versión salió sin su línea acá. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido 2026-10-08 sobre `main` 3c5e155) |
+
 ### 2026-10-08 · rubro-marketing 0.2.3 (skill nueva `achicar-datos-grandes`, envuelve Headroom)
 | Ítem | Resultado |
 |---|---|
