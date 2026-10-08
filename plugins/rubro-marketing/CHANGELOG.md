@@ -1,5 +1,8 @@
 # rubro-marketing
 
+## 0.2.5 — 2026-10-08
+- `achicar-datos-grandes`: la explicación del formato achicado estaba mal (decía que cada columna trae todos los valores; en realidad `@campo` es un diccionario de valores únicos y cada fila lleva el índice). Corregida en la skill y escrita dentro de cada archivo achicado para que no se lea mal un total.
+
 ## 0.2.4 — 2026-10-08
 - `achicar-datos-grandes` para instalaciones por plugin: las rutas de los scripts ya no dependen de `~/.claude/skills/`, el instalador encuentra `uv` aunque la app no vea `~/.local/bin` (y si falta dice «corré Poner todo al día»), y todo se instala verificado por hash (`requisitos.txt`).
 
