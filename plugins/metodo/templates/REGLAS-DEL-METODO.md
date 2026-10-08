@@ -57,6 +57,11 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     `bash "$(find ~/.claude/plugins/cache/claude-catalogo/metodo -name codex-cupo | sort -V | tail -1)"`.
     Con **70% o más**, solo tareas chicas y avisás; con **90% o más**, no lanzás y avisás. **Una tarea grande a la vez**:
     varias en paralelo se comen el cupo antes de que alguna termine. Estimá la tarea antes de lanzarla, no después.
+    **Tareas que se repiten solas.** Para vigilar algo cada tanto, `/loop` con 15 minutos o más (cada vuelta gasta cupo);
+    vence a los 7 días. Para repetir una tarea hasta que salga bien, el «Ralph» de `oh-my-claudecode-fixed`, siempre con
+    tope de vueltas y solo cuando el resultado se comprueba solo (pruebas que pasan o no) o cuando es un informe que solo
+    lee (auditorías, conciliaciones). **Nunca** un bucle que escriba solo en un sistema del negocio (sistema de gestión,
+    publicidades, lista de clientes). No se instalan otros «Ralph» (`ralph-wiggum` u otros): el del catálogo es el revisado.
 
 ## Cuando le pedís algo técnico a otra persona (regla 17)
 
