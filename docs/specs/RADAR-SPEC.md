@@ -81,8 +81,9 @@ y el recordatorio sin red, sin IA, en menos de 1 s y con 5 líneas o menos).
    de arriba lo reducen a ids con forma `claude-haiku-5-5`, pero el PR del robot se publica solo si toca únicamente
    `RADAR.yaml`/`RADAR.md` (las guardias de `radar.yml` no leen el contenido).
 2. **`ruteo_claude`** (a mano, por PR). `tareas[]`: `id`, `corto`, `tarea`, `nivel` (haiku|sonnet|opus|fable), `esfuerzo`
-   (low|medium|high|xhigh|max), `otra_ia` (id de una categoría del radar, o null), `palabras` (raíces para reconocer la tarea en
-   el pedido; sin tildes; una raíz de 4+ letras calza con un sufijo corto: «plata» no calza con «plataforma»), `verificado`,
+   (low|medium|high|xhigh|max), `otra_ia` (id de una categoría del radar, o null), `palabras` (para reconocer la tarea en
+   el pedido; sin tildes; una palabra calza entera o con un sufijo corto —«plata» no calza con «plataforma», «count» no con «country»—;
+   si termina en `*` es una raíz libre: `revis*` calza con revisar, revisión y revisando), `verificado`,
    `evidencia[]` y `sin_dato`. **El nivel y el esfuerzo salen de la evidencia que ya tiene el radar (pedido del dueño,
    2026-10-08)**: cada `evidencia` apunta (`categoria` + `fuente`) a una evidencia `tipo: independiente` de esa categoría
    (§7.2: lo del fabricante no cuenta). Lo que no tiene evidencia no se inventa: la fila queda `verificado: false`, `sin_dato`
@@ -121,19 +122,24 @@ sin menús, así que la huella no se mueve por cosas ajenas al texto:
 Anthropic: *Prompting best practices* y el índice de *guías de migración por modelo* (un modelo nuevo agrega un enlace) ·
 OpenAI: *Using GPT-6* (modelos y guía del último, `latest-model`) y *Prompt engineering* · Google: *Novedades y migración del último
 Gemini* (`latest-model`) y *Prompt design strategies*. Si cambia una huella, el PR `radar/auto` dice «Cambió la guía oficial …» y
-qué comando correr; la primera vez fija la línea base. Una guía que no se pudo leer se ignora ese día (nunca borra la huella).
+qué comando correr, y el robot anota `cambio: AAAA-MM-DD` en la guía. **Esa marca es la que sobrevive** cuando el PR se publica solo:
+`radar.py consejos` y la línea de aviso de `hoy` dicen «la guía X cambió el … y los resúmenes son anteriores» hasta que se rehacen los
+resúmenes de ese proveedor con fecha de consulta igual o posterior (se apaga sola). La primera vez fija la línea base. Una guía que no se pudo leer se ignora ese día (nunca borra la huella).
 
 **Qué hay en `radar/consejos/`.** Un archivo por modelo vigente: `<modelo_api>.md`. Primera línea
 `Fuente: <URL> (consultada AAAA-MM-DD)`; después de 1 a 10 líneas que empiezan con `- `, cada una con UNA cosa concreta que cambia
 en cómo usar ese modelo. Solo lo que dicen las guías. Si la guía no trae nada propio del modelo, una línea que lo dice. Lo controla
-un test (formato, largo, que existan todos los vigentes).
+un test del formato y el largo de los que existan; que falte alguno lo dice `radar.py consejos` (un test que lo exigiera frenaría al robot
+justo cuando sale un modelo nuevo).
 
 **Cómo se mantienen los consejos.**
 1. `python3 plugins/metodo/scripts/radar.py consejos` → estado: qué modelos vigentes no tienen resumen y qué skills de prompting
    instaladas quedaron viejas. No usa red ni IA.
-2. `python3 plugins/metodo/scripts/radar.py consejos --pedido pedido-consejos.txt` (`--todo` para rehacer todos) → baja las
-   guías generales y las de cada modelo que enlazan los índices a `radar/consejos/_guias/` (carpeta ignorada por git) y deja el
-   texto del pedido. Es el único paso que usa red, y solo hacia los tres proveedores.
+2. `python3 plugins/metodo/scripts/radar.py consejos --pedido pedido-consejos.txt` (`--todo` para rehacer todos) → limpia
+   `radar/consejos/_guias/` (ignorada por git), baja las guías generales y las más nuevas de cada proveedor que enlazan los índices (hasta
+   5 por proveedor) y deja el texto del pedido con solo lo que bajó. Es el único paso que usa red: solo `https` hacia
+   `platform.claude.com`, `developers.openai.com` y `ai.google.dev` (lo impone el código, también con un YAML manipulado), con ids de
+   guía `[a-z0-9_]`. Si no baja ninguna guía, no escribe el pedido.
 3. `python3 plugins/metodo/scripts/delegar.py desarrollo . pedido-consejos.txt --archivo` → `delegar.py` elige Codex o Gemini
    según el cupo (las guías son públicas: no hay datos privados). Si solo queda Claude (código de salida 3): un subagente con
    `model: haiku` y `effort: low` que lea los mismos archivos. **Nunca Opus.**
@@ -142,5 +148,7 @@ un test (formato, largo, que existan todos los vigentes).
 
 **Qué ve cada sesión.** `radar.py hoy` suma, en la línea de aviso, «hay consejos de uso nuevos para X (resumen en <ruta>)» cuando un
 resumen tiene 14 días o menos, y «la skill codex:gpt-5-4-prompting es de la versión 5.4 y la vigente es 6.1: actualizala o apagala»
-cuando una skill `gpt|gemini|claude-<versión>-prompting` instalada es anterior al modelo vigente de su marca (regla 19: una sola
-pieza por función; gana la oficial del fabricante). No se inyecta la guía entera.
+cuando una skill `gpt|gemini|claude-<versión>-prompting` instalada es de una generación (versión mayor) anterior al modelo vigente de su
+marca (regla 19: una sola pieza por función; gana la oficial del fabricante). Como esa skill suele venir de un plugin oficial y no se
+puede arreglar de un día para otro, el aviso sale **una vez por semana** (única cosa que `hoy` escribe: `<config>/metodo/avisos-radar.json`,
+solo la fecha del último aviso); `radar.py consejos` la muestra siempre. No se inyecta la guía entera.

@@ -747,15 +747,20 @@ def fila_para(radar, texto):
     elegida = None
     for t in ruteo_filas(radar):
         for kw in t.get("palabras") or []:
-            k = _norm(kw)
+            raiz = str(kw).endswith("*")
+            k = _norm(str(kw).rstrip("*"))
             if not k:
                 continue
             if " " in k:
                 hit = (" %s " % k) in norm
+            elif raiz:   # «revis*»: cualquier palabra que empiece así
+                hit = any(w.startswith(k) for w in palabras)
             elif len(k) < 4:
                 hit = k in palabras
-            else:   # raíz + sufijo corto: «plata» no calza con «plataforma» ni «test» con «testimonios»
-                tope = len(k) + (1 if len(k) == 4 else 4 if len(k) < 8 else 6)
+            elif len(k) <= 5:   # palabra corta: solo ella o su plural («plata» no calza con «plataforma», «code» no con «codex»)
+                hit = any(w in (k, k + "s", k + "es") for w in palabras)
+            else:   # palabra + sufijo corto: «count» no calza con «country»
+                tope = len(k) + (4 if len(k) < 8 else 6)
                 hit = any(w.startswith(k) and len(w) <= tope for w in palabras)
             if hit:
                 clave = (NIVELES[t["nivel"]], ESFUERZOS[t["esfuerzo"]])
@@ -852,11 +857,14 @@ def hoy_lineas(radar, cupos=None):
     base = _limpio(aviso_linea(radar), 300)
     if base:
         avisos.append(base[len("Radar: "):] if base.startswith("Radar: ") else base)
-    nuevos = [e for e in consejos_estado(radar) if e["nuevo"]]
+    estado = consejos_estado(radar)
+    nuevos = [e for e in estado if e["nuevo"]]
     if nuevos:
         avisos.append("hay consejos de uso nuevos para %s (resumen en %s)" % (
             ", ".join(e["modelo"] for e in nuevos[:3]), _limpio(CONSEJOS_DIR, 160)))
-    for nombre, v, vig in skills_de_prompting_viejas(radar)[:2]:
+    for prov, titulo, cambio in guias_cambiadas_sin_resumir(radar, estado)[:2]:
+        avisos.append("la guía «%s — %s» cambió el %s y sus resúmenes de consejos son anteriores (radar.py consejos)" % (prov, titulo, cambio))
+    for nombre, v, vig in _skills_viejas_para_hoy(radar)[:2]:
         avisos.append("la skill %s es de la versión %s y la vigente es %s: actualizala o apagala" % (_limpio(nombre, 60), v, vig))
     for a in planes_atrasados(radar)[:2]:
         avisos.append("salió %s y el plan %s de «%s» sigue en %s" % (
@@ -992,8 +1000,9 @@ def consejos_estado(radar, carpeta=None):
 
 
 def skills_de_prompting_viejas(radar, base=None):
-    """Skills `<gpt|gemini|claude>-<versión>-prompting` instaladas cuya versión es anterior a la vigente de esa marca.
-    Solo mira nombres de carpeta (rápido, sin abrir archivos). Devuelve [(nombre, versión de la skill, versión vigente)]."""
+    """Skills `<gpt|gemini|claude>-<versión>-prompting` instaladas de una generación anterior a la vigente de esa marca (se
+    compara solo la versión mayor: gpt-5-4 contra GPT 6.1 sí; gpt-6 contra 6.1 no). Solo mira nombres de carpeta.
+    Devuelve [(nombre, versión de la skill, versión vigente)]."""
     base = Path(base) if base else carpeta_config()
     vigentes = {}
     for f in vigentes_por_familia(radar).values():
@@ -1001,23 +1010,62 @@ def skills_de_prompting_viejas(radar, base=None):
         marca = str(f.get("modelo_api", "")).split("-")[0]
         if hit and (marca not in vigentes or _comparable(hit[1]) > _comparable(vigentes[marca])):
             vigentes[marca] = hit[1]
-    out = []
-    patrones = ("skills/*-prompting", "plugins/cache/*/*/*/skills/*-prompting")
-    for patron in patrones:
+    out = {}
+    for patron in ("skills/*-prompting", "plugins/cache/*/*/*/skills/*-prompting"):
         try:
             carpetas = sorted(base.glob(patron))[:200]
         except Exception:
             continue
         for c in carpetas:
-            m = re.fullmatch(r"(gpt|gemini|claude)-(\d{1,2}(?:-\d{1,2})?)-prompting", c.name)
+            m = re.fullmatch(r"(gpt|gemini|claude)-(\d{1,2}(?:[.-]\d{1,2})?)-prompting", c.name)
             if not m or m.group(1) not in vigentes:
                 continue
             v = _tupla_version(m.group(2))
-            if v and _comparable(v) < _comparable(vigentes[m.group(1)]):
+            if v and v[0] < vigentes[m.group(1)][0]:
                 partes = c.relative_to(base).parts
                 nombre = "%s:%s" % (partes[3], c.name) if partes[0] == "plugins" and len(partes) > 3 else c.name
-                out.append((nombre, ".".join(map(str, v)), ".".join(map(str, vigentes[m.group(1)]))))
-    return sorted(set(out))
+                out[nombre] = (nombre, ".".join(map(str, v)), ".".join(map(str, vigentes[m.group(1)])))
+    return sorted(out.values())
+
+
+DIAS_ENTRE_AVISOS_SKILLS = 7
+
+
+def _skills_viejas_para_hoy(radar):
+    """Las skills viejas que toca avisar hoy: como mucho una vez por semana (no se pueden arreglar de un día para otro)."""
+    viejas = skills_de_prompting_viejas(radar)
+    if not viejas:
+        return []
+    ruta = carpeta_metodo() / "avisos-radar.json"
+    try:
+        try:
+            estado = json.loads(ruta.read_text(encoding="utf-8"))
+        except Exception:
+            estado = {}
+        ultimo = a_fecha(estado.get("skills_viejas"))
+        if ultimo and 0 <= (hoy() - ultimo).days < DIAS_ENTRE_AVISOS_SKILLS:
+            return []
+        escribir(ruta, json.dumps({"skills_viejas": hoy().isoformat()}))
+    except Exception:
+        pass
+    return viejas
+
+
+PROVEEDOR_DE_MODELO = {"Anthropic": "claude-", "OpenAI": "gpt-", "Google": "gemini-"}
+
+
+def guias_cambiadas_sin_resumir(radar, estado):
+    """Guías que el robot vio cambiar (`cambio: AAAA-MM-DD`) después de la fecha de los resúmenes de ese proveedor.
+    Devuelve [(proveedor, título, fecha del cambio)]. Es la marca que sobrevive cuando el PR del robot se publica solo."""
+    out = []
+    for g in ((radar.get("fuentes_auto") or {}).get("guias") or {}).values():
+        cambio, prefijo = a_fecha(g.get("cambio")), PROVEEDOR_DE_MODELO.get(g.get("proveedor"))
+        if not cambio or not prefijo:
+            continue
+        propios = [e for e in estado if e["modelo"].startswith(prefijo)]
+        if any(e["fecha"] is None or e["fecha"] < cambio for e in propios):
+            out.append((_limpio(g.get("proveedor"), 20), _limpio(g.get("titulo"), 60), cambio.isoformat()))
+    return sorted(out)
 
 
 def texto_pedido_consejos(radar, modelos, carpeta_guias, extras=()):
@@ -1048,12 +1096,18 @@ _ENLACES_POR_MODELO = (
     re.compile(r"/api/docs/guides/latest-model/([a-z0-9.-]{2,40})\.md"),
     re.compile(r"https://ai\.google\.dev/gemini-api/docs/whats-new-gemini-([0-9][0-9.]{0,6}[0-9])"),
 )
-MAX_GUIAS_POR_MODELO = 8
+MAX_GUIAS_POR_MODELO = 5   # por proveedor
+HOSTS_GUIAS = ("platform.claude.com", "developers.openai.com", "ai.google.dev")
+
+
+def _url_de_guia_valida(url):
+    m = re.fullmatch(r"https://([a-z0-9.-]+)/[A-Za-z0-9._/%-]{1,300}", str(url or ""))
+    return bool(m) and m.group(1) in HOSTS_GUIAS and ".." not in str(url)
 
 
 def guias_por_modelo(textos):
-    """[(url .md, nombre de archivo)] a partir del texto de las guías generales."""
-    vistos, out = set(), []
+    """[(url, nombre de archivo)] de las guías por modelo que enlazan las generales: las más nuevas de cada proveedor."""
+    por_host = {}
     for texto in textos:
         for patron in _ENLACES_POR_MODELO:
             for m in patron.finditer(texto):
@@ -1064,10 +1118,16 @@ def guias_por_modelo(textos):
                     url += ".md.txt"      # Google sirve el texto así
                 elif not url.endswith(".md"):
                     url += ".md"
-                nombre = re.sub(r"[^a-z0-9.-]+", "_", "%s_%s" % (url.split("/")[2].split(".")[-2], m.group(1))) + ".md"
-                if url not in vistos and len(out) < MAX_GUIAS_POR_MODELO:
-                    vistos.add(url)
-                    out.append((url, nombre))
+                if not _url_de_guia_valida(url):
+                    continue
+                host = url.split("/")[2]
+                nombre = re.sub(r"[^a-z0-9.-]+", "_", "%s_%s" % (host.split(".")[-2], m.group(1))) + ".md"
+                orden = [int(x) for x in re.findall(r"\d+", m.group(1))]
+                por_host.setdefault(host, {})[url] = (orden, nombre)
+    out = []
+    for host in sorted(por_host):
+        nuevas = sorted(por_host[host].items(), key=lambda kv: kv[1][0], reverse=True)[:MAX_GUIAS_POR_MODELO]
+        out += [(url, nombre) for url, (_, nombre) in nuevas]
     return out
 
 
@@ -1078,8 +1138,9 @@ def cmd_consejos(a):
     print("Consejos de uso (%s): %d de %d modelos vigentes tienen resumen." % (CONSEJOS_DIR, len(estado) - len(faltan), len(estado)))
     for e in estado:
         print("  %-24s %s" % (e["modelo"], ("al %s" % e["fecha"]) if e["fecha"] else ("sin fecha" if e["existe"] else "FALTA")))
-    viejas = skills_de_prompting_viejas(radar)
-    for nombre, v, vig in viejas:
+    for prov, titulo, cambio in guias_cambiadas_sin_resumir(radar, estado):
+        print("  guía cambiada: «%s — %s» cambió el %s y los resúmenes de %s son anteriores: rehacerlos con --todo" % (prov, titulo, cambio, prov))
+    for nombre, v, vig in skills_de_prompting_viejas(radar):
         print("  skill vieja: %s es de la versión %s y la vigente es %s: actualizala o apagala (regla 19)" % (nombre, v, vig))
     if not a.pedido:
         if faltan or a.todo:
@@ -1091,31 +1152,47 @@ def cmd_consejos(a):
         return 0
     carpeta = CONSEJOS_DIR / "_guias"
     carpeta.mkdir(parents=True, exist_ok=True)
-    bajadas, textos = 0, []
+    for viejo in carpeta.glob("*.md"):   # solo lo que bajó este comando en otra corrida: nunca una guía vieja en el pedido nuevo
+        try:
+            viejo.unlink()
+        except OSError:
+            pass
+    ok, textos, generales = 0, [], {}
     for gid, g in sorted(((radar.get("fuentes_auto") or {}).get("guias") or {}).items()):
+        if not re.fullmatch(r"[a-z0-9_]{1,40}", str(gid)) or not _url_de_guia_valida(g.get("url")):
+            print("Aviso: la guía %s no tiene un id o una dirección válidos; la salteo." % _limpio(gid, 40))
+            continue
         try:
             _, cuerpo = abrir(g["url"], timeout=40)
             (carpeta / ("%s.md" % gid)).write_bytes(cuerpo[:3000000])
             textos.append(cuerpo[:3000000].decode("utf-8", "replace"))
-            bajadas += 1
+            generales[gid] = g
+            ok += 1
         except Exception as ex:
             print("Aviso: no pude bajar la guía %s (%s)." % (gid, type(ex).__name__))
+    if not ok:
+        print("No se pudo bajar ninguna guía: no escribo el pedido (la IA inventaría de memoria). Probá de nuevo con internet.")
+        return 1
     extras = []
     for url, nombre in guias_por_modelo(textos):
         try:
             _, cuerpo = abrir(url, timeout=40)
             (carpeta / nombre).write_bytes(cuerpo[:3000000])
             extras.append((url, nombre))
-            bajadas += 1
         except Exception as ex:
             print("Aviso: no pude bajar %s (%s)." % (url, type(ex).__name__))
     ruta = Path(a.pedido)
     try:
         mostrar = os.path.relpath(str(carpeta))
+        if mostrar.startswith(".."):
+            mostrar = str(carpeta)
     except ValueError:
         mostrar = str(carpeta)
-    ruta.write_text(texto_pedido_consejos(radar, modelos, mostrar, extras), encoding="utf-8")
-    print("Listo: %d guías bajadas en %s y el pedido para %d modelo(s) en %s." % (bajadas, carpeta, len(modelos), ruta))
+    sin_bajar = len((radar.get("fuentes_auto") or {}).get("guias") or {}) - len(generales)
+    ruta.write_text(texto_pedido_consejos(dict(radar, fuentes_auto={"guias": generales}), modelos, mostrar, extras), encoding="utf-8")
+    print("Listo: %d guías bajadas en %s y el pedido para %d modelo(s) en %s." % (ok + len(extras), carpeta, len(modelos), ruta))
+    if sin_bajar:
+        print("OJO: %d guía(s) general(es) no se pudieron bajar y no están en el pedido; los resúmenes pueden quedar incompletos." % sin_bajar)
     print("Siguiente: python3 plugins/metodo/scripts/delegar.py desarrollo . %s --archivo   (elige Codex o Gemini según el cupo; "
           "si solo queda Claude: un subagente con model haiku y effort low; nunca Opus). Después revisá cada archivo contra su fuente." % ruta)
     return 0

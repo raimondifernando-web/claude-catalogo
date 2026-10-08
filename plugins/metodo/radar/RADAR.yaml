@@ -71,7 +71,7 @@ ruteo_claude:
       verificado: false
       sin_dato: "El radar no mide a Claude Haiku en esta categoría (solo GPT-6 Luna y GPT-6.1 Sol). haiku/low es el piso de la escala."
       evidencia: []
-      palabras: [buscar, search, listar, listado, contar, count, renombrar, rename, mover, resumir, resumen, summar, inventario, grep, encontrar, ubicar]
+      palabras: [buscar, busqueda, search, listar, listado, contar, count, renombrar, rename, mover, resumir, resumen, summar*, inventario, grep, encontrar, ubicar]
     - id: implementar_acotado
       corto: "implementar algo acotado"
       tarea: "Implementar algo acotado: un arreglo claro, un script, una función, tests"
@@ -87,7 +87,7 @@ ruteo_claude:
         - dato: nivel
           categoria: diseno
           fuente: "Arena WebDev"
-      palabras: [implement, arreglar, corregir, fix, bug, refactor, agregar, test, script, codigo, code, parche, patch, funcion]
+      palabras: [implement*, arreglar, corregir, fix, fixes, bug, bugs, refactor, agregar, test, tests, testing, script, codigo, code, coding, parche, patch, funcion]
     - id: revisar
       corto: "revisar o dar segunda opinión"
       tarea: "Revisar un cambio o dar una segunda opinión"
@@ -97,7 +97,7 @@ ruteo_claude:
       verificado: false
       sin_dato: "La categoría «revisión de código y seguridad» no tiene evidencia independiente cargada (orden provisorio): se usa el escalón de abajo de sonnet/medium. La segunda opinión conviene mandarla a otra IA."
       evidencia: []
-      palabras: [revis, review, critic, segunda opinion, verific, chequear]
+      palabras: [revis*, review, critic, segunda opinion, verific*, chequear]
     - id: planillas
       corto: "planillas y datos"
       tarea: "Planillas, conciliaciones y análisis de datos"
@@ -120,7 +120,7 @@ ruteo_claude:
       verificado: false
       sin_dato: "Arena búsqueda no trae modelos Claude de septiembre (el único Claude es Opus 4.6): sin dato, escalón de abajo de sonnet/medium."
       evidencia: []
-      palabras: [investig, research, en la web, relevar, scrap]
+      palabras: [investig*, research, en la web, relevar, relevamiento, scrap*]
     - id: arquitectura_seguridad_plata
       corto: "arquitectura, seguridad o plata"
       tarea: "Arquitectura, seguridad, dinero o algo irreversible (planear en Claude; la revisión puede ir a otra IA)"
@@ -130,7 +130,7 @@ ruteo_claude:
       verificado: false
       sin_dato: "No hay evidencia independiente de arquitectura ni de seguridad (revisión sin fuentes): escalón de abajo de opus/high. Acá casi siempre corresponde subir: ¿hay que juzgar? ¿el error sale caro? ¿mucho contexto? Con dos «sí» es opus/high."
       evidencia: []
-      palabras: [arquitectur, architect, seguridad, security, vulnerab, dinero, plata, pago, payment, finanz, legal, contrato, irreversible, produccion, production, migracion, diseno de sistema]
+      palabras: [arquitectur*, architect, seguridad, security, vulnerab*, dinero, plata, pago, payment, finanz*, financ*, legal, legales, contrato, irreversible, produccion, production, migracion, diseno de sistema]
 categorias:
   - id: desarrollo
     nombre: "Desarrollo (programar)"

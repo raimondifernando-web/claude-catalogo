@@ -235,7 +235,7 @@ COMANDO_CONSEJOS = ("Para resumir los consejos nuevos con la IA más barata: `py
                     "revisar el resultado a mano (spec §9).")
 
 
-def novedades_de_guias(nuevo, fuentes):
+def novedades_de_guias(nuevo, fuentes, hoy_s):
     """Compara la huella de cada guía de `fuentes_auto.guias`. Guarda la nueva y devuelve los motivos para el PR."""
     guias = (nuevo.get("fuentes_auto") or {}).get("guias") or {}
     motivos = []
@@ -249,6 +249,7 @@ def novedades_de_guias(nuevo, fuentes):
         else:
             motivos.append("Cambió la guía oficial «%s» (%s): revisar si cambian los consejos de uso de `plugins/metodo/radar/consejos/`." % (
                 nombre, entrada.get("url", "")))
+            entrada["cambio"] = hoy_s   # marca que sobrevive aunque el PR se publique solo: `hoy` avisa hasta que se rehagan los resúmenes
         entrada["hash"] = h
     if any(m.startswith("Cambió la guía") for m in motivos):
         motivos.append(COMANDO_CONSEJOS)
@@ -323,7 +324,7 @@ def analizar(radar, fuentes, hoy_f=None):
     motivos += novedades_de_versiones(nuevo, fuentes, hoy_s)
 
     # 5) guías oficiales de prompting y de migración (huella del texto)
-    motivos += novedades_de_guias(nuevo, fuentes)
+    motivos += novedades_de_guias(nuevo, fuentes, hoy_s)
 
     if not motivos:
         return radar, []
@@ -340,7 +341,12 @@ def traer(url, como="json"):
     return json.loads(texto) if como == "json" else texto
 
 
-def juntar(radar, modo, traer_fn=traer, avisar=print):
+def _avisar_actions(texto):
+    """En GitHub Actions el aviso sale como anotación visible (si no, una guía ilegible todos los días pasaría desapercibida)."""
+    print(("::warning::" if os.environ.get("GITHUB_ACTIONS") == "true" else "") + texto)
+
+
+def juntar(radar, modo, traer_fn=traer, avisar=_avisar_actions):
     fa = radar.get("fuentes_auto") or {}
     fuentes = {"paginas": {}, "guias": {}}
     if modo in ("diario", "todo"):

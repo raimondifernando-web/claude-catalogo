@@ -29,11 +29,11 @@ RUTEO = {"nota": "x", "tareas": [
     {"id": "buscar", "corto": "buscar, contar o mover", "nivel": "haiku", "esfuerzo": "low", "otra_ia": "tareas_baratas",
      "palabras": ["buscar", "contar", "mover"]},
     {"id": "implementar", "corto": "implementar algo acotado", "nivel": "sonnet", "esfuerzo": "medium", "otra_ia": "desarrollo",
-     "palabras": ["implement", "fix", "script"]},
+     "palabras": ["implement*", "fix", "script"]},
     {"id": "revisar", "corto": "revisar", "nivel": "sonnet", "esfuerzo": "medium", "otra_ia": "revision",
-     "palabras": ["revis", "review", "segunda opinion"]},
+     "palabras": ["revis*", "review", "segunda opinion"]},
     {"id": "grave", "corto": "arquitectura, seguridad o plata", "nivel": "opus", "esfuerzo": "high", "otra_ia": None,
-     "palabras": ["arquitectur", "seguridad", "plata"]},
+     "palabras": ["arquitectur*", "seguridad", "plata"]},
 ]}
 
 
@@ -427,7 +427,7 @@ class TestEndurecido(Base):
 
 class TestGuiasYConsejos(Base):
     def guias(self, hash_="aaaa"):
-        return {"anthropic_prompting": {"proveedor": "Anthropic", "titulo": "Prompting best practices", "url": "https://x/p.md", "hash": hash_}}
+        return {"anthropic_prompting": {"proveedor": "Anthropic", "titulo": "Prompting best practices", "url": "https://platform.claude.com/p.md", "hash": hash_}}
 
     def radar(self, hash_="aaaa"):
         r = radar_con_versiones()
@@ -522,7 +522,7 @@ class TestGuiasYConsejos(Base):
         finally:
             R.abrir, R.CONSEJOS_DIR, R.cargar = antes, antes_dir, cargar
         self.assertEqual(codigo, 0)
-        self.assertEqual(pedidos, ["https://x/p.md"])
+        self.assertEqual(pedidos, ["https://platform.claude.com/p.md"])
         self.assertTrue((carpeta / "_guias" / "anthropic_prompting.md").is_file())
         texto = salida_pedido.read_text(encoding="utf-8")
         for esperado in ("claude-haiku-5-5.md", "Fuente:", "máximo 10 líneas", "sin inventar", "no uses internet"):
@@ -554,6 +554,139 @@ class TestGuiasYConsejos(Base):
                 self.assertFalse(fila["verificado"], "%s no tiene evidencia: tiene que quedar provisoria" % fila["id"])
             if fila["verificado"] is False:
                 self.assertTrue(fila.get("sin_dato"), "%s: falta decir qué dato falta" % fila["id"])
+
+
+class TestSegundaRevision(Base):
+    """Hallazgos de la segunda revisión (2026-10-08)."""
+
+    def test_raices_con_asterisco_y_palabras_cortas(self):
+        r = R.leer_yaml(YAML_REAL)
+        casos = {
+            "buscar vulnerabilidades": "arquitectura_seguridad_plata", "hacer la verificacion final": "revisar",
+            "pasar las revisiones": "revisar", "hacer testing": "implementar_acotado", "investigaciones de mercado": "investigar",
+            "vulnerabilities scan": "arquitectura_seguridad_plata", "coding agent": "implementar_acotado",
+            "summarizing docs": "buscar_mover", "agregar scripts": "implementar_acotado", "es plata de la empresa": "arquitectura_seguridad_plata",
+        }
+        for texto, esperado in casos.items():
+            fila = R.fila_para(r, texto)
+            self.assertEqual(fila and fila["id"], esperado, texto)
+        for texto in ("analyze country data", "armar la plataforma digital", "juntar testimonios", "abrir codex"):
+            self.assertIsNone(R.fila_para(r, texto), texto)
+
+    def test_guias_por_modelo_tiene_tope_por_proveedor_y_prefiere_las_nuevas(self):
+        claude = "".join("[x](https://platform.claude.com/docs/en/models/m-%d-%d/migration-guide)\n" % (5, i) for i in range(1, 9))
+        openai = "migrationGuide: /api/docs/guides/latest-model/gpt-6-astra.md#migration-quickstart\n"
+        google = "".join("(https://ai.google.dev/gemini-api/docs/whats-new-gemini-3.%d)\n" % i for i in range(1, 9))
+        out = R.guias_por_modelo([claude, openai, google])
+        hosts = [u.split("/")[2] for u, _ in out]
+        self.assertEqual(hosts.count("developers.openai.com"), 1)             # la de OpenAI ya no queda afuera
+        self.assertEqual(hosts.count("platform.claude.com"), R.MAX_GUIAS_POR_MODELO)
+        self.assertEqual(hosts.count("ai.google.dev"), R.MAX_GUIAS_POR_MODELO)
+        self.assertIn("https://platform.claude.com/docs/en/models/m-5-8/migration-guide.md", [u for u, _ in out])    # las más nuevas
+        self.assertNotIn("https://ai.google.dev/gemini-api/docs/whats-new-gemini-3.1.md.txt", [u for u, _ in out])
+        self.assertTrue(all(R._url_de_guia_valida(u) for u, _ in out))
+
+    def test_solo_se_baja_de_los_tres_proveedores_con_https(self):
+        for malo in ("file:///etc/hosts", "http://platform.claude.com/x.md", "https://evil.example/x.md", "https://platform.claude.com.evil.com/x.md",
+                     "https://platform.claude.com/../../x", None, ""):
+            self.assertFalse(R._url_de_guia_valida(malo), malo)
+        self.assertTrue(R._url_de_guia_valida("https://ai.google.dev/gemini-api/docs/latest-model.md.txt"))
+
+    def correr_consejos(self, radar, abrir_falso):
+        carpeta = self.tmp / "consejos"
+        antes = (R.abrir, R.CONSEJOS_DIR, R.cargar)
+        R.abrir, R.CONSEJOS_DIR, R.cargar = abrir_falso, carpeta, (lambda: (radar, "plugin"))
+        try:
+            pedido = self.tmp / "pedido.txt"
+            codigo, salida = self.correr("consejos", "--pedido", str(pedido))
+        finally:
+            R.abrir, R.CONSEJOS_DIR, R.cargar = antes
+        return codigo, salida, pedido, carpeta
+
+    def test_el_pedido_rechaza_guias_con_direccion_o_id_raros_y_no_escribe_si_no_bajo_nada(self):
+        radar = radar_con_versiones()
+        radar["fuentes_auto"]["guias"] = {"../x": {"proveedor": "Anthropic", "titulo": "t", "url": "https://platform.claude.com/a.md"},
+                                          "ok_1": {"proveedor": "Anthropic", "titulo": "t", "url": "file:///etc/hosts"}}
+        pedidos = []
+        codigo, salida, pedido, carpeta = self.correr_consejos(radar, lambda url, **k: pedidos.append(url) or (200, b"x" * 500))
+        self.assertEqual((codigo, pedidos, pedido.exists()), (1, [], False))
+        self.assertIn("no escribo el pedido", salida)
+
+    def test_si_falla_una_guia_el_pedido_no_la_lista_y_la_carpeta_se_limpia(self):
+        radar = radar_con_versiones()
+        radar["fuentes_auto"]["guias"] = {
+            "a_uno": {"proveedor": "Anthropic", "titulo": "Uno", "url": "https://platform.claude.com/uno.md"},
+            "a_dos": {"proveedor": "Anthropic", "titulo": "Dos", "url": "https://platform.claude.com/dos.md"}}
+        carpeta = self.tmp / "consejos" / "_guias"
+        carpeta.mkdir(parents=True)
+        (carpeta / "vieja.md").write_text("guía de otra corrida", encoding="utf-8")
+
+        def abrir(url, **k):
+            if url.endswith("dos.md"):
+                raise OSError("caída")
+            return 200, ("texto " * 200).encode()
+        codigo, salida, pedido, _ = self.correr_consejos(radar, abrir)
+        self.assertEqual(codigo, 0)
+        self.assertFalse((carpeta / "vieja.md").exists())
+        texto = pedido.read_text(encoding="utf-8")
+        self.assertIn("a_uno.md", texto)
+        self.assertNotIn("a_dos.md", texto)
+        self.assertIn("no se pudieron bajar", salida)
+
+    def test_la_guia_que_cambio_deja_una_marca_que_sobrevive_al_pr(self):
+        radar = radar_con_versiones()
+        radar["fuentes_auto"]["guias"] = {"anthropic_prompting": {"proveedor": "Anthropic", "titulo": "P", "url": "https://platform.claude.com/p.md", "hash": "aaaa"}}
+        nuevo, _ = FU.analizar(radar, fuentes_de(guias={"anthropic_prompting": "bbbb"}))
+        cambio = nuevo["fuentes_auto"]["guias"]["anthropic_prompting"]["cambio"]
+        self.assertTrue(cambio)
+        carpeta = self.tmp / "consejos"
+        carpeta.mkdir()
+        (carpeta / "claude-haiku-5-5.md").write_text("Fuente: https://x (consultada 2020-01-01)\n- algo\n", encoding="utf-8")
+        antes = R.CONSEJOS_DIR
+        R.CONSEJOS_DIR = carpeta
+        try:
+            estado = R.consejos_estado(nuevo)
+            self.assertEqual(len(R.guias_cambiadas_sin_resumir(nuevo, estado)), 1)
+            self.assertIn("cambió el %s" % cambio, "\n".join(R.hoy_lineas(nuevo)))
+            # rehechos los resúmenes (fecha igual o posterior al cambio): el aviso se apaga solo
+            for e in estado:
+                (carpeta / (e["modelo"] + ".md")).write_text("Fuente: https://x (consultada %s)\n- algo\n" % R.hoy().isoformat(), encoding="utf-8")
+            self.assertEqual(R.guias_cambiadas_sin_resumir(nuevo, R.consejos_estado(nuevo)), [])
+        finally:
+            R.CONSEJOS_DIR = antes
+
+    def test_skills_viejas_solo_por_generacion_y_una_vez_por_semana(self):
+        base = self.tmp / "config"
+        for nombre in ("gpt-5-4-prompting", "gpt-5.4-prompting", "gpt-6-prompting", "gemini-3-prompting"):
+            (base / "skills" / nombre).mkdir(parents=True)
+        (base / "plugins" / "cache" / "m" / "codex" / "1.0.5" / "skills" / "gpt-5-4-prompting").mkdir(parents=True)
+        (base / "plugins" / "cache" / "m" / "codex" / "1.0.6" / "skills" / "gpt-5-4-prompting").mkdir(parents=True)
+        radar = radar_con_versiones()
+        radar["fuentes_auto"]["familias"] = FAMILIAS + [
+            {"id": "gpt-sol", "nombre": "GPT Sol", "proveedor": "openai", "patron": r"^gpt-(\d{1,2}(?:\.\d{1,2})?)-sol$"},
+            {"id": "gemini-flash", "nombre": "Gemini Flash", "proveedor": "google", "patron": r"^gemini-(\d{1,2}(?:\.\d{1,2})?)-flash$"}]
+        radar["vigentes"]["familias"] += [vigente("gpt-sol", "GPT Sol", None, "gpt-6.1-sol"), vigente("gemini-flash", "Gemini Flash", None, "gemini-3.8-flash")]
+        viejas = [x[0] for x in R.skills_de_prompting_viejas(radar, base)]
+        self.assertEqual(sorted(viejas), ["codex:gpt-5-4-prompting", "gpt-5-4-prompting", "gpt-5.4-prompting"])   # sin repetidos; 6.0 y 3.x no
+        # el aviso de hoy usa la carpeta de configuración de la prueba y se calla la semana siguiente
+        os.environ["CLAUDE_CONFIG_DIR"] = str(base)
+        self.assertTrue(R._skills_viejas_para_hoy(radar))
+        self.assertEqual(R._skills_viejas_para_hoy(radar), [])
+        os.environ["RADAR_HOY"] = "2026-10-20"
+        self.assertTrue(R._skills_viejas_para_hoy(radar))
+
+    def test_en_actions_los_avisos_salen_como_anotacion(self):
+        import io as _io
+        os.environ["GITHUB_ACTIONS"] = "true"
+        salida = _io.StringIO()
+        with contextlib.redirect_stdout(salida):
+            FU._avisar_actions("Aviso: no pude leer la guía x")
+        self.assertTrue(salida.getvalue().startswith("::warning::"))
+        os.environ.pop("GITHUB_ACTIONS")
+        salida = _io.StringIO()
+        with contextlib.redirect_stdout(salida):
+            FU._avisar_actions("Aviso: otra")
+        self.assertFalse(salida.getvalue().startswith("::warning::"))
 
 
 class TestHooksJson(unittest.TestCase):
