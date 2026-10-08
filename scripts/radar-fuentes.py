@@ -8,7 +8,10 @@ Qué cuenta como cambio relevante:
   - cambió el #1 de una categoría (rankings: modo `semanal` o `todo`);
   - se anunció el retiro de un modelo que algún plan nombra (LiteLLM, OpenRouter, models.dev: modo `diario` o `todo`);
   - el precio de un modelo nombrado subió más del 20%;
-  - cambió la tabla de una página de retiros (se guarda un hash; la primera vez fija la línea base).
+  - cambió la tabla de una página de retiros (se guarda un hash; la primera vez fija la línea base);
+  - salió una versión más nueva de una familia de modelos que sigue el radar (models.dev y OpenRouter): se actualiza la
+    sección `vigentes` (es un dato; el robot la puede escribir) y el PR avisa qué planes siguen en la versión vieja.
+    El orden A/B/C NO se toca: lo decide una persona (spec §7).
 
 Uso:
     radar-fuentes.py --modo diario|semanal|todo [--yaml RUTA] [--motivo RUTA] [--seco]
@@ -23,7 +26,7 @@ import os
 import re
 import sys
 import urllib.parse
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -74,13 +77,20 @@ def leer_litellm(datos):
     return out
 
 
+def _fecha_de_timestamp(v):
+    try:
+        return datetime.fromtimestamp(float(v), timezone.utc).date().isoformat()
+    except (TypeError, ValueError, OverflowError, OSError):
+        return None
+
+
 def leer_openrouter(datos):
     out = {}
     for m in (datos or {}).get("data", []):
         pr = m.get("pricing") or {}
         out[str(m.get("id", "")).split("/")[-1]] = {
             "retiro": _fecha(m.get("expiration_date")), "entrada": _por_millon(pr.get("prompt")),
-            "salida": _por_millon(pr.get("completion"))}
+            "salida": _por_millon(pr.get("completion")), "alta": _fecha_de_timestamp(m.get("created"))}
     return out
 
 
@@ -93,7 +103,11 @@ def leer_modelsdev(datos):
                 continue
             costo = m.get("cost") or {}
             retiro = m.get("deprecation_date") or m.get("retirement_date") or m.get("sunset_date")
-            out[str(mid).split("/")[-1]] = {"retiro": _fecha(retiro), "entrada": costo.get("input"), "salida": costo.get("output")}
+            clave = str(mid).split("/")[-1]
+            alta = _fecha(m.get("release_date"))
+            previa = (out.get(clave) or {}).get("alta")
+            out[clave] = {"retiro": _fecha(retiro), "entrada": costo.get("input"), "salida": costo.get("output"),
+                          "alta": min([x for x in (alta, previa) if x], default=None)}
     return out
 
 
@@ -131,6 +145,69 @@ def modelos_nombrados(radar):
             if p.get("modelo_api"):
                 out.setdefault(p["modelo_api"], p.get("proveedor"))
     return out
+
+
+def detectar_vigentes(radar, fuentes):
+    """Último modelo de cada familia de `fuentes_auto.familias`, mirando models.dev y OpenRouter.
+    Devuelve [{id, nombre, alias, modelo_api, alta, fuente}]. Una familia sin candidatos queda fuera (no se inventa nada)."""
+    out = []
+    for f in (radar.get("fuentes_auto") or {}).get("familias") or []:
+        mejor = None
+        for fuente, rotulo in (("modelsdev", "models.dev"), ("openrouter", "OpenRouter")):
+            for mid, info in (fuentes.get(fuente) or {}).items():
+                hit = R.familia_de(mid, [f])
+                if not hit or not R.ID_MODELO.match(hit[2]):
+                    continue
+                clave = (R._comparable(hit[1]), -len(hit[2]))   # misma versión: gana el id más corto (sin «-preview»)
+                if mejor is None or clave > mejor[0]:
+                    mejor = (clave, hit[2], (info or {}).get("alta"), rotulo)
+                elif clave == mejor[0] and not mejor[2] and (info or {}).get("alta"):
+                    mejor = (clave, mejor[1], info["alta"], mejor[3])
+        if mejor:
+            fila = {"id": f.get("id"), "nombre": f.get("nombre") or f.get("id"), "modelo_api": mejor[1],
+                    "alta": mejor[2], "fuente": mejor[3]}
+            if f.get("alias"):
+                fila["alias"] = f["alias"]
+            out.append(fila)
+    return out
+
+
+def novedades_de_versiones(nuevo, fuentes, hoy_s):
+    """Actualiza nuevo['vigentes'] si salió una versión más nueva. Devuelve los motivos para el PR (vacío si no hay novedad).
+    Nunca baja una versión (si una fuente pierde un modelo, se queda lo ya anotado)."""
+    familias = (nuevo.get("fuentes_auto") or {}).get("familias") or []
+    if not familias:
+        return []
+    hallados = detectar_vigentes(nuevo, fuentes)
+    if not hallados:
+        return []
+    previas = {f["id"]: f for f in ((nuevo.get("vigentes") or {}).get("familias") or []) if isinstance(f, dict) and f.get("id")}
+    motivos, resultado, cambio = [], [], False
+    orden = [f.get("id") for f in familias]
+    for fila in hallados:
+        vieja = previas.get(fila["id"])
+        if vieja:
+            a, b = R.familia_de(vieja.get("modelo_api"), familias), R.familia_de(fila["modelo_api"], familias)
+            if a and b and R._comparable(b[1]) <= R._comparable(a[1]):
+                if R._comparable(b[1]) == R._comparable(a[1]) and not vieja.get("alta") and fila.get("alta"):
+                    vieja["alta"] = fila["alta"]   # misma versión: solo se completa la fecha que faltaba
+                    cambio = True
+                continue
+        resultado.append(fila)
+        cambio = True
+        motivos.append("Salió %s (%s%s; %s)%s." % (
+            fila["modelo_api"], fila["nombre"], ", alta " + fila["alta"] if fila.get("alta") else "", fila["fuente"],
+            ": antes figuraba %s" % vieja["modelo_api"] if vieja else " (familia nueva en la lista)"))
+    if not cambio:
+        return []
+    mezcla = dict(previas)
+    mezcla.update({f["id"]: f for f in resultado})
+    nuevo["vigentes"] = {"actualizado": hoy_s, "familias": [mezcla[i] for i in orden if i in mezcla]}
+    for a in R.planes_atrasados(nuevo):
+        if any(a["vigente"] == f["modelo_api"] for f in resultado):
+            motivos.append("El plan %s de «%s» sigue en %s y ya salió %s: el orden A/B/C se cambia a mano (spec §7)." % (
+                a["plan"], a["categoria"], a["usa"], a["vigente"]))
+    return motivos
 
 
 def analizar(radar, fuentes, hoy_f=None):
@@ -196,6 +273,9 @@ def analizar(radar, fuentes, hoy_f=None):
             motivos.append("%s la tabla de la página de retiros de %s: revisarla a mano." % (
                 "Línea base de" if not entrada.get("hash") else "Cambió", pid))
             entrada["hash"] = h
+
+    # 4) versiones nuevas de las familias que sigue el radar
+    motivos += novedades_de_versiones(nuevo, fuentes, hoy_s)
 
     if not motivos:
         return radar, []

@@ -5,6 +5,36 @@
 
 Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B o el C.
 
+## Modelos vigentes
+
+Último modelo de cada familia (lo escribe el robot; el orden A/B/C de abajo es a mano).
+
+| Familia | Modelo | Alta |
+|---|---|---|
+| Claude Haiku | claude-haiku-5-5 | 2026-10-07 |
+| Claude Sonnet | claude-sonnet-5-5 | 2026-09-28 |
+| Claude Opus | claude-opus-5-5 | 2026-09-22 |
+| Claude Fable | claude-fable-5-1 | 2026-09-01 |
+| GPT Sol | gpt-6.1-sol | 2026-09-29 |
+| GPT Astra | gpt-6-astra | 2026-09-03 |
+| GPT Luna | gpt-6-luna | 2026-09-22 |
+| Gemini Flash | gemini-3.8-flash | 2026-09-02 |
+| Gemini Flash-Lite | gemini-3.5-flash-lite | 2026-07-21 |
+| Gemini Pro | gemini-3.1-pro | 2026-02-19 |
+
+## Ruteo de Claude por tipo de tarea
+
+Qué nivel de Claude y qué esfuerzo usar por tipo de tarea, con las 3 preguntas de siempre: ¿hay que juzgar o decidir?, ¿equivocarse sale caro?, ¿hay que sostener mucho contexto? Ninguna sí = haiku/low; una = sonnet/medium; dos = opus/high; las tres y tarea larga = fable/xhigh, solo a pedido (no se rutea). max, solo a pedido. Ante la duda, el de abajo y medir. Lo escribe una persona a mano: el robot no lo toca.
+
+| Tarea | Nivel | Esfuerzo | ¿Otra IA? |
+|---|---|---|---|
+| Buscar, contar, listar, mover, renombrar o resumir algo ya decidido | haiku | low | tareas_baratas |
+| Implementar algo acotado: un arreglo claro, un script, una función, tests | sonnet | medium | desarrollo |
+| Revisar un cambio o dar una segunda opinión | sonnet | medium | revision |
+| Planillas, conciliaciones y análisis de datos | sonnet | medium | datos_planillas |
+| Investigar en la web y juntar fuentes | sonnet | medium | investigacion_web |
+| Arquitectura, seguridad, dinero o algo irreversible (planear en Claude; la revisión puede ir a otra IA) | opus | high | revision |
+
 ## Desarrollo (programar)
 
 Orden respaldado por 2 fuentes independientes.
@@ -147,7 +177,7 @@ Orden PROVISORIO: 1 de 2 fuentes independientes.
 |---|---|---|---|---|
 | A | API de OpenAI (OpenAI, GPT-6 Luna) [a verificar] | US$0,10/0,50 por millón: lo más barato. | sí |  |
 | B | API de Gemini (Google, Gemini Flash-Lite) [a verificar] | Con plan gratis (pero ver la condición). | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
-| C | Claude Code (Anthropic, Haiku 4.5) [a verificar] | Si tiene que quedar dentro de Claude Code. Ojo: no se retira antes del 2026-10-15. | sí |  |
+| C | Claude Code (Anthropic, Haiku 5.5) [a verificar] | Si tiene que quedar dentro de Claude Code: Haiku 5.5, el más barato de Claude (US$0,10 de entrada y US$0,50 de salida por millón de tokens, en prompts de hasta 100 mil tokens). | sí |  |
 
 ## Agentes de tarea larga
 

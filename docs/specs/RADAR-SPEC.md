@@ -62,3 +62,39 @@ Rama `orquesta/radar-modelos`, sin publicar.
 5. **La evidencia propia pesa más** cuando exista (el Cerebro mide costo, éxito y tiempo en tareas reales del usuario).
 6. Revisión cruzada: los datos los confirma alguien distinto de quien los cargó, comparando contra la fuente (link y fecha
    por dato).
+
+## 8. Modelos vigentes, ruteo y sesión (2026-10-08)
+Pedido del dueño: que cada sesión elija modelo, esfuerzo e IA con datos del día y no de memoria (se sobredimensionaba y el
+radar seguía diciendo «Haiku 4.5» cuando ya había un Haiku nuevo).
+
+1. **`vigentes`** (lo escribe el robot; es un dato, no un orden). `fuentes_auto.familias` lista las familias a seguir
+   (`id`, `nombre`, `alias` opcional, `patron` con UN grupo = la versión, `puntos_a_guion` para los ids de Claude que
+   OpenRouter escribe con puntos). `scripts/radar-fuentes.py` toma de models.dev y OpenRouter el id más nuevo de cada familia
+   (misma versión: gana el id más corto) y lo guarda en `vigentes.familias[]` con `modelo_api`, `alta` y `fuente`.
+   Solo acepta ids que calcen el patrón anclado; **nunca baja una versión** (si una fuente pierde un modelo, queda lo anotado);
+   un id raro (`:thinking`, `@eu`, `-latest`, con saltos de línea) no entra. Si una familia sube, el PR dice «Salió X» y, por
+   cada plan que sigue en la versión vieja, «el plan C de … sigue en …: el orden A/B/C se cambia a mano». **Ese orden no lo
+   toca el robot (§7).** Los ids y precios de Claude se verifican con la skill `claude-api`, nunca de memoria.
+2. **`ruteo_claude`** (a mano, por PR). `tareas[]`: `id`, `corto`, `tarea`, `nivel` (haiku|sonnet|opus|fable), `esfuerzo`
+   (low|medium|high|xhigh|max), `otra_ia` (id de una categoría del radar, o null) y `palabras` (raíces para reconocer la tarea
+   en el pedido; sin tildes; una raíz de 4+ letras calza por prefijo). Criterio = las 3 preguntas de la política de modelos:
+   ninguna «sí» → haiku/low · una → sonnet/medium · dos → opus/high · tres y tarea larga → fable/xhigh, solo a pedido (no se
+   rutea) · `max` solo a pedido. Ante la duda, el de abajo y medir.
+3. **`radar.py hoy`** (hook SessionStart). 4-5 líneas en castellano simple: modelos vigentes por alias · ruteo resumido ·
+   cupo de las 3 IA · aviso (radar viejo, retiro próximo, planes con modelo viejo) · recordatorio de poner `model`/`effort`.
+   **Sin red y sin comandos lentos**: el cupo sale de cachés locales (`cupo.json`, `cupo-codex.json`, `cupo-agy.json` en
+   `$CEREBRO_HOME` o `~/.cerebro`, que deja el Bicho; un dato más viejo que 3 h —24 h para Codex— cuenta como «sin dato») y,
+   solo para Codex, de su lector local (`codex-cupo`, milisegundos). Nunca corre `claude -p /usage` ni `agy`. Sin caché dice
+   «sin dato»; no inventa. Nunca falla el arranque (salida 0 y vacía ante cualquier error).
+   Lo que se imprime al contexto sale **limpio**: ids que calcen `^[a-z0-9][a-z0-9._-]{1,63}$`, textos sin saltos de línea,
+   comillas invertidas ni caracteres de control, con largo máximo.
+4. **`radar.py recordar`** (hook PreToolUse, matcher `Agent|Task|mcp__ccd_session__start_session`). Lee el JSON del hook por
+   stdin y, si corresponde, devuelve `hookSpecificOutput.additionalContext` con UNA línea: falta `model`, se pidió más nivel
+   que el de la fila del ruteo que calza con la tarea, o más esfuerzo; ofrece Codex/Gemini si tienen cupo. Con varias filas
+   que calzan manda la de nivel más alto (prefiere callar a retar de más). Tope por sesión (1 aviso «sin model», 3 de «sobra»;
+   estado en `<config>/metodo/ruteo-recordado.json`, se limpia a los 3 días). **No devuelve `permissionDecision`, `updatedInput`
+   ni sale con código 2: no puede bloquear ni cambiar nada.** Verificado contra la doc oficial de hooks (2026-10-08): PreToolUse
+   acepta `additionalContext` sin decisión de permiso; llega junto al resultado de la herramienta, es decir que **recuerda
+   para las delegaciones siguientes, no frena la que ya salió**.
+5. **Fuera de este paso**: el control mensual de lo realmente elegido (se mide desde los transcripts) es del paso 5 del plan.
+

@@ -17,6 +17,11 @@ Comandos (los corre Claude desde la skill `radar`; el usuario no toca la termina
                                          con TUS claves (variables de entorno, por nombre; nunca se imprimen)
     aviso                                una línea si el radar tiene más de 14 días o hay un retiro próximo de un modelo
                                          que usamos; nunca falla el arranque
+    hoy                                  4-5 líneas para empezar la sesión: modelos vigentes, ruteo por tipo de tarea, cupo de
+                                         las 3 IA y avisos. SIN red y SIN comandos lentos (solo cachés locales); nunca falla
+    recordar                             (lo llama el hook PreToolUse de Agent / start_session; lee el JSON del hook por stdin)
+                                         agrega una línea de contexto si al delegar falta el modelo o sobra nivel/esfuerzo.
+                                         NUNCA bloquea ni decide permisos: solo recuerda
 
 `<config>` es $CLAUDE_CONFIG_DIR si está definida; si no, ~/.claude.
 Códigos de salida: 0 bien · 1 no hay ningún plan disponible / error de uso · 2 categoría desconocida.
@@ -641,6 +646,308 @@ def aviso_linea(radar):
     return "Radar: " + "; ".join(partes) if partes else ""
 
 
+# --------------------------------------------------------------------------- #
+# Modelos vigentes, ruteo por tipo de tarea, `hoy` y el recordatorio al delegar
+# --------------------------------------------------------------------------- #
+NIVELES = {"haiku": 1, "sonnet": 2, "opus": 3, "fable": 4}
+ESFUERZOS = {"low": 1, "medium": 2, "high": 3, "xhigh": 4, "max": 5}
+ID_MODELO = re.compile(r"^[a-z0-9][a-z0-9._-]{1,63}$")
+EDAD_MAX_CUPO = {"claude": 3 * 3600, "codex": 24 * 3600, "antigravity": 3 * 3600}   # segundos
+CACHE_CUPO = {"claude": "cupo.json", "codex": "cupo-codex.json", "antigravity": "cupo-agy.json"}
+MAX_AVISOS_POR_SESION = {"generico": 1, "sobra": 3}
+
+
+def _tupla_version(texto):
+    try:
+        return tuple(int(x) for x in re.split(r"[.-]", str(texto)))
+    except ValueError:
+        return None
+
+
+def _comparable(v):
+    return tuple(v) + (0,) * (3 - len(v))
+
+
+def familia_de(modelo_api, familias):
+    """(familia, versión, id normalizado) si el modelo pertenece a una familia de `fuentes_auto.familias`, o None.
+    Cada familia trae un `patron` con UN grupo: la versión («5-5», «6.1»). Los ids con puntos de Claude (OpenRouter
+    dice claude-haiku-5.5) se pasan a guiones con `puntos_a_guion` para que coincidan con los de la API."""
+    m_norm = str(modelo_api or "").strip().lower().split("/")[-1]
+    for f in familias or []:
+        if not isinstance(f, dict) or not f.get("patron"):
+            continue
+        cand = m_norm.replace(".", "-") if f.get("puntos_a_guion") else m_norm
+        try:
+            m = re.fullmatch(f["patron"], cand)
+        except re.error:
+            continue
+        if m and m.groups():
+            v = _tupla_version(m.group(1))
+            if v:
+                return f, v, cand
+    return None
+
+
+def vigentes_por_familia(radar):
+    return {f["id"]: f for f in ((radar.get("vigentes") or {}).get("familias") or []) if isinstance(f, dict) and f.get("id")}
+
+
+def modelo_de_alias(radar, alias):
+    """Id del modelo vigente de un alias de Claude (haiku/sonnet/opus/fable), o None. Solo devuelve ids de forma válida."""
+    for f in vigentes_por_familia(radar).values():
+        if f.get("alias") == alias and ID_MODELO.match(str(f.get("modelo_api", ""))):
+            return f["modelo_api"]
+    return None
+
+
+def planes_atrasados(radar):
+    """Planes cuyo modelo es de una versión anterior a la vigente de su familia (solo avisa: el orden A/B/C se cambia a mano)."""
+    familias = (radar.get("fuentes_auto") or {}).get("familias") or []
+    vig = vigentes_por_familia(radar)
+    out = []
+    for c in radar.get("categorias") or []:
+        for p in c.get("planes") or []:
+            usa = familia_de(p.get("modelo_api"), familias)
+            nuevo = vig.get(usa[0].get("id")) if usa else None
+            if not nuevo:
+                continue
+            hay = familia_de(nuevo.get("modelo_api"), familias)
+            if hay and _comparable(hay[1]) > _comparable(usa[1]):
+                out.append({"categoria": c.get("nombre") or c.get("id"), "plan": p.get("plan"),
+                            "usa": p.get("modelo_api"), "vigente": nuevo.get("modelo_api")})
+    return out
+
+
+def _limpio(texto, largo=60):
+    """Texto de una sola línea y sin caracteres de control (lo que va al contexto de la sesión no trae formato ajeno)."""
+    s = re.sub(r"[\x00-\x1f\x7f`]+", " ", str(texto or ""))
+    return re.sub(r"\s+", " ", s).strip()[:largo]
+
+
+def ruteo_filas(radar):
+    """Filas válidas de `ruteo_claude.tareas` (nivel y esfuerzo dentro de los valores conocidos)."""
+    out = []
+    for t in ((radar.get("ruteo_claude") or {}).get("tareas") or []):
+        if isinstance(t, dict) and t.get("nivel") in NIVELES and t.get("esfuerzo") in ESFUERZOS:
+            out.append(t)
+    return out
+
+
+def fila_para(radar, texto):
+    """La fila del ruteo que mejor calza con el texto de la tarea. Con varias, la de nivel más alto (el recordatorio
+    prefiere callar antes que retar de más)."""
+    norm = " %s " % _norm(texto)
+    palabras = norm.split()
+    elegida = None
+    for t in ruteo_filas(radar):
+        for kw in t.get("palabras") or []:
+            k = _norm(kw)
+            if not k:
+                continue
+            if " " in k:
+                hit = (" %s " % k) in norm
+            elif len(k) < 4:
+                hit = k in palabras
+            else:
+                hit = any(w.startswith(k) for w in palabras)
+            if hit:
+                clave = (NIVELES[t["nivel"]], ESFUERZOS[t["esfuerzo"]])
+                if elegida is None or clave > elegida[0]:
+                    elegida = (clave, t)
+                break
+    return elegida[1] if elegida else None
+
+
+def _cupo_de_cache(clave):
+    """Porcentaje usado leído de la caché local (la deja el Bicho), o None si falta, es vieja o no es válida."""
+    cerebro = os.environ.get("CEREBRO_HOME", "").strip()
+    base = Path(cerebro) if cerebro else Path.home() / ".cerebro"
+    try:
+        ruta = base / CACHE_CUPO[clave]
+        if not ruta.is_file() or ruta.stat().st_size > 65536:
+            return None
+        datos = json.loads(ruta.read_text(encoding="utf-8"))
+        edad = time.time() - float(datos.get("ts", 0))
+        if not 0 <= edad <= EDAD_MAX_CUPO[clave]:
+            return None
+        pcts = [_pct_valido(datos.get("pct"))]
+        for k in ("five_hour", "seven_day"):
+            sub = datos.get(k)
+            if isinstance(sub, dict):
+                pcts.append(_pct_valido(sub.get("pct")))
+        pcts = [x for x in pcts if x is not None]
+        return max(pcts) if pcts else None
+    except Exception:
+        return None
+
+
+def _nivel_pct(x):
+    return "agotado" if x >= 90 else "alto" if x >= 70 else "ok"
+
+
+def cupos_rapidos():
+    """{clave: (nivel, porcentaje|None)} de las 3 IA SIN correr nada lento: cachés locales y, para Codex, su lector local.
+    nivel: ok | alto | agotado | sin_dato | no_disponible."""
+    out = {}
+    for clave in ("claude", "codex", "antigravity"):
+        x = _cupo_de_cache(clave)
+        if x is not None:
+            out[clave] = (_nivel_pct(x), x)
+    if "codex" not in out:   # su lector es local y tarda milisegundos; las otras dos IA necesitarían correr su CLI
+        nivel, texto = cupo_codex()
+        m = re.search(r"(\d+(?:\.\d+)?)\s*%", texto)
+        out["codex"] = ("no_disponible", None) if nivel == "no_disponible" else (
+            (_nivel_pct(float(m.group(1))), float(m.group(1))) if m else ("sin_dato", None))
+    if "antigravity" not in out:
+        out["antigravity"] = ("no_disponible", None) if not _buscar_bin("agy", "RADAR_AGY_BIN") else ("sin_dato", None)
+    out.setdefault("claude", ("sin_dato", None))
+    return out
+
+
+def _texto_cupo(nombre, nivel, pct):
+    if nivel == "no_disponible":
+        return "%s no está" % nombre
+    if nivel == "sin_dato":
+        return "%s sin dato" % nombre
+    nota = {"agotado": " (agotado)", "alto": " (solo tareas chicas)"}.get(nivel, "")
+    return "%s %d%%%s" % (nombre, round(pct), nota)
+
+
+def ruteo_en_una_linea(radar):
+    grupos = []
+    for t in ruteo_filas(radar):
+        clave = "%s/%s" % (t["nivel"], t["esfuerzo"])
+        for g in grupos:
+            if g[0] == clave:
+                g[1].append(_limpio(t.get("corto") or t.get("id")))
+                break
+        else:
+            grupos.append((clave, [_limpio(t.get("corto") or t.get("id"))]))
+    grupos.sort(key=lambda g: (NIVELES[g[0].split("/")[0]], ESFUERZOS[g[0].split("/")[1]]))
+    return " · ".join("%s = %s" % (c, ", ".join(x)) for c, x in grupos)
+
+
+def hoy_lineas(radar, cupos=None):
+    """Las líneas de `radar.py hoy`. Sin red, sin comandos lentos."""
+    cupos = cupos or cupos_rapidos()
+    lineas = []
+    modelos = [(a, modelo_de_alias(radar, a)) for a in ("haiku", "sonnet", "opus")]
+    modelos = ["%s = %s" % (a.capitalize(), m) for a, m in modelos if m]
+    lineas.append("Radar de hoy (datos del %s). Modelos vigentes: %s." % (
+        _limpio(radar.get("actualizado", "?"), 10), " · ".join(modelos) if modelos else "sin lista en el radar"))
+    ruteo = ruteo_en_una_linea(radar)
+    if ruteo:
+        lineas.append("Qué nivel/esfuerzo usar: %s. Cada «sí» a ¿hay que juzgar o decidir?, ¿equivocarse sale caro? o ¿hay mucho contexto? sube un escalón." % ruteo)
+    nombres = (("claude", "Claude"), ("codex", "Codex"), ("antigravity", "Gemini"))
+    libres = [n for k, n in nombres if k != "claude" and cupos.get(k, ("sin_dato",))[0] == "ok"]
+    linea = "Cupo: " + " · ".join(_texto_cupo(n, *cupos.get(k, ("sin_dato", None))) for k, n in nombres) + "."
+    if libres:
+        linea += " Con cupo libre: %s; %s revisiones y trabajo acotado con delegar.py." % (
+            " y ".join(libres), "mandale" if len(libres) == 1 else "mandales")
+    lineas.append(linea)
+    avisos = []
+    base = aviso_linea(radar)
+    if base:
+        avisos.append(base)
+    for a in planes_atrasados(radar)[:2]:
+        avisos.append("salió %s y el plan %s de «%s» sigue en %s" % (
+            _limpio(a["vigente"], 64), _limpio(a["plan"], 2), _limpio(a["categoria"], 40), _limpio(a["usa"], 64)))
+    if avisos:
+        lineas.append("Aviso: " + "; ".join(avisos) + ".")
+    lineas.append("Al abrir un subagente o una sesión: poné `model` y `effort` según este ruteo y lo acotado mandalo a la IA con cupo "
+                  "(regla 18: `radar.py elegir <categoría>`).")
+    return lineas
+
+
+def cmd_hoy(_a):
+    try:
+        radar, _ = cargar()
+        print("\n".join(hoy_lineas(radar)))
+    except BaseException:
+        pass   # un fallo del radar nunca puede romper el arranque
+    return 0
+
+
+def _rango_modelo(texto):
+    t = str(texto or "").lower()
+    for nombre in ("haiku", "sonnet", "opus", "fable", "mythos"):
+        if nombre in t:
+            return NIVELES.get(nombre, NIVELES["fable"]), nombre
+    return None, None
+
+
+def _ya_se_dijo(sesion, tipo):
+    """True si en esa sesión ya se mostró el máximo de avisos de ese tipo; si no, lo cuenta. Si la nota local no anda, avisa igual."""
+    ruta = carpeta_metodo() / "ruteo-recordado.json"
+    try:
+        try:
+            estado = json.loads(ruta.read_text(encoding="utf-8"))
+        except Exception:
+            estado = {}
+        ahora = time.time()
+        estado = {k: v for k, v in estado.items() if isinstance(v, dict) and ahora - v.get("t", 0) < 3 * 86400}
+        s = estado.setdefault(_limpio(sesion or "sin-sesion", 80), {"t": ahora})
+        if s.get(tipo, 0) >= MAX_AVISOS_POR_SESION[tipo]:
+            return True
+        s[tipo] = s.get(tipo, 0) + 1
+        s["t"] = ahora
+        escribir(ruta, json.dumps(dict(list(estado.items())[-200:]), ensure_ascii=False))
+    except Exception:
+        pass
+    return False
+
+
+def recordatorio_ruteo(radar, entrada, cupos=None):
+    """Texto de recordatorio para un Agent / start_session, o '' si no hay nada que decir. No decide nada."""
+    ti = entrada.get("tool_input") if isinstance(entrada.get("tool_input"), dict) else {}
+    texto = " ".join(str(ti.get(k) or "") for k in ("description", "title")) + " " + str(ti.get("prompt") or "")[:300]
+    fila = fila_para(radar, texto)
+    pedido, nombre_pedido = _rango_modelo(ti.get("model"))
+    esfuerzo = str(ti.get("effort") or "").strip().lower()
+    partes, tipo = [], "sobra"
+    if fila:
+        ok_nivel = NIVELES[fila["nivel"]]
+        if pedido and pedido > ok_nivel:
+            partes.append("pediste %s y para «%s» el ruteo de hoy dice %s (%s)" % (
+                nombre_pedido, _limpio(fila.get("corto") or fila.get("id")), fila["nivel"],
+                modelo_de_alias(radar, fila["nivel"]) or "alias " + fila["nivel"]))
+        if ESFUERZOS.get(esfuerzo, 0) > ESFUERZOS[fila["esfuerzo"]]:
+            partes.append("esfuerzo %s: para eso el ruteo dice %s" % (esfuerzo, fila["esfuerzo"]))
+    if not partes and not pedido:
+        tipo = "generico"
+        if fila:
+            partes.append("sin `model` explícito (hereda el de la sesión o el del agente); para «%s» el ruteo de hoy dice %s/%s" % (
+                _limpio(fila.get("corto") or fila.get("id")), fila["nivel"], fila["esfuerzo"]))
+        else:
+            partes.append("sin `model` explícito (hereda el de la sesión o el del agente); ruteo de hoy: %s" % ruteo_en_una_linea(radar))
+    if not partes or _ya_se_dijo(entrada.get("session_id"), tipo):
+        return ""
+    msg = "Ruteo del radar: " + "; ".join(partes) + "."
+    cupos = cupos or cupos_rapidos()
+    libres = [n for k, n in (("codex", "Codex"), ("antigravity", "Gemini")) if cupos.get(k, ("sin_dato",))[0] == "ok"]
+    if fila and fila.get("otra_ia") and libres:
+        msg += " %s tiene cupo: probá `delegar.py %s <repo> <pedido> --archivo` antes de gastar Claude." % (
+            " y ".join(libres), _limpio(fila["otra_ia"], 30))
+    return msg
+
+
+def cmd_recordar(_a):
+    """Hook PreToolUse de Agent / start_session. Nunca bloquea: no devuelve permissionDecision ni sale con 2."""
+    try:
+        if sys.stdin is None or sys.stdin.isatty():
+            return 0
+        entrada = json.loads(sys.stdin.read(1000000) or "{}")
+        if not isinstance(entrada, dict):
+            return 0
+        radar, _ = cargar()
+        msg = recordatorio_ruteo(radar, entrada)
+        if msg:
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": msg}}))
+    except BaseException:
+        pass
+    return 0
+
+
 def a_json(radar):
     aviso = aviso_linea(radar)
     campos = ("plan", "herramienta", "proveedor", "modelo", "modelo_api", "por_que", "fuente", "fecha", "condiciones",
@@ -656,6 +963,8 @@ def a_json(radar):
             "respaldado": respaldo(c)[1],
         } for c in radar.get("categorias") or []],
         "retiros": radar.get("retiros") or [],
+        "vigentes": (radar.get("vigentes") or {}).get("familias") or [],
+        "ruteo_claude": ruteo_filas(radar),
         "avisos": [aviso] if aviso else [],
     }
 
@@ -669,6 +978,20 @@ def a_markdown(radar):
            "> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **%s**." % radar.get("actualizado", "?"),
            "> `[a verificar]` = dato de la investigación que todavía no se leyó de primera mano.", "",
            "Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B o el C.", ""]
+    vig = (radar.get("vigentes") or {}).get("familias") or []
+    if vig:
+        out += ["## Modelos vigentes", "", "Último modelo de cada familia (lo escribe el robot; el orden A/B/C de abajo es a mano).", "",
+                "| Familia | Modelo | Alta |", "|---|---|---|"]
+        for f in vig:
+            out.append("| %s | %s | %s |" % (_esc_tabla(f.get("nombre") or f.get("id")), _esc_tabla(f.get("modelo_api")), _esc_tabla(f.get("alta"))))
+        out.append("")
+    if ruteo_filas(radar):
+        out += ["## Ruteo de Claude por tipo de tarea", "", (radar.get("ruteo_claude") or {}).get("nota", ""), "",
+                "| Tarea | Nivel | Esfuerzo | ¿Otra IA? |", "|---|---|---|---|"]
+        for t in ruteo_filas(radar):
+            out.append("| %s | %s | %s | %s |" % (_esc_tabla(t.get("tarea") or t.get("corto")), t["nivel"], t["esfuerzo"],
+                                                   _esc_tabla(t.get("otra_ia") or "-")))
+        out.append("")
     for c in radar.get("categorias") or []:
         out += ["## %s" % c.get("nombre", c.get("id")), "", texto_respaldo(c), "", "| Plan | Herramienta | Por qué | Datos privados | Condiciones |",
                 "|---|---|---|---|---|"]
@@ -934,6 +1257,8 @@ def main(argv=None):
     sub.add_parser("actualizar").set_defaults(f=cmd_actualizar)
     s = sub.add_parser("probar"); s.add_argument("--si", action="store_true"); s.set_defaults(f=cmd_probar)
     sub.add_parser("aviso").set_defaults(f=cmd_aviso)
+    sub.add_parser("hoy").set_defaults(f=cmd_hoy)
+    sub.add_parser("recordar").set_defaults(f=cmd_recordar)
     a = ap.parse_args(argv)
     if not getattr(a, "f", None):
         ap.print_help()

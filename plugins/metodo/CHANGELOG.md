@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.25.0 — 2026-10-08
+- **Cada sesión arranca sabiendo qué modelo, qué esfuerzo y qué IA conviene hoy.** Al abrir la sesión aparecen 4-5 líneas: qué modelo es hoy Haiku, Sonnet y Opus, qué nivel y esfuerzo de Claude conviene por tipo de tarea (buscar y mover = haiku/bajo, implementar o revisar = sonnet/medio, arquitectura, seguridad o plata = opus/alto), cuánto cupo queda en Claude, Codex y Gemini, y si algún plan del radar quedó con un modelo viejo. Lee solo archivos de tu computadora: no usa internet, no abre ninguna otra herramienta y tarda menos de un segundo. Si algo falla, no muestra nada y la sesión abre igual.
+- **El radar se entera solo de los modelos nuevos.** El robot que actualiza el radar cada día ahora también mira si salió una versión más nueva de cada familia (Haiku, Sonnet, Opus, Fable, GPT, Gemini). Anota la última en la sección `vigentes` y, si algún plan quedó atrás, lo avisa en el pedido de cambio. El orden A/B/C lo sigue decidiendo una persona. Corregido hoy: el plan C de «tareas mecánicas baratas» decía Haiku 4.5 y pasó a Haiku 5.5.
+- **Recordatorio al delegar.** Antes de que Claude abra un subagente o una sesión nueva, suma una sola línea de contexto si falta el `model`, si pide más nivel del que la tabla recomienda para esa tarea o si pide más esfuerzo del necesario, y te dice si Codex o Gemini tienen cupo libre. Es solo un recordatorio: nunca bloquea nada ni cambia lo que se pidió, y no se repite más de unas pocas veces por sesión.
+- **Reglas 18 y 20.** La 18 ahora cubre también el modelo y el esfuerzo de Claude (se eligen con la tabla del radar, no de memoria). La 20 ya no dice «con Sonnet»: dice «con un modelo más barato que el tuyo» y manda a la tabla para saber cuál.
+- Para apagarlo: sacá el plugin `metodo` o pedile a Claude que quite los dos hooks nuevos de `hooks/hooks.json`.
+
 ## 0.24.0 — 2026-10-08
 - **«Poner todo al día» v9.** Instala NotebookLM (`notebooklm-py` 0.8.3) en su propio Python 3.12 con uv, desde el wheel verificado por su huella, índice fijo de PyPI, sin compilar código fuente y con dependencias congeladas al 2026-10-01, más su navegador (playwright chromium); no inicia sesión. Avisa una vez cuando cambia la plantilla de la ficha de la empresa. Corre el chequeo del equipo (solo lectura, tope de 60 s, con el Python de la Mac primero) y suma lo que falte a la línea final. Los avisos que no son fallas salen en una línea «Además: …» y `al-dia.aviso`, que se muestra una vez al abrir sesión.
 

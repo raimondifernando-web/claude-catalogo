@@ -72,7 +72,11 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
 
 ## Cuando elegís qué IA usar (regla 18)
 
-18. **Para elegir qué IA usar, consultá el radar; nunca de memoria.** Corré
+18. **Para elegir qué IA, qué modelo de Claude y qué esfuerzo usar, consultá el radar; nunca de memoria.** Al abrir cada
+    sesión ya te muestra 4-5 líneas (`radar.py hoy`): qué modelo es hoy cada nivel (haiku, sonnet, opus), qué nivel y
+    esfuerzo conviene por tipo de tarea y cuánto cupo queda en Claude, Codex y Gemini. Antes de abrir un subagente o una
+    sesión nueva, poné `model` y `effort` según esa tabla, no según lo que recordás: la tabla se actualiza sola y tu
+    memoria no. Un aviso del hook al delegar es solo un recordatorio, nunca te frena. Para elegir otra IA, corré
     `python3 "$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name radar.py | sort -V | tail -1)" elegir <categoría>`
     (con `--sensible` si hay datos privados). Te devuelve el primer plan disponible: si el A no está (cupo agotado, modelo
     retirado o no disponible para tu cuenta), usá el B o el C que te indica. `ver` muestra todas las categorías con sus
@@ -97,7 +101,8 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
 ## Cuándo repartir el trabajo entre sesiones (regla 20)
 
 20. **¿Seguir acá o abrir otra sesión?** Para un trabajo mediano o grande (armar algo, investigar, una pieza con diseño)
-    que no toca archivos que otra sesión está editando y que alcanza con Sonnet, Claude te propone hacerlo en una
+    que no toca archivos que otra sesión está editando y que se puede hacer con un modelo más barato que el tuyo (qué
+    nivel y esfuerzo lleva, lo dice el ruteo del radar: regla 18), Claude te propone hacerlo en una
     **sesión aparte**: sigue sola, la ves en la barra lateral y le podés hablar, y esta queda libre. No lo propone para
     preguntas, arreglos chicos, si pisaría archivos de otra sesión, o cuando explicarle el contexto a la nueva cuesta más
     que hacerlo acá. Siempre le pasa el pedido completo (qué hacer, qué archivos, cómo se sabe que está hecho, qué no

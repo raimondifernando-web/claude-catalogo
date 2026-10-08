@@ -2,6 +2,108 @@
 # Lo mantiene un PR automático (.github/workflows/radar.yml) que una persona aprueba; el RADAR.md se genera con `radar.py md`.
 actualizado: 2026-10-08
 nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual."
+vigentes:
+  actualizado: 2026-10-08
+  familias:
+    - id: claude-haiku
+      nombre: Claude Haiku
+      modelo_api: claude-haiku-5-5
+      alta: 2026-10-07
+      fuente: models.dev
+      alias: haiku
+    - id: claude-sonnet
+      nombre: Claude Sonnet
+      modelo_api: claude-sonnet-5-5
+      alta: 2026-09-28
+      fuente: models.dev
+      alias: sonnet
+    - id: claude-opus
+      nombre: Claude Opus
+      modelo_api: claude-opus-5-5
+      alta: 2026-09-22
+      fuente: models.dev
+      alias: opus
+    - id: claude-fable
+      nombre: Claude Fable
+      modelo_api: claude-fable-5-1
+      alta: 2026-09-01
+      fuente: models.dev
+      alias: fable
+    - id: gpt-sol
+      nombre: GPT Sol
+      modelo_api: gpt-6.1-sol
+      alta: 2026-09-29
+      fuente: models.dev
+    - id: gpt-astra
+      nombre: GPT Astra
+      modelo_api: gpt-6-astra
+      alta: 2026-09-03
+      fuente: models.dev
+    - id: gpt-luna
+      nombre: GPT Luna
+      modelo_api: gpt-6-luna
+      alta: 2026-09-22
+      fuente: models.dev
+    - id: gemini-flash
+      nombre: Gemini Flash
+      modelo_api: gemini-3.8-flash
+      alta: 2026-09-02
+      fuente: models.dev
+    - id: gemini-flash-lite
+      nombre: Gemini Flash-Lite
+      modelo_api: gemini-3.5-flash-lite
+      alta: 2026-07-21
+      fuente: models.dev
+    - id: gemini-pro
+      nombre: Gemini Pro
+      modelo_api: gemini-3.1-pro
+      alta: 2026-02-19
+      fuente: models.dev
+ruteo_claude:
+  nota: "Qué nivel de Claude y qué esfuerzo usar por tipo de tarea, con las 3 preguntas de siempre: ¿hay que juzgar o decidir?, ¿equivocarse sale caro?, ¿hay que sostener mucho contexto? Ninguna sí = haiku/low; una = sonnet/medium; dos = opus/high; las tres y tarea larga = fable/xhigh, solo a pedido (no se rutea). max, solo a pedido. Ante la duda, el de abajo y medir. Lo escribe una persona a mano: el robot no lo toca."
+  tareas:
+    - id: buscar_mover
+      corto: "buscar, contar, mover o resumir"
+      tarea: "Buscar, contar, listar, mover, renombrar o resumir algo ya decidido"
+      nivel: haiku
+      esfuerzo: low
+      otra_ia: tareas_baratas
+      palabras: [buscar, search, listar, listado, contar, count, renombrar, rename, mover, resumir, resumen, summar, inventario, grep, encontrar, ubicar]
+    - id: implementar_acotado
+      corto: "implementar algo acotado"
+      tarea: "Implementar algo acotado: un arreglo claro, un script, una función, tests"
+      nivel: sonnet
+      esfuerzo: medium
+      otra_ia: desarrollo
+      palabras: [implement, arreglar, corregir, fix, bug, refactor, agregar, test, script, codigo, code, parche, patch, funcion]
+    - id: revisar
+      corto: "revisar o dar segunda opinión"
+      tarea: "Revisar un cambio o dar una segunda opinión"
+      nivel: sonnet
+      esfuerzo: medium
+      otra_ia: revision
+      palabras: [revis, review, critic, segunda opinion, verific, chequear]
+    - id: planillas
+      corto: "planillas y datos"
+      tarea: "Planillas, conciliaciones y análisis de datos"
+      nivel: sonnet
+      esfuerzo: medium
+      otra_ia: datos_planillas
+      palabras: [planilla, excel, xlsx, csv, spreadsheet, conciliar, conciliacion]
+    - id: investigar
+      corto: "investigar en la web"
+      tarea: "Investigar en la web y juntar fuentes"
+      nivel: sonnet
+      esfuerzo: medium
+      otra_ia: investigacion_web
+      palabras: [investig, research, en la web, relevar, scrap]
+    - id: arquitectura_seguridad_plata
+      corto: "arquitectura, seguridad o plata"
+      tarea: "Arquitectura, seguridad, dinero o algo irreversible (planear en Claude; la revisión puede ir a otra IA)"
+      nivel: opus
+      esfuerzo: high
+      otra_ia: revision
+      palabras: [arquitectur, architect, seguridad, security, vulnerab, dinero, plata, pago, payment, finanz, legal, contrato, irreversible, produccion, production, migracion, diseno de sistema]
 categorias:
   - id: desarrollo
     nombre: "Desarrollo (programar)"
@@ -879,11 +981,11 @@ categorias:
       - plan: C
         herramienta: Claude Code
         proveedor: Anthropic
-        modelo: Haiku 4.5
-        modelo_api: claude-haiku-4-5-20251001
-        por_que: "Si tiene que quedar dentro de Claude Code. Ojo: no se retira antes del 2026-10-15."
-        fuente: "https://platform.claude.com/docs/en/about-claude/model-deprecations"
-        fecha: 2026-10-03
+        modelo: Haiku 5.5
+        modelo_api: claude-haiku-5-5
+        por_que: "Si tiene que quedar dentro de Claude Code: Haiku 5.5, el más barato de Claude (US$0,10 de entrada y US$0,50 de salida por millón de tokens, en prompts de hasta 100 mil tokens)."
+        fuente: "models.dev (alta 2026-10-07) y la tabla de modelos de claude-api"
+        fecha: 2026-10-08
         datos_privados: true
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
@@ -1018,6 +1120,10 @@ precios_usd_por_millon:
     entrada: 2
     salida: 10
     fecha: 2026-10-03
+  claude-haiku-5-5:
+    entrada: 0.1
+    salida: 0.5
+    fecha: 2026-10-08
   claude-haiku-4-5-20251001:
     entrada: 1
     salida: 5
@@ -1049,3 +1155,42 @@ fuentes_auto:
     google:
       url: "https://ai.google.dev/gemini-api/docs/deprecations"
       hash: c694825bf8d72ff9
+  familias:
+    - id: claude-haiku
+      nombre: "Claude Haiku"
+      alias: haiku
+      puntos_a_guion: true
+      patron: '^claude-haiku-(\d+(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+    - id: claude-sonnet
+      nombre: "Claude Sonnet"
+      alias: sonnet
+      puntos_a_guion: true
+      patron: '^claude-sonnet-(\d+(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+    - id: claude-opus
+      nombre: "Claude Opus"
+      alias: opus
+      puntos_a_guion: true
+      patron: '^claude-opus-(\d+(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+    - id: claude-fable
+      nombre: "Claude Fable"
+      alias: fable
+      puntos_a_guion: true
+      patron: '^claude-fable-(\d+(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+    - id: gpt-sol
+      nombre: "GPT Sol"
+      patron: '^gpt-(\d+(?:\.\d{1,2})?)-sol$'
+    - id: gpt-astra
+      nombre: "GPT Astra"
+      patron: '^gpt-(\d+(?:\.\d{1,2})?)-astra$'
+    - id: gpt-luna
+      nombre: "GPT Luna"
+      patron: '^gpt-(\d+(?:\.\d{1,2})?)-luna$'
+    - id: gemini-flash
+      nombre: "Gemini Flash"
+      patron: '^gemini-(\d+(?:\.\d{1,2})?)-flash$'
+    - id: gemini-flash-lite
+      nombre: "Gemini Flash-Lite"
+      patron: '^gemini-(\d+(?:\.\d{1,2})?)-flash-lite$'
+    - id: gemini-pro
+      nombre: "Gemini Pro"
+      patron: '^gemini-(\d+(?:\.\d{1,2})?)-pro(?:-preview)?$'
