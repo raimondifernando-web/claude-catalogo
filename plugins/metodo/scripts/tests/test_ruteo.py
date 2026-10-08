@@ -760,6 +760,18 @@ class TestHooksJson(unittest.TestCase):
         self.assertTrue(orden["command"].rstrip().endswith("|| true"))
 
 
+class TestAvisoSoloParaMantenedor(Base):
+    def test_avisa_con_variable_o_con_archivo(self):
+        viejo = os.environ.pop("RADAR_AVISAR_FUNCIONES", None)
+        try:
+            os.environ["RADAR_AVISAR_FUNCIONES"] = "1"
+            self.assertTrue(R.avisa_funciones_pendientes())
+        finally:
+            os.environ.pop("RADAR_AVISAR_FUNCIONES", None)
+            if viejo is not None:
+                os.environ["RADAR_AVISAR_FUNCIONES"] = viejo
+
+
 class TestFunciones(Base):
     def test_cargar_funciones_con_markdown_de_prueba(self):
         ruta = self.tmp / "FUNCIONES_prueba.md"

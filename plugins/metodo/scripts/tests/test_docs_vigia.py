@@ -197,6 +197,13 @@ class TestDocsVigia(Base):
         self.assertEqual(nuevo2["fuentes_auto"]["docs"]["changelogs"]["codex"]["version"], "0.64.0")
         self.assertEqual(nuevo2["fuentes_auto"]["docs"]["changelogs"]["codex"]["cambio"], "2026-10-08")
 
+    def test_changelog_retroceso_no_avisa(self):
+        radar = radar_con_docs()
+        radar["fuentes_auto"]["docs"]["changelogs"]["codex"]["version"] = "0.64.0"
+        nuevo, motivos = FU.analizar(radar, fuentes_de(docs={"changelogs": {"codex": "0.63.2"}}), date(2026, 10, 8))
+        self.assertEqual(motivos, [])
+        self.assertIs(nuevo, radar)
+
     def test_changelog_paso_25(self):
         radar = radar_con_docs()
         # Claude Code con version=2.1.295 y paso=25 (clave = (2, 1, 11))

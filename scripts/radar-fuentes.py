@@ -420,7 +420,7 @@ def novedades_de_docs(nuevo, fuentes, hoy_s):
             paso = entrada.get("paso")
             clave_guardada = clave_version(ver_guardada, corte, paso)
             clave_nueva = clave_version(ver_nueva, corte, paso)
-            if clave_guardada != clave_nueva:
+            if clave_nueva > clave_guardada:   # un backport que aparece después no cuenta como novedad
                 motivos.append("Nueva versión de «%s»: antes %s, ahora %s: leer qué funciones trae y actualizar plugins/metodo/radar/FUNCIONES.md." % (
                     titulo, ver_guardada, ver_nueva))
                 entrada["version"] = ver_nueva

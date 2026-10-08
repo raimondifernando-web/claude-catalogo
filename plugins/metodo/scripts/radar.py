@@ -915,6 +915,8 @@ def hoy_lineas(radar, cupos=None):
         avisos.append("salió %s y el plan %s de «%s» sigue en %s" % (
             _limpio(a["vigente"], 64), _limpio(a["plan"], 2), _limpio(a["categoria"], 40), _limpio(a["usa"], 64)))
     try:
+        if not avisa_funciones_pendientes():
+            raise LookupError   # el cliente recibe RADAR.yaml por la caché pero FUNCIONES.md viaja con el plugin: no se le puede pedir que lo rehaga
         rev_func, _ = cargar_funciones()
         pend = funciones_pendientes(radar, rev_func)
         if pend:
@@ -1583,6 +1585,16 @@ def cargar_funciones(ruta=None):
         return revisado, filas
     except Exception:
         return None, []
+
+
+def avisa_funciones_pendientes():
+    """El aviso de FUNCIONES.md desactualizado es para quien mantiene el catálogo: corre desde un clon del repo, o tiene
+    RADAR_AVISAR_FUNCIONES=1, o el archivo <config>/metodo/avisar-funciones. A un cliente no le sirve (no puede rehacer la fila)."""
+    try:
+        return bool(os.environ.get("RADAR_AVISAR_FUNCIONES") or (AQUI.parent.parent.parent / ".git").exists()
+                    or (carpeta_metodo() / "avisar-funciones").exists())
+    except Exception:
+        return False
 
 
 def funciones_pendientes(radar, revisado):

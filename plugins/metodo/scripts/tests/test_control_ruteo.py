@@ -370,6 +370,27 @@ class TestControlRuteo(Base):
         self.assertEqual(res_d[1], "A otras IA: Codex 0 · Gemini o delegar.py 0.")
         self.assertEqual(res_d[2], "Sobredimensionados: sin datos medibles.")
 
+    def test_comando_que_solo_nombra_el_programa_no_cuenta(self):
+        for cmd in ("python3 -m unittest test_delegar.py", "git add plugins/metodo/scripts/delegar.py",
+                    "grep -n delegar.py README.md", "echo codex exec"):
+            self.assertIsNone(CR.RE_GEMINI.search(cmd) or CR.RE_CODEX.search(cmd), cmd)
+        for cmd in ("python3 plugins/metodo/scripts/delegar.py desarrollo . p.txt", "~/.claude/scripts/agy-delegar . p.txt",
+                    "cd x && codex --search exec - < p.txt"):
+            self.assertTrue(CR.RE_GEMINI.search(cmd) or CR.RE_CODEX.search(cmd), cmd)
+
+    def test_byte_invalido_no_tira_el_archivo_y_archivo_viejo_no_se_abre(self):
+        carpeta = self.tmp / "projects" / "p9"
+        carpeta.mkdir(parents=True)
+        linea = json.dumps({"timestamp": "2026-10-08T10:00:00Z", "message": {"content": [
+            {"type": "tool_use", "name": "Agent", "input": {"model": "sonnet"}}]}}).encode()
+        (carpeta / "a.jsonl").write_bytes(b"\xff\xfe roto\n" + linea + b"\n")
+        viejo = carpeta / "b.jsonl"
+        viejo.write_bytes(linea + b"\n")
+        hace_mucho = datetime(2026, 1, 1).timestamp()
+        os.utime(viejo, (hace_mucho, hace_mucho))
+        res = CR.medir(self.tmp / "projects", dias=30, radar=None, ahora=datetime(2026, 10, 8, 12, 0, 0))
+        self.assertEqual(res["subagentes"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -65,7 +65,7 @@ jobs:
         run: |
           python3 plugins/metodo/scripts/radar.py ver >/dev/null
           n=$(python3 plugins/metodo/scripts/radar.py hoy | wc -l)
-          if [ "$n" -lt 5 ] || [ "$n" -gt 6 ]; then echo "radar.py hoy imprime $n líneas (tienen que ser 5 o 6)"; exit 1; fi
+          if [ "$n" -lt 4 ] || [ "$n" -gt 6 ]; then echo "radar.py hoy imprime $n líneas (tienen que ser de 4 a 6)"; exit 1; fi
           python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_radar.py' -q
           python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_ruteo.py' -q
       - name: Abrir o actualizar el PR (solo si hubo un cambio relevante)

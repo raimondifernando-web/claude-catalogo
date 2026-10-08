@@ -34,8 +34,20 @@ if _radar_mod is not None:
     ESFUERZOS = getattr(_radar_mod, "ESFUERZOS", ESFUERZOS)
 
 # Patrones para identificar delegación a otras IA
-RE_GEMINI = re.compile(r"agy-delegar|\bagy\s+(?:-|--)|delegar\.py")
-RE_CODEX = re.compile(r"\bcodex\s+(?:--\S+\s+)*exec\b|codex-rescue")
+# Solo cuenta cuando el comando ARRANCA el programa (al principio o tras ; & | o paréntesis), no cuando lo nombra un grep o un test
+_INICIO = r"(?:^|[;&|(]\s*)(?:\S*/)?"
+RE_GEMINI = re.compile(_INICIO + r"(?:agy-delegar\b|agy\s+(?:-|--)|python3?\s+\S*delegar\.py\b)")
+RE_CODEX = re.compile(_INICIO + r"(?:codex\s+(?:--?\S+\s+)*exec\b|codex-rescue)")
+
+
+def _lineas_de(ruta):
+    """Líneas del archivo una por una (no lo carga entero); un byte inválido no tira el archivo."""
+    try:
+        with open(ruta, "r", encoding="utf-8", errors="replace") as f:
+            for linea in f:
+                yield linea
+    except OSError:
+        return
 
 
 def _norm(t):
@@ -221,14 +233,9 @@ def medir(carpeta, dias, radar, ahora=None):
             res["ilegibles"] += 1
             continue
 
-        try:
-            with open(p, "r", encoding="utf-8") as f:
-                lineas = f.readlines()
-        except (OSError, UnicodeError):
-            res["ilegibles"] += 1
-            continue
-
-        for linea in lineas:
+        if mtime < limite_ts:
+            continue   # nada de este archivo cae en la ventana: ni se abre
+        for linea in _lineas_de(p):
             linea_s = linea.strip()
             if not linea_s:
                 continue
