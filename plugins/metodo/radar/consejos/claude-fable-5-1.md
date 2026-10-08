@@ -1,0 +1,11 @@
+Fuente: https://platform.claude.com/docs/en/models/fable-5-1/migration-guide.md (consultada 2026-10-08)
+- Actualizar el identificador del modelo a "claude-fable-5-1".
+- El pensamiento adaptativo está siempre activo: configurar thinking con "disabled" o budget_tokens devuelve error 400; no se requiere enviar configuración de thinking.
+- No se admite forzar herramientas: tool_choice con "any" o "tool" devuelve error 400; dejar tool_choice en "auto", pedir la herramienta en el prompt y marcarla con strict: true (y additionalProperties: false).
+- Si la aplicación requiere una llamada obligatoria a una herramienta en un turno, agregar un mensaje con role: "system" al final de messages pidiendo esa llamada, sin alterar los turnos previos.
+- Conservar el historial estrictamente como append-only: modificar mensajes previos, el prompt system o la lista tools invalida las firmas de los bloques de pensamiento (error 400).
+- Para tolerar ediciones de historial sin fallar, enviar la cabecera beta thinking-binding-controls-2026-08-01 con prefix_mismatch_behavior en "drop_block".
+- No se permite prefill en el mensaje de asistente (devuelve error 400); la conversación debe concluir con un turno de usuario.
+- En bucles largos de agentes, puede emitir menos llamadas paralelas a herramientas; instruir explícitamente la ejecución paralela en un mensaje de sistema acotado al turno.
+- Con esfuerzo low, tiende a responder de memoria en lugar de buscar; para tareas que requieran recuperación, subir el esfuerzo o indicar explícitamente cuándo buscar.
+- Se puede cambiar el esfuerzo mid-conversación (beta) mediante un mensaje role: "system" con output_config sin romper el caché de prefijo de los turnos previos.

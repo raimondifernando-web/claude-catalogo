@@ -1,0 +1,11 @@
+Fuente: https://platform.claude.com/docs/en/models/sonnet-5-5/migration-guide.md (consultada 2026-10-08)
+- Actualizar el identificador del modelo a "claude-sonnet-5-5" (sin sufijo de fecha).
+- El pensamiento adaptativo se ejecuta por defecto; para apagar el pensamiento previo al responder, enviar thinking con {"type": "between_tools"} en esfuerzo high o menor (el valor "disabled" devuelve error 400).
+- Eliminar presupuestos manuales (budget_tokens) y parámetros de muestreo (temperature, top_p, top_k); regular el razonamiento con output_config.effort (por defecto es high).
+- No forzar llamadas a herramientas: tool_choice de tipo "any" o "tool" devuelve error 400; usar {"type": "auto"} con strict: true en la herramienta y explicar en el prompt cuándo usarla.
+- Eliminar el prefill del asistente (devuelve error 400); terminar siempre la conversación con un turno de usuario y usar salidas estructuradas o instrucciones de sistema.
+- Procesar las respuestas seleccionando bloques por su campo type ("text") y reenviar los bloques thinking intactos en los bucles de herramientas.
+- Las notas largas que el modelo escribe entre herramientas ahora se devuelven en bloques de pensamiento (thinking); para mostrarlas, configurar display en "updates" o "summarized".
+- Mantener las conversaciones como append-only: editar mensajes previos, system o tools invalida las firmas de los bloques de pensamiento y genera error 400.
+- En Claude API y Google Cloud, migrar computer use al toolset computer_toolset_20260801 y remover la cabecera beta fine-grained-tool-streaming-2025-05-14 (usar eager_input_streaming en cada herramienta).
+- Manejar stop_reason "refusal" e inspeccionar stop_details con categorías de seguridad ("cyber", "bio", "frontier_llm", "reasoning_extraction", "general_harms").

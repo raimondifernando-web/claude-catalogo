@@ -65,36 +65,82 @@ Rama `orquesta/radar-modelos`, sin publicar.
 
 ## 8. Modelos vigentes, ruteo y sesión (2026-10-08)
 Pedido del dueño: que cada sesión elija modelo, esfuerzo e IA con datos del día y no de memoria (se sobredimensionaba y el
-radar seguía diciendo «Haiku 4.5» cuando ya había un Haiku nuevo).
+radar seguía diciendo «Haiku 4.5» cuando ya había un Haiku nuevo). Condición: costar lo mínimo (robot sin IA ni claves; `hoy`
+y el recordatorio sin red, sin IA, en menos de 1 s y con 5 líneas o menos).
 
 1. **`vigentes`** (lo escribe el robot; es un dato, no un orden). `fuentes_auto.familias` lista las familias a seguir
-   (`id`, `nombre`, `alias` opcional, `patron` con UN grupo = la versión, `puntos_a_guion` para los ids de Claude que
-   OpenRouter escribe con puntos). `scripts/radar-fuentes.py` toma de models.dev y OpenRouter el id más nuevo de cada familia
+   (`id`, `nombre`, `proveedor`, `alias` opcional, `patron` con UN grupo = la versión, `puntos_a_guion` para los ids de Claude
+   que OpenRouter escribe con puntos). `scripts/radar-fuentes.py` toma de models.dev y OpenRouter el id más nuevo de cada familia
    (misma versión: gana el id más corto) y lo guarda en `vigentes.familias[]` con `modelo_api`, `alta` y `fuente`.
-   Solo acepta ids que calcen el patrón anclado; **nunca baja una versión** (si una fuente pierde un modelo, queda lo anotado);
-   un id raro (`:thinking`, `@eu`, `-latest`, con saltos de línea) no entra. Si una familia sube, el PR dice «Salió X» y, por
-   cada plan que sigue en la versión vieja, «el plan C de … sigue en …: el orden A/B/C se cambia a mano». **Ese orden no lo
-   toca el robot (§7).** Los ids y precios de Claude se verifican con la skill `claude-api`, nunca de memoria.
+   Un candidato solo vale si: lo publica el `proveedor` de la familia (no un revendedor), calza el patrón anclado (versión de
+   1-2 dígitos, así una fecha no se lee como versión), no es una vista previa, trae fecha de alta que no sea futura y no salta
+   más de una versión mayor sobre lo anotado. **Nunca baja una versión** (si una fuente pierde un modelo, queda lo anotado).
+   Si una familia sube, el PR dice «Salió X» y, por cada plan que sigue en la versión vieja, «el plan C de … sigue en …: el orden
+   A/B/C se cambia a mano». **Ese orden no lo toca el robot (§7).** Los ids y precios de Claude se verifican con la skill
+   `claude-api`, nunca de memoria. Riesgo conocido: lo que llega a `vigentes` termina en el contexto de cada sesión; los filtros
+   de arriba lo reducen a ids con forma `claude-haiku-5-5`, pero el PR del robot se publica solo si toca únicamente
+   `RADAR.yaml`/`RADAR.md` (las guardias de `radar.yml` no leen el contenido).
 2. **`ruteo_claude`** (a mano, por PR). `tareas[]`: `id`, `corto`, `tarea`, `nivel` (haiku|sonnet|opus|fable), `esfuerzo`
-   (low|medium|high|xhigh|max), `otra_ia` (id de una categoría del radar, o null) y `palabras` (raíces para reconocer la tarea
-   en el pedido; sin tildes; una raíz de 4+ letras calza por prefijo). Criterio = las 3 preguntas de la política de modelos:
-   ninguna «sí» → haiku/low · una → sonnet/medium · dos → opus/high · tres y tarea larga → fable/xhigh, solo a pedido (no se
-   rutea) · `max` solo a pedido. Ante la duda, el de abajo y medir.
-3. **`radar.py hoy`** (hook SessionStart). 4-5 líneas en castellano simple: modelos vigentes por alias · ruteo resumido ·
-   cupo de las 3 IA · aviso (radar viejo, retiro próximo, planes con modelo viejo) · recordatorio de poner `model`/`effort`.
-   **Sin red y sin comandos lentos**: el cupo sale de cachés locales (`cupo.json`, `cupo-codex.json`, `cupo-agy.json` en
-   `$CEREBRO_HOME` o `~/.cerebro`, que deja el Bicho; un dato más viejo que 3 h —24 h para Codex— cuenta como «sin dato») y,
-   solo para Codex, de su lector local (`codex-cupo`, milisegundos). Nunca corre `claude -p /usage` ni `agy`. Sin caché dice
-   «sin dato»; no inventa. Nunca falla el arranque (salida 0 y vacía ante cualquier error).
-   Lo que se imprime al contexto sale **limpio**: ids que calcen `^[a-z0-9][a-z0-9._-]{1,63}$`, textos sin saltos de línea,
-   comillas invertidas ni caracteres de control, con largo máximo.
-4. **`radar.py recordar`** (hook PreToolUse, matcher `Agent|Task|mcp__ccd_session__start_session`). Lee el JSON del hook por
-   stdin y, si corresponde, devuelve `hookSpecificOutput.additionalContext` con UNA línea: falta `model`, se pidió más nivel
-   que el de la fila del ruteo que calza con la tarea, o más esfuerzo; ofrece Codex/Gemini si tienen cupo. Con varias filas
+   (low|medium|high|xhigh|max), `otra_ia` (id de una categoría del radar, o null), `palabras` (raíces para reconocer la tarea en
+   el pedido; sin tildes; una raíz de 4+ letras calza con un sufijo corto: «plata» no calza con «plataforma»), `verificado`,
+   `evidencia[]` y `sin_dato`. **El nivel y el esfuerzo salen de la evidencia que ya tiene el radar (pedido del dueño,
+   2026-10-08)**: cada `evidencia` apunta (`categoria` + `fuente`) a una evidencia `tipo: independiente` de esa categoría
+   (§7.2: lo del fabricante no cuenta). Lo que no tiene evidencia no se inventa: la fila queda `verificado: false`, `sin_dato`
+   dice qué falta y se usa el escalón de abajo del valor por defecto de la política de modelos (0 «sí» → low · 1 → medium · 2 →
+   high · 3 → xhigh; fable y max, solo a pedido). La tabla es el **punto de partida**: cada «sí» a las 3 preguntas (¿juzgar o
+   decidir?, ¿el error sale caro?, ¿mucho contexto?) lo sube un escalón. Hoy ninguna fila es `verificado: true`: las mediciones
+   independientes que hay (Artificial Analysis, Arena) solo traen variantes xhigh y max y no comparan medium ni low. Las filas
+   provisorias se marcan con `*` en `hoy` y el recordatorio les tolera un escalón de más.
+3. **`radar.py hoy`** (hook SessionStart). 4-5 líneas en castellano simple: modelos vigentes por alias · punto de partida de
+   nivel/esfuerzo · cupo de las 3 IA · aviso (radar viejo, retiro próximo, planes con modelo viejo, consejos nuevos, skills de
+   prompting viejas) · recordatorio de poner `model`/`effort`.
+   **Sin red y sin lanzar programas**: el cupo sale de cachés locales (`cupo.json`, `cupo-codex.json`, `cupo-agy.json` en
+   `$CEREBRO_HOME` o `~/.cerebro`, que deja el Bicho; más de 30 min —24 h para Codex— cuenta como «sin dato»). Nunca corre
+   `codex-cupo`, `claude -p /usage` ni `agy`. Sin caché dice «sin dato»; no inventa. Solo lee: el RADAR.yaml, las cachés,
+   la carpeta `radar/consejos/` y los NOMBRES de las carpetas de skills (`skills/*-prompting`, `plugins/cache/*/*/*/skills/*-prompting`).
+   Nunca falla el arranque (salida 0 y vacía ante cualquier error). Lo que se imprime al contexto sale **limpio**: ids que calcen
+   `^[a-z0-9][a-z0-9._-]{1,63}$`, textos de una sola línea sin comillas invertidas ni caracteres de control, con largo máximo
+   por línea (700) y por cantidad de filas (12).
+4. **`radar.py recordar`** (hook PreToolUse, matcher exacto `Agent|Task|mcp__ccd_session__start_session`). Lee el JSON del hook
+   por stdin y, si corresponde, devuelve `hookSpecificOutput.additionalContext` con UNA línea: falta `model`, se pidió más nivel
+   que el de la fila del ruteo que calza con la tarea, o más esfuerzo; ofrece Codex/Gemini si tienen cupo (caché). Con varias filas
    que calzan manda la de nivel más alto (prefiere callar a retar de más). Tope por sesión (1 aviso «sin model», 3 de «sobra»;
-   estado en `<config>/metodo/ruteo-recordado.json`, se limpia a los 3 días). **No devuelve `permissionDecision`, `updatedInput`
-   ni sale con código 2: no puede bloquear ni cambiar nada.** Verificado contra la doc oficial de hooks (2026-10-08): PreToolUse
-   acepta `additionalContext` sin decisión de permiso; llega junto al resultado de la herramienta, es decir que **recuerda
-   para las delegaciones siguientes, no frena la que ya salió**.
+   estado en `<config>/metodo/ruteo-recordado.json`, se limpia a los 3 días). Ante entrada vacía o rara, no dice nada.
+   **No devuelve `permissionDecision`, `updatedInput` ni sale con código 2: no puede bloquear ni cambiar nada.** Verificado contra
+   la doc oficial de hooks (2026-10-08): PreToolUse acepta `additionalContext` sin decisión de permiso; llega junto al resultado de
+   la herramienta, es decir que **recuerda para las delegaciones siguientes, no frena la que ya salió**.
 5. **Fuera de este paso**: el control mensual de lo realmente elegido (se mide desde los transcripts) es del paso 5 del plan.
 
+## 9. Consejos de uso de cada proveedor (2026-10-08)
+Pedido del dueño: que el radar también siga lo que cada proveedor aconseja cuando sale un modelo nuevo. Cuesta lo mínimo: el
+robot no usa IA, y los resúmenes los escribe la IA más barata que alcance, nunca Opus.
+
+**Qué vigila el robot (huella diaria del texto, igual que las páginas de retiros).** `fuentes_auto.guias`, cada una con
+`proveedor`, `titulo`, `url` y `hash`; las URLs se verificaron abriéndolas (2026-10-08) y son las versiones `.md` de cada página,
+sin menús, así que la huella no se mueve por cosas ajenas al texto:
+Anthropic: *Prompting best practices* y el índice de *guías de migración por modelo* (un modelo nuevo agrega un enlace) ·
+OpenAI: *Using GPT-6* (modelos y guía del último, `latest-model`) y *Prompt engineering* · Google: *Novedades y migración del último
+Gemini* (`latest-model`) y *Prompt design strategies*. Si cambia una huella, el PR `radar/auto` dice «Cambió la guía oficial …» y
+qué comando correr; la primera vez fija la línea base. Una guía que no se pudo leer se ignora ese día (nunca borra la huella).
+
+**Qué hay en `radar/consejos/`.** Un archivo por modelo vigente: `<modelo_api>.md`. Primera línea
+`Fuente: <URL> (consultada AAAA-MM-DD)`; después de 2 a 10 líneas que empiezan con `- `, cada una con UNA cosa concreta que cambia
+en cómo usar ese modelo. Solo lo que dicen las guías. Si la guía no trae nada propio del modelo, una línea que lo dice. Lo controla
+un test (formato, largo, que existan todos los vigentes).
+
+**Cómo se mantienen los consejos.**
+1. `python3 plugins/metodo/scripts/radar.py consejos` → estado: qué modelos vigentes no tienen resumen y qué skills de prompting
+   instaladas quedaron viejas. No usa red ni IA.
+2. `python3 plugins/metodo/scripts/radar.py consejos --pedido pedido-consejos.txt` (`--todo` para rehacer todos) → baja las
+   guías generales y las de cada modelo que enlazan los índices a `radar/consejos/_guias/` (carpeta ignorada por git) y deja el
+   texto del pedido. Es el único paso que usa red, y solo hacia los tres proveedores.
+3. `python3 plugins/metodo/scripts/delegar.py desarrollo . pedido-consejos.txt --archivo` → `delegar.py` elige Codex o Gemini
+   según el cupo (las guías son públicas: no hay datos privados). Si solo queda Claude (código de salida 3): un subagente con
+   `model: haiku` y `effort: low` que lea los mismos archivos. **Nunca Opus.**
+4. Revisar cada archivo contra su fuente (una persona o un revisor que no sea quien lo escribió) y commitear por pathspec. El robot
+   nunca reescribe estos archivos.
+
+**Qué ve cada sesión.** `radar.py hoy` suma, en la línea de aviso, «hay consejos de uso nuevos para X (resumen en <ruta>)» cuando un
+resumen tiene 14 días o menos, y «la skill codex:gpt-5-4-prompting es de la versión 5.4 y la vigente es 6.1: actualizala o apagala»
+cuando una skill `gpt|gemini|claude-<versión>-prompting` instalada es anterior al modelo vigente de su marca (regla 19: una sola
+pieza por función; gana la oficial del fabricante). No se inyecta la guía entera.

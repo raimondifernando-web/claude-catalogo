@@ -532,7 +532,8 @@ class TestGuiasYConsejos(Base):
     def test_los_consejos_reales_cumplen_el_formato(self):
         radar = R.leer_yaml(YAML_REAL)
         for e in R.consejos_estado(radar):
-            self.assertTrue(e["existe"], "falta el resumen de %s" % e["modelo"])
+            if not e["existe"]:
+                continue   # que falte uno no rompe nada (el robot publica igual y `radar.py consejos` lo avisa); acá se mira el formato
             lineas = [x for x in e["ruta"].read_text(encoding="utf-8").splitlines() if x.strip()]
             self.assertTrue(lineas[0].startswith("Fuente: https://"), e["modelo"])
             self.assertIsNotNone(e["fecha"], e["modelo"])

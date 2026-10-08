@@ -1,0 +1,11 @@
+Fuente: https://platform.claude.com/docs/en/models/opus-5-5/migration-guide.md (consultada 2026-10-08)
+- Usar el identificador de modelo "claude-opus-5-5" (ID fijo sin sufijo de fecha).
+- El pensamiento adaptativo no se puede desactivar: thinking con "disabled" o con "enabled" y budget_tokens devuelve error 400; omitir el campo o enviar {"type": "adaptive"}.
+- Controlar el nivel de razonamiento exclusivamente con output_config.effort; el valor por defecto es medium (a diferencia de Claude Opus 5 que usaba high).
+- No se permite forzar herramientas: tool_choice de tipo "any" o "tool" devuelve error 400; usar "auto" junto con strict: true en la herramienta o salidas estructuradas.
+- Eliminar el prefill del mensaje de asistente (devuelve error 400); finalizar siempre con turno de usuario y recurrir a instrucciones en el prompt de sistema.
+- Omitir los parámetros de muestreo temperature, top_p y top_k; cualquier valor distinto del predeterminado devuelve error 400.
+- Revisar max_tokens ya que cubre tanto el pensamiento como el texto de respuesta; con esfuerzo xhigh o max, comenzar con al menos 64k tokens.
+- Filtrar las respuestas por type ("text") en lugar de leer por posición, y reenviar los bloques thinking completos e inalterados en bucles de herramientas.
+- Por defecto el texto de razonamiento se omite; para recibir resúmenes legibles en la respuesta, configurar thinking.display en "summarized".
+- En Claude API y Google Cloud, declarar computer use como el toolset computer_toolset_20260801 sin cabeceras beta (computer_20251124 devuelve error 400).

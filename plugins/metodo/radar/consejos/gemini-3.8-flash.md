@@ -1,0 +1,11 @@
+Fuente: https://ai.google.dev/gemini-api/docs/latest-model.md.txt (consultada 2026-10-08)
+- Actualizar el identificador del modelo a "gemini-3.8-flash".
+- Reemplazar thinking_budget por el enum de texto thinking_level con valores "low", "medium" (por defecto) o "high".
+- El nivel de pensamiento "minimal" no está soportado y genera un error.
+- Eliminar los parámetros de muestreo obsoletos temperature, top_p y top_k (mantener sus valores por defecto en modelos Gemini 3.x para evitar bucles o degradación).
+- Eliminar candidate_count (no soportado en Gemini 3 y posteriores) y no enviar turnos de modelo prefijados (prefilled model turns).
+- En conversaciones de múltiples turnos, estandarizar el contexto del lado del servidor utilizando previous_interaction_id.
+- En llamadas a funciones (function calling), colocar los recursos multimodales dentro del payload de respuesta y separar instrucciones en línea con \n\n.
+- Si se utiliza la API generateContent clásica, asegurarse de que todos los objetos FunctionResponse incluyan call_id y name.
+- Para tareas cotidianas o sensibles a la latencia, reducir thinking_level a "low" para disminuir el consumo de tokens y el tiempo de respuesta.
+- Preservar las firmas de pensamiento (thought signatures) devueltas por el modelo al reenviar el historial en la interacción.

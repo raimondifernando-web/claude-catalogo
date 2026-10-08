@@ -1046,6 +1046,7 @@ def texto_pedido_consejos(radar, modelos, carpeta_guias, extras=()):
 _ENLACES_POR_MODELO = (
     re.compile(r"https://platform\.claude\.com/docs/en/models/([a-z0-9-]{2,40})/migration-guide"),
     re.compile(r"/api/docs/guides/latest-model/([a-z0-9.-]{2,40})\.md"),
+    re.compile(r"https://ai\.google\.dev/gemini-api/docs/whats-new-gemini-([0-9][0-9.]{0,6}[0-9])"),
 )
 MAX_GUIAS_POR_MODELO = 8
 
@@ -1059,7 +1060,9 @@ def guias_por_modelo(textos):
                 url = m.group(0)
                 if url.startswith("/"):
                     url = "https://developers.openai.com" + url
-                if not url.endswith(".md"):
+                if "ai.google.dev" in url:
+                    url += ".md.txt"      # Google sirve el texto así
+                elif not url.endswith(".md"):
                     url += ".md"
                 nombre = re.sub(r"[^a-z0-9.-]+", "_", "%s_%s" % (url.split("/")[2].split(".")[-2], m.group(1))) + ".md"
                 if url not in vistos and len(out) < MAX_GUIAS_POR_MODELO:
@@ -1112,7 +1115,7 @@ def cmd_consejos(a):
     except ValueError:
         mostrar = str(carpeta)
     ruta.write_text(texto_pedido_consejos(radar, modelos, mostrar, extras), encoding="utf-8")
-    print("Listo: %d guías bajadas en %s y el pedido para %d modelos en %s." % (bajadas, carpeta, len(modelos), ruta))
+    print("Listo: %d guías bajadas en %s y el pedido para %d modelo(s) en %s." % (bajadas, carpeta, len(modelos), ruta))
     print("Siguiente: python3 plugins/metodo/scripts/delegar.py desarrollo . %s --archivo   (elige Codex o Gemini según el cupo; "
           "si solo queda Claude: un subagente con model haiku y effort low; nunca Opus). Después revisá cada archivo contra su fuente." % ruta)
     return 0

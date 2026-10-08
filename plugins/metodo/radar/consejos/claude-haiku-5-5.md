@@ -1,0 +1,11 @@
+Fuente: https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide.md (consultada 2026-10-08)
+- Actualizar el identificador del modelo a "claude-haiku-5-5" (ID fijo sin sufijo de fecha ni alias).
+- Reemplazar la configuración de pensamiento con presupuesto manual por pensamiento adaptativo: usar {"type": "adaptive"} ("type": "enabled" con budget_tokens devuelve error 400).
+- Regular la profundidad del razonamiento mediante output_config.effort (en tareas sencillas con esfuerzo bajo el modelo puede omitir el pensamiento por completo).
+- Eliminar los parámetros de muestreo temperature, top_p y top_k en las peticiones (cualquier valor fuera del predeterminado devuelve error 400).
+- Dejar de usar prefill en el turno del asistente (devolverá error 400); terminar siempre la lista messages con un turno de usuario y usar salidas estructuradas o prompts de sistema.
+- Leer los bloques de respuesta seleccionando por su campo type ("text") en vez de por posición, ya que las respuestas pueden comenzar con bloques de tipo thinking.
+- Recontar tokens y aumentar max_tokens si es necesario: el nuevo tokenizador produce ~30% más tokens para el mismo texto y los tokens de pensamiento cuentan dentro de max_tokens.
+- Para ver el resumen del razonamiento, configurar thinking con {"type": "adaptive", "display": "summarized"}, ya que por defecto el texto de pensamiento se omite.
+- Si se fuerza tool_choice ("any" o herramienta fija), el modelo no genera bloque de pensamiento previo; para que razone antes de llamar a la herramienta usar tool_choice en "auto".
+- En la API de Claude y Google Cloud, migrar computer use de computer_20250124 al toolset computer_toolset_20260801 (el anterior devuelve error 400).

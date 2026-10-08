@@ -1,0 +1,11 @@
+Fuente: https://developers.openai.com/api/docs/guides/latest-model/gpt-6-astra.md (consultada 2026-10-08)
+- Configurar el esfuerzo de razonamiento en low, medium, high, xhigh o max; no soporta el esfuerzo "none" (usar low en su lugar) ni "minimal".
+- Para llamadas a herramientas (tool calling), usar obligatoriamente la Responses API (Chat Completions soporta el modelo pero solo sin herramientas).
+- Eliminar temperature, top_p y top_logprobs de las peticiones cuando se utiliza razonamiento.
+- Soporta llamadas asíncronas a herramientas (async: true en la herramienta) para que el modelo continúe razonando mientras la aplicación procesa la ejecución.
+- Permite dirección a mitad de turno (mid-turn steering) mediante WebSocket en Responses API para incorporar correcciones de usuario sin reiniciar la tarea.
+- Para cambiar el esfuerzo de razonamiento entre turnos sin invalidar el prompt caching, enviar un elemento de entrada configuration_update.
+- Tiende a pedir confirmación o aclaración antes de actuar; para flujos autónomos, instruir en el prompt que asuma la acción y avance hasta completar la meta.
+- Instruir que prepare resultados concretos y revisables antes de solicitar aprobación al usuario, evitando pausas prematuras en tareas reversibles.
+- Tiende a delegar poco a subagentes por defecto; especificar explícitamente en el prompt las condiciones y herramientas para paralelizar trabajo.
+- En tareas de código tiende a sobre-verificar; instruir que no cree pruebas innecesarias para cambios reversibles o de bajo impacto.
