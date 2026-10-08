@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.22.4 — 2026-10-08
+- **Regla 16, tareas que se repiten solas:** cuándo usar `/loop` (vigilar algo, cada 15 minutos o más) y el «Ralph» del catálogo (repetir hasta que salga bien, siempre con tope de vueltas y solo con pruebas o informes que solo leen). Nunca un bucle que escriba solo en el sistema de gestión, las publicidades o la lista de clientes.
+
 ## 0.22.3 — 2026-10-07
 - **«Poner todo al día» deja huashu-design listo para exportar a PDF, PPTX y video:** instala sus librerías cuando cambia el paquete y el navegador interno con el que exporta (con tiempo límite y una segunda forma de bajarlo, verificada contra Google, si el instalador se cuelga). La primera vez baja unos 300 MB. Además, la puesta al día automática vuelve a instalar las skills oficiales de diseño de interfaces y de crear skills (en 0.21.6 solo lo hacía la corrida a mano).
 

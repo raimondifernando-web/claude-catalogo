@@ -37,7 +37,7 @@
       "name": "metodo",
       "source": "./plugins/metodo",
       "description": "Método de trabajo (L3): /metodo:arrancar, planear, criticar (sin adular), cerrar (handoff + prompt de reanudación), crear-agente, otra-sesion, darwin-skill, vigia (avisa si hay versiones nuevas de lo instalado), cowork, buzon (mensajes con quien te acompaña) y radar (qué IA conviene para cada tarea). 19 reglas del método, mapa de código a pedido y chequeo de seguridad mensual. /cerrar deja REANUDAR.md y /arrancar lo levanta solo.",
-      "version": "0.22.3",
+      "version": "0.22.4",
       "category": "productivity",
       "tags": [
         "l3",
@@ -348,7 +348,7 @@
       "name": "rubro-marketing",
       "source": "./plugins/rubro-marketing",
       "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (38 skills y 1 agente: marketing-analyst, que mide qué canal trae clientes y cuánto cuestan). Requiere base-segura.",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "category": "productivity",
       "tags": [
         "l2",

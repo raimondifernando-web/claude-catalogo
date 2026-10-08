@@ -45,6 +45,8 @@ def main():
             out = prefijo + json.loads(cuerpo_out)
         except ValueError:
             pass
+    if "\n@" in out or out.startswith("@"):
+        out = "[LEER: las líneas @campo son diccionarios de valores únicos; cada fila trae el índice en el diccionario de su columna, o el valor directo si la columna no tiene @]\n" + out
     if "<<ccr:" in out:  # no debería pasar en modo sin pérdida; si pasa, no se usa
         out = data
         print("AVISO: apareció un marcador de recorte; se devuelve el original.", file=sys.stderr)

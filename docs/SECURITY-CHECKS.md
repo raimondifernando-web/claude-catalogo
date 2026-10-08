@@ -768,3 +768,10 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Superficie nueva | Las dependencias de Headroom pasan de «sin fijar» a fijadas por hash. Nada más. |
 | Verificación | Instalación en entorno limpio con hashes OK y repetida sin romper; sin `uv` en PATH usa `~/.local/bin/uv`. Prueba como plugin en HOME temporal: a cargo de Consultoría. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 |
+
+### 2026-10-08 · rubro-marketing 0.2.5 (`achicar-datos-grandes`: explicación del formato, hallazgo de Consultoría)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Solo texto: párrafo del formato en `SKILL.md` y una línea de aviso que `achicar.py` antepone al archivo achicado. |
+| Superficie nueva | Ninguna. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 |

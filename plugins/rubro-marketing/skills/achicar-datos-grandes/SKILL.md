@@ -26,7 +26,7 @@ listas de filas (JSON plano); 0 % en código y texto.
 ## Cómo
 1. Primera vez en la máquina: `bash ${CLAUDE_SKILL_DIR}/scripts/instalar.sh` (versión fija 0.40.0 con hashes verificados, entorno aislado en `~/.cache/headroom`, no toca nada más).
 2. `python3 ${CLAUDE_SKILL_DIR}/scripts/achicar.py <datos.json> --salida <datos.achicado.txt>`
-3. Leé el archivo achicado. Formato: columnas (`@campo=[valores…]`) en vez de una fila por registro; cada columna tiene todos los valores, en orden.
+3. Leé el archivo achicado. Formato: la 1.ª línea lista las columnas; las líneas `@campo=[…]` son **diccionarios de valores únicos** (no todos los valores); debajo va **una fila por registro**, y en cada celda va el índice dentro del diccionario de esa columna (si la columna tiene `@`) o el valor directo (si no). Nunca tomes un diccionario `@campo` como la lista completa de ese campo: para totales, resolvé cada fila contra su diccionario. Ante la duda, usá el original.
 4. Mirá la línea final: `idéntico: True · revertidos: 0`. Si `revertidos` > 0 o no ahorró, usá el archivo original.
 
 ## Reglas (no se negocian)
