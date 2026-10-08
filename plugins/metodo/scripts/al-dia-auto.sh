@@ -8,6 +8,10 @@ S="$(cd "$(dirname "$0")" && pwd)/al-dia.sh"; R="$D/al-dia.resultado"; L="$D/al-
 if [ -f "$R" ] && ! grep -q '^ok ' "$R" && [ "$R" -nt "$V" -o ! -f "$V" ]; then
   echo "Puesta al día automática: $(head -1 "$R" | tr -d '\000-\037\177' | cut -c1-400) Si dice ✗, avisale a Fernando."; touch "$V"
 fi
+A="$D/al-dia.aviso"   # novedades que no son fallas (ej. plantilla nueva de tu ficha): una sola vez
+if [ -f "$A" ] && [ "$A" -nt "$D/al-dia.aviso.visto" -o ! -f "$D/al-dia.aviso.visto" ]; then
+  echo "Puesta al día: $(head -1 "$A" | tr -d '\000-\037\177' | cut -c1-400)"; touch "$D/al-dia.aviso.visto"
+fi
 [ -f "$D/al-dia.apagado" ] && exit 0
 xcode-select -p >/dev/null 2>&1 || exit 0   # sin las herramientas de Apple, python3 abriría su ventana: se instalan en la llamada
 if [ -d "$L" ]; then   # candado: si el proceso que lo tomó ya no existe, se libera

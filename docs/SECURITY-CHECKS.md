@@ -776,6 +776,14 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Registro | Línea agregada a posteriori (2026-10-08): la versión salió sin su línea acá. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido 2026-10-08 sobre `main` 3c5e155) |
 
+### 2026-10-08 · metodo 0.24.0 (al-dia v9: NotebookLM con uv, aviso de plantilla, chequeo)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | `al-dia.sh` (las dos copias, iguales, sha256 `8a32dead…`) y `al-dia-auto.sh` (`4429c3cc…`); docs `NOTEBOOKLM-SEGURO.md` regla 1 y `chequeo.sh` (texto de instalación). |
+| Superficie nueva | Descarga de uv y de Python 3.12; wheel de `notebooklm-py` 0.8.3 verificado por huella (índice fijo de PyPI, `UV_NO_CONFIG`, `--no-build`, dependencias congeladas al 2026-10-01); Chromium de Playwright por HTTPS desde el CDN de Microsoft (aceptado, bajo). No inicia sesión en NotebookLM. |
+| security-reviewer (Opus, informado por Consultoría) | Sin críticos ni altos. Aplicados: (medio) índice fijo + `UV_NO_CONFIG` + `--no-build`; (bajos) carpeta temporal en el `trap`, tope de 60 s y filtro de caracteres en el chequeo. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido sobre la rama `orquesta/al-dia-v9`) |
+
 ### 2026-10-08 · metodo 0.23.0 (regla 20: otra sesión)
 | Ítem | Resultado |
 |---|---|

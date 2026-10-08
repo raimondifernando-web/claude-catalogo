@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.24.0 — 2026-10-08
+- **«Poner todo al día» v9.** Instala NotebookLM (`notebooklm-py` 0.8.3) en su propio Python 3.12 con uv, desde el wheel verificado por su huella, índice fijo de PyPI, sin compilar código fuente y con dependencias congeladas al 2026-10-01, más su navegador (playwright chromium); no inicia sesión. Avisa una vez cuando cambia la plantilla de la ficha de la empresa. Corre el chequeo del equipo (solo lectura, tope de 60 s, con el Python de la Mac primero) y suma lo que falte a la línea final. Los avisos que no son fallas salen en una línea «Además: …» y `al-dia.aviso`, que se muestra una vez al abrir sesión.
+
 ## 0.23.0 — 2026-10-08
 - **Regla 20: cuándo abrir otra sesión (con Sonnet) y cuándo seguir en la misma.** Claude propone una sesión aparte para trabajos medianos o grandes que no pisan archivos de otra sesión; la que deriva revisa lo entregado antes de darlo por hecho. Se suma sola a tus reglas del método (ya son 20).
 

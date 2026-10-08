@@ -14,7 +14,7 @@ Con eso se puede usar con tu cuenta de siempre. **Las 5 reglas de abajo son obli
 más gente, no la controlás vos, o preferís que la llave valga poco. Si la usás, compartí los cuadernos entre las dos cuentas.
 
 ## Las 5 reglas (obligatorias)
-1. **Versión fija y revisada.** `python3 -m pip install --user 'notebooklm-py[browser]==0.8.3'` y `python3 -m playwright install chromium`.
+1. **Versión fija y revisada.** La instala «Poner todo al día» (uv, Python 3.12 propio, wheel verificado por su huella, sin compilar código fuente), junto con su navegador (Chromium de playwright). El Chromium se baja del CDN de Microsoft solo por HTTPS (riesgo aceptado, bajo). No hay que correr `pip` a mano: en las Macs el Python del sistema es 3.9 y notebooklm-py 0.8.3 pide 3.10 o más.
    No se actualiza "a la última": cada versión nueva la revisa tu consultor antes. Huella del paquete 0.8.3 (wheel), para
    verificar que es el revisado: `sha256:7e3e02057b3acf354d3dbc337c08869d2a4954c9c324f3271e272236cfcc2bfc`.
 2. **Iniciar sesión solo desde la ventana que abre la herramienta**: `notebooklm login` → se abre un navegador → entrás con tu cuenta.

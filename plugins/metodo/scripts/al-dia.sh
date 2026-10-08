@@ -20,9 +20,9 @@ if [ $AUTO -eq 1 ]; then
 fi
 local RES="$CC/metodo/al-dia.resultado"; mkdir -p "$CC/metodo"
 if [ -n "$BUZON" ] && ! [[ $BUZON =~ ^[A-Za-z0-9-]+/[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; then echo "✗ El nombre del buzón no es válido. Mandale esta captura a Fernando."; return 1; fi
-local falta=() paquetes=() nuevos=()
-N=""; T=""; LK=""; W=""
-trap 'rm -f "${N:-}" "${T:-}"; [ -n "${W:-}" ] && rm -rf "$W"; [ -n "${LK:-}" ] && rm -rf "$LK"' EXIT
+local falta=() paquetes=() nuevos=() avisos=()
+N=""; T=""; LK=""; W=""; NW=""
+trap 'rm -f "${N:-}" "${T:-}"; [ -n "${W:-}" ] && rm -rf "$W"; [ -n "${NW:-}" ] && rm -rf "$NW"; [ -n "${LK:-}" ] && rm -rf "$LK"' EXIT
 # Una sola puesta al día a la vez: la automática ya tomó el candado (al-dia-auto.sh); la manual lo toma acá.
 if [ $AUTO -eq 0 ]; then
   local L="$CC/metodo/al-dia.corriendo" P
@@ -360,6 +360,32 @@ if printf '%s\n' "$lista" | grep -A3 -E "❯ $HB@$CAT[[:space:]]*$" | grep -q "�
   fi
 fi
 
+# 5i. NotebookLM desde Claude (skill notebooklm): la herramienta no oficial notebooklm-py en su propio Python (pide 3.10 o
+#     más; el de la Mac es 3.9), versión fija 0.8.3 verificada por su huella (regla 1 de docs/NOTEBOOKLM-SEGURO.md), y el
+#     navegador que usa para iniciar sesión. Iniciar sesión NO se hace acá: es tuyo (notebooklm login, paso del portal).
+local NBV=0.8.3 NBH=7e3e02057b3acf354d3dbc337c08869d2a4954c9c324f3271e272236cfcc2bfc
+if [ -x "$UV" ]; then
+  if ! "$UV" tool list 2>/dev/null | grep -qx "notebooklm-py v$NBV"; then
+    NW=$(mktemp -d)
+    curl -fsSL -o "$NW/notebooklm_py-$NBV-py3-none-any.whl" "https://files.pythonhosted.org/packages/py3/n/notebooklm-py/notebooklm_py-$NBV-py3-none-any.whl" \
+      && [ "$(shasum -a 256 "$NW/notebooklm_py-$NBV-py3-none-any.whl" | cut -d' ' -f1)" = "$NBH" ] \
+      && env -u UV_INDEX_URL -u UV_EXTRA_INDEX_URL -u UV_INDEX -u UV_DEFAULT_INDEX -u UV_FIND_LINKS UV_NO_CONFIG=1 \
+           "$UV" tool install --force --quiet --python 3.12 --no-build --default-index https://pypi.org/simple \
+           --exclude-newer 2026-10-01T00:00:00Z "notebooklm-py[browser] @ $NW/notebooklm_py-$NBV-py3-none-any.whl" >/dev/null 2>&1
+    rm -rf "$NW"; NW=""
+  fi
+  if "$UV" tool list 2>/dev/null | grep -qx "notebooklm-py v$NBV"; then
+    local NPY; NPY="$("$UV" tool dir 2>/dev/null)/notebooklm-py/bin/python"
+    local NOK="$CC/metodo/notebooklm-navegador.ok" NPW
+    NPW=$("$NPY" -I -c 'import importlib.metadata as m; print(m.version("playwright"))' 2>/dev/null)
+    if [ -z "$NPW" ]; then falta+=("NotebookLM (falta su navegador: avisá a Fernando)")
+    elif [ "$(cat "$NOK" 2>/dev/null)" != "$NPW" ]; then
+      if "$NPY" -I -m playwright install chromium >/dev/null 2>&1; then echo "$NPW" > "$NOK"
+      else falta+=("navegador de NotebookLM (sin conexión: se reintenta mañana)"); fi
+    fi
+  else falta+=("NotebookLM (no pude instalarlo: avisá a Fernando)"); fi
+fi
+
 # 5c. Datos de uso de HyperFrames: apagados (solo esa variable; nunca una general como DO_NOT_TRACK)
 if [ -f "$S" ]; then
   plutil -extract env json -o /dev/null "$S" >/dev/null 2>&1 || plutil -insert env -dictionary "$S" 2>/dev/null
@@ -435,6 +461,25 @@ if [ -n "$BUZON" ]; then
   fi
 fi
 
+# 6d. Plantilla de tu ficha: si el catálogo trae una nueva, te lo dice UNA vez (tu ficha no se toca nunca sola).
+local PLT="$M/plugins/base-segura/templates/CLAUDE-empresa.md" PLV="$CC/metodo/plantilla-ficha.visto" PLH
+if [ -f "$PLT" ]; then
+  PLH=$(shasum -a 256 "$PLT" | cut -d' ' -f1)
+  if [ ! -f "$PLV" ]; then echo "$PLH" > "$PLV"            # primera vez: tu ficha ya se armó con esta plantilla
+  elif [ "$(cat "$PLV")" != "$PLH" ]; then
+    avisos+=("tu ficha tiene una plantilla nueva: pedile a Claude «compará mi CLAUDE.md con la plantilla nueva y decime qué falta»")
+    echo "$PLH" > "$PLV"
+  fi
+fi
+
+# 6e. El chequeo del catálogo (solo mira: no instala ni cambia nada). Lo que marque como FALTA se suma a la línea final.
+local CHQ="$M/scripts/chequeo.sh" CHF
+if [ -f "$CHQ" ]; then
+  CHF=$(PATH="/usr/bin:$PATH" /usr/bin/perl -e 'alarm 60; exec @ARGV' bash "$CHQ" 2>/dev/null |   # Python de la Mac primero; tope 60 s
+     sed -n 's/^  ❌ FALTA    \([^ ]*\).*/\1/p' | tr -cd 'A-Za-z0-9+._\n-' | tr '\n' ' ' | sed 's/ $//')
+  [ -z "$CHF" ] || falta+=("el chequeo marca: $CHF")
+fi
+
 # 6c. Lista de repos del chequeo de seguridad mensual (paquete metodo): se arma sola, sin pasos a mano.
 #     Suma los repos de GitHub que están en la carpeta personal (un nivel) y en ~/Proyectos, más el del buzón.
 #     No mira Documentos, Escritorio ni Descargas (macOS pediría permiso). Solo agrega; nunca saca ni cambia lo que hay.
@@ -466,7 +511,7 @@ fi
 echo
 if [ ${#falta[@]} -eq 0 ]; then
   echo "ok $(date +%Y-%m-%d)" > "$RES"
-  echo "Todo al día ✓  ($okp paquetes · $R reglas del método · Python, Node, Codex y Antigravity · actualización automática prendida)"
+  echo "Todo al día ✓  ($okp paquetes · $R reglas del método · Python, Node, Codex, Antigravity y NotebookLM · actualización automática prendida)"
   echo "Cerrá Claude Code y volvé a abrirlo para que tome lo nuevo."
 else
   local x rep=1
@@ -474,6 +519,9 @@ else
   printf 'Falta: %s ✗\n' "$(printf '%s, ' "${falta[@]}" | sed 's/⟳ //g; s/, $//')" | tee "$RES"
   if [ $rep -eq 1 ]; then echo "Cuando lo hagas, pegá este mismo comando otra vez."
   else echo "Mandale esta captura a Fernando. No lo repitas hasta que te conteste."; fi
+fi
+if [ ${#avisos[@]} -gt 0 ]; then   # novedades que no son fallas: se dicen acá y una vez al abrir sesión
+  printf 'Además: %s\n' "$(printf '%s; ' "${avisos[@]}" | sed 's/; $//')" | tee "$CC/metodo/al-dia.aviso"
 fi
 }
 main "$@"
