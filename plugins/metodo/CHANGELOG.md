@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.23.0 — 2026-10-08
+- **Regla 20: cuándo abrir otra sesión (con Sonnet) y cuándo seguir en la misma.** Claude propone una sesión aparte para trabajos medianos o grandes que no pisan archivos de otra sesión; la que deriva revisa lo entregado antes de darlo por hecho. Se suma sola a tus reglas del método (ya son 20).
+
 ## 0.22.5 — 2026-10-08
 - **al-dia v8: en la app de escritorio los paquetes vuelven a actualizarse al abrir sesión.** La app arranca Claude Code con la actualización automática apagada, y eso frenaba también la de los paquetes del catálogo. «Poner todo al día» ahora deja prendida `FORCE_AUTOUPDATE_PLUGINS` en tu configuración (la lee solo Claude Code) y avisa si no pudo.
 

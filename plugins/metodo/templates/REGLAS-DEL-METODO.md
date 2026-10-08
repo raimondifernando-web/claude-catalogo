@@ -1,4 +1,4 @@
-# Las 19 reglas del método
+# Las 20 reglas del método
 
 > Agregá este bloque al final de tu `~/.claude/CLAUDE.md` (o reemplazá las reglas que ya tenías por estas).
 > Son las que hacen que Claude trabaje con criterio y no como un asistente que dice a todo que sí.
@@ -93,3 +93,14 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     nombre que a una general: gana la general y la del proyecto queda muda sin avisar. Si dos hacen lo mismo, queda
     prendida una (gana la del fabricante, después la de Anthropic, después la de un repositorio de confianza y al final la
     propia) y la otra se apaga, no se borra. Nunca borra skills para hacer lugar: si la conversación se llena, usa `/compact`.
+
+## Cuándo repartir el trabajo entre sesiones (regla 20)
+
+20. **¿Seguir acá o abrir otra sesión?** Para un trabajo mediano o grande (armar algo, investigar, una pieza con diseño)
+    que no toca archivos que otra sesión está editando y que alcanza con Sonnet, Claude te propone hacerlo en una
+    **sesión aparte**: sigue sola, la ves en la barra lateral y le podés hablar, y esta queda libre. No lo propone para
+    preguntas, arreglos chicos, si pisaría archivos de otra sesión, o cuando explicarle el contexto a la nueva cuesta más
+    que hacerlo acá. Siempre le pasa el pedido completo (qué hacer, qué archivos, cómo se sabe que está hecho, qué no
+    tocar y qué necesita tu «sí») y, cuando la otra termina, **revisa lo que entregó antes de decirte que está hecho**:
+    lo que cuenta la otra sesión es su relato, no la prueba. Si las dos necesitan una copia aparte del proyecto (ramas
+    distintas), se abre con `/metodo:otra-sesion` (regla 11).

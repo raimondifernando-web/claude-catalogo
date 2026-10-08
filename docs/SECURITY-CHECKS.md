@@ -776,6 +776,13 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Registro | Línea agregada a posteriori (2026-10-08): la versión salió sin su línea acá. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido 2026-10-08 sobre `main` 3c5e155) |
 
+### 2026-10-08 · metodo 0.23.0 (regla 20: otra sesión)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Solo texto: sección nueva al final de `REGLAS-DEL-METODO.md` (título pasa a «Las 20 reglas»), pruebas de `reglas.py` y README. |
+| Superficie nueva | Ninguna. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido sobre la rama `orquesta/regla-20`) |
+
 ### 2026-10-08 · metodo 0.22.5 (al-dia v8: FORCE_AUTOUPDATE_PLUGINS)
 | Ítem | Resultado |
 |---|---|

@@ -39,7 +39,7 @@ class ReglasTest(unittest.TestCase):
 
     def test_plantilla_tiene_19_reglas(self):
         primera = PLANTILLA.read_text(encoding="utf-8").splitlines()[0]
-        self.assertEqual(primera, "# Las 19 reglas del método")
+        self.assertEqual(primera, "# Las 20 reglas del método")
         self.assertIn("\n19. **Una pieza por función; buscar antes de crear.**", PLANTILLA.read_text(encoding="utf-8"))
 
     def test_bloque_viejo_entre_marcas_se_actualiza_sin_tocar_lo_propio(self):
@@ -50,14 +50,14 @@ class ReglasTest(unittest.TestCase):
 
         r = correr(self.cfg)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("Reglas del método actualizadas a 19 ✓", r.stdout)
+        self.assertIn("Reglas del método actualizadas a 20 ✓", r.stdout)
 
         texto = self.ficha.read_text(encoding="utf-8").splitlines()
         self.assertEqual(texto[:3], propio_arriba)
         self.assertEqual(texto[-3:], propio_abajo)
         a, b = texto.index(reglas.INI), texto.index(reglas.FIN)
         self.assertEqual(texto[a:b + 1], reglas.bloque_nuevo(PLANTILLA))
-        self.assertIn("# Las 19 reglas del método", texto)
+        self.assertIn("# Las 20 reglas del método", texto)
         self.assertTrue(any(l.startswith("19. **Una pieza por función") for l in texto))
         self.assertEqual(len(list(self.cfg.glob("CLAUDE.md.antes-reglas-*"))), 1)
 
@@ -69,7 +69,7 @@ class ReglasTest(unittest.TestCase):
     def test_ficha_sin_reglas_las_agrega_al_final(self):
         self.ficha.write_text("Lo mío.\n", encoding="utf-8")
         r = correr(self.cfg)
-        self.assertIn("Reglas del método agregadas (19) ✓", r.stdout)
+        self.assertIn("Reglas del método agregadas (20) ✓", r.stdout)
         texto = self.ficha.read_text(encoding="utf-8")
         self.assertTrue(texto.startswith("Lo mío.\n"))
         self.assertIn(reglas.INI, texto)
