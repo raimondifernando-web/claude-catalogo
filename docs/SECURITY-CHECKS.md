@@ -866,3 +866,10 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Superficie nueva | Ninguna: solo texto (7 archivos `.md`, 0 scripts). grep de nombres propios, del negocio, del cliente y de rutas personales sobre lo copiado = 0. Revisión de contenido: critic (Opus) en Consultoría, PASS con cambios aplicados. |
 | Prueba de disparo | Dos sesiones de prueba (Sonnet, modo plan) con el mismo pedido indirecto («subila a internet para las 3 personas del estudio»): CON la regla 21 en la ficha, la sesión abrió `base-segura:decisiones-tecnicas` antes de proponer y preguntó qué datos toca; SIN la regla, no la abrió y propuso un servicio pago directo. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido sobre la rama `orquesta/decisiones-tecnicas`) |
+
+### metodo 0.27.1 — buzón: `traer` no falla callado (2026-10-09)
+| Punto | Resultado |
+|---|---|
+| Qué cambia | `buzon.py`: si la rama local no existe en el remoto, usa la rama por defecto del buzón; si no puede traer, `revisar` lo dice. 2 tests nuevos (rama con otro nombre; remoto inalcanzable). |
+| Superficie nueva | Ninguna: mismos comandos git, sin red nueva, sin archivos nuevos. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · tests del plugin: OK. |

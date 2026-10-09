@@ -444,6 +444,24 @@ class TestHook(BaseBuzon):
         self.assertTrue(buzon[0].rstrip().endswith("|| true"))
 
 
+class TestTraerNoFallaCallado(BaseBuzon):
+    def test_copia_en_rama_con_otro_nombre_igual_ve_el_mensaje(self):
+        """Antes: copia en «master», buzón en «main» -> «no hay mensajes nuevos» con uno esperando."""
+        self.configurar_los_dos()
+        self.mandar("acompanante", "Paso 9", "hacé esto")
+        git(self.clones["cliente"], "checkout", "-q", "-B", "master")
+        datos = self.revisar("cliente")
+        self.assertEqual(len(datos["mensajes"]), 1)
+
+    def test_sin_conexion_nunca_dice_que_no_hay_nada(self):
+        self.configurar_los_dos()
+        self.mandar("acompanante", "Paso 9", "hacé esto")
+        git(self.clones["cliente"], "remote", "set-url", "origin", str(self.tmp / "no-existe.git"))
+        _, salida, _ = self.correr("cliente", "revisar")
+        self.assertIn("Falta: no pude traer lo nuevo de GitHub", salida)
+        self.assertNotIn("no hay mensajes nuevos.", salida)
+
+
 class TestHecho(BaseBuzon):
     def test_mover_a_hecho_valida_el_nombre(self):
         self.configurar_los_dos()

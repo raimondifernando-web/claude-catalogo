@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.27.1 — 2026-10-09
+- **El buzón ya no dice «no hay mensajes nuevos» cuando no pudo mirar.** Si tu copia estaba en una rama con otro nombre que la del buzón en GitHub (por ejemplo «master» y «main»), no traía nada y no avisaba. Ahora trae la rama del buzón igual, y si no puede traer lo nuevo dice «Falta: no pude traer lo nuevo de GitHub ✗» en vez de «no hay nada».
+
 ## 0.27.0 — 2026-10-09
 - **Regla 21: antes de elegir un servicio técnico, los criterios.** Claude consulta la skill `decisiones-tecnicas` (base-segura) aunque nadie la nombre y aunque la decisión aparezca a mitad de otro trabajo; si la decisión es nueva, la anota en la ficha de la empresa.
 

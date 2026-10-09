@@ -268,7 +268,22 @@ def traer(carpeta):
     b = rama(carpeta)
     codigo, _, _ = git(carpeta, "rev-parse", "--verify", "--quiet", "refs/remotes/{}/{}".format(r, b), chequear=False)
     if codigo != 0:
-        return
+        # Antes acá se volvía callado y `revisar` decía «no hay mensajes nuevos» aunque GitHub los tuviera:
+        # pasa si la copia está en una rama con otro nombre que la del buzón (master/main).
+        _, ramas, _ = git(carpeta, "for-each-ref", "--format=%(refname:strip=3)", "refs/remotes/{}/".format(r),
+                          chequear=False)
+        existentes = [x for x in ramas.split() if x != "HEAD"]
+        if not existentes:
+            return  # repositorio recién creado: de verdad no hay nada
+        _, por_defecto, _ = git(carpeta, "symbolic-ref", "--short", "refs/remotes/{}/HEAD".format(r),
+                                chequear=False)
+        por_defecto = por_defecto.strip().split("/", 1)[-1] if por_defecto.strip() else ""
+        if por_defecto not in existentes:
+            por_defecto = "main" if "main" in existentes else ("master" if "master" in existentes else "")
+        if not por_defecto:
+            raise Falla("el buzón en GitHub tiene las ramas {} pero tu copia está en «{}»".format(
+                ", ".join(existentes), b))
+        b = por_defecto  # trae la rama del buzón aunque la copia local se llame distinto
     codigo, _, error = git(carpeta, "-c", "rebase.autoStash=true", "pull", "--rebase", "--quiet", r, b,
                            chequear=False)
     if codigo != 0:
@@ -445,7 +460,9 @@ def cmd_revisar(args):
         return 0
     if sin_red:
         decir("⚠️ No pude traer lo nuevo ({}). Muestro lo que ya está en tu copia; puede haber más.".format(sin_red))
-    if not lista:
+    if not lista and sin_red:
+        decir("Falta: no pude traer lo nuevo de GitHub ✗ (en tu copia no hay nada, pero eso no prueba que no haya mensajes).")
+    elif not lista:
         decir("Buzón de {}: no hay mensajes nuevos.".format(yo))
     else:
         decir("Buzón de {}: {} mensaje(s) nuevo(s) en {}/".format(yo, len(lista), CARPETAS[yo]))
