@@ -89,6 +89,7 @@ Esta carpeta la ve $ACOMP.
 
 ## Para qué es
 - Instalar, actualizar y arreglar lo de Claude, Cowork y el buzón.
+- Preparar proyectos o temas nuevos (sesión de preparación): dónde va la carpeta, su ficha, su equipo y el texto de arranque.
 - Herramientas generales que no son de la empresa.
 
 ## Qué NO va acá
