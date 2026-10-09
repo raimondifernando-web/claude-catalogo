@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.28.0 — 2026-10-09
+- **Arrancar y cerrar ya no se pueden saltear pasos sin que se note.** Dos programas nuevos, `arrancar-check.py` y `cerrar-check.py`, hacen la comprobación mecánica: una línea ✓/✗ por paso y un cierre claro («Arranque completo ✓» / «Cierre completo ✓», o «Falta: … ✗»). Solo leen: no escriben nada, no usan internet y nunca muestran el valor de una clave (de una posible clave solo dicen en qué línea está). Por qué: se vio que una sesión puede olvidarse de un paso escrito (archivar la serie anterior, dejar el handoff, subir lo guardado) y nadie lo notaba; ahora la salida del programa se pega en la confirmación y lo que falta queda a la vista.
+- **Al arrancar** mide: que exista el cierre anterior (`REANUDAR.md`) y su fecha, que la copia y la rama sean las que declara el texto de arranque (si no coinciden, frena), el estado de git, y qué versión del método y qué última regla tenés. Lista lo que quedó «A VERIFICAR» y deja como ítems MANUAL lo que solo puede hacer la sesión (numerar el título, ofrecer archivar la serie anterior, comparar el modelo con el ruteo del radar).
+- **Al cerrar** mide: que `REANUDAR.md` tenga su línea de cierre y entre en un largo razonable, que no lleve números de memoria («hay 12 archivos») ni algo con pinta de clave, que el avance esté guardado y subido (y que el último guardado no se haya llevado de más: señal de un `git add -A`), que haya handoff si se tocaron 3 o más archivos, y que un repo con varias copias declare cuál es la suya. Deja como ítems MANUAL que lo durable haya bajado a su archivo y que el contrato del prompt tenga contenido real.
+- `/metodo:arrancar` (paso 3 quater) y `/metodo:cerrar` (paso 8 bis) ahora exigen correrlos antes de confirmar y antes del prompt final; el prompt de reanudación sigue siendo el último mensaje del cierre. No hay que instalar ni correr nada a mano: viaja con el plugin.
+- Para apagarlo: sacá esas dos líneas de las skills (o el plugin `metodo`). Si el programa no se puede correr, la sesión lo dice en vez de simularlo.
+
 ## 0.27.1 — 2026-10-09
 - **El buzón ya no dice «no hay mensajes nuevos» cuando no pudo mirar.** Si tu copia estaba en una rama con otro nombre que la del buzón en GitHub (por ejemplo «master» y «main»), no traía nada y no avisaba. Ahora trae la rama del buzón igual, y si no puede traer lo nuevo dice «Falta: no pude traer lo nuevo de GitHub ✗» en vez de «no hay nada».
 

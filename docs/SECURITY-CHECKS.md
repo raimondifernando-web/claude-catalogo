@@ -880,3 +880,10 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Qué cambia | Solo texto: un párrafo en `SKILL.md` (recomendación de peso alto; apartarse solo con razón concreta del cliente, dicha en voz alta) y una frase en `references/automatizar.md` (n8n/Make/Zapier: la que el cliente ya usa). Copia de Consultoría `desarrollo/decisiones-tecnicas/`. |
 | Superficie nueva | Ninguna. Grep de nombres propios, del negocio, del cliente y de rutas personales = 0. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido sobre la rama `orquesta/decisiones-tecnicas-2`) |
+
+### metodo 0.28.0 — arrancar-check.py y cerrar-check.py (2026-10-09)
+| Punto | Resultado |
+|---|---|
+| Qué cambia | Dos programas nuevos en `plugins/metodo/scripts/` (`arrancar-check.py`, `cerrar-check.py`, ~110 y ~160 líneas, biblioteca estándar) + un paso en las skills `arrancar` (3 quater) y `cerrar` (8 bis) que exige correrlos. 14 tests nuevos (`tests/test_checks.py`). |
+| Superficie nueva | Solo lectura: ejecutan `git status/log/show/worktree/rev-parse/branch` sobre la carpeta de trabajo y leen `REANUDAR.md`, `handoffs/<id>.md` y `templates/REGLAS-DEL-METODO.md` del caché del plugin. Sin red, sin `shell=True`, sin escribir, sin tocar claves; de una posible clave imprimen solo el número de línea (test con clave falsa armada en runtime: el valor no aparece en la salida). Sin hooks nuevos. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 · tests del plugin: OK. |

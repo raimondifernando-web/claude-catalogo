@@ -116,6 +116,13 @@ demás pasos, nunca termines sin emitir ese bloque.
    siempre**: ese archivo es "el último", no un historial (el historial son los `handoffs/`). Si estás en una copia
    de `/metodo:otra-sesion`, va en la raíz de esa copia. Hacelo **antes** del paso 5 para que entre en el mismo
    guardado; si ya guardaste, un guardado chico aparte. Nunca con claves adentro (el prompt no las tiene).
+8 bis. **Comprobá el cierre:** cuando ya subiste el avance (paso 5) y guardaste `REANUDAR.md` (paso 8), corré
+   `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cerrar-check.py"` (en Windows, `py -3`; opcional: el id del cierre, o la
+   carpeta). Solo lee y nunca muestra valores: una línea ✓/✗ por chequeo (REANUDAR con id y largo razonable, sin
+   números de memoria ni pinta de clave, avance subido, handoff si tocaste 3 o más archivos). **Prohibido dar el cierre
+   por terminado sin haberlo corrido.** Pegale al usuario su salida tal cual y, debajo, **una línea por cada ítem MANUAL
+   con su resultado real**. Si dice «Falta: … ✗», resolvelo y volvé a correrlo. Después sigue el paso 9: el prompt
+   de reanudación sigue siendo el último mensaje.
 9. **⛔ EMITÍ EL PROMPT DE REANUDACIÓN COPIABLE** con la plantilla de abajo. Es el último mensaje. Aunque ya
    quedó guardado, se emite igual: si el archivo se pierde o la ventana se abre en otra carpeta, el chat es el
    respaldo. Cerrá con una línea afuera del bloque: «Guardado en `REANUDAR.md`. La próxima vez, abrí Claude en

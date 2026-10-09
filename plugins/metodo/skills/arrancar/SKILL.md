@@ -69,6 +69,14 @@ Corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/radar.py" aviso` (en Windows, `py
 de modelos tiene N días…» o «se retira X el …»), sumala tal cual a la confirmación del paso 4. Si no imprime nada, no
 digas nada. Nunca falla ni espera la red: si da error, seguí sin avisar.
 
+### 3 quater. Comprobación mecánica (obligatoria antes de confirmar)
+Corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/arrancar-check.py"` (en Windows, `py -3`). Solo lee: una línea ✓/✗ por
+paso (el cierre anterior, copia y rama contra lo declarado, estado de git, método instalado). **Prohibido confirmar
+sin haberlo corrido** (las sesiones se saltaban pasos escritos; esto los vuelve visibles). Pegá su salida tal cual en
+la confirmación del paso 4 y, debajo, **una línea por cada ítem MANUAL y por cada A VERIFICAR con su resultado
+real**. Si termina en «Falta: … ✗», resolvelo y volvé a correrlo; si dice que copia o rama no coinciden, PARÁ
+(paso 3). Si el script no se puede correr, decilo en la confirmación: no lo simules.
+
 ### 4. Confirmar y arrancar
 Confirmale al usuario en 2-3 líneas: **"Leí el estado. El próximo paso es [X]. ¿Arrancamos?"**
 Si el prompt ya trae el próximo paso definido y contexto suficiente, arrancá directo: la confirmación es
