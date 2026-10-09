@@ -106,6 +106,21 @@ if [ -f "$S" ]; then
     plutil -replace env.FORCE_AUTOUPDATE_PLUGINS -string 1 "$S" 2>/dev/null; }
   [ "$(plutil -extract env.FORCE_AUTOUPDATE_PLUGINS raw "$S" 2>/dev/null)" = "1" ] || falta+=("actualización de paquetes en la app")
 fi
+# /arrancar archiva la sesión anterior de la misma serie; sin este permiso el modo automático lo frena (Orquesta, 2026-10-09).
+# Archivar es reversible (se desarchiva desde la barra lateral). Solo agrega la línea si falta; no toca el resto.
+if [ -f "$S" ]; then
+  local AP='mcp__ccd_session_mgmt__archive_session' AT
+  plutil -extract permissions.allow json -o - "$S" 2>/dev/null | grep -qF "\"$AP\"" || {
+    [ -e "$S.antes-al-dia-permisos" ] || cp -p "$S" "$S.antes-al-dia-permisos" 2>/dev/null
+    # Se trabaja sobre una copia y recién al final reemplaza el archivo: un corte a mitad no lo deja roto.
+    AT="$S.tmp.$$"
+    if cp -p "$S" "$AT" \
+      && { plutil -extract permissions json -o /dev/null "$AT" 2>/dev/null || plutil -insert permissions -dictionary "$AT"; } \
+      && { plutil -extract permissions.allow json -o /dev/null "$AT" 2>/dev/null || plutil -insert permissions.allow -array "$AT"; } \
+      && plutil -insert permissions.allow -string "$AP" -append "$AT" \
+      && plutil -extract permissions.allow json -o - "$AT" 2>/dev/null | grep -qF "\"$AP\""; then mv "$AT" "$S"; else rm -f "$AT"; fi 2>/dev/null; }
+  plutil -extract permissions.allow json -o - "$S" 2>/dev/null | grep -qF "\"$AP\"" || falta+=("permiso para archivar sesiones viejas")
+fi
 
 # 4. Conexión con GitHub para los paquetes que vienen directo de GitHub (solo si hace falta)
 if ! ssh -T -o BatchMode=yes -o ConnectTimeout=10 git@github.com 2>&1 | grep -q "successfully authenticated"; then
