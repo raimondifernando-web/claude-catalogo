@@ -5,7 +5,7 @@
 2. **¿Vive dentro de la suite del cliente?**
    - Google Workspace: **Apps Script** (disparadores por hora o por evento sobre Sheets/Gmail/Calendar/Drive), **AppSheet** para formularios con lógica. 0 extra, los datos no salen de la suite.
    - Microsoft 365: **Power Automate** (flujos entre Outlook/Teams/Excel/SharePoint) y Power Apps. Confirmar que los conectores necesarios no sean "premium" en su plan.
-3. **¿Cruza sistemas que la suite no puede leer o escribir bien?** Un sistema externo con una API simple (ej. leer tareas) todavía entra en Apps Script / Power Automate. Pasá a una plataforma de automatización (n8n, Make, Zapier) cuando hay **varios** sistemas externos, conectores listos que ahorran mucho código, o mensajería (WhatsApp). Elegí **una sola** y no mezcles.
+3. **¿Cruza sistemas que la suite no puede leer o escribir bien?** Un sistema externo con una API simple (ej. leer tareas) todavía entra en Apps Script / Power Automate. Pasá a una plataforma de automatización (n8n, Make, Zapier) cuando hay **varios** sistemas externos, conectores listos que ahorran mucho código, o mensajería (WhatsApp). Elegí **una sola** y no mezcles. Entre n8n, Make y Zapier no hay un motivo probado para preferir una: sin evidencia, elegí la que el cliente ya usa o conoce; si no usa ninguna, la que tenga los conectores que necesita y el costo más bajo para su volumen.
 4. **¿Lleva lógica pesada o procesamiento de archivos?** → un script chico en un lugar con dueño y registro, no una cadena de diez pasos visuales.
 
 ## Decisiones, motivo y cuándo NO aplican

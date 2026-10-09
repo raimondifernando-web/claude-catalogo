@@ -12,6 +12,10 @@ Esta skill te da el **por qué** detrás de las elecciones de herramientas, para
 Una receta ("usá X") se vence en meses; un criterio ("elegí lo que ya pagás, poné tope de gasto el día 1") sigue sirviendo.
 Por eso cada criterio trae el incidente o motivo que lo originó **y cuándo NO aplica** («siempre aplica» cuando no hay excepción).
 
+**Son recomendaciones de peso alto: ya se analizaron y se pagaron en casos reales.** Decidís vos con lo que sabés de
+este cliente, pero apartate de una recomendación solo con una razón concreta de su caso (su stack, su presupuesto, sus
+datos), y decila en voz alta: «No sigo X porque <razón del cliente>». Sin esa razón, va la recomendación.
+
 ## Regla de oro
 **Primero lo que el cliente ya paga. Recién después, un servicio nuevo.** Cada servicio nuevo es una cuenta más, una factura más,
 una clave más y un lugar más adonde pueden salir datos. Si lo que ya tiene alcanza, usar eso es la respuesta correcta aunque sea menos moderno.

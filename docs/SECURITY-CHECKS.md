@@ -873,3 +873,10 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Qué cambia | `buzon.py`: si la rama local no existe en el remoto, usa la rama por defecto del buzón; si no puede traer, `revisar` lo dice. 2 tests nuevos (rama con otro nombre; remoto inalcanzable). |
 | Superficie nueva | Ninguna: mismos comandos git, sin red nueva, sin archivos nuevos. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · tests del plugin: OK. |
+
+### 2026-10-09 · base-segura 0.14.1 (decisiones-tecnicas: peso de las recomendaciones)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Solo texto: un párrafo en `SKILL.md` (recomendación de peso alto; apartarse solo con razón concreta del cliente, dicha en voz alta) y una frase en `references/automatizar.md` (n8n/Make/Zapier: la que el cliente ya usa). Copia de Consultoría `desarrollo/decisiones-tecnicas/`. |
+| Superficie nueva | Ninguna. Grep de nombres propios, del negocio, del cliente y de rutas personales = 0. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido sobre la rama `orquesta/decisiones-tecnicas-2`) |

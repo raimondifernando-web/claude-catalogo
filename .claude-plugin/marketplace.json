@@ -9,7 +9,7 @@
       "name": "base-segura",
       "source": "./plugins/base-segura",
       "description": "Base segura (L1): skills transversales (incluye humanizalo: que tus textos no suenen a IA, y modo-directo: respuestas del largo que corresponde) + auditor de skills externas + academy-guide (te sugiere cursos oficiales cuando aprendés a usar Claude) + agentes básicos + plantillas de CLAUDE.md. Día 1 para cualquier empresa.",
-      "version": "0.14.0",
+      "version": "0.14.1",
       "category": "productivity",
       "tags": [
         "l1",
