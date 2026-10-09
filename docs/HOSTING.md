@@ -1,5 +1,7 @@
 # HOSTING para no técnicos — dónde poner una herramienta web y cuánto cuesta
 
+> **Los criterios para elegir (qué conviene y por qué) viven en la skill `decisiones-tecnicas` del paquete `base-segura`; la regla 21 hace que Claude la consulte sola.** Esta página queda como guía de precios con fecha.
+
 > Para cuando Claude te arma una página, un tablero o una herramienta y hay que ponerla en internet.
 > Precios verificados en las páginas oficiales el 2026-09-21; **volvé a mirarlos antes de contratar** (cambian).
 > Decisión típica: **empezar en Vercel Pro con tope de gasto puesto el día 1**; pasar a un VPS solo si hay razón.
