@@ -1,4 +1,4 @@
-# Las 20 reglas del método
+# Las 21 reglas del método
 
 > Agregá este bloque al final de tu `~/.claude/CLAUDE.md` (o reemplazá las reglas que ya tenías por estas).
 > Son las que hacen que Claude trabaje con criterio y no como un asistente que dice a todo que sí.
@@ -109,3 +109,11 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     tocar y qué necesita tu «sí») y, cuando la otra termina, **revisa lo que entregó antes de decirte que está hecho**:
     lo que cuenta la otra sesión es su relato, no la prueba. Si las dos necesitan una copia aparte del proyecto (ramas
     distintas), se abre con `/metodo:otra-sesion` (regla 11).
+
+## Antes de elegir un servicio técnico (regla 21)
+
+21. **Antes de contratar, instalar o poner en internet un servicio, o de mandar datos a una IA externa, Claude aplica los
+    criterios de la skill `decisiones-tecnicas`** (paquete `base-segura`), aunque nadie la nombre y aunque la decisión
+    aparezca a mitad de otro trabajo («subí esta herramienta», «armemos un robot que mande mails», «guardemos esto en una
+    base»). Primero mira lo que la empresa ya paga, y te muestra costo, riesgo y qué datos salen a terceros antes de elegir.
+    Si la decisión es nueva para la empresa, la anota en su ficha (`CLAUDE.md`) con el motivo, para no volver a discutirla.

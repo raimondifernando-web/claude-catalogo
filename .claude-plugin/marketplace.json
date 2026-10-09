@@ -9,7 +9,7 @@
       "name": "base-segura",
       "source": "./plugins/base-segura",
       "description": "Base segura (L1): skills transversales (incluye humanizalo: que tus textos no suenen a IA, y modo-directo: respuestas del largo que corresponde) + auditor de skills externas + academy-guide (te sugiere cursos oficiales cuando aprendés a usar Claude) + agentes básicos + plantillas de CLAUDE.md. Día 1 para cualquier empresa.",
-      "version": "0.13.9",
+      "version": "0.14.0",
       "category": "productivity",
       "tags": [
         "l1",
@@ -36,8 +36,8 @@
     {
       "name": "metodo",
       "source": "./plugins/metodo",
-      "description": "Método de trabajo (L3): /metodo:arrancar, planear, criticar (sin adular), cerrar (handoff + prompt de reanudación), crear-agente, otra-sesion, darwin-skill, vigia (avisa si hay versiones nuevas de lo instalado), cowork, buzon (mensajes con quien te acompaña) y radar (qué IA conviene para cada tarea y, al abrir cada sesión, qué modelo, esfuerzo y cupo hay hoy). 20 reglas del método, mapa de código a pedido y chequeo de seguridad mensual. /cerrar deja REANUDAR.md y /arrancar lo levanta solo.",
-      "version": "0.26.0",
+      "description": "Método de trabajo (L3): /metodo:arrancar, planear, criticar (sin adular), cerrar (handoff + prompt de reanudación), crear-agente, otra-sesion, darwin-skill, vigia (avisa si hay versiones nuevas de lo instalado), cowork, buzon (mensajes con quien te acompaña) y radar (qué IA conviene para cada tarea y, al abrir cada sesión, qué modelo, esfuerzo y cupo hay hoy). 21 reglas del método, mapa de código a pedido y chequeo de seguridad mensual. /cerrar deja REANUDAR.md y /arrancar lo levanta solo.",
+      "version": "0.27.0",
       "category": "productivity",
       "tags": [
         "l3",

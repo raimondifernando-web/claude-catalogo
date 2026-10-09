@@ -1,5 +1,8 @@
 # base-segura
 
+## 0.14.0 — 2026-10-09
+- **Skill nueva `decisiones-tecnicas`:** antes de contratar, instalar o poner en internet un servicio (o de mandar datos a una IA externa), Claude aplica criterios ya probados: primero lo que la empresa ya paga, tope de gasto desde el día 1, claves por referencia, y te muestra costo, riesgo y qué datos salen a terceros.
+
 ## 0.13.9 — 2026-10-07
 - `i-have-adhd` al día con su autor: un ejemplo de instrucción más claro. Tu nota local sigue igual.
 

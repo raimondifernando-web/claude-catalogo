@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.27.0 — 2026-10-09
+- **Regla 21: antes de elegir un servicio técnico, los criterios.** Claude consulta la skill `decisiones-tecnicas` (base-segura) aunque nadie la nombre y aunque la decisión aparezca a mitad de otro trabajo; si la decisión es nueva, la anota en la ficha de la empresa.
+
 ## 0.26.0 — 2026-10-09
 - **El método ahora conoce las funciones oficiales de Claude Code.** Hay un mapa (`radar/FUNCIONES.md`) con una fila por función (Mods, `/goal`, canales, rutinas, worktrees, subagentes con su `model` y `effort`, hooks, skills, plugins, `/loop`, ultracode, sesiones en la nube, tareas programadas…): qué es, cuándo conviene, cuándo no y el enlace a la doc oficial. Se consulta con `radar.py funciones <palabra>`.
 - **El robot del radar vigila la documentación oficial.** Cada día mira si hay páginas nuevas en la doc de Claude Code, si cambió alguna de las páginas que respaldan el mapa y si salió una versión nueva de Claude Code, Codex o Gemini CLI. Si algo cambia, abre un pedido de cambio con el aviso y **no se publica solo**: lo revisa una persona. Un parche suelto no avisa.

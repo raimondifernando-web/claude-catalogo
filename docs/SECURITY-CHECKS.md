@@ -858,3 +858,11 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Qué cambia | sha256 `915fef56…` (Consultoría 0a0605a). Al mudar la carpeta, copia `~/.claude/projects/<ruta vieja codificada>[-*]/memory` a la ruta nueva (misma codificación que usa Claude Code: todo lo que no es letra o número pasa a `-`). |
 | Superficie nueva | Solo lee y copia dentro de `~/.claude/projects`; no borra la vieja ni pisa una memoria que ya exista; sin red. Probado en HOME temporal (carpeta y subcarpeta; segunda corrida sin cambios). Observaciones bajas: una copia renombrada «-2» no recibe su memoria; un `cp` cortado a medias no se reintenta. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido sobre la rama `orquesta/ordenar-memoria`) |
+
+### 2026-10-09 · base-segura 0.14.0 (skill `decisiones-tecnicas`) + metodo 0.27.0 (regla 21)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | Skill nueva en base-segura: `SKILL.md` + `references/` (alojar, automatizar, datos, seguridad, costos, ia-externa), copiada de Consultoría (`desarrollo/decisiones-tecnicas/`, sin `README`, `pruebas/`, `fuente-para-tech.md` ni `.omc/`). Regla 21 en `templates/REGLAS-DEL-METODO.md`: antes de elegir un servicio, Claude consulta esa skill aunque nadie la nombre. |
+| Superficie nueva | Ninguna: solo texto (7 archivos `.md`, 0 scripts). grep de nombres propios, del negocio, del cliente y de rutas personales sobre lo copiado = 0. Revisión de contenido: critic (Opus) en Consultoría, PASS con cambios aplicados. |
+| Prueba de disparo | Dos sesiones de prueba (Sonnet, modo plan) con el mismo pedido indirecto («subila a internet para las 3 personas del estudio»): CON la regla 21 en la ficha, la sesión abrió `base-segura:decisiones-tecnicas` antes de proponer y preguntó qué datos toca; SIN la regla, no la abrió y propuso un servicio pago directo. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido sobre la rama `orquesta/decisiones-tecnicas`) |
