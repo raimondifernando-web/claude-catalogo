@@ -851,3 +851,10 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Superficie nueva | Sin red, sin claves, no borra nada. Escribe con copia previa (`.antes-ordenar-<fecha>`) y por archivo temporal + reemplazo. Frena sin tocar nada si la app está abierta, si hay cambios sin guardar en archivos seguidos por git, si no hay o hay varias carpetas de empresa. Repetirlo no duplica nada. |
 | security-reviewer (Sonnet, por cupo; pruebas reales en HOME temporal) | Primera versión: PASS con observaciones (2 altos: copia anidada en un destino existente con ✓ falso; ficha reescrita truncando primero). Consultoría aplicó los 2 altos, los medios y los bajos; Orquesta lo volvió a probar: copia y carpeta con nombre repetido, `.DS_Store` suelto, Cowork, ficha propia, symlink en la carpeta personal, segunda corrida. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido sobre la rama `orquesta/ordenar-mi-claude`) |
+
+### 2026-10-09 · `scripts/ordenar-mi-claude.sh` (copia de la memoria automática de Claude Code)
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | sha256 `915fef56…` (Consultoría 0a0605a). Al mudar la carpeta, copia `~/.claude/projects/<ruta vieja codificada>[-*]/memory` a la ruta nueva (misma codificación que usa Claude Code: todo lo que no es letra o número pasa a `-`). |
+| Superficie nueva | Solo lee y copia dentro de `~/.claude/projects`; no borra la vieja ni pisa una memoria que ya exista; sin red. Probado en HOME temporal (carpeta y subcarpeta; segunda corrida sin cambios). Observaciones bajas: una copia renombrada «-2» no recibe su memoria; un `cp` cortado a medias no se reintenta. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 · nombres-prohibidos revisar: 0 (corrido sobre la rama `orquesta/ordenar-memoria`) |

@@ -74,6 +74,17 @@ $(git -C "$NUEVA" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //
 EOF_COPIAS
 git -C "$NUEVA" worktree repair >/dev/null 2>&1 || true
 
+# Memoria automática de Claude Code: vive en ~/.claude/projects/<ruta codificada>/memory. Al cambiar la ruta,
+# se copia a la ruta nueva (la carpeta y sus subcarpetas de tema). Nunca se borra la vieja ni se pisa una que ya exista.
+local PJ="$HOME/.claude/projects" cv cn dv rest
+cv=$(printf '%s' "$VIEJA" | sed 's/[^A-Za-z0-9]/-/g'); cn=$(printf '%s' "$NUEVA" | sed 's/[^A-Za-z0-9]/-/g')
+for dv in "$PJ/$cv" "$PJ/$cv"-*; do
+  [ -d "$dv/memory" ] || continue
+  rest="${dv#"$PJ/$cv"}"
+  [ -e "$PJ/$cn$rest/memory" ] && continue
+  { mkdir -p "$PJ/$cn$rest" && cp -Rp "$dv/memory" "$PJ/$cn$rest/memory"; } || falta+=("no pude copiar la memoria de Claude de ${dv##*/}")
+done
+
 # --- 3. Carpetas nuevas (nunca pisan nada) ---
 escribir_si_falta() {  # $1 = archivo; el contenido llega por la entrada
   if [ -e "$1" ]; then cat >/dev/null; return 0; fi
