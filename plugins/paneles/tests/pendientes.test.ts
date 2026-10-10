@@ -34,7 +34,7 @@ function fondo(on: On, mundo: Mundo) {
   // Sin texto, la lectura sigue al archivo de verdad, que en /casa no existe.
   on('fs.read', (_$, e, next) => (e.path === RUTA && mundo.texto !== undefined ? ({ value: mundo.texto } as never) : next(e)))
   on('process.run', (_$, e) => {
-    const [, , , , cmd, ...resto] = e.argv
+    const [, , cmd, ...resto] = e.argv.filter((a: string) => a !== "--no-optional-locks" && a !== "-C")
     if (cmd === 'rev-parse') return salida(`${(mundo.carpeta ?? CARPETA).startsWith(CARPETA) ? CARPETA : mundo.carpeta}\n`)
     if (mundo.sinGit) return salida('', 128, 'fatal: not a git repository')
     if (mundo.fallaGit) return salida('', 128, 'fatal: index file corrupt')
