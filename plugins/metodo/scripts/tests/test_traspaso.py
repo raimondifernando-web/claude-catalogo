@@ -192,6 +192,17 @@ class Enchufe(Base):
         self.assertIn("vieja/rama", out)
         self.assertNotIn("main,", out)
 
+    def test_cerrar_recuerda_paso_sesion_siguiente(self):
+        rc, out = correr(CERRAR, self.p)
+        self.assertIn("MANUAL (paso 10, sesión siguiente)", out)
+        self.assertIn("MISMA respuesta", out)
+
+    def test_skill_cerrar_no_termina_el_turno_tras_el_prompt(self):
+        t = (S.parent / "skills" / "cerrar" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("NO termines el turno después del prompt", t)
+        self.assertIn("MISMA respuesta", t)
+        self.assertNotIn("recién en el mensaje\n   SIGUIENTE", t)
+
     def test_rama_sin_main_ni_master_no_rompe(self):
         git(self.p, "init", "-q", "-b", "trunk")
         (self.p / "a.txt").write_text("a", encoding="utf-8")

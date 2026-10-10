@@ -14,8 +14,8 @@ re-hacer trabajo y volver a discutir lo decidido. Por eso el cierre tiene **un e
 saltear: el prompt de reanudación copiable**, que el usuario pega al abrir la próxima sesión.
 
 ## ⛔ Regla de oro
-**El ÚLTIMO mensaje de la sesión SIEMPRE es el prompt de reanudación copiable** (único agregado posible: en la app de
-escritorio, la apertura de la sesión siguiente del paso 10, que va DESPUÉS de haberlo emitido completo). Pase lo que pase
+**El ÚLTIMO mensaje de la sesión SIEMPRE es el prompt de reanudación copiable** (en la app de escritorio, el paso 10 sigue en esa misma
+respuesta: son llamadas, no un mensaje nuevo). Pase lo que pase
 con los demás pasos, nunca termines sin emitir ese bloque.
 
 ## Secuencia
@@ -140,10 +140,11 @@ con los demás pasos, nunca termines sin emitir ese bloque.
    está subido y existen las herramientas de sesiones de la app (`start_session`, `detach_session`, `archive_session`;
    búscalas con ToolSearch si vienen diferidas). Si no existen (terminal, Cowork, otra máquina) → salteá este paso y
    decilo en una línea; el usuario abre la ventana y escribe `/arrancar`.
-   **Orden obligatorio** (carrera vista en la práctica: la sesión nueva arrancó mientras esta todavía copiaba el prompt):
-   primero el mensaje del paso 9 —el prompt completo y su línea «Guardado en…»—, **COMPLETO y SOLO**; recién en el mensaje
-   SIGUIENTE una línea («Abrí <título> y archivo esta.») y la llamada a `start_session`. Nunca `start_session` en el mismo
-   mensaje que el prompt: la nueva lee el `REANUDAR.md` mientras esta sigue «trabajando».
+   **NO termines el turno después del prompt** (vista en la práctica: una sesión cerró en el paso 9 y nunca abrió la
+   siguiente). El `REANUDAR.md` ya está en disco y subido antes del paso 9, así que la sesión nueva no puede leer algo a
+   medias. Orden: escribí el prompt del paso 9 y su línea «Guardado en…» y, en ESA MISMA respuesta, sin dejar de trabajar,
+   seguí con una línea («Abrí <título>; archivo esta.») y las llamadas (`start_session`, `detach_session`,
+   `move_sessions`, `archive_session`). Nunca cierres tu respuesta sin haber hecho este paso o sin decir por qué no.
    - `start_session` con `initiation: "user_asked"` (el `/cerrar` que escribió el usuario es el pedido), `context: "fresh"`,
      `cwd` = la carpeta actual, `model` = el de la línea «Modelo para abrir» de la PARTE B (por defecto el mismo que usás),
      `title` = el título siguiente de la serie (mismo ancho: «03» → «04»), `prompt`: «Ejecutá la skill /arrancar en esta
@@ -154,7 +155,7 @@ con los demás pasos, nunca termines sin emitir ese bloque.
      (`get_session("self")`), después `move_sessions([<id nuevo>], group_id = el de esta)`. Si el detach falla, decilo.
    - **Archivate al final:** la nueva NO puede archivar esta (mientras corre /arrancar, esta sigue «trabajando» y la app
      rechaza el archivado). Si `start_session` + detach salieron bien, la ÚLTIMA llamada del cierre es
-     `archive_session("self")`. El `/cerrar` del usuario es su OK; es reversible desde la barra lateral. Si algo falló
+     `archive_session("self")`. Si la app la rechaza por «still working», es normal: se archiva en el próximo turno o la archiva `/arrancar`. El `/cerrar` del usuario es su OK; es reversible desde la barra lateral. Si algo falló
      antes, no te archives.
    - Si la llamada falla o la app la rechaza, decilo tal cual y dejá la línea de siempre (`/arrancar` a mano).
 

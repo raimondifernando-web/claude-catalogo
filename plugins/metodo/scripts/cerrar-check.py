@@ -168,6 +168,7 @@ print("• MANUAL (verificación propia): ¿qué PROBASTE del resultado de lo qu
 # (g) lo que solo puede hacer la sesión
 print("• MANUAL (paso 3, lo durable): lo que esta sesión aprendió como regla permanente ya bajó al CLAUDE.md (o a su archivo), "
       "no solo al prompt — decí dónde fue cada cosa, o «nada»")
+print("• MANUAL (paso 10, sesión siguiente): en la app de escritorio, después del prompt y EN LA MISMA respuesta: start_session → detach → move → archive; no cierres el turno sin hacerlo o sin decir por qué no (en terminal o Cowork: «no aplica»)")
 print("• MANUAL (paso 7, contrato): la PARTE A del prompt trae ROL · ALCANCE · REGLAS con contenido real "
       "(no una línea genérica) y la PARTE B los pendientes en orden")
 
