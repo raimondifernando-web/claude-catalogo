@@ -355,6 +355,18 @@
         "rubro",
         "es"
       ]
+    },
+    {
+      "name": "paneles",
+      "source": "./plugins/paneles",
+      "description": "Dos paneles a la derecha de la app que se abren solos: «Uso» (cuánto contexto llevás gastado, por categoría, y cuánto te queda del cupo del plan) y «Pendientes» (la lista de .claude/PENDIENTES.md de la carpeta: lo que va ya, lo de esta semana y los cambios). Solo leen, nunca escriben ni mandan nada afuera. Sin lista de pendientes lo dicen en castellano. Sin dependencias.",
+      "version": "0.1.0",
+      "category": "productivity",
+      "tags": [
+        "l3",
+        "paneles",
+        "es"
+      ]
     }
   ]
 }

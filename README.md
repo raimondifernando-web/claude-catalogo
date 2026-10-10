@@ -24,6 +24,7 @@ Actualizar más adelante: `claude plugin update base-segura@claude-catalogo` (o 
 | `rubro-marketing` | L2 | copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (38 skills y el agente `marketing-analyst`). Requiere `base-segura` | 0.2.5 |
 | `rubro-finanzas-legal` | L2 | CFO para pymes, finanzas personales en pesos y dólares, trámites del auto, y guía de compraventa de empresas (M&A) con marco argentino (4 skills). Orientativo: no reemplaza a un contador ni a un abogado. Requiere `base-segura` | 0.1.1 |
 | `rubro-conocimiento` | L2 | capturar y organizar notas, reuniones e investigaciones en Notion y en Obsidian (bases, CLI y markdown) (6 skills). Requiere `base-segura` | 0.1.1 |
+| `paneles` | L3 | Dos paneles a la derecha de la app: «Uso» (contexto gastado por categoría y cupo del plan) y «Pendientes» (la lista de `.claude/PENDIENTES.md` de la carpeta: lo que va ya, lo de esta semana y los cambios). Solo leen, no escriben ni mandan nada afuera | 0.1.0 |
 
 Cada plugin tiene su `CHANGELOG.md` escrito en lenguaje del cliente ("qué cambia para vos").
 

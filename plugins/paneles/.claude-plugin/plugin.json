@@ -1,0 +1,10 @@
+{
+  "name": "paneles",
+  "version": "0.1.0",
+  "description": "Dos paneles a la derecha de la app: «Uso» (cuánto contexto y cuánto cupo del plan llevás gastado) y «Pendientes» (la lista de .claude/PENDIENTES.md de la carpeta). Solo leen, no escriben nada.",
+  "author": { "name": "Fernando Raimondi" },
+  "license": "MIT",
+  "homepage": "https://github.com/raimondifernando-web/claude-catalogo",
+  "repository": "https://github.com/raimondifernando-web/claude-catalogo",
+  "types": "./types/index.d.ts"
+}
