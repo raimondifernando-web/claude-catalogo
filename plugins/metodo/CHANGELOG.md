@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.31.0 — 2026-10-10
+- **Regla 22: antes de construir algo nuevo, Claude mira qué hay instalado para eso.** Si va a crear una pantalla, o a lanzar un agente o workflow que crea o diseña, primero consulta las recetas del método (qué skills y agentes usar, en qué orden y cuáles no). Un freno automático salta **una sola vez** por carpeta cada 4 horas, solo si hay receta para lo que va a hacer, y trae la receta en el mismo mensaje. Lo demás (leer, auditar, editar archivos que ya existen, scripts) pasa sin molestar.
+- **Tres recetas incluidas:** pantallas web, documentos de oficina y seguridad con claves. Podés agregar las tuyas en `<config de Claude>/recetas/`: si se llama igual, la tuya gana.
+- **Consulta a mano:** `herramientas-para.py <tema>` (junto a `radar.py`) muestra la receta y las skills y agentes instalados que coinciden. Solo lee, no usa red.
+- Se activa solo con `/plugin update`; no hay nada que correr. Se apaga con `CONSULTAR_ECOSISTEMA_OFF=1` o creando `<config de Claude>/metodo/consultar-ecosistema.apagado`. Si falta Python, deja pasar sin ruido.
+
 ## 0.30.1 — 2026-10-10
 - **El resumen de la sesión anterior solo se muestra si lo dejó tu propio `/cerrar`.** Antes, un archivo `REANUDAR.md` de un repositorio ajeno (clonado, descargado) podía hacerse pasar por uno tuyo copiando su primera línea y meter instrucciones en tu sesión. Ahora el último paso de `/cerrar` anota una huella del archivo en `reanudar-confiables.txt` (dentro de tu carpeta de configuración, solo si el archivo se acaba de escribir) y el arranque solo muestra los que están anotados. Si un `REANUDAR.md` no está anotado, te avisa en una línea y vos corrés `/arrancar`. Los cierres anteriores a esta versión no están anotados: en esas carpetas te va a avisar en cada apertura hasta el próximo `/cerrar`, y mientras tanto `/arrancar` lo lee igual.
 - **`/cerrar` ya no se salta abrir la siguiente sesión por el cupo.** El cupo de Claude y «quiero seguir después» no son motivo para dejar de abrirla.

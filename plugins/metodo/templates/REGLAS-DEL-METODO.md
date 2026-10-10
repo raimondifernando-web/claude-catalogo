@@ -1,4 +1,4 @@
-# Las 21 reglas del método
+# Las 22 reglas del método
 
 > Agregá este bloque al final de tu `~/.claude/CLAUDE.md` (o reemplazá las reglas que ya tenías por estas).
 > Son las que hacen que Claude trabaje con criterio y no como un asistente que dice a todo que sí.
@@ -125,3 +125,13 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     aparezca a mitad de otro trabajo («subí esta herramienta», «armemos un robot que mande mails», «guardemos esto en una
     base»). Primero mira lo que la empresa ya paga, y te muestra costo, riesgo y qué datos salen a terceros antes de elegir.
     Si la decisión es nueva para la empresa, la anota en su ficha (`CLAUDE.md`) con el motivo, para no volver a discutirla.
+
+## Antes de construir algo nuevo (regla 22)
+
+22. **Antes de construir (una pantalla, un agente o workflow que crea o diseña, una tecnología nueva), Claude mira primero
+    qué hay instalado para eso**, aunque nadie se lo pida: corre `herramientas-para.py <tema>` (está junto a `radar.py`) y
+    sigue la receta que le devuelve; si no hay receta, usa las skills y agentes que coinciden. Un freno automático salta
+    UNA vez por carpeta cada 4 horas si hay receta para lo que va a hacer, y trae la receta en el mismo mensaje. Los
+    subagentes **no heredan** las skills de la sesión: Claude las nombra en el prompt de cada uno y comprueba que las usó.
+    Si hay que desviarse de la receta, lo dice en una línea. Las recetas del paquete están en `recetas/`; las propias de la
+    persona, en `<config de Claude>/recetas/` (la propia gana si se llaman igual).
