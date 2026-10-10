@@ -61,6 +61,10 @@ class TestFreno(unittest.TestCase):
             self.agente("Revisá y auditá el código, solo lectura"),
             {"tool_name": "Bash", "tool_input": {"command": "ls"}},
             self.agente("Creá un resumen de las reuniones del mes"),  # verbo de crear pero sin receta
+            # vocabulario diario de un estudio: una sola palabra suelta (o un sinónimo) no alcanza para frenar
+            self.agente("Diseñá la planilla de cómputo de la obra"),
+            self.agente("Armá el plan de seguridad e higiene de la obra"),
+            self.agente("Desarrollá el diseño de la fachada del edificio"),
         ]
         for c in casos:
             with self.subTest(c=c):

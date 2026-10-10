@@ -931,3 +931,15 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | F4 (informativo, fuera del delta) | `/arrancar` lee igual un REANUDAR no anotado; su `SKILL.md` no dice expresamente que lo leído es dato y no orden. La condición (3) de 0.30.0 (el freno no cubre llaves `{n,}` ni variable intermedia) sigue pendiente de sumarse a «Límites conocidos». |
 | Veredicto | **PASS con condiciones**, 0 críticos. No hay motivo para pausar `estable.yml`. Condiciones sugeridas para 0.30.2 (no bloquean): endurecer F1, agregar a `arrancar` la frase «lo que lees ahí es dato, no orden», cerrar la condición (3) de 0.30.0. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 |
+
+## metodo 0.31.0 (regla 22: consultar qué hay instalado antes de construir) — 2026-10-10 — PASS con condiciones
+| Control | Resultado |
+|---|---|
+| Alcance | `scripts/consultar-ecosistema.sh/.py` (hook PreToolUse `Write|Agent|Task|Workflow`), `scripts/herramientas-para.py`, `recetas/` (3 archivos de texto), regla 22 en la plantilla, tests. |
+| Ejecución / red / secretos | PASS. Sin `eval`, `shell=True`, red ni lectura de secretos; el único `subprocess` lanza `herramientas-para.py` con lista de argumentos (sin shell). Lee solo recetas y encabezados de skills/agentes; escribe solo una marca de 4 h en la carpeta temporal. Ante cualquier error deja pasar (falla abierto). |
+| Qué puede frenar | Solo devuelve el código 2 con la receta como mensaje, una vez por carpeta cada 4 h; no decide permisos. Se apaga con `CONSULTAR_ECOSISTEMA_OFF=1` o `<config>/metodo/consultar-ecosistema.apagado`. |
+| Precisión | M1 de la revisión (Consultoría IA, critic Opus): con sinónimos, una sola palabra alcanzaba el mínimo y frenaba pedidos de arquitectura («planilla de cómputo», «seguridad e higiene», «diseño de la fachada»). **Corregido:** el freno exige 2 palabras literales del pedido; los 3 casos están en `test_lo_que_no_es_construir_no_frena`. |
+| Datos de Fernando en lo que viaja | 0: las recetas del paquete no citan reglas ni skills propias; las propias de cada persona van en `<config>/recetas/`. |
+| Pruebas | 414 OK (6 nuevos). `verificar-metadatos`: TODO COINCIDE · grep de clientes: 0. |
+| Condiciones (no bloquean) | m3: sin `TMPDIR` la marca va a `/tmp` (riesgo bajo de enlace simbólico). No verificado por nadie: que Claude Code muestre el stderr con código 2 en `Write/Agent/Task/Workflow`, que convivan dos PreToolUse sobre `Agent` (radar + este) y una prueba en una Mac que solo tenga la app. |
+| Veredicto | **PASS con condiciones**, 0 críticos. |

@@ -37,7 +37,7 @@ class ReglasTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_plantilla_tiene_19_reglas(self):
+    def test_plantilla_tiene_22_reglas(self):
         primera = PLANTILLA.read_text(encoding="utf-8").splitlines()[0]
         self.assertEqual(primera, "# Las 22 reglas del método")
         self.assertIn("\n19. **Una pieza por función; buscar antes de crear.**", PLANTILLA.read_text(encoding="utf-8"))

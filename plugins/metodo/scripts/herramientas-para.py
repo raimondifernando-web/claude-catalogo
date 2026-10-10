@@ -27,11 +27,12 @@ def norm(s):
     return "".join(c for c in s if unicodedata.category(c) != "Mn")
 
 
-def toks(s):
+def toks(s, sinonimos=True):
     t = {t for t in re.findall(r"[a-z0-9]{3,}", norm(s)) if t not in STOP}
-    for k in list(t):
-        if k in SIN:
-            t |= set(SIN[k].split())
+    if sinonimos:
+        for k in list(t):
+            if k in SIN:
+                t |= set(SIN[k].split())
     return t
 
 
@@ -65,7 +66,7 @@ def marcar(cwd):
         pass
 
 
-def recetas(q, minimo=1):
+def recetas(q, minimo=1, estricto=False):
     vistas = {}
     for carpeta in (RECETAS_PAQUETE, os.path.join(CFG, "recetas")):  # la propia pisa a la del paquete
         for p in sorted(glob.glob(os.path.join(carpeta, "*.md"))):
@@ -76,7 +77,7 @@ def recetas(q, minimo=1):
             vistas[nombre] = (meta, cuerpo)
     out = []
     for nombre, (meta, cuerpo) in vistas.items():
-        hit = q & toks(meta.get("triggers", "") + " " + nombre)
+        hit = q & toks(meta.get("triggers", "") + " " + nombre, sinonimos=not estricto)
         if len(hit) >= minimo:
             out.append((len(hit), nombre, cuerpo.strip()))
     return sorted(out, key=lambda x: -x[0])
@@ -107,10 +108,11 @@ def main():
     solo = args[0] == "--solo-recetas"   # modo del freno: sin marca y sin piezas
     if solo:
         args = args[1:]
-    q = toks(" ".join(args))
+    # el freno exige 2 palabras LITERALES del pedido (los sinónimos no suman: «diseño de la fachada» no es una pantalla)
+    q = toks(" ".join(args), sinonimos=not solo)
     if not solo:
         marcar(os.getcwd())
-    rs = recetas(q, 2 if solo else 1)
+    rs = recetas(q, 2 if solo else 1, estricto=solo)
     if rs:
         print("══ RECETAS (el método las dejó escritas: seguilas antes de armar nada) ══")
         for _, n, c in rs[:2]:
