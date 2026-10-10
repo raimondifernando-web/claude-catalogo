@@ -2,15 +2,19 @@
 """arrancar-check — comprobación mecánica del arranque de sesión (/metodo:arrancar).
 
 SOLO LEE: no escribe nada ni muestra valores de archivos de claves. Una línea por paso (✓/✗) y cierra con
-«Arranque completo ✓» o «Falta: … ✗» (exit 0/1). Lo que el script no puede hacer (numerar la sesión, archivar la
-serie anterior) sale como línea MANUAL para que la sesión tenga que reportarlo.
+«Arranque completo ✓» o «Falta: … ✗» (exit 0/1). Lo que el script no puede hacer (poner el título, archivar la
+serie anterior) lo CALCULA desde los datos que la app guarda en disco y lo deja como línea TÍTULO/SESIONES ANTERIORES,
+para que la sesión no tenga que pedir la lista completa de sesiones de la app (decenas de miles de caracteres).
 
 Uso: arrancar-check.py [carpeta]   (default: la carpeta actual)
 """
+import glob
+import json
 import os
 import re
 import subprocess
 import sys
+import time
 
 CONFIG = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
 cwd = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 else os.getcwd()
@@ -114,9 +118,103 @@ try:
 except Exception as e:
     print(f"• CLAUDE.md: no se pudo correr claude-md-check ({type(e).__name__})")
 
-# Pasos que solo puede hacer la sesión
-print("• MANUAL (paso 3 bis): si tenés las herramientas de sesiones de la app, numerar el título «<base> N+1» y "
-      "ofrecer archivar la serie anterior; si no, «no aplica»")
+# (f) Serie de sesiones de esta carpeta (app de escritorio): título nuevo y sesiones anteriores abiertas.
+UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+
+
+def carpeta_sesiones():
+    h = os.path.expanduser("~")
+    for c in (os.path.join(os.environ.get("APPDATA", ""), "Claude", "claude-code-sessions"),
+              os.path.join(h, "Library", "Application Support", "Claude", "claude-code-sessions"),
+              os.path.join(h, ".config", "Claude", "claude-code-sessions")):
+        if c and os.path.isdir(c):
+            return c
+    return None
+
+
+def mi_sesion(ses):
+    """La sesión actual: variable de entorno, luego procesos ancestros (si hay `ps`), luego la más activa."""
+    por_cli = {s.get("cliSessionId"): s for s in ses}
+    v = os.environ.get("CLAUDE_SESSION_ID")
+    if v and v in por_cli:
+        return por_cli[v]
+    pid = os.getppid()
+    for _ in range(8):
+        try:
+            r = subprocess.run(["ps", "-o", "ppid=,args=", "-p", str(pid)], capture_output=True, text=True,
+                               timeout=5).stdout.strip()
+        except Exception:
+            break
+        ppid, _, args = r.partition(" ")
+        for u in re.findall(UUID, args):
+            if u in por_cli:
+                return por_cli[u]
+        if not ppid.isdigit() or int(ppid) <= 1:
+            break
+        pid = int(ppid)
+    vivas = [s for s in ses if not s.get("isArchived")]
+    return max(vivas, key=lambda s: s.get("lastActivityAt", 0)) if vivas else None
+
+
+def serie_sesiones():
+    raiz = carpeta_sesiones()
+    if not raiz:
+        print("- Numeración: no encontré los datos de sesiones de la app (terminal, Cowork u otra máquina): no aplica")
+        return
+    real = os.path.realpath(cwd)
+    ses = []
+    for f in glob.glob(os.path.join(raiz, "*", "*", "local_*.json")):
+        try:
+            d = json.load(open(f, encoding="utf-8"))
+            if d.get("sessionId") and os.path.realpath(d.get("cwd", "")) == real:
+                ses.append(d)
+        except (OSError, ValueError):
+            continue
+    yo = mi_sesion(ses)
+    if yo is None:
+        print("• MANUAL (numeración): no pude identificar esta sesión en el disco; si tenés `list_sessions`, pedí "
+              "`limit: 15` y filtrá por tu carpeta")
+        return
+    numeradas = {}
+    for s in ses:
+        if s["sessionId"] == yo["sessionId"]:
+            continue
+        m = re.match(r"^(.*?)(\d+)$", s.get("title", "").strip())
+        if m and m.group(1).strip():
+            numeradas.setdefault(m.group(1), []).append((int(m.group(2)), m.group(2), s))
+    mt = re.match(r"^(.*?)(\d+)$", yo.get("title", "").strip())
+    if mt and mt.group(1) in numeradas:
+        base, mio, ya = mt.group(1), int(mt.group(2)), True
+    else:
+        # serie = la de la sesión numerada más reciente, entre las bases con ≥2 miembros
+        # (una sola sesión que casualmente termina en número no es una serie)
+        cand = {b: v for b, v in numeradas.items() if len(v) >= 2}
+        if not cand:
+            print("✓ Numeración: sin serie numerada en esta carpeta (no inventes una); nada que archivar")
+            return
+        base = max(cand, key=lambda b: max(s.get("lastActivityAt", 0) for _, _, s in cand[b]))
+        mio, ya = max(n for n, _, _ in cand[base]) + 1, False
+    ancho = max(len(dig) for _, dig, _ in numeradas[base])
+    if ya:
+        print(f"✓ Numeración: la sesión ya se llama «{yo['title']}» (la nombró alguien): no tocar el título")
+    else:
+        print(f"• TÍTULO: set_session_title(\"self\", \"{base}{str(mio).zfill(ancho)}\")")
+    viejas = sorted(((n, s) for n, _, s in numeradas[base] if n < mio and not s.get("isArchived")),
+                    key=lambda x: x[0])
+    if viejas:
+        print("• SESIONES ANTERIORES SIN ARCHIVAR (preguntá a quien te acompaña si las archivás; ids para archive_session):")
+        for n, s in viejas:
+            print(f"    {s['sessionId']} «{s.get('title', '')}»")
+    else:
+        print("✓ Serie anterior: no hay sesiones sin archivar")
+
+
+try:
+    serie_sesiones()
+except Exception as e:  # nunca romper el chequeo por esto
+    print(f"• MANUAL (numeración): no pude leer los datos de la app ({type(e).__name__}); si tenés `list_sessions`, "
+          "pedí `limit: 15` y filtrá por tu carpeta")
+
 print("• MANUAL (modelo): mirá el próximo paso, compará con el ruteo que mostró el radar al abrir y decile a quien te "
       "acompaña en UNA línea: «este paso pide X, estás en Y». Si no coinciden, proponé cambiar ANTES de empezar "
       "(después se pierde la caché)")

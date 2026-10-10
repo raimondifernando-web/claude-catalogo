@@ -6,10 +6,12 @@ Correr desde la raíz del repo:
 Cada test arma una carpeta de proyecto temporal con su propio repo y su propia carpeta de configuración
 (CLAUDE_CONFIG_DIR). Nunca se toca la configuración real.
 """
+import json
 import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -100,6 +102,55 @@ class ChecksTest(unittest.TestCase):
         (cache / "REGLAS-DEL-METODO.md").write_text("1. uno\n2. dos\n21. veintiuno\n", encoding="utf-8")
         rc, out = self.correr(ARRANCAR, str(self.proyecto))
         self.assertIn("metodo 0.9.0 instalado · última regla numerada: 21", out)
+
+    # ---- arrancar: serie de sesiones (título nuevo y anteriores sin archivar, calculado desde el disco) ----
+    def con_sesiones(self, sesiones, titulo_propio="Hola"):
+        """Arma la carpeta de sesiones de la app en un HOME temporal; la última es «esta» sesión."""
+        home = self.dir / f"home{time.time_ns()}"
+        d = home / "Library" / "Application Support" / "Claude" / "claude-code-sessions" / "a" / "b"
+        d.mkdir(parents=True)
+        ahora = int(time.time() * 1000)
+        todas = [(t, arch, minutos) for t, arch, minutos in sesiones] + [(titulo_propio, False, 0)]
+        for i, (titulo, archivada, minutos) in enumerate(todas):
+            (d / f"local_{i}.json").write_text(json.dumps({
+                "sessionId": f"local_{i}", "cliSessionId": f"cli{i}", "cwd": str(self.proyecto), "title": titulo,
+                "isArchived": archivada, "lastActivityAt": ahora - minutos * 60000}), encoding="utf-8")
+        env = dict(os.environ, HOME=str(home), APPDATA=str(self.dir / "sin-appdata"), CLAUDE_CONFIG_DIR=str(self.config),
+                   CLAUDE_SESSION_ID=f"cli{len(todas) - 1}")
+        r = subprocess.run([sys.executable, str(ARRANCAR), str(self.proyecto)], env=env, capture_output=True,
+                           text=True, timeout=60)
+        return r.stdout
+
+    def test_arrancar_serie_mismo_ancho_y_cero_relleno(self):
+        out = self.con_sesiones([("Ventas 03", True, 500), ("Ventas 02", True, 900)])
+        self.assertIn('set_session_title("self", "Ventas 04")', out)
+        out = self.con_sesiones([("Obra . 09", True, 500)] + [("Obra . 08", True, 900)])
+        self.assertIn('"Obra . 10"', out)
+
+    def test_arrancar_serie_lista_anteriores_sin_archivar_para_preguntar(self):
+        out = self.con_sesiones([("PM 2", False, 400), ("PM 1", True, 800)])
+        self.assertIn('"PM 3"', out)
+        self.assertIn("local_0", out)
+        self.assertIn("preguntá", out)
+
+    def test_arrancar_serie_ya_numerada_no_se_renombra(self):
+        out = self.con_sesiones([("PM 7", False, 400), ("PM 6", True, 800)], titulo_propio="PM 8")
+        self.assertIn("no tocar el título", out)
+        self.assertNotIn("set_session_title", out)
+        self.assertIn("local_0", out)
+
+    def test_arrancar_serie_una_sola_numerada_no_es_serie(self):
+        out = self.con_sesiones([("Charla regla 20", True, 5), ("Otra", True, 9)])
+        self.assertIn("sin serie numerada", out)
+
+    def test_arrancar_serie_gana_la_mas_reciente(self):
+        out = self.con_sesiones([("Viejo 39", True, 5000), ("Viejo 38", True, 6000), ("PM - 5", True, 10),
+                                 ("PM - 4", True, 20)])
+        self.assertIn('"PM - 6"', out)
+
+    def test_arrancar_serie_sin_datos_de_la_app_no_falla(self):
+        rc, out = self.correr(ARRANCAR, str(self.proyecto))
+        self.assertEqual(rc, 0, out)
 
     # ---- cerrar ----
     def test_cerrar_ok(self):

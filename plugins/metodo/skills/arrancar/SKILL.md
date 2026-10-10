@@ -5,94 +5,35 @@ description: "Protocolo de arranque de sesión: leer el estado, confirmar el rol
 
 # /metodo:arrancar — Arrancar leyendo, no adivinando
 
-Una sesión que arranca mal re-hace trabajo, vuelve a discutir decisiones tomadas y pisa lo que otra sesión
-dejó. Este protocolo cuesta dos minutos y evita todo eso.
+Una sesión que arranca mal re-hace trabajo, vuelve a discutir decisiones tomadas y pisa lo que otra sesión dejó. Este protocolo cuesta dos minutos y evita todo eso.
 
-## Secuencia (en orden, antes de tocar NADA)
+**Cuidá el cupo:** cada llamada al modelo relee todo lo que ya está en la conversación, así que lo caro son las vueltas y lo que queda cargado. Por eso el arranque son **3 vueltas** (leer y chequear · título · confirmar), y **no se pide la lista completa de sesiones de la app** (`list_sessions`: decenas de miles de caracteres de todas las carpetas): el chequeo ya calcula lo que hace falta desde el disco. Tampoco releas archivos largos "por las dudas".
 
-### 0. Levantar el último texto de arranque (el usuario ya no tiene que pegarlo)
-- Si el mensaje **no** trae un bloque `═══ PARTE A`, buscá el que dejó `/metodo:cerrar`: el archivo
-  **`REANUDAR.md` en la carpeta de trabajo** (la carpeta donde está abierta esta ventana; si es una copia de
-  `/metodo:otra-sesion`, la de esa copia — cada una tiene el suyo). Leelo entero y **tratalo exactamente como si el
-  usuario lo hubiera pegado**: es tu contrato y tu estado.
-- Decile en una línea de dónde salió y de cuándo es: «Levanté el cierre del [fecha-tema] de `REANUDAR.md`». Si es
-  viejo para el ritmo del proyecto, avisalo: el estado puede haber cambiado y los archivos mandan.
-- Si **no existe** el archivo, seguí con el paso 1 "sin contrato". No lo inventes.
-- Si el usuario **sí** pegó un texto y además existe el archivo, gana el pegado.
+## Vuelta 1 — en UN mensaje, todo en paralelo, antes de tocar nada
+1. Leé **`REANUDAR.md` en la carpeta de trabajo** (la carpeta donde está abierta esta ventana; si es una copia de `/metodo:otra-sesion`, la de esa copia — cada una tiene el suyo). Si el usuario pegó un texto de arranque (bloque `═══ PARTE A`), gana el pegado.
+2. Corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/arrancar-check.py"` (en Windows, `py -3`). Solo lee: una línea ✓/✗ por paso (cierre anterior, copia y rama contra lo declarado, estado de git, método instalado) y calcula el título nuevo y las sesiones anteriores abiertas. **Prohibido confirmar sin haberlo corrido** (las sesiones se saltaban pasos escritos; esto los vuelve visibles). Si no se puede correr, decilo: no lo simules.
+3. Corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/radar.py" aviso` (Windows: `py -3`). Si imprime una línea («Radar: el radar de modelos tiene N días…», «se retira X el …»), sumala tal cual a la confirmación. Si no imprime nada, no digas nada. Nunca falla ni espera la red: si da error, seguí sin avisar.
+4. Si vas a numerar y las herramientas de sesiones de la app (`ccd_session_mgmt`) vienen diferidas, cargá `set_session_title` y `archive_session` con `ToolSearch` (`select:mcp__ccd_session_mgmt__set_session_title,mcp__ccd_session_mgmt__archive_session`) en este mismo mensaje. Si no existen (terminal, Cowork, otra máquina), saltá la numeración sin avisar.
 
-### 1. ¿Tengo contrato?
-- **Si hay un texto de arranque** (pegado por el usuario o levantado en el paso 0; bloque `═══ PARTE A`): ese es tu
-  contrato. Leelo entero. Tu ROL, tu alcance y tus reglas salen de ahí, no de tu intuición.
-- **Si NO hay contrato**: reconstruilo ANTES de trabajar: `CLAUDE.md` de la carpeta de trabajo (quién es el
-  usuario, cómo trabaja) + el último archivo en `handoffs/` (dónde quedó todo). Declarale al usuario el rol que
-  asumís: "Voy a trabajar como [rol] sobre [tema]".
-
-### 2. Leer el estado (no re-hacer, no re-discutir)
+## Con lo leído (sin más llamadas)
+- **Contrato.** Con texto de arranque, la PARTE A es tu contrato: tu rol, alcance y reglas salen de ahí, no de tu intuición. Decile al usuario de dónde lo tomaste y de cuándo es («Levanté el cierre del [fecha-tema] de `REANUDAR.md`»); si es viejo para el ritmo del proyecto, avisalo: el estado puede haber cambiado y los archivos mandan. Sin contrato (no hay archivo ni texto pegado; no lo inventes): reconstruilo con el `CLAUDE.md` de la carpeta de trabajo + el último archivo de `handoffs/`, y declará «Voy a trabajar como [rol] sobre [tema]».
 - **De qué veníamos hablando.** Si la PARTE B trae esa línea, es lo primero que decís en la confirmación («Veníamos con …»): es la memoria de la charla anterior, y «lo último que hiciste» del usuario se refiere a eso. Si no la trae (cierre viejo), leé la sección final del último handoff antes de contestar cualquier pregunta sobre «lo anterior»; nunca respondas «en esta sesión no hice nada» sin haberlo mirado.
-- Último handoff del tema en `handoffs/` de la carpeta de trabajo: qué se hizo, qué se decidió, qué falta.
-- Las decisiones ya tomadas NO se reabren. Si creés que una está mal, lo decís una vez, con evidencia, y seguís.
-- La lista **A VERIFICAR** del prompt (si hay): esas verificaciones son TUYAS, hacelas temprano.
+- **Estado.** Las decisiones ya tomadas NO se reabren (si creés que una está mal, lo decís una vez, con evidencia, y seguís). Leé el último handoff del tema solo si el texto lo cita o lo necesitás. Los ítems **A VERIFICAR** del texto son TUYOS: ejecutalos temprano.
+- **Entorno (el archivo manda sobre la memoria).** El chequeo compara `pwd` y rama contra el `Copia: <ruta> · Rama: <tema/fecha>` de la PARTE B. Si dice ✗ → **PARÁ y avisá**: «Este texto es para la copia X en la rama Y, y estoy en Z. No trabajo en la copia equivocada: abrí la ventana en la carpeta correcta o dame el texto de esta.» Trabajar en la copia equivocada pisa a otra sesión. Si no declara copia y hay otra sesión abierta sobre el mismo proyecto (el chequeo avisa si `git worktree list` muestra más de una), proponé abrir ésta con `/metodo:otra-sesion` (regla 11). Además: ¿las herramientas que vas a usar están disponibles? (si no, avisá, no simules); cualquier número que uses, contalo ahora.
 
-### 3. Verificar el entorno (el archivo manda sobre la memoria)
-- ¿La carpeta abierta es la de trabajo (`~/Documents/<Empresa>-Claude/`) y no otra?
-- **Si el texto de arranque declara `Copia: <ruta> · Rama: <tema/fecha>`** (PARTE B): verificalo con `pwd` y
-  `git branch --show-current`. **Si no coincide, PARÁ y avisá** — «Este texto es para la copia X en la rama Y, y
-  estoy en Z. No trabajo en la copia equivocada: abrí la ventana en la carpeta correcta o dame el texto de esta.»
-  No sigas con "ya que estoy": trabajar en la copia equivocada pisa a otra sesión.
-- **Si no lo declara y hay otra sesión abierta sobre el mismo proyecto** (el usuario lo dice, o `git worktree list`
-  muestra más de una copia): antes de tocar nada, proponé abrir esta sesión en su propia copia con
-  `/metodo:otra-sesion`. Regla 11: una sesión, un tema, una copia.
-- ¿Las herramientas que voy a usar están disponibles (plugins, conectores)? Si no: avisar, no simular.
-- Cualquier número que vayas a usar ("hay N archivos", "son N clientes") se cuenta ahora, no se recuerda.
+## Vuelta 2 — en UN mensaje, en paralelo (solo si el entorno está bien)
+- **Título** (app de escritorio): si el chequeo trae una línea `TÍTULO:`, ejecutala (`set_session_title("self", …)`: ya calculado desde la misma carpeta y la misma serie, con el mismo ancho: «03»→«04», «99»→«100»). Si dice que la sesión ya está numerada, no la toques (alguien la nombró). Si dice «sin serie», no inventes una. Mencioná el nombre nuevo en la confirmación.
+- Los probes de **A VERIFICAR**.
+- **Sesiones anteriores abiertas:** si el chequeo lista `SESIONES ANTERIORES SIN ARCHIVAR`, no las archives por tu cuenta: sumá una línea a la confirmación («Hay N sesiones anteriores de "<base>" abiertas (<n1>, <n2>…). ¿Las archivo? Se pueden recuperar cuando quieras.») y archivá (`archive_session`) **solo si el usuario dice que sí**. Nunca elimines una sesión. La app rechaza sola las que están trabajando.
+  **Excepción:** si te abrió un `/cerrar` (tu brief dice «Sesión abierta sola por /cerrar») y la app rechaza archivar la anterior por «still working», es lo esperado: `/cerrar` se archiva ella misma al terminar su turno. No insistas: dejá una línea «la anterior se archiva sola» y, al confirmar, verificá que ya no figure; si sigue ahí, ofrecé archivarla como en la regla de arriba (con el sí del usuario).
 
-### 3 bis. Numerar la sesión (solo en la app de escritorio)
-Quien abre cada sesión nueva (desde el «+» de un grupo de la barra lateral o sin grupo) suele copiar a mano el nombre de
-la anterior subiéndole el número («Ventas 7» → «Ventas 8»). Eso lo hace este paso:
-- Si no están las herramientas de sesiones de la app (`ccd_session_mgmt`: terminal, Cowork, otra máquina) →
-  saltá este paso sin avisar.
-- `get_session("self")` → si el título YA termina en número, alguien lo nombró: no lo toques.
-- `list_sessions` con `include_archived: true`, `limit: 50` y **sin filtrar por grupo** (la anterior casi siempre
-  está archivada, y una serie puede estar repartida: sesiones sin grupo, o que cambiaron de grupo). Quedate con las
-  que tienen **la misma carpeta (`cwd`)** y un título que termina en número: `<base><n>`, donde `<base>` es todo lo
-  que va antes de los dígitos, separador incluido («Ventas 7», «PM - Estudio . 03»).
-- Si en esa carpeta hay más de una base, la serie es la de la sesión numerada **más reciente**. Tomá la de `n` más
-  alto de esa serie y `set_session_title("self", "<base><n+1>")`, **con el mismo ancho**: si la serie usa «03», la
-  siguiente es «04» (no «4»); «09» → «10»; «99» → «100». Si no hay ninguna con número, no inventes una serie.
-  Mencioná el nombre nuevo en la confirmación del paso 4 (una línea).
-- **Sesiones anteriores abiertas:** si en la misma serie (misma carpeta, misma base, número menor) quedan
-  sesiones sin archivar que **no están corriendo**, sumá una sola línea a la confirmación del paso 4:
-  «Hay N sesiones anteriores de "<base>" abiertas (<n1>, <n2>…). ¿Las archivo? Se pueden recuperar cuando
-  quieras.» Archivá (`archive_session`) **solo si el usuario dice que sí**; sin respuesta no toques nada.
-  Nunca elimines una sesión. Esto vale también si el título ya tenía número.
-  **Excepción:** si te abrió un `/cerrar` (tu brief dice «Sesión abierta sola por /cerrar») y la app rechaza archivar la
-  anterior por «still working», es lo esperado: `/cerrar` se archiva ella misma al terminar su turno. No insistas: dejá una línea «la anterior se archiva sola» y, al confirmar (paso 4), verificá que ya no figure; si sigue
-  ahí, ofrecé archivarla como en la regla de arriba (con el sí del usuario).
-
-### 3 ter. Radar de modelos (una línea, solo si hay algo)
-Corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/radar.py" aviso` (en Windows, `py -3`). Si imprime una línea («Radar: el radar
-de modelos tiene N días…» o «se retira X el …»), sumala tal cual a la confirmación del paso 4. Si no imprime nada, no
-digas nada. Nunca falla ni espera la red: si da error, seguí sin avisar.
-
-### 3 quater. Comprobación mecánica (obligatoria antes de confirmar)
-Corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/arrancar-check.py"` (en Windows, `py -3`). Solo lee: una línea ✓/✗ por
-paso (el cierre anterior, copia y rama contra lo declarado, estado de git, método instalado). **Prohibido confirmar
-sin haberlo corrido** (las sesiones se saltaban pasos escritos; esto los vuelve visibles). Pegá su salida tal cual en
-la confirmación del paso 4 y, debajo, **una línea por cada ítem MANUAL y por cada A VERIFICAR con su resultado
-real**. Si termina en «Falta: … ✗», resolvelo y volvé a correrlo; si dice que copia o rama no coinciden, PARÁ
-(paso 3). Si el script no se puede correr, decilo en la confirmación: no lo simules.
-
-### 4. Confirmar y arrancar
-Si la carpeta (o la raíz de su repo) tiene `.claude/PENDIENTES.md`, corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/pendientes.py" --prio1` (si no tenés `CLAUDE_PLUGIN_ROOT`, buscá el script con `find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name pendientes.py | sort -V | tail -1`) y sumá lo que imprime (hasta 3 líneas de prioridad 1 abiertas; si hay más, «y N más: /metodo:pendientes»). Si no hay archivo, no digas nada.
-Confirmale al usuario en 2-3 líneas: **"Leí el estado. El próximo paso es [X]. ¿Arrancamos?"**
-Si el prompt ya trae el próximo paso definido y contexto suficiente, arrancá directo: la confirmación es
-para alinear, no para pedir permiso de trabajar.
+## Vuelta 3 — confirmar y arrancar
+Pegá solo las líneas ✓/✗ del chequeo y, debajo, **una línea por cada ítem MANUAL y por cada A VERIFICAR con su resultado real** (incluida la del modelo: «este paso pide X, estás en Y»). Si termina en «Falta: … ✗», resolvelo y volvé a correrlo. Si la carpeta (o la raíz de su repo) tiene `.claude/PENDIENTES.md`, corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/pendientes.py" --prio1` (si no tenés `CLAUDE_PLUGIN_ROOT`, buscá el script con `find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name pendientes.py | sort -V | tail -1`) y sumá lo que imprime (hasta 3 líneas de prioridad 1 abiertas; si hay más, «y N más: /metodo:pendientes»). Si no hay archivo, no digas nada. Después, en 2-3 líneas: **«Leí el estado. El próximo paso es [X]. ¿Arrancamos?»** Si el texto ya trae el próximo paso definido y contexto suficiente, arrancá directo: la confirmación es para alinear, no para pedir permiso de trabajar.
 
 ## Reglas del arranque
-- **Nada de escribir antes del paso 3.** Ni "mejoras rápidas" ni limpiezas oportunistas fuera de lo pedido.
+- **Nada de escribir antes de resolver el entorno.** Ni "mejoras rápidas" ni limpiezas oportunistas fuera de lo pedido.
 - **Si algo del estado contradice los archivos, ganan los archivos**, y lo avisás (el estado puede estar viejo; el disco no).
 - **Si la carpeta de trabajo no tiene `CLAUDE.md`**, eso es lo primero: proponer crearlo (plantilla en `base-segura/templates/CLAUDE-empresa.md`).
 
 ## Qué NO es esta skill
-No reemplaza a `/metodo:cerrar` (cierre), `/metodo:planear` (planificación) ni `/metodo:otra-sesion` (abrir una
-segunda sesión sin pisarse). Es solo la apertura. Atajo: si no tenés otra skill llamada `arrancar`, `/arrancar` a secas
-también la activa.
+No reemplaza a `/metodo:cerrar` (cierre), `/metodo:planear` (planificación) ni `/metodo:otra-sesion` (abrir una segunda sesión sin pisarse). Es solo la apertura. Atajo: si no tenés otra skill llamada `arrancar`, `/arrancar` a secas también la activa.
