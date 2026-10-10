@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """cerrar-check — comprobación mecánica del cierre de sesión (/metodo:cerrar). Gemelo de arrancar-check.py.
 
-Solo lee, salvo UNA anotación: si el REANUDAR está bien formado, guarda su sha256 en <config>/reanudar-confiables.txt
-(así el hook de arranque sabe que lo dejó /cerrar aquí). Nunca imprime valores (de un posible secreto solo el número de línea).
+Solo lee, salvo UNA anotación que pide el paso final de /cerrar con `--anotar`: si el REANUDAR está bien formado y se
+modificó hace menos de 30 minutos, guarda su sha256 en <config>/reanudar-confiables.txt (así el hook de arranque sabe
+que lo dejó /cerrar aquí). Sin `--anotar` no escribe nada. Nunca imprime valores (de un posible secreto solo el número de línea).
 Una línea por chequeo (✓/✗) y cierra con «Cierre completo ✓» o «Falta: … ✗» (exit 0/1).
 Lo que no se puede medir (que lo durable haya bajado a su archivo, el contrato del prompt) sale como línea MANUAL.
 
@@ -13,9 +14,13 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
+import time
 from datetime import date
 
 args = sys.argv[1:]
+anotar = "--anotar" in args
+args = [a for a in args if a != "--anotar"]
 slug = args.pop(0) if args and re.match(r"\d{4}-\d{2}-\d{2}-", args[0]) else None
 cwd = os.path.abspath(args[0]) if args else os.getcwd()
 faltan = []
@@ -43,22 +48,38 @@ def leer(p):
 
 
 def anotar_confiable(ruta):
-    """Anota el sha256 del REANUDAR (últimas 200 entradas, archivo 0600). Si falla, no rompe el chequeo."""
+    """Anota el sha256 del REANUDAR (una entrada por ruta, 300 como máximo, archivo 0600, escritura atómica).
+    Solo con --anotar y si el archivo es de los últimos 30 minutos (lo acaba de escribir /cerrar). No rompe el chequeo."""
+    if not anotar:
+        return
     try:
+        if time.time() - os.path.getmtime(ruta) > 1800:
+            return
         base = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
         arch = os.path.join(base, "reanudar-confiables.txt")
         with open(ruta, "rb") as f:
             h = hashlib.sha256(f.read(2_000_000)).hexdigest()
+        real = os.path.realpath(ruta)
         previas = []
         if os.path.isfile(arch):
             with open(arch, encoding="utf-8", errors="replace") as f:
-                previas = [l.rstrip("\n") for l in f if l.strip() and l.split()[0] != h]
+                for l in f:
+                    p = l.rstrip("\n").split("  ", 2)
+                    if len(p) == 3 and p[0] != h and p[2] != real:
+                        previas.append(l.rstrip("\n"))
         os.makedirs(base, exist_ok=True)
-        tmp = arch + ".tmp"
-        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write("\n".join(previas[-199:] + [f"{h}  {date.today().isoformat()}"]) + "\n")
-        os.replace(tmp, arch)
+        fd, tmp = tempfile.mkstemp(dir=base, prefix=".reanudar-confiables.")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write("\n".join(previas[-299:] + [f"{h}  {date.today().isoformat()}  {real}"]) + "\n")
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, arch)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
     except Exception:
         pass
 

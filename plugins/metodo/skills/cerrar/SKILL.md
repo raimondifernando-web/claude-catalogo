@@ -125,8 +125,8 @@ con los demás pasos, nunca termines sin emitir ese bloque.
    de `/metodo:otra-sesion`, va en la raíz de esa copia. Hacelo **antes** del paso 5 para que entre en el mismo
    guardado; si ya guardaste, un guardado chico aparte. Nunca con claves adentro (el prompt no las tiene).
 8 bis. **Comprobá el cierre:** cuando ya subiste el avance (paso 5) y guardaste `REANUDAR.md` (paso 8), corré
-   `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cerrar-check.py"` (en Windows, `py -3`; opcional: el id del cierre, o la
-   carpeta). Solo lee y nunca muestra valores: una línea ✓/✗ por chequeo (REANUDAR con id y largo razonable, sin
+   `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cerrar-check.py"` (la ÚLTIMA pasada, cuando el REANUDAR ya quedó escrito, con `--anotar`: así el arranque de la sesión nueva confía en él) (en Windows, `py -3`; opcional: el id del cierre, o la
+   carpeta). Solo lee (salvo la anotación de `--anotar`) y nunca muestra valores: una línea ✓/✗ por chequeo (REANUDAR con id y largo razonable, sin
    números de memoria ni pinta de clave, avance subido, handoff si tocaste 3 o más archivos). **Prohibido dar el cierre
    por terminado sin haberlo corrido.** Pegale al usuario su salida tal cual y, debajo, **una línea por cada ítem MANUAL
    con su resultado real**. Si dice «Falta: … ✗», resolvelo y volvé a correrlo. Después sigue el paso 9: el prompt

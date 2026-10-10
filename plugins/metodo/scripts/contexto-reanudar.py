@@ -17,14 +17,14 @@ TOPE_LINEAS = 40
 DIAS_VIEJO = 3
 
 
-def confiable(ruta):
-    """¿Este REANUDAR.md lo dejó /cerrar en ESTA máquina? cerrar-check anota el sha256 del archivo en
-    <config>/reanudar-confiables.txt; un archivo de un repo clonado nunca está ahí aunque copie la cabecera."""
+def confiable(crudo):
+    """¿Este REANUDAR.md lo dejó /cerrar en ESTA máquina? `cerrar-check --anotar` anota el sha256 del archivo en
+    <config>/reanudar-confiables.txt; un archivo de un repo clonado nunca está ahí aunque copie la cabecera.
+    Recibe los mismos bytes que se van a mostrar (no vuelve a abrir el archivo)."""
     try:
         base = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
-        with open(ruta, "rb") as f:
-            h = hashlib.sha256(f.read(2_000_000)).hexdigest()
-        with open(os.path.join(base, "reanudar-confiables.txt"), encoding="utf-8") as f:
+        h = hashlib.sha256(crudo).hexdigest()
+        with open(os.path.join(base, "reanudar-confiables.txt"), encoding="utf-8", errors="replace") as f:
             return any(l.split()[:1] == [h] for l in f)
     except Exception:
         return False
@@ -45,13 +45,14 @@ def main():
                  if os.path.isfile(p)), None)
     if not ruta:
         return
-    with open(ruta, encoding="utf-8", errors="replace") as f:
-        texto = f.read(2_000_000)
+    with open(ruta, "rb") as f:
+        crudo = f.read(2_000_000)
+    texto = crudo.decode("utf-8", errors="replace")
     m = re.search(r"═══ PARTE B[^\n]*\n", texto)
     # solo un archivo que dejó /cerrar (lleva su línea de cierre): un REANUDAR.md ajeno, de un repo clonado, no se inyecta
     if not m or not re.match(r"\s*<!--\s*cierre\s", texto):
         return
-    if not confiable(ruta):
+    if not confiable(crudo):
         print("[Hay un REANUDAR.md en esta carpeta que no dejó /cerrar en esta máquina, así que no lo muestro "
               "(podría venir de un repo ajeno). Corré /arrancar y leelo vos.]")
         return

@@ -161,7 +161,10 @@ class Hook(Base):
         import datetime
         self.escribir(fecha=datetime.date.today().isoformat(), confiar=False)
         self.assertNotIn("paso uno", self.hook(self.p)[1])
-        correr(CERRAR, self.p, config=self.conf)
+        correr(CERRAR, self.p, config=self.conf)                 # sin --anotar no bendice nada
+        self.assertNotIn("paso uno", self.hook(self.p)[1])
+        self.assertFalse((self.conf / "reanudar-confiables.txt").exists())
+        correr(CERRAR, "--anotar", self.p, config=self.conf)
         self.assertIn("paso uno", self.hook(self.p)[1])
         modo = (self.conf / "reanudar-confiables.txt").stat().st_mode & 0o777
         self.assertEqual(modo, 0o600)
@@ -222,6 +225,33 @@ class Hook(Base):
         out = self.hook(self.p)[1]
         self.assertIn("recortado", out)
         self.assertLess(len(out.splitlines()), 50)
+
+
+    def test_archivo_viejo_no_se_bendice_aunque_se_pida(self):
+        self.escribir(confiar=False)
+        viejo = os.path.getmtime(self.p / "REANUDAR.md") - 7200
+        os.utime(self.p / "REANUDAR.md", (viejo, viejo))
+        correr(CERRAR, "--anotar", self.p, config=self.conf)
+        self.assertFalse((self.conf / "reanudar-confiables.txt").exists())
+
+    def test_una_entrada_por_ruta_y_tope(self):
+        self.escribir(confiar=False)
+        for i in range(3):                        # cada cierre cambia el archivo: queda UNA entrada de esta ruta
+            with open(self.p / "REANUDAR.md", "a", encoding="utf-8") as f:
+                f.write(f"linea {i}\n")
+            correr(CERRAR, "--anotar", self.p, config=self.conf)
+        lineas = (self.conf / "reanudar-confiables.txt").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(lineas), 1)
+        self.assertEqual(lineas[0].split("  ")[2], str((self.p / "REANUDAR.md").resolve()))
+
+    def test_archivo_de_confiables_roto_no_rompe(self):
+        self.escribir(confiar=False)
+        self.conf.mkdir(exist_ok=True)
+        (self.conf / "reanudar-confiables.txt").write_bytes(b"\xff\xfe\x00 basura\n\n  \n")
+        rc, out = self.hook(self.p)
+        self.assertEqual(rc, 0)
+        self.assertIn("no dejó /cerrar", out)
+        self.assertEqual(correr(CERRAR, "--anotar", self.p, config=self.conf)[0] in (0, 1), True)
 
 
 class Enchufe(Base):

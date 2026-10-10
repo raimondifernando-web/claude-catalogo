@@ -1,7 +1,7 @@
 # metodo — qué cambia para vos
 
 ## 0.30.1 — 2026-10-10
-- **El resumen de la sesión anterior solo se muestra si lo dejó tu propio `/cerrar`.** Antes, un archivo `REANUDAR.md` de un repositorio ajeno (clonado, descargado) podía hacerse pasar por uno tuyo copiando su primera línea y meter instrucciones en tu sesión. Ahora `cerrar-check` anota una huella del archivo en `reanudar-confiables.txt` (dentro de tu carpeta de configuración) y el arranque solo muestra los que están anotados. Si un `REANUDAR.md` no está anotado, te avisa en una línea y vos corrés `/arrancar`. La primera sesión después de actualizar va a pedirte `/arrancar` una vez.
+- **El resumen de la sesión anterior solo se muestra si lo dejó tu propio `/cerrar`.** Antes, un archivo `REANUDAR.md` de un repositorio ajeno (clonado, descargado) podía hacerse pasar por uno tuyo copiando su primera línea y meter instrucciones en tu sesión. Ahora el último paso de `/cerrar` anota una huella del archivo en `reanudar-confiables.txt` (dentro de tu carpeta de configuración, solo si el archivo se acaba de escribir) y el arranque solo muestra los que están anotados. Si un `REANUDAR.md` no está anotado, te avisa en una línea y vos corrés `/arrancar`. Los cierres anteriores a esta versión no están anotados: en esas carpetas te va a avisar en cada apertura hasta el próximo `/cerrar`, y mientras tanto `/arrancar` lo lee igual.
 - **`/cerrar` ya no se salta abrir la siguiente sesión por el cupo.** El cupo de Claude y «quiero seguir después» no son motivo para dejar de abrirla.
 - `al-dia.sh` vuelve a poder ejecutarse directamente.
 - Se activa solo con `/plugin update`; no hay nada que correr.
