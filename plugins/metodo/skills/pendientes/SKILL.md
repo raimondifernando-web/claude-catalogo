@@ -9,6 +9,5 @@ description: "Muestra la lista de pendientes de la carpeta de trabajo (.claude/P
    Si no tenés `CLAUDE_PLUGIN_ROOT`, buscalo con
    `find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name pendientes.py | sort -V | tail -1`.
 2. Pegá la salida tal cual (tabla con la prioridad 1 primero). No la resumas ni la completes de memoria.
-3. Si dice «Esta carpeta no tiene lista todavía», ofrecé crearla en el próximo `/metodo:cerrar` con la plantilla
-   `templates/PENDIENTES.plantilla.md`; no la crees sin que lo pidan.
+3. Si dice «Esta carpeta no tiene lista todavía», no la crees acá: la crea `/metodo:cerrar` la primera vez que haya algo para anotar (con la plantilla `templates/PENDIENTES.plantilla.md`).
 4. Para cambiar algo no se edita acá: se hace en el cierre (`/metodo:cerrar`, paso «pendientes del proyecto»).

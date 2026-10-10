@@ -113,6 +113,30 @@ class CheckTest(Base):
         (self.dir / ".claude" / "prompts" / "REANUDAR.md").write_text("<!-- cierre 2026-10-14-x · lo escribe /metodo:cerrar -->\n", encoding="utf-8")
         self.assertNotIn("AVISO", correr(CHECK, self.dir).stdout)
 
+    def test_titulo_de_seccion_con_guion_se_avisa(self):
+        self.escribir(lista([fila("A1", prio="9")]).replace("## A · Tema", "## A - Tema"))
+        r = correr(CHECK, self.dir)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("punto medio", r.stdout)
+
+    def test_fila_fuera_de_seccion(self):
+        self.escribir(lista([fila("A1")]) + "\n## Notas sueltas\n" + CAB + fila("B1") + "\n")
+        r = correr(CHECK, self.dir)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("fuera de una sección", r.stdout)
+
+    def test_tabla_sin_encabezado(self):
+        self.escribir("# P\n\n## A · Tema\n" + fila("A1") + "\n" + fila("A2") + "\n\n## Cambios\n- 2026-10-10 · x\n")
+        r = correr(CHECK, self.dir)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("encabezado", r.stdout)
+
+    def test_barra_escapada_estado_en_mayuscula_y_fecha_en_tabla(self):
+        self.escribir(lista([fila("A1", "uno \\| dos", estado="Pendiente")], cambios="x") .replace("- x", "| 2026-10-10 | x |"))
+        r = correr(CHECK, self.dir)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("AVISO", r.stdout)
+
     def test_aviso_si_cambios_sin_fecha(self):
         self.escribir(lista([fila("A1")], cambios="sin fecha"))
         self.assertIn("AVISO", correr(CHECK, self.dir).stdout)

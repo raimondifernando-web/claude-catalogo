@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 NCOL = 8
-ESTADO_OK = re.compile(r"^(pendiente|en curso|hecho|espera dato( de .+)?|espera OK( de .+)?)$")
+ESTADO_OK = re.compile(r"^(pendiente|en curso|hecho|espera dato( de .+)?|espera OK( de .+)?)$", re.I)
 ESTADOS_TXT = "pendiente · en curso · espera dato · espera OK · hecho"
 
 
@@ -22,7 +22,8 @@ def raiz(cwd):
 
 def celdas(linea):
     out, cur, code = [], "", False
-    for ch in linea.strip().strip("|"):
+    linea = linea.strip().replace("\\|", "\x00")
+    for ch in linea.strip("|"):
         if ch == "`":
             code = not code
         if ch == "|" and not code:
@@ -31,7 +32,7 @@ def celdas(linea):
         else:
             cur += ch
     out.append(cur.strip())
-    return out
+    return [x.replace("\x00", "|") for x in out]
 
 
 def buscar(cwd):
@@ -45,26 +46,36 @@ def buscar(cwd):
 def analizar(texto):
     """→ (problemas, ids, ultima_fecha_de_cambios)"""
     prob, ids, donde = [], set(), {}
-    modo, cab, ultima = "otro", False, ""
+    modo, cab, ultima, libre = "otro", False, "", True
     for i, l in enumerate(texto.split("\n"), 1):
         if re.match(r"^(<{7}|>{7})", l):
             prob.append(f"marca de conflicto de git en la línea {i} (dos sesiones editaron lo mismo): resolverla a mano")
         if modo == "cambios":
-            mc = re.match(r"^\s*(?:[-*]\s*)?(\d{4}-\d{2}-\d{2})\b", l)
+            mc = re.match(r"^\s*(?:[-*|]\s*)?(\d{4}-\d{2}-\d{2})\b", l)
             if mc and mc.group(1) > ultima:
                 ultima = mc.group(1)
         m = re.match(r"^##\s+(.*)$", l)
         if m:
-            modo = "fila" if re.match(r"^[A-Z]\s*·", m.group(1)) else ("cambios" if m.group(1).startswith("Cambios") else "otro")
+            modo = "fila" if re.match(r"^[A-Z]\s*[·\-–—:.]\s*\S", m.group(1)) else ("cambios" if m.group(1).startswith("Cambios") else "otro")
+            libre = m.group(1).startswith(("Hechos", "Fechas", "Cambios"))
             cab = False
+            if modo == "fila" and not re.match(r"^[A-Z]\s*·", m.group(1)):
+                prob.append(f"línea {i}: el título de sección tiene que ser «## {m.group(1)[0]} · Nombre» (con un punto medio ·)")
             continue
-        if modo != "fila" or not l.lstrip().startswith("|"):
+        if not l.lstrip().startswith("|"):
             continue
         c = celdas(l)
         if all(re.match(r"^:?-+:?$", x) for x in c):
             continue
+        if modo == "otro" and not libre and re.match(r"^[A-Z]\d+$", c[0]):
+            prob.append(f"línea {i}: hay una fila ({c[0]}) fuera de una sección «## A · Nombre»: el control no la cuenta")
+            continue
+        if modo != "fila":
+            continue
         if not cab:
             cab = True
+            if re.match(r"^[A-Z]\d+$", c[0]):
+                prob.append(f"línea {i}: a la tabla le falta la fila de encabezado (| ID | Pendiente | …): {c[0]} se tomó como encabezado")
             continue
         if len(c) != NCOL:
             prob.append(f"{c[0]}: {len(c)} columnas (tienen que ser {NCOL})")

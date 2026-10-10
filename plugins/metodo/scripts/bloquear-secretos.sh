@@ -5,6 +5,10 @@
 PY=$(command -v python3 2>/dev/null)
 [ -z "$PY" ] && [ -x /usr/bin/python3 ] && PY=/usr/bin/python3
 [ -z "$PY" ] && { echo "[bloquear-secretos] aviso: no encontré python3, el freno anti-secretos no está activo en esta sesión" >&2; exit 0; }
+# En una Mac sin las herramientas de línea de comandos, /usr/bin/python3 es un aviso de instalación: no lo lanzamos en cada comando
+if [ "$PY" = "/usr/bin/python3" ] && command -v xcode-select >/dev/null 2>&1 && ! xcode-select -p >/dev/null 2>&1; then
+  echo "[bloquear-secretos] aviso: falta instalar Python (herramientas de línea de comandos), el freno anti-secretos no está activo" >&2; exit 0
+fi
 DIR="${BASH_SOURCE[0]%/*}"
 [ -f "$DIR/bloquear-secretos.py" ] || { echo "[bloquear-secretos] aviso: falta bloquear-secretos.py, el freno anti-secretos no está activo" >&2; exit 0; }
 exec "$PY" "$DIR/bloquear-secretos.py"

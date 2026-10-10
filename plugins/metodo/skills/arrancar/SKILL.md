@@ -82,7 +82,7 @@ real**. Si termina en «Falta: … ✗», resolvelo y volvé a correrlo; si dice
 (paso 3). Si el script no se puede correr, decilo en la confirmación: no lo simules.
 
 ### 4. Confirmar y arrancar
-Si la carpeta (o la raíz de su repo) tiene `.claude/PENDIENTES.md`, corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/pendientes.py" --prio1` y sumá lo que imprime (hasta 3 líneas de prioridad 1 abiertas; si hay más, «y N más: /metodo:pendientes»). Si no hay archivo, no digas nada.
+Si la carpeta (o la raíz de su repo) tiene `.claude/PENDIENTES.md`, corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/pendientes.py" --prio1` (si no tenés `CLAUDE_PLUGIN_ROOT`, buscá el script con `find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name pendientes.py | sort -V | tail -1`) y sumá lo que imprime (hasta 3 líneas de prioridad 1 abiertas; si hay más, «y N más: /metodo:pendientes»). Si no hay archivo, no digas nada.
 Confirmale al usuario en 2-3 líneas: **"Leí el estado. El próximo paso es [X]. ¿Arrancamos?"**
 Si el prompt ya trae el próximo paso definido y contexto suficiente, arrancá directo: la confirmación es
 para alinear, no para pedir permiso de trabajar.
