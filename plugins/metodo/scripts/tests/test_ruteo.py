@@ -744,7 +744,8 @@ class TestHooksJson(unittest.TestCase):
         datos = json.loads(HOOKS_JSON_RUTA.read_text(encoding="utf-8"))
         inicio = [h["command"] for g in datos["hooks"]["SessionStart"] for h in g["hooks"]]
         self.assertEqual(len([c for c in inicio if "radar.py\" hoy " in c]), 1)
-        previos = datos["hooks"]["PreToolUse"]
+        # el recordatorio del radar nunca bloquea; el freno anti-secretos (matcher Bash) es aparte y sí puede frenar
+        previos = [g for g in datos["hooks"]["PreToolUse"] if g.get("matcher") != "Bash"]
         self.assertEqual(len(previos), 1)
         self.assertEqual(sorted(previos[0]["matcher"].split("|")), ["Agent", "Task", "mcp__ccd_session__start_session"])
         orden = previos[0]["hooks"][0]
@@ -754,7 +755,7 @@ class TestHooksJson(unittest.TestCase):
             for h in g["hooks"]:
                 self.assertLessEqual(h["timeout"], 5)
         # nada que pueda bloquear: ni decisiones, ni salida con código 2
-        crudo = json.dumps(datos["hooks"]["PreToolUse"])
+        crudo = json.dumps(previos)
         for prohibido in ("permissionDecision", "exit 2", "deny"):
             self.assertNotIn(prohibido, crudo)
         self.assertTrue(orden["command"].rstrip().endswith("|| true"))

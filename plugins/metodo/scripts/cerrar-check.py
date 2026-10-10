@@ -146,6 +146,17 @@ try:
 except Exception as e:
     print(f"• CLAUDE.md: no se pudo correr claude-md-check ({type(e).__name__})")
 
+# (pendientes del proyecto) formato de .claude/PENDIENTES.md y si el cierre es más nuevo que su última línea de «Cambios»
+try:
+    _r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "pendientes-check.py"), cwd],
+                        capture_output=True, text=True, timeout=20)
+    for _l in _r.stdout.splitlines():
+        print(_l)
+        if _l.startswith("✗"):
+            faltan.append("PENDIENTES: " + _l[2:70])
+except Exception as e:
+    print(f"• PENDIENTES.md: no se pudo correr pendientes-check ({type(e).__name__})")
+
 # (verificación propia) ramas ya mergeadas que quedaron vivas + línea de prueba del resultado (regla 1 del método)
 try:
     if git("rev-parse", "--show-toplevel"):

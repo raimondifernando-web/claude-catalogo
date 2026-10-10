@@ -28,6 +28,13 @@ con los demás pasos, nunca termines sin emitir ese bloque.
    de la carpeta de trabajo, no solo al prompt. Un cambio que vive solo en el prompt se pierde en dos sesiones.
    En `CLAUDE.md` y en `handoffs/` **agregá al final, no reescribas**: otra sesión puede estar cerrando a la vez y
    una reescritura le pisa lo suyo (regla 13).
+   **Pendientes del proyecto.** Lo que quedó sin hacer va a `<carpeta>/.claude/PENDIENTES.md` (si no existe, copiá
+   `templates/PENDIENTES.plantilla.md` del plugin y poné el nombre del proyecto). Solo tus filas: ID estable (nunca
+   renumerar) y un estado de los de la plantilla. **En todo cierre:** una línea nueva al final de «Cambios» con la fecha
+   de hoy, aunque sea «AAAA-MM-DD · sin cambios (<tema>)»: así `/metodo:pendientes` dice hace cuánto se actualizó y
+   `cerrar-check` avisa si el cierre es más nuevo que la lista. Si otra sesión puede estar editando: releé el archivo
+   antes de crear un ID, no reescribas líneas ajenas, `git pull --rebase --autostash` y guardá solo ese archivo
+   (por nombre, nunca `git add -A`). Esa lista es la fuente única: el `REANUDAR.md` la apunta, no la copia.
 4. **Handoff** (obligatorio si se modificaron 3 o más archivos o se tomaron 2 o más decisiones): escribí
    `handoffs/YYYY-MM-DD-tema.md` con la plantilla `metodo/templates/handoff.md`: estado, decisiones (con el
    porqué), próximos pasos en orden, dudas abiertas.
