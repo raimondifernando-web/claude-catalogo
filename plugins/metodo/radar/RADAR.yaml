@@ -1,6 +1,6 @@
 # RADAR.yaml — qué IA usar para cada cosa, con plan A, B y C. Lo lee `scripts/radar.py`.
 # Lo mantiene un PR automático (.github/workflows/radar.yml) que una persona aprueba; el RADAR.md se genera con `radar.py md`.
-actualizado: 2026-10-08
+actualizado: 2026-10-10
 nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual."
 vigentes:
   actualizado: 2026-10-08
@@ -71,9 +71,26 @@ ruteo_claude:
       verificado: false
       sin_dato: "El radar no mide a Claude Haiku en esta categoría (solo GPT-6 Luna y GPT-6.1 Sol). haiku/low es el piso de la escala."
       evidencia: []
-      palabras: [buscar, busqueda, search, listar, listado, contar, count, renombrar, rename, mover, resumir, resumen, summar*, inventario, grep, encontrar, ubicar]
+      palabras:
+        - buscar
+        - busqueda
+        - search
+        - listar
+        - listado
+        - contar
+        - count
+        - renombrar
+        - rename
+        - mover
+        - resumir
+        - resumen
+        - "summar*"
+        - inventario
+        - grep
+        - encontrar
+        - ubicar
     - id: implementar_acotado
-      corto: "implementar algo acotado"
+      corto: implementar algo acotado
       tarea: "Implementar algo acotado: un arreglo claro, un script, una función, tests"
       nivel: sonnet
       esfuerzo: low
@@ -83,11 +100,30 @@ ruteo_claude:
       evidencia:
         - dato: nivel
           categoria: desarrollo
-          fuente: "Artificial Analysis Coding Agent Index v1.5"
+          fuente: Artificial Analysis Coding Agent Index v1.5
         - dato: nivel
           categoria: diseno
-          fuente: "Arena WebDev"
-      palabras: [implement*, arreglar, corregir, fix, fixes, bug, bugs, refactor, agregar, test, tests, testing, script, codigo, code, coding, parche, patch, funcion]
+          fuente: Arena WebDev
+      palabras:
+        - "implement*"
+        - arreglar
+        - corregir
+        - fix
+        - fixes
+        - bug
+        - bugs
+        - refactor
+        - agregar
+        - test
+        - tests
+        - testing
+        - script
+        - codigo
+        - code
+        - coding
+        - parche
+        - patch
+        - funcion
     - id: revisar
       corto: "revisar o dar segunda opinión"
       tarea: "Revisar un cambio o dar una segunda opinión"
@@ -97,9 +133,15 @@ ruteo_claude:
       verificado: false
       sin_dato: "La categoría «revisión de código y seguridad» no tiene evidencia independiente cargada (orden provisorio): vale la política de modelos. Revisar juzga y el error sale caro (2 «sí» de 3 se cumplen a medias): sonnet/medium. La segunda opinión conviene mandarla antes a otra IA con cupo."
       evidencia: []
-      palabras: [revis*, review, critic, segunda opinion, verific*, chequear]
+      palabras:
+        - "revis*"
+        - review
+        - critic
+        - segunda opinion
+        - "verific*"
+        - chequear
     - id: planillas
-      corto: "planillas y datos"
+      corto: planillas y datos
       tarea: "Planillas, conciliaciones y análisis de datos"
       nivel: sonnet
       esfuerzo: low
@@ -109,18 +151,31 @@ ruteo_claude:
       evidencia:
         - dato: nivel
           categoria: datos_planillas
-          fuente: "Artificial Analysis AnalystAgent y GDP.pdf"
-      palabras: [planilla, excel, xlsx, csv, spreadsheet, conciliar, conciliacion]
+          fuente: Artificial Analysis AnalystAgent y GDP.pdf
+      palabras:
+        - planilla
+        - excel
+        - xlsx
+        - csv
+        - spreadsheet
+        - conciliar
+        - conciliacion
     - id: investigar
-      corto: "investigar en la web"
-      tarea: "Investigar en la web y juntar fuentes"
+      corto: investigar en la web
+      tarea: Investigar en la web y juntar fuentes
       nivel: sonnet
       esfuerzo: low
       otra_ia: investigacion_web
       verificado: false
       sin_dato: "Arena búsqueda no trae modelos Claude de septiembre (el único Claude es Opus 4.6): sin dato vale la política de modelos (una pregunta con «sí»: hay que juntar y contrastar fuentes → sonnet; ante la duda entre low y medium, el de abajo)."
       evidencia: []
-      palabras: [investig*, research, en la web, relevar, relevamiento, scrap*]
+      palabras:
+        - "investig*"
+        - research
+        - en la web
+        - relevar
+        - relevamiento
+        - "scrap*"
     - id: arquitectura_seguridad_plata
       corto: "arquitectura, seguridad o plata"
       tarea: "Arquitectura, seguridad, dinero o algo irreversible (planear en Claude; la revisión puede ir a otra IA)"
@@ -130,7 +185,26 @@ ruteo_claude:
       verificado: false
       sin_dato: "No hay evidencia independiente de arquitectura ni de seguridad (revisión sin fuentes): vale la política de modelos tal cual. Hay que juzgar y el error sale caro (2 «sí») → opus/high."
       evidencia: []
-      palabras: [arquitectur*, architect, seguridad, security, vulnerab*, dinero, plata, pago, payment, finanz*, financ*, legal, legales, contrato, irreversible, produccion, production, migracion, diseno de sistema]
+      palabras:
+        - "arquitectur*"
+        - architect
+        - seguridad
+        - security
+        - "vulnerab*"
+        - dinero
+        - plata
+        - pago
+        - payment
+        - "finanz*"
+        - "financ*"
+        - legal
+        - legales
+        - contrato
+        - irreversible
+        - produccion
+        - production
+        - migracion
+        - diseno de sistema
 categorias:
   - id: desarrollo
     nombre: "Desarrollo (programar)"
@@ -1175,24 +1249,26 @@ fuentes_auto:
   paginas_retiros:
     anthropic:
       url: "https://platform.claude.com/docs/en/about-claude/model-deprecations"
-      hash: 553b9c11e6fb1bf3
+      hash: 1b26043ce69e8c79
     openai:
       url: "https://developers.openai.com/api/docs/deprecations"
       hash: 960a8c5b74fd208a
     google:
       url: "https://ai.google.dev/gemini-api/docs/deprecations"
-      hash: c694825bf8d72ff9
+      hash: f1cf9e7b95d0df09
   guias:
     anthropic_prompting:
       proveedor: Anthropic
-      titulo: "Prompting best practices"
+      titulo: Prompting best practices
       url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices.md"
-      hash: 26d19de8ec4443d2
+      hash: b07bd1df9d7b1aee
+      cambio: 2026-10-10
     anthropic_migracion:
       proveedor: Anthropic
       titulo: "Guías de migración por modelo (índice)"
       url: "https://platform.claude.com/docs/en/about-claude/models/migration-guide.md"
-      hash: 18cdfad98c3be3f3
+      hash: 7faf92fd72ab2974
+      cambio: 2026-10-10
     openai_ultimo_modelo:
       proveedor: OpenAI
       titulo: "Using GPT-6 (último modelo, prompting y migración)"
@@ -1200,68 +1276,69 @@ fuentes_auto:
       hash: 913ff184a3e9820e
     openai_prompting:
       proveedor: OpenAI
-      titulo: "Prompt engineering"
+      titulo: Prompt engineering
       url: "https://developers.openai.com/api/docs/guides/prompt-engineering.md"
       hash: f4e96377a56bc067
     google_ultimo_modelo:
       proveedor: Google
       titulo: "Novedades y migración del último Gemini"
       url: "https://ai.google.dev/gemini-api/docs/latest-model.md.txt"
-      hash: 6f2aef33df82fff7
+      hash: 3dac74e5d2d6d9d6
+      cambio: 2026-10-10
     google_prompting:
       proveedor: Google
-      titulo: "Prompt design strategies"
+      titulo: Prompt design strategies
       url: "https://ai.google.dev/gemini-api/docs/prompting-strategies.md.txt"
       hash: 4aaf698c290acb61
   familias:
     - id: claude-haiku
-      nombre: "Claude Haiku"
+      nombre: Claude Haiku
       proveedor: anthropic
       alias: haiku
       puntos_a_guion: true
-      patron: '^claude-haiku-(\d{1,2}(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+      patron: "^claude-haiku-(\\d{1,2}(?:[.-]\\d{1,2})?)(?:-\\d{8})?$"
     - id: claude-sonnet
-      nombre: "Claude Sonnet"
+      nombre: Claude Sonnet
       proveedor: anthropic
       alias: sonnet
       puntos_a_guion: true
-      patron: '^claude-sonnet-(\d{1,2}(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+      patron: "^claude-sonnet-(\\d{1,2}(?:[.-]\\d{1,2})?)(?:-\\d{8})?$"
     - id: claude-opus
-      nombre: "Claude Opus"
+      nombre: Claude Opus
       proveedor: anthropic
       alias: opus
       puntos_a_guion: true
-      patron: '^claude-opus-(\d{1,2}(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+      patron: "^claude-opus-(\\d{1,2}(?:[.-]\\d{1,2})?)(?:-\\d{8})?$"
     - id: claude-fable
-      nombre: "Claude Fable"
+      nombre: Claude Fable
       proveedor: anthropic
       alias: fable
       puntos_a_guion: true
-      patron: '^claude-fable-(\d{1,2}(?:[.-]\d{1,2})?)(?:-\d{8})?$'
+      patron: "^claude-fable-(\\d{1,2}(?:[.-]\\d{1,2})?)(?:-\\d{8})?$"
     - id: gpt-sol
-      nombre: "GPT Sol"
+      nombre: GPT Sol
       proveedor: openai
-      patron: '^gpt-(\d{1,2}(?:\.\d{1,2})?)-sol$'
+      patron: "^gpt-(\\d{1,2}(?:\\.\\d{1,2})?)-sol$"
     - id: gpt-astra
-      nombre: "GPT Astra"
+      nombre: GPT Astra
       proveedor: openai
-      patron: '^gpt-(\d{1,2}(?:\.\d{1,2})?)-astra$'
+      patron: "^gpt-(\\d{1,2}(?:\\.\\d{1,2})?)-astra$"
     - id: gpt-luna
-      nombre: "GPT Luna"
+      nombre: GPT Luna
       proveedor: openai
-      patron: '^gpt-(\d{1,2}(?:\.\d{1,2})?)-luna$'
+      patron: "^gpt-(\\d{1,2}(?:\\.\\d{1,2})?)-luna$"
     - id: gemini-flash
-      nombre: "Gemini Flash"
+      nombre: Gemini Flash
       proveedor: google
-      patron: '^gemini-(\d{1,2}(?:\.\d{1,2})?)-flash$'
+      patron: "^gemini-(\\d{1,2}(?:\\.\\d{1,2})?)-flash$"
     - id: gemini-flash-lite
-      nombre: "Gemini Flash-Lite"
+      nombre: Gemini Flash-Lite
       proveedor: google
-      patron: '^gemini-(\d{1,2}(?:\.\d{1,2})?)-flash-lite$'
+      patron: "^gemini-(\\d{1,2}(?:\\.\\d{1,2})?)-flash-lite$"
     - id: gemini-pro
-      nombre: "Gemini Pro"
+      nombre: Gemini Pro
       proveedor: google
-      patron: '^gemini-(\d{1,2}(?:\.\d{1,2})?)-pro(?:-preview)?$'
+      patron: "^gemini-(\\d{1,2}(?:\\.\\d{1,2})?)-pro(?:-preview)?$"
   docs:
     indice:
       url: "https://code.claude.com/docs/llms.txt"
@@ -1470,7 +1547,8 @@ fuentes_auto:
       goal:
         titulo: /goal
         url: "https://code.claude.com/docs/en/goal.md"
-        hash: bfd74033154c54bb
+        hash: 867a0ff334e589b9
+        cambio: 2026-10-10
       canales:
         titulo: Canales
         url: "https://code.claude.com/docs/en/channels.md"
@@ -1482,19 +1560,23 @@ fuentes_auto:
       worktrees:
         titulo: Worktrees
         url: "https://code.claude.com/docs/en/worktrees.md"
-        hash: ac609c7f132f3cf7
+        hash: 5f65882f20120dbe
+        cambio: 2026-10-10
       subagentes:
         titulo: Subagentes
         url: "https://code.claude.com/docs/en/sub-agents.md"
-        hash: 7c8fc22fd80fb9e7
+        hash: 36e74a98d7cd073a
+        cambio: 2026-10-10
       hooks:
         titulo: Hooks
         url: "https://code.claude.com/docs/en/hooks-guide.md"
-        hash: 20de40c8baeb6978
+        hash: 10589c06a91d35d3
+        cambio: 2026-10-10
       skills:
         titulo: Skills
         url: "https://code.claude.com/docs/en/skills.md"
-        hash: cb3421acb4cb08ff
+        hash: e658619eaf6263e4
+        cambio: 2026-10-10
       plugins:
         titulo: Plugins
         url: "https://code.claude.com/docs/en/plugins/overview.md"
@@ -1502,7 +1584,8 @@ fuentes_auto:
       loop:
         titulo: /loop y tareas programadas
         url: "https://code.claude.com/docs/en/scheduled-tasks.md"
-        hash: 8d66221b9241b19b
+        hash: 93e27bb6cc9c0a2f
+        cambio: 2026-10-10
       scheduled_escritorio:
         titulo: Scheduled tasks de escritorio
         url: "https://code.claude.com/docs/en/desktop-scheduled-tasks.md"
@@ -1510,11 +1593,13 @@ fuentes_auto:
       workflows:
         titulo: "Workflows dinámicos y ultracode"
         url: "https://code.claude.com/docs/en/workflows.md"
-        hash: 3df42f9438c4024c
+        hash: 3f2ac75cdc7bad87
+        cambio: 2026-10-10
       nube:
         titulo: Sesiones en la nube
         url: "https://code.claude.com/docs/en/claude-code-on-the-web.md"
-        hash: fc21874cbbbca6f1
+        hash: fda2f14eef59c5e7
+        cambio: 2026-10-10
       agentes_paralelo:
         titulo: Agentes en paralelo
         url: "https://code.claude.com/docs/en/agents.md"
