@@ -1,6 +1,6 @@
 # Radar de modelos
 
-> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-10-08**.
+> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-10-10**.
 > `[a verificar]` = dato de la investigación que todavía no se leyó de primera mano.
 
 Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B o el C.
@@ -24,15 +24,15 @@ Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B
 
 ## Ruteo de Claude por tipo de tarea
 
-Qué nivel de Claude y qué esfuerzo usar por tipo de tarea, con las 3 preguntas de siempre: ¿hay que juzgar o decidir?, ¿equivocarse sale caro?, ¿hay que sostener mucho contexto? Ninguna sí = haiku/low; una = sonnet/medium; dos = opus/high; las tres y tarea larga = fable/xhigh, solo a pedido (no se rutea). max, solo a pedido. Ante la duda, el de abajo y medir. Lo escribe una persona a mano: el robot no lo toca.
+Punto de partida de nivel y esfuerzo de Claude por tipo de tarea. Cada fila cita la evidencia INDEPENDIENTE de este mismo radar que la respalda (spec §7). Donde no hay medición, la fila queda verificado: false y vale el valor por defecto de la política de modelos tal cual (0 «sí» a ¿hay que juzgar o decidir?, ¿equivocarse sale caro?, ¿hay mucho contexto? = haiku/low · 1 = sonnet/medium · 2 = opus/high · 3 = fable/xhigh): se baja un escalón solo cuando hay duda entre dos, no por falta de datos. Si la tarea tiene más «sí» de los que supone la fila, se sube un escalón por cada uno. Fable solo a pedido, max solo a pedido. Lo escribe una persona a mano: el robot no lo toca.
 
 | Tarea | Nivel | Esfuerzo | ¿Otra IA? |
 |---|---|---|---|
 | Buscar, contar, listar, mover, renombrar o resumir algo ya decidido | haiku | low | tareas_baratas |
-| Implementar algo acotado: un arreglo claro, un script, una función, tests | sonnet | medium | desarrollo |
+| Implementar algo acotado: un arreglo claro, un script, una función, tests | sonnet | low | desarrollo |
 | Revisar un cambio o dar una segunda opinión | sonnet | medium | revision |
-| Planillas, conciliaciones y análisis de datos | sonnet | medium | datos_planillas |
-| Investigar en la web y juntar fuentes | sonnet | medium | investigacion_web |
+| Planillas, conciliaciones y análisis de datos | sonnet | low | datos_planillas |
+| Investigar en la web y juntar fuentes | sonnet | low | investigacion_web |
 | Arquitectura, seguridad, dinero o algo irreversible (planear en Claude; la revisión puede ir a otra IA) | opus | high | revision |
 
 ## Desarrollo (programar)
