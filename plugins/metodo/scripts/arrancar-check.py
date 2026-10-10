@@ -103,6 +103,17 @@ if texto:
     else:
         print("• A VERIFICAR: el REANUDAR no trae bloque")
 
+# (CLAUDE.md) peso, filas largas y punteros: lo mide claude-md-check.py (solo lee; si no se puede correr, lo dice)
+try:
+    _r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude-md-check.py"), cwd],
+                        capture_output=True, text=True, timeout=20)
+    for _l in _r.stdout.splitlines():
+        print(_l)
+        if _l.startswith("✗"):
+            faltan.append("CLAUDE.md: " + _l[2:70])
+except Exception as e:
+    print(f"• CLAUDE.md: no se pudo correr claude-md-check ({type(e).__name__})")
+
 # Pasos que solo puede hacer la sesión
 print("• MANUAL (paso 3 bis): si tenés las herramientas de sesiones de la app, numerar el título «<base> N+1» y "
       "ofrecer archivar la serie anterior; si no, «no aplica»")

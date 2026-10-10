@@ -135,6 +135,36 @@ if slug:
         print(f"✓ Sin handoff: solo {len(tocados)} archivo(s) guardados hoy (obligatorio desde 3; "
               f"las decisiones las juzga la sesión)")
 
+# (CLAUDE.md) peso, filas largas y punteros: lo mide claude-md-check.py (solo lee; si no se puede correr, lo dice)
+try:
+    _r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude-md-check.py"), cwd],
+                        capture_output=True, text=True, timeout=20)
+    for _l in _r.stdout.splitlines():
+        print(_l)
+        if _l.startswith("✗"):
+            faltan.append("CLAUDE.md: " + _l[2:70])
+except Exception as e:
+    print(f"• CLAUDE.md: no se pudo correr claude-md-check ({type(e).__name__})")
+
+# (verificación propia) ramas ya mergeadas que quedaron vivas + línea de prueba del resultado (regla 1 del método)
+try:
+    if git("rev-parse", "--show-toplevel"):
+        _base = next((b for b in ("main", "master") if git("rev-parse", "--verify", "--quiet", b)), None)
+        if _base:
+            _ya = []
+            for _b in (git("branch", "--merged", _base) or "").splitlines():
+                _b = _b.rstrip()
+                # «*» = la rama actual y «+» = la de otra copia abierta: no se proponen para borrar
+                if _b and not _b.lstrip().startswith(("*", "+")) and _b.strip() not in ("main", "master", _base):
+                    _ya.append(_b.strip())
+            if _ya:
+                print(f"• Ramas ya mergeadas que siguen vivas: {', '.join(_ya[:5])} · probá el resultado y, recién ahí, borralas (o decí por qué quedan)")
+except Exception:
+    pass
+
+print("• MANUAL (verificación propia): ¿qué PROBASTE del resultado de lo que hiciste hoy (que funciona, no que el comando salió "
+      "sin error)? Una línea por cosa: qué corriste y qué viste en el disco. Lo no probado, dicho. Nada se limpia ni se da por "
+      "«listo» sin eso (regla 1 del método)")
 # (g) lo que solo puede hacer la sesión
 print("• MANUAL (paso 3, lo durable): lo que esta sesión aprendió como regla permanente ya bajó al CLAUDE.md (o a su archivo), "
       "no solo al prompt — decí dónde fue cada cosa, o «nada»")
