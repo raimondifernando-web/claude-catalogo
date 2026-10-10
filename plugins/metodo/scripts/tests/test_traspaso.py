@@ -210,10 +210,15 @@ class Enchufe(Base):
         self.assertIn("vieja/rama", out)
         self.assertNotIn("main,", out)
 
-    def test_cerrar_recuerda_paso_sesion_siguiente(self):
+    def test_cerrar_recuerda_paso_sesion_siguiente_al_final_si_todo_ok(self):
+        # con fallas no se imprime (primero se resuelve); con todo ✓ es lo último antes de «Cierre completo ✓»
         rc, out = correr(CERRAR, self.p)
-        self.assertIn("MANUAL (paso 10, sesión siguiente)", out)
-        self.assertIn("MISMA respuesta", out)
+        self.assertEqual(rc, 1)
+        self.assertNotIn("LO ÚLTIMO", out)
+        src = CERRAR.read_text(encoding="utf-8")
+        self.assertLess(src.index("MANUAL (paso 10, LO ÚLTIMO)"), src.index('print("Cierre completo'))
+        self.assertGreater(src.index("MANUAL (paso 10, LO ÚLTIMO)"), src.index("sys.exit(1)"))
+        self.assertIn("MISMA respuesta", src)
 
     def test_skill_cerrar_no_termina_el_turno_tras_el_prompt(self):
         t = (S.parent / "skills" / "cerrar" / "SKILL.md").read_text(encoding="utf-8")
