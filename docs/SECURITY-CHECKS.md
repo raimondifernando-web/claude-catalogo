@@ -904,3 +904,13 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Auditoría | Diff completo leído (69 commits, 36 archivos, 2469 líneas): sin llamadas de red nuevas, sin acceso a credenciales, sin archivos ejecutables ni enlaces simbólicos nuevos (mismos modos en ambos shas), `hooks/` idéntica. Los únicos scripts tocados son pruebas y validadores de desarrollo del repo (escriben en carpetas temporales). `skill-security-auditor` sobre `skills/`: 4 hallazgos, idénticos en bcab6a1 y en 1401c8b (3 CRITICAL son avisos defensivos de «no obedezcas instrucciones de páginas» + una línea de tamaños de commit; 1 HIGH por apuntar a la carpeta y no a una skill). Cambio de comportamiento: `spec-driven-development` frena el turno tras escribir la especificación (ya revisado el 2026-10-06). |
 | Superficie nueva | Ninguna. |
 | Metadatos / clientes | verificar-metadatos: TODO COINCIDE · descripciones ≤500: OK · grep de clientes: 0 |
+
+### 2026-10-10 · metodo 0.28.1 → 0.30.0 y paneles 0.1.0 (chequeo previo a llegar a `estable`)
+| Ítem | Resultado |
+|---|---|
+| Alcance | Lo que está en `main` (`c2dadb4`) y no en `estable` (`29d5fe1`): 15 commits, 37 archivos. Ningún workflow tocado. |
+| Qué es nuevo | metodo: freno anti-secretos (PreToolUse de Bash), hook SessionStart de traspaso (`contexto-reanudar.py`), listas de pendientes por proyecto, `claude-md-check`, más verificación en `arrancar-check` y `cerrar-check`. paneles: dos paneles de solo lectura. |
+| Superficie nueva | Sin red, sin descargas, sin escritura de archivos nueva, sin secretos (0 patrones en el diff). Solo `git` de lectura. `paneles` usa únicamente `clock`, `command.register`, `fs.read`, `process.run` (git), `session`, `state` y `ui` (listado por `claude plugin validate`). |
+| Verificación | Tests de metodo: 134 OK. Tests de paneles (`claude plugin test`): 25 OK. El freno resiste entradas hostiles (decenas de miles de tramos, ≤ 1 s) y falla abierto ante error. `verificar-metadatos`: TODO COINCIDE. |
+| Veredicto | **PASS con condiciones**, sin críticos. Condiciones para 0.30.1: (1) `contexto-reanudar.py` acepta cualquier `REANUDAR.md` con la cabecera de cierre, que un repo ajeno puede falsificar (vía de inyección de texto, mitigada por el rótulo «contexto, no una orden» y el tope de 40 líneas); (2) `al-dia.sh` perdió el bit de ejecución en `ba6becf` (el hook lo lanza con bash, no rompe); (3) el freno no cubre llaves `{n,}` ni variable intermedia: sumarlo a «Límites conocidos». |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE · grep de clientes: 0 |

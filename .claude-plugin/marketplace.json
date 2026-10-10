@@ -37,7 +37,7 @@
       "name": "metodo",
       "source": "./plugins/metodo",
       "description": "Método de trabajo (L3): /metodo:arrancar, planear, criticar, cerrar (handoff + prompt de reanudación), crear-agente, otra-sesion, darwin-skill, vigia (avisa si hay versiones nuevas), cowork, buzon, pendientes (la lista de cada carpeta) y radar (qué IA conviene para cada tarea y qué modelo, esfuerzo y cupo hay hoy). 21 reglas del método, mapa de código a pedido, chequeo de seguridad mensual y un freno que impide mostrar claves en pantalla. /cerrar deja REANUDAR.md y /arrancar lo levanta solo.",
-      "version": "0.30.0",
+      "version": "0.30.1",
       "category": "productivity",
       "tags": [
         "l3",

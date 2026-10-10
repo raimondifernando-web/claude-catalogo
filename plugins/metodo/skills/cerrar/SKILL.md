@@ -151,7 +151,7 @@ con los demás pasos, nunca termines sin emitir ese bloque.
    siguiente). El `REANUDAR.md` ya está en disco y subido antes del paso 9, así que la sesión nueva no puede leer algo a
    medias. Orden: escribí el prompt del paso 9 y su línea «Guardado en…» y, en ESA MISMA respuesta, sin dejar de trabajar,
    seguí con una línea («Abrí <título>; archivo esta.») y las llamadas (`start_session`, `detach_session`,
-   `move_sessions`, `archive_session`). Pasá siempre `use_worktree: false`: la sesión nueva trabaja en la MISMA carpeta (si esta está en una copia con rama propia, omitirlo la crearía en otra y `/arrancar` frenaría por copia equivocada). Nunca cierres tu respuesta sin haber hecho este paso o sin decir por qué no.
+   `move_sessions`, `archive_session`). Pasá siempre `use_worktree: false`: la sesión nueva trabaja en la MISMA carpeta (si esta está en una copia con rama propia, omitirlo la crearía en otra y `/arrancar` frenaría por copia equivocada). Nunca cierres tu respuesta sin haber hecho este paso. Solo se saltea si falla una condición de arriba (`cerrar-check` con ✗, avance sin subir, herramientas de sesiones ausentes o llamada rechazada por la app): decí cuál. **El cupo de Claude y «quiero seguir después» no son razones**: si el cupo preocupa, abrí igual y avisalo en una línea; lo decide el usuario, no la sesión que cierra.
    - `start_session` con `initiation: "user_asked"` (el `/cerrar` que escribió el usuario es el pedido), `context: "fresh"`,
      `cwd` = la carpeta actual, `model` = el de la línea «Modelo para abrir» de la PARTE B (por defecto el mismo que usás),
      `title` = el título siguiente de la serie (mismo ancho: «03» → «04»), `prompt`: «Ejecutá la skill /arrancar en esta

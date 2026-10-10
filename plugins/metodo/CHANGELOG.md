@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.30.1 — 2026-10-10
+- **El resumen de la sesión anterior solo se muestra si lo dejó tu propio `/cerrar`.** Antes, un archivo `REANUDAR.md` de un repositorio ajeno (clonado, descargado) podía hacerse pasar por uno tuyo copiando su primera línea y meter instrucciones en tu sesión. Ahora `cerrar-check` anota una huella del archivo en `reanudar-confiables.txt` (dentro de tu carpeta de configuración) y el arranque solo muestra los que están anotados. Si un `REANUDAR.md` no está anotado, te avisa en una línea y vos corrés `/arrancar`. La primera sesión después de actualizar va a pedirte `/arrancar` una vez.
+- **`/cerrar` ya no se salta abrir la siguiente sesión por el cupo.** El cupo de Claude y «quiero seguir después» no son motivo para dejar de abrirla.
+- `al-dia.sh` vuelve a poder ejecutarse directamente.
+- Se activa solo con `/plugin update`; no hay nada que correr.
+
 ## 0.30.0 — 2026-10-10
 - **Cada carpeta puede tener su lista de pendientes.** Vive en `.claude/PENDIENTES.md` (la plantilla viene en el plugin: `templates/PENDIENTES.plantilla.md`). `/metodo:cerrar` la actualiza al cerrar (tus filas, con un número que no cambia, y una línea con fecha en «Cambios» aunque no haya novedades). `/metodo:arrancar` te muestra hasta 3 pendientes de prioridad 1. Con `/metodo:pendientes` ves la lista completa en una tabla corta (ID · pendiente · prioridad · estado · quién), lo urgente primero y con «actualizada hace N días». Si la carpeta no tiene lista dice «Esta carpeta no tiene lista todavía»; ese comando no la crea: la crea `/metodo:cerrar` la primera vez que haya algo para anotar.
 - **Si dos sesiones tocan la lista a la vez, se nota.** `cerrar-check` corre un control nuevo (`pendientes-check.py`, solo lee) que avisa de números repetidos, marcas de conflicto de git, estados mal escritos y cuando cerraste sin actualizar la lista. Sin lista, o en una carpeta sin git, dice que no aplica en vez de fallar.

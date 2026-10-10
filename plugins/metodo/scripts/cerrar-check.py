@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """cerrar-check — comprobación mecánica del cierre de sesión (/metodo:cerrar). Gemelo de arrancar-check.py.
 
-SOLO LEE: no escribe nada y nunca imprime valores (de un posible secreto solo el número de línea).
+Solo lee, salvo UNA anotación: si el REANUDAR está bien formado, guarda su sha256 en <config>/reanudar-confiables.txt
+(así el hook de arranque sabe que lo dejó /cerrar aquí). Nunca imprime valores (de un posible secreto solo el número de línea).
 Una línea por chequeo (✓/✗) y cierra con «Cierre completo ✓» o «Falta: … ✗» (exit 0/1).
 Lo que no se puede medir (que lo durable haya bajado a su archivo, el contrato del prompt) sale como línea MANUAL.
 
 Uso: cerrar-check.py [slug] [carpeta]   (slug = YYYY-MM-DD-tema; default: el del REANUDAR · carpeta: la actual)
 """
+import hashlib
 import os
 import re
 import subprocess
@@ -40,6 +42,27 @@ def leer(p):
         return ""
 
 
+def anotar_confiable(ruta):
+    """Anota el sha256 del REANUDAR (últimas 200 entradas, archivo 0600). Si falla, no rompe el chequeo."""
+    try:
+        base = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
+        arch = os.path.join(base, "reanudar-confiables.txt")
+        with open(ruta, "rb") as f:
+            h = hashlib.sha256(f.read(2_000_000)).hexdigest()
+        previas = []
+        if os.path.isfile(arch):
+            with open(arch, encoding="utf-8", errors="replace") as f:
+                previas = [l.rstrip("\n") for l in f if l.strip() and l.split()[0] != h]
+        os.makedirs(base, exist_ok=True)
+        tmp = arch + ".tmp"
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write("\n".join(previas[-199:] + [f"{h}  {date.today().isoformat()}"]) + "\n")
+        os.replace(tmp, arch)
+    except Exception:
+        pass
+
+
 # (b) REANUDAR: existe, encabezado, largo
 reanudar = next((p for p in (os.path.join(cwd, "REANUDAR.md"), os.path.join(cwd, ".claude", "prompts", "REANUDAR.md"))
                  if os.path.isfile(p)), None)
@@ -50,6 +73,7 @@ else:
     m = re.match(r"\s*<!--\s*cierre\s+(\d{4}-\d{2}-\d{2}-\S+?)\s", texto)
     if m:
         linea(True, f"REANUDAR.md presente · cierre {m.group(1)}")
+        anotar_confiable(reanudar)
         if slug and slug != m.group(1):
             linea(False, f"El slug pedido ({slug}) no es el del REANUDAR ({m.group(1)})", "REANUDAR de otro cierre")
         slug = slug or m.group(1)
