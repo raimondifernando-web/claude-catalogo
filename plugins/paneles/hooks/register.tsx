@@ -289,10 +289,10 @@ const registrarUso: Register = on => {
           {m.limites.map(l => (
             <Box key={l.kind} flexDirection="column">
               <Box flexDirection="row" justifyContent="space-between">
-                <Text bold>{NOMBRES[l.kind] ?? l.kind}</Text>
+                <Text bold>{NOMBRES[l.kind] ?? 'Otro límite'}</Text>
                 <Text dimColor>{l.percentUsed} %</Text>
               </Box>
-              <Svg source={lineaGris(l.percentUsed)} alt={`${NOMBRES[l.kind] ?? l.kind} ${l.percentUsed} %`} />
+              <Svg source={lineaGris(l.percentUsed)} alt={`${NOMBRES[l.kind] ?? 'Otro límite'} ${l.percentUsed} %`} />
               {l.resetsAt ? <Text dimColor>Se renueva {horaRenovacion(l.resetsAt, ahora)}</Text> : null}
             </Box>
           ))}
@@ -330,7 +330,7 @@ const registrarUso: Register = on => {
         {m.limites.map(l => (
           <Box key={l.kind} flexDirection="column">
             <Text>
-              <Text bold>{NOMBRES[l.kind] ?? l.kind} </Text>
+              <Text bold>{NOMBRES[l.kind] ?? 'Otro límite'} </Text>
               <Text dimColor>{l.percentUsed} %</Text>
             </Text>
             <Text dimColor>{barra(l.percentUsed)}</Text>
@@ -641,7 +641,7 @@ function diaCorto(iso: string | undefined): string | undefined {
 // La versión de comparación: si el archivo tiene cambios sin guardar, la última guardada;
 // si no, la anterior a la última. Todo sale de `git log` del archivo.
 async function cambiosDeGit($: EngineInterface, repo: string, nueva: Fila[]): Promise<Cambios> {
-  const git = (args: string[]) => $.process.run(['git', '-C', repo, ...args])
+  const git = (args: string[]) => $.process.run(['git', '--no-optional-locks', '-C', repo, ...args])
   try {
     const estado = await git(['status', '--porcelain', '--', ARCHIVO])
     // Carpeta que no es repo git (código 128): no hay historial, no es un error.
@@ -1005,7 +1005,7 @@ const registrarPendientes: Register = on => {
 
 export const register: Register = on => {
   on('session.start', ($, e, next) => usoSessionStart($, e, e2 => pendSessionStart($, e2, next)))
-  on('command.run', ($, e, next) => usoCommandRun($, e, next))
+  on('command.run', ($, e, next) => usoCommandRun($, e, next)).catch(($, e, next) => next(e))
   on('prompt.submit', ($, e, next) => usoPromptSubmit($, e, e2 => pendPromptSubmit($, e2, next))).catch(($, e, next) => next(e))
   on('session.measure', ($, e, next) => usoSessionMeasure($, e, e2 => pendSessionMeasure($, e2, next)))
   registrarUso(on)

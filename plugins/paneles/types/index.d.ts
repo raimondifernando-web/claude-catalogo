@@ -34,7 +34,7 @@ export type Fila = {
   origen: string
   // IDs de las filas que dependen de esta (salen de la columna «Depende de» de las otras).
   desbloquea: string[]
-  // Letra de la sección (S, B, C, E, M, O).
+  // Letra de la sección (A, B, C…).
   seccion: string
 }
 

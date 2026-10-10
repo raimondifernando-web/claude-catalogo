@@ -34,7 +34,7 @@ function fondo(on: On, mundo: Mundo) {
   // Sin texto, la lectura sigue al archivo de verdad, que en /casa no existe.
   on('fs.read', (_$, e, next) => (e.path === RUTA && mundo.texto !== undefined ? ({ value: mundo.texto } as never) : next(e)))
   on('process.run', (_$, e) => {
-    const [, , , cmd, ...resto] = e.argv
+    const [, , , , cmd, ...resto] = e.argv
     if (cmd === 'rev-parse') return salida(`${(mundo.carpeta ?? CARPETA).startsWith(CARPETA) ? CARPETA : mundo.carpeta}\n`)
     if (mundo.sinGit) return salida('', 128, 'fatal: not a git repository')
     if (mundo.fallaGit) return salida('', 128, 'fatal: index file corrupt')
@@ -86,7 +86,7 @@ test('lee un archivo con el formato verdadero: Ahora, Esta semana, Cambios y Pr�
     expect(await ui.find({ type: 'Text', text: /Cambió de estado · pendiente → espera dato de Ana/ })).toBeDefined()
     // Próxima fecha: la primera de la tabla que todavía no pasó (10/10 15:00).
     expect(await ui.find({ type: 'Text', text: /^hoy 15:00$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Se renueva el cupo semanal de Claude/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Hacer la copia semanal/ })).toBeDefined()
     await ui.unmount()
   }
 })
