@@ -112,8 +112,8 @@
         "repo": "addyosmani/agent-skills",
         "sha": "1401c8b8030e023baeebb31781a6653fe8e93026"
       },
-      "description": "Production-grade engineering skills for AI coding agents — covering the full software development lifecycle from spec to ship. (Original de Addy Osmani, 98.7K★, MIT, fijado al commit auditado bcab6a1 — PASS con condiciones, 2026-09-23: preguntar antes de reset --hard, push, deploy, npm/brew/pip install o agregar MCP.)",
-      "version": "0.6.10",
+      "description": "Production-grade engineering skills for AI coding agents — covering the full software development lifecycle from spec to ship. (Original de Addy Osmani, 98.7K★, MIT, fijado al commit auditado 1401c8b — PASS con condiciones, 2026-09-23 y re-auditado 2026-10-10: preguntar antes de reset --hard, push, deploy, npm/brew/pip install o agregar MCP.)",
+      "version": "0.6.12",
       "category": "development",
       "tags": [
         "l4",
