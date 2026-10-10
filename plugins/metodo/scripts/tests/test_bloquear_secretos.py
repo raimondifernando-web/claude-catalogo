@@ -175,6 +175,16 @@ DEBEN_FRENARSE = [
     "declare -p",
     "env | grep TOKEN",
     "echo $API_TOKEN | tee /dev/tty",
+    # vuelta 2 de la revisión
+    "env | grep -v PATH",
+    "env | grep _",
+    "printenv | grep ^",
+    "echo \"$GITHUB_TOKEN\" | grep .",
+    "echo \"$GITHUB_TOKEN\" | python3 -c \"import sys; print(sys.stdin.read())\"",
+    "X=1 echo \"$(cat .env)\"",
+    "eval echo \"$(cat .env)\"",
+    "(( y = x<<b ))\ncat .env",
+    "env -u X cat .env",
 ]
 
 

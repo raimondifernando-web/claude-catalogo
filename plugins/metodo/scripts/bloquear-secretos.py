@@ -32,7 +32,9 @@ ECHOS = {"echo", "printf", "print"}
 ENVOLTURAS = {"sudo", "command", "builtin", "time", "nohup", "nice", "exec", "stdbuf", "env", "timeout", "xcrun"}
 PALABRAS = {"then", "do", "else", "elif", "if", "while", "until", "fi", "!", "{", "}", "case", "esac", "function"}
 SUMIDEROS = {"wc", "sha1sum", "sha256sum", "sha512sum", "shasum", "md5", "md5sum", "cksum"}
-SIN_SALIDA = re.compile(r"^\s*(?:[A-Za-z_][A-Za-z0-9_]*=|export\b|eval\b|declare\b|local\b|readonly\b|typeset\b|source\b|\.\s|set\b|\[\[?\s|test\b)")
+# $( … ) cuya salida se guarda (VAR=$(…), export VAR=$(…)) o se carga (export $(…), eval "$(…)", source <(…)): no se muestra
+SIN_SALIDA = re.compile(r"^\s*(?:(?:export|declare|local|readonly|typeset)\s+(?:-\w+\s+)*)?[A-Za-z_]\w*=[\"']?$"
+                        r"|^\s*(?:export|eval|source|\.)\s+[\"']?<?$")
 SIN_VALOR = r"(?:example|sample|template|dist|defaults?|md)"
 LOGIN_STDIN = ("--with-token", "--password-stdin")
 DESTINOS_PANTALLA = ("/dev/stderr", "/dev/stdout", "/dev/tty", "/dev/fd/1", "/dev/fd/2")
@@ -79,7 +81,7 @@ def extraer_heredocs(cmd):
             continue
         elif ch == "<" and sig == "<" and cmd[i + 2:i + 3] != "<" and (i == 0 or cmd[i - 1] != "<"):
             reciente = "".join(out[-40:])
-            aritmetica = "$((" in reciente and "))" not in reciente.split("$((")[-1]
+            aritmetica = "((" in reciente and "))" not in reciente.split("((")[-1]
             m = None if aritmetica else re.match(r"<<(-?)\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2", cmd[i:])
             if m:
                 cuerpos.append("")
@@ -204,7 +206,7 @@ def programa(toks):
         elif re.match(r"^<[^<]\S*$", t):
             j += 1
         elif j > 0 and previo in ENVOLTURAS and (t.startswith("-") or re.fullmatch(r"\d+[smhd]?", t)):
-            j += 2 if previo == "sudo" and t in ("-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T") else 1
+            j += 2 if previo in ("sudo", "env") and t in ("-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T", "-S") else 1
         else:
             break
     if j >= len(toks):
@@ -255,7 +257,9 @@ def solo_filtra(despues):
     for n, a in despues:
         if n in GREPS:
             p = patron_grep(a)
-            if grep_solo_cuenta(a) or (re.fullmatch(r"[\^A-Za-z0-9_$]+", p or "") and not re.search(SECRETISH, p, I)):
+            invierte = any(re.fullmatch(r"-[A-Za-z]*v[A-Za-z]*|--invert-match", x) for x in a)
+            if grep_solo_cuenta(a) or (re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_]{2,}", p or "") and not invierte
+                                       and not re.search(SECRETISH, p, I)):
                 return True
     return False
 
@@ -317,7 +321,9 @@ def analizar_pipeline(etapas, razones, profundidad, cuerpos):
             continue
         if nom == "eval":
             if profundidad < 3:
-                razones.extend(analizar(re.sub(r"\$\([^()]*\)|`[^`]*`", "", " ".join(args)), profundidad + 1))
+                texto_eval = " ".join(args)
+                if not re.fullmatch(r"\s*(?:\$\([^()]*\)|`[^`]*`)\s*", texto_eval):  # eval "$(cmd)" solo carga lo que imprime cmd
+                    razones.extend(analizar(texto_eval, profundidad + 1))
             continue
         archivos = [a for a in args if es_archivo_secreto(a)] + [f for f in stdin if es_archivo_secreto(f)]
         if nom in LECTORES and archivos:
@@ -338,7 +344,7 @@ def analizar_pipeline(etapas, razones, profundidad, cuerpos):
             texto = " ".join(args)
             texto = re.sub(r"\$\{#[A-Za-z0-9_]+\}", "", texto)                                        # largo: seguro
             texto = re.sub(r"\$\{[A-Za-z0-9_]+:\s*-[1-4]\}|\$\{[A-Za-z0-9_]+:0:[1-4]\}", "", texto)  # 4 letras: seguro
-            va_a_otro_programa = bool(despues) and not any(n in LECTORES or n in ("tee", "cat") for n, _a in despues)
+            va_a_otro_programa = any(n in ("pbcopy", "vercel", "wrangler") or (n == "gh" and "secret" in a) for n, a in despues)
             if nombres_secretos(texto) and not va_a_otro_programa:
                 razones.append(f"`{nom}` de una variable que parece secreta (clave, token o contraseña) la muestra en pantalla.")
         elif nom in ("printenv", "env", "set", "declare", "typeset", "export"):
