@@ -28,6 +28,7 @@ dejó. Este protocolo cuesta dos minutos y evita todo eso.
   asumís: "Voy a trabajar como [rol] sobre [tema]".
 
 ### 2. Leer el estado (no re-hacer, no re-discutir)
+- **De qué veníamos hablando.** Si la PARTE B trae esa línea, es lo primero que decís en la confirmación («Veníamos con …»): es la memoria de la charla anterior, y «lo último que hiciste» del usuario se refiere a eso. Si no la trae (cierre viejo), leé la sección final del último handoff antes de contestar cualquier pregunta sobre «lo anterior»; nunca respondas «en esta sesión no hice nada» sin haberlo mirado.
 - Último handoff del tema en `handoffs/` de la carpeta de trabajo: qué se hizo, qué se decidió, qué falta.
 - Las decisiones ya tomadas NO se reabren. Si creés que una está mal, lo decís una vez, con evidencia, y seguís.
 - La lista **A VERIFICAR** del prompt (si hay): esas verificaciones son TUYAS, hacelas temprano.
@@ -63,6 +64,10 @@ la anterior subiéndole el número («Ventas 7» → «Ventas 8»). Eso lo hace 
   «Hay N sesiones anteriores de "<base>" abiertas (<n1>, <n2>…). ¿Las archivo? Se pueden recuperar cuando
   quieras.» Archivá (`archive_session`) **solo si el usuario dice que sí**; sin respuesta no toques nada.
   Nunca elimines una sesión. Esto vale también si el título ya tenía número.
+  **Excepción:** si te abrió un `/cerrar` (tu brief dice «Sesión abierta sola por /cerrar») y la app rechaza archivar la
+  anterior por «still working», es lo esperado: `/cerrar` se archiva ella misma al terminar su turno. No se lo pidas al
+  usuario: dejá una línea «la anterior se archiva sola» y, al confirmar (paso 4), verificá que ya no figure; solo si sigue
+  ahí se lo avisás.
 
 ### 3 ter. Radar de modelos (una línea, solo si hay algo)
 Corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/radar.py" aviso` (en Windows, `py -3`). Si imprime una línea («Radar: el radar

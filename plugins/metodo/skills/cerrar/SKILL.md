@@ -14,8 +14,9 @@ re-hacer trabajo y volver a discutir lo decidido. Por eso el cierre tiene **un e
 saltear: el prompt de reanudación copiable**, que el usuario pega al abrir la próxima sesión.
 
 ## ⛔ Regla de oro
-**El ÚLTIMO mensaje de la sesión SIEMPRE es el prompt de reanudación copiable.** Pase lo que pase con los
-demás pasos, nunca termines sin emitir ese bloque.
+**El ÚLTIMO mensaje de la sesión SIEMPRE es el prompt de reanudación copiable** (único agregado posible: en la app de
+escritorio, la apertura de la sesión siguiente del paso 10, que va DESPUÉS de haberlo emitido completo). Pase lo que pase
+con los demás pasos, nunca termines sin emitir ese bloque.
 
 ## Secuencia
 1. **Fecha + tema.** Fecha de hoy (`date +%F`) y tema en minúsculas con guiones. El archivo del handoff se
@@ -107,8 +108,8 @@ demás pasos, nunca termines sin emitir ese bloque.
      también con «sí»; nunca borres copias de otra sesión.
 6. **Confirmá al usuario** en 2-3 líneas qué quedó hecho y dónde (incluida la subida al repo, si se hizo).
 7. **Validá el prompt antes de emitirlo:** tiene las dos partes; la PARTE A trae rol, alcance y reglas con
-   contenido real (no una línea genérica); la PARTE B trae lo hecho, los pendientes en orden y el puntero al
-   handoff; no tiene números de memoria; entra en 30-50 líneas. Si se pasa, no recortes borrando: es señal de
+   contenido real (no una línea genérica); la PARTE B trae lo hecho, «De qué veníamos hablando» (de la CONVERSACIÓN, no de git), los pendientes en orden **con su
+   detalle (qué, dónde, qué cuidado)** y el puntero al handoff; no tiene números de memoria; entra en 30-50 líneas. Si se pasa, no recortes borrando: es señal de
    que algo durable quedó sin bajar al `CLAUDE.md` (paso 3).
 8. **Guardalo en `REANUDAR.md`, en la raíz de la carpeta de trabajo**, para que la próxima ventana arranque con
    `/arrancar` sin pegar nada. Es el mismo bloque completo (PARTE A + PARTE B) que vas a emitir, con una primera
@@ -123,10 +124,39 @@ demás pasos, nunca termines sin emitir ese bloque.
    por terminado sin haberlo corrido.** Pegale al usuario su salida tal cual y, debajo, **una línea por cada ítem MANUAL
    con su resultado real**. Si dice «Falta: … ✗», resolvelo y volvé a correrlo. Después sigue el paso 9: el prompt
    de reanudación sigue siendo el último mensaje.
-9. **⛔ EMITÍ EL PROMPT DE REANUDACIÓN COPIABLE** con la plantilla de abajo. Es el último mensaje. Aunque ya
-   quedó guardado, se emite igual: si el archivo se pierde o la ventana se abre en otra carpeta, el chat es el
-   respaldo. Cerrá con una línea afuera del bloque: «Guardado en `REANUDAR.md`. La próxima vez, abrí Claude en
-   esta carpeta y escribí `/arrancar`: no hace falta pegar nada.»
+9. **⛔ EMITÍ EL PROMPT DE REANUDACIÓN COPIABLE.** Es el último mensaje de la sesión. **La única fuente es el
+   archivo del paso 8: el chat NO se redacta de nuevo, se COPIA de él** (vista en la práctica: la sesión emitió en el chat
+   unas 14 líneas mientras el archivo tenía 35; faltaban «Hecho esta sesión» y el detalle de los pendientes). Procedimiento
+   obligatorio:
+   a. Releé el `REANUDAR.md` recién escrito (no confíes en lo que recordás haber escrito).
+   b. Pegá ese texto **carácter por carácter** dentro del bloque de código, sin la línea `<!-- cierre … -->`.
+      Prohibido resumir, acortar, reordenar o «limpiar». Si algo está mal, se corrige en el ARCHIVO y se vuelve a copiar;
+      nunca se edita solo la copia del chat.
+   c. Si el archivo no existe o no se pudo escribir, recién ahí armás el bloque con la plantilla y avisás «no quedó guardado».
+   Aunque ya esté guardado, se emite igual: si el archivo se pierde o la ventana se abre en otra carpeta, el chat es el
+   respaldo, y por eso tiene que ser idéntico. Cerrá con una línea afuera del bloque: «Guardado en `REANUDAR.md`. La próxima
+   vez, abrí Claude en esta carpeta y escribí `/arrancar`: no hace falta pegar nada.»
+10. **Abrí la sesión siguiente sola (solo en la app de escritorio).** Condiciones: `cerrar-check` dio todo ✓, el avance
+   está subido y existen las herramientas de sesiones de la app (`start_session`, `detach_session`, `archive_session`;
+   búscalas con ToolSearch si vienen diferidas). Si no existen (terminal, Cowork, otra máquina) → salteá este paso y
+   decilo en una línea; el usuario abre la ventana y escribe `/arrancar`.
+   **Orden obligatorio** (carrera vista en la práctica: la sesión nueva arrancó mientras esta todavía copiaba el prompt):
+   primero el mensaje del paso 9 —el prompt completo y su línea «Guardado en…»—, **COMPLETO y SOLO**; recién en el mensaje
+   SIGUIENTE una línea («Abrí <título> y archivo esta.») y la llamada a `start_session`. Nunca `start_session` en el mismo
+   mensaje que el prompt: la nueva lee el `REANUDAR.md` mientras esta sigue «trabajando».
+   - `start_session` con `initiation: "user_asked"` (el `/cerrar` que escribió el usuario es el pedido), `context: "fresh"`,
+     `cwd` = la carpeta actual, `model` = el de la línea «Modelo para abrir» de la PARTE B (por defecto el mismo que usás),
+     `title` = el título siguiente de la serie (mismo ancho: «03» → «04»), `prompt`: «Ejecutá la skill /arrancar en esta
+     carpeta.» y `background`: «Sesión abierta sola por /cerrar del cierre <slug>; el estado está en REANUDAR.md, que
+     /arrancar levanta.». Una sola llamada.
+   - **Enseguida, `detach_session(<id nuevo>)`**: `start_session` crea la nueva como sesión HIJA, colgada de esta en la barra
+     lateral, y al archivar esta se archivaría junto con ella. Si esta sesión tiene grupo en la barra lateral
+     (`get_session("self")`), después `move_sessions([<id nuevo>], group_id = el de esta)`. Si el detach falla, decilo.
+   - **Archivate al final:** la nueva NO puede archivar esta (mientras corre /arrancar, esta sigue «trabajando» y la app
+     rechaza el archivado). Si `start_session` + detach salieron bien, la ÚLTIMA llamada del cierre es
+     `archive_session("self")`. El `/cerrar` del usuario es su OK; es reversible desde la barra lateral. Si algo falló
+     antes, no te archives.
+   - Si la llamada falla o la app la rechaza, decilo tal cual y dejá la línea de siempre (`/arrancar` a mano).
 
 ## Plantilla del prompt de reanudación
 ````
@@ -141,10 +171,14 @@ borrar/enviar/publicar · no adular · leer CLAUDE.md y el último handoff antes
 Seguimos con [tema]. Último cierre: YYYY-MM-DD-tema (handoffs/YYYY-MM-DD-tema.md).
 Copia: <ruta> · Rama: <tema/fecha>   (o «carpeta única, sin copia»)
 Hecho esta sesión: [derivado de los archivos, no de memoria]
+De qué veníamos hablando: [3-4 líneas escritas mirando la CONVERSACIÓN (no git): el tema vivo al cerrar, lo que el usuario
+pidió probar o mirar, y lo que quedó sin responder. Si su última pregunta es «¿funcionó X?», X va nombrado. Sin esto la
+sesión nueva no sabe a qué se refiere «lo último que hiciste».]
 PENDIENTES (en este orden):
-1. [próximo paso exacto]
+1. [próximo paso exacto, con detalle: qué, dónde, qué cuidado]
 2. ...
 A VERIFICAR (si aplica): [dudas técnicas que Claude resuelve solo al arrancar]
+Modelo para abrir: [alias: haiku, sonnet u opus] (lo usa el paso 10)
 Arrancá con /arrancar (o /metodo:arrancar) y confirmá: "Leí el estado. El próximo paso es [X]. ¿Arrancamos?"
 ````
 
