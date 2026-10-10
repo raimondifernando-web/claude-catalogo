@@ -34,12 +34,13 @@ def main():
     with open(ruta, encoding="utf-8", errors="replace") as f:
         texto = f.read(2_000_000)
     m = re.search(r"═══ PARTE B[^\n]*\n", texto)
-    if not m:
+    # solo un archivo que dejó /cerrar (lleva su línea de cierre): un REANUDAR.md ajeno, de un repo clonado, no se inyecta
+    if not m or not re.match(r"\s*<!--\s*cierre\s", texto):
         return
     cuerpo = [l for l in texto[m.end():].splitlines() if not l.startswith(("Arrancá con", "Arrancá confirmando"))]
     if len(cuerpo) > TOPE_LINEAS:
         cuerpo = cuerpo[:TOPE_LINEAS] + ["[… recortado; el resto está en el archivo]"]
-    cierre = re.search(r"<!-- cierre (\d{4}-\d{2}-\d{2})-(\S+)", texto)
+    cierre = re.search(r"<!-- cierre (\d{4}-\d{2}-\d{2})-(\S+?)(?=\s|-->|$)", texto)
     edad = ""
     if cierre:
         try:

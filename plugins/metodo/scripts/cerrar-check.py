@@ -155,8 +155,11 @@ try:
             for _b in (git("branch", "--merged", _base) or "").splitlines():
                 _b = _b.rstrip()
                 # «*» = la rama actual y «+» = la de otra copia abierta: no se proponen para borrar
-                if _b and not _b.lstrip().startswith(("*", "+")) and _b.strip() not in ("main", "master", _base):
-                    _ya.append(_b.strip())
+                _n = _b.strip()
+                # fuera: la actual (*), las de otras copias (+), las protegidas y las recién creadas (mismo guardado que la base)
+                if _b and not _b.lstrip().startswith(("*", "+")) and _n not in ("main", "master", _base, "estable", "stable", "develop", "dev") \
+                        and not _n.startswith(("release", "hotfix")) and git("rev-parse", _n) != git("rev-parse", _base):
+                    _ya.append(_n)
             if _ya:
                 print(f"• Ramas ya mergeadas que siguen vivas: {', '.join(_ya[:5])} · probá el resultado y, recién ahí, borralas (o decí por qué quedan)")
 except Exception:

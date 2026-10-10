@@ -144,7 +144,7 @@ con los demás pasos, nunca termines sin emitir ese bloque.
    siguiente). El `REANUDAR.md` ya está en disco y subido antes del paso 9, así que la sesión nueva no puede leer algo a
    medias. Orden: escribí el prompt del paso 9 y su línea «Guardado en…» y, en ESA MISMA respuesta, sin dejar de trabajar,
    seguí con una línea («Abrí <título>; archivo esta.») y las llamadas (`start_session`, `detach_session`,
-   `move_sessions`, `archive_session`). Nunca cierres tu respuesta sin haber hecho este paso o sin decir por qué no.
+   `move_sessions`, `archive_session`). Pasá siempre `use_worktree: false`: la sesión nueva trabaja en la MISMA carpeta (si esta está en una copia con rama propia, omitirlo la crearía en otra y `/arrancar` frenaría por copia equivocada). Nunca cierres tu respuesta sin haber hecho este paso o sin decir por qué no.
    - `start_session` con `initiation: "user_asked"` (el `/cerrar` que escribió el usuario es el pedido), `context: "fresh"`,
      `cwd` = la carpeta actual, `model` = el de la línea «Modelo para abrir» de la PARTE B (por defecto el mismo que usás),
      `title` = el título siguiente de la serie (mismo ancho: «03» → «04»), `prompt`: «Ejecutá la skill /arrancar en esta
@@ -155,7 +155,7 @@ con los demás pasos, nunca termines sin emitir ese bloque.
      (`get_session("self")`), después `move_sessions([<id nuevo>], group_id = el de esta)`. Si el detach falla, decilo.
    - **Archivate al final:** la nueva NO puede archivar esta (mientras corre /arrancar, esta sigue «trabajando» y la app
      rechaza el archivado). Si `start_session` + detach salieron bien, la ÚLTIMA llamada del cierre es
-     `archive_session("self")`. Si la app la rechaza por «still working», es normal: se archiva en el próximo turno o la archiva `/arrancar`. El `/cerrar` del usuario es su OK; es reversible desde la barra lateral. Si algo falló
+     `archive_session("self")`. Si la app la rechaza por «still working», es normal: queda abierta y `/arrancar` de la sesión nueva ofrece archivarla (con el sí del usuario). El `/cerrar` del usuario es su OK; es reversible desde la barra lateral. Si algo falló
      antes, no te archives.
    - Si la llamada falla o la app la rechaza, decilo tal cual y dejá la línea de siempre (`/arrancar` a mano).
 

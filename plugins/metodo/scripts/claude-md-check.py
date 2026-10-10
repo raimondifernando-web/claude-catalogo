@@ -65,10 +65,10 @@ def main():
     puntero = re.compile(r"→\s*doc,\s*buscar\s*«([^»]+)»")
     regla = re.compile(r"regla automática:\s*(\.claude/rules/[\w.-]+\.md)")
     doc_m = re.search(r"grep -n '<clave>' (\S+?\.md)", texto)
-    doc_rel = doc_m.group(1) if doc_m else "docs/MAPA-DELEGACION-DETALLE.md"
-    doc_path = os.path.join(base, doc_rel)
+    doc_rel = doc_m.group(1) if doc_m else None   # sin doc declarado, los punteros no se pueden verificar
+    doc_path = os.path.join(base, doc_rel) if doc_rel else None
     try:
-        doc_txt = open(doc_path, encoding="utf-8", errors="replace").read() if os.path.isfile(doc_path) else None
+        doc_txt = open(doc_path, encoding="utf-8", errors="replace").read() if doc_path and os.path.isfile(doc_path) else None
     except OSError:
         doc_txt = None
 
@@ -100,11 +100,15 @@ def main():
             partes = ln.split("|")
             largas.append((partes[1] if len(partes) > 1 else ln).strip()[:50])
 
-    linea(not largas, f"Filas de tabla ≤ {FILA_MAX} caracteres o con puntero al doc" if not largas
-          else f"{len(largas)} fila(s) de tabla de más de {FILA_MAX} caracteres sin puntero (conviene mandar el detalle a un doc): "
-               + " · ".join(largas[:6]))
+    if largas:   # estilo, no error: nunca traba un arranque ni un cierre
+        print(f"• {len(largas)} fila(s) de tabla de más de {FILA_MAX} caracteres (conviene mandar el detalle a un doc aparte): "
+              + " · ".join(largas[:6]))
+    else:
+        print(f"✓ Filas de tabla ≤ {FILA_MAX} caracteres o con puntero al doc")
     if punteros == 0:
         print("✓ Punteros al doc: este CLAUDE.md no usa")
+    elif doc_rel is None:
+        print(f"• {punteros} puntero(s) «→ doc, buscar»: el CLAUDE.md no declara en qué archivo (grep -n '<clave>' <archivo>.md), no se verifican")
     elif sin_doc:
         linea(False, f"Hay {punteros} puntero(s) pero no existe {doc_rel}")
     else:

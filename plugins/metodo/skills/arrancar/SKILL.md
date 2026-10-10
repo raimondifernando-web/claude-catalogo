@@ -65,9 +65,8 @@ la anterior subiéndole el número («Ventas 7» → «Ventas 8»). Eso lo hace 
   quieras.» Archivá (`archive_session`) **solo si el usuario dice que sí**; sin respuesta no toques nada.
   Nunca elimines una sesión. Esto vale también si el título ya tenía número.
   **Excepción:** si te abrió un `/cerrar` (tu brief dice «Sesión abierta sola por /cerrar») y la app rechaza archivar la
-  anterior por «still working», es lo esperado: `/cerrar` se archiva ella misma al terminar su turno. No se lo pidas al
-  usuario: dejá una línea «la anterior se archiva sola» y, al confirmar (paso 4), verificá que ya no figure; solo si sigue
-  ahí se lo avisás.
+  anterior por «still working», es lo esperado: `/cerrar` se archiva ella misma al terminar su turno. No insistas: dejá una línea «la anterior se archiva sola» y, al confirmar (paso 4), verificá que ya no figure; si sigue
+  ahí, ofrecé archivarla como en la regla de arriba (con el sí del usuario).
 
 ### 3 ter. Radar de modelos (una línea, solo si hay algo)
 Corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/radar.py" aviso` (en Windows, `py -3`). Si imprime una línea («Radar: el radar
