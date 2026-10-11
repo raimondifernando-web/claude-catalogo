@@ -7,3 +7,4 @@ Receta para cualquier trabajo que toque claves, accesos o publicar algo en inter
 2. Antes de publicar o poner algo en internet, aplicá la skill `decisiones-tecnicas` (regla 21) y revisá el código con `security-and-hardening` si la tenés.
 3. Si una clave se mostró en pantalla o en el chat, tratála como filtrada: hay que rotarla.
 4. Un subagente NO hereda estas reglas: repetilas en SU prompt.
+ Hooks, permisos `deny`, sandbox y `allowed-tools` de skills: receta `arneses`.
