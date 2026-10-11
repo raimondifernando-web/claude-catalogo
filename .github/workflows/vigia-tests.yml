@@ -5,27 +5,17 @@ name: vigia-tests
 on:
   push:
     paths:
-      - "plugins/metodo/scripts/vigia/**"
-      - "plugins/metodo/hooks/**"
-      - "plugins/metodo/scripts/buzon.py"
-      - "plugins/metodo/scripts/radar.py"
-      - "plugins/metodo/radar/**"
+      - "plugins/metodo/**"
       - "scripts/radar-fuentes.py"
       - "scripts/estable-avanzar.py"
-      - "plugins/metodo/scripts/tests/**"
       - ".github/workflows/vigia-tests.yml"
       - ".github/workflows/estable.yml"
       - ".github/rulesets/**"
   pull_request:
     paths:
-      - "plugins/metodo/scripts/vigia/**"
-      - "plugins/metodo/hooks/**"
-      - "plugins/metodo/scripts/buzon.py"
-      - "plugins/metodo/scripts/radar.py"
-      - "plugins/metodo/radar/**"
+      - "plugins/metodo/**"
       - "scripts/radar-fuentes.py"
       - "scripts/estable-avanzar.py"
-      - "plugins/metodo/scripts/tests/**"
       - ".github/workflows/vigia-tests.yml"
       - ".github/workflows/estable.yml"
       - ".github/rulesets/**"

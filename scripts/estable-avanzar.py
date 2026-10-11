@@ -62,6 +62,10 @@ PATRON_REMOTO = re.compile(r"^[A-Za-z0-9_.-]+$")
 PATRON_REVERT = re.compile(r"This reverts commit ([0-9a-f]{40})")
 HORAS_ATRASO = 96   # 4 días: si algo de main espera más que eso y estable no lo tomó, la corrida sale en rojo
 CEROS = "0" * 40
+# Compuerta de pruebas (C26): en automático, un commit solo se promueve si las pruebas que GitHub registró para él
+# no están en rojo ni sin terminar. Sin ninguna prueba registrada (commit que no tocó nada probado) pasa.
+PRUEBAS = ("tests (", "comando del hook con bash (")   # nombres de los jobs de vigia-tests.yml
+BUENAS = ("success", "skipped", "neutral")
 # Solo eventos que dejan un commit nuevo en main. Todo lo demás (force_push, borrados) se ignora: ignorar un evento
 # nunca adelanta el candidato, solo lo deja en uno más viejo.
 TIPOS_DE_EVENTO = ("push", "pr_merge", "merge_queue_merge", "branch_creation")
@@ -109,6 +113,26 @@ def pedir_actividad(repo, api, credencial=None, timeout=30):
     if not isinstance(datos, list):
         raise Frena("la API no devolvió una lista de eventos: no se mueve nada")
     return datos, fecha
+
+
+def pruebas_del_commit(repo, api, credencial, sha, timeout=30):
+    """Devuelve (rojas, pendientes, total): las pruebas de vigia-tests registradas para ese commit."""
+    url = "%s/repos/%s/commits/%s/check-runs?per_page=100" % (api.rstrip("/"), repo, sha)
+    req = urllib.request.Request(url, headers=cabeceras(api, credencial))
+    try:
+        with urllib.request.build_opener(_SinRedirecciones).open(req, timeout=timeout) as r:
+            datos = json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise Frena("la API respondió HTTP %s al pedir las pruebas de %s: no se mueve nada" % (e.code, sha[:7]))
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        raise Frena("no se pudieron leer las pruebas de %s (%s): no se mueve nada" % (sha[:7], type(e).__name__))
+    corridas = datos.get("check_runs") if isinstance(datos, dict) else None
+    if not isinstance(corridas, list):
+        raise Frena("la API no devolvió las pruebas de %s: no se mueve nada" % sha[:7])
+    mias = [c for c in corridas if isinstance(c, dict) and str(c.get("name", "")).startswith(PRUEBAS)]
+    pendientes = [c["name"] for c in mias if c.get("status") != "completed"]
+    rojas = [c["name"] for c in mias if c.get("status") == "completed" and c.get("conclusion") not in BUENAS]
+    return rojas, pendientes, len(mias)
 
 
 def hora_del_servidor(fecha):
@@ -369,6 +393,15 @@ def main(argv=None):
                 resumen.append("candidato por antigüedad: `%s` (entró a main hace %s según el servidor)"
                                % (candidato[:7], _hace(ahora, par[0])))
             destino = decidir(cwd, principal, actual, candidato, bool(manual))
+            if not manual:
+                rojas, pendientes, total = pruebas_del_commit(a.repo, a.api, credencial, destino)
+                if rojas:
+                    raise Frena("las pruebas de %s están en rojo (%s): no se mueve hasta que main tenga un commit en verde"
+                                % (destino[:7], ", ".join(rojas[:3])))
+                if pendientes:
+                    raise SinMovimiento("las pruebas de %s todavía no terminaron (%d): se reintenta en la próxima corrida"
+                                        % (destino[:7], len(pendientes)))
+                resumen.append("pruebas de `%s`: %s" % (destino[:7], "%d en verde" % total if total else "ninguna registrada"))
         except SinMovimiento as e:
             sin_mover = e
         if actividad is not None:     # solo en automático: hay una hora del servidor con la que medir el atraso

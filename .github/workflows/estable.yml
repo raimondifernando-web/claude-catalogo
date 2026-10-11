@@ -8,6 +8,11 @@
 #         gh workflow run estable.yml -f sha=<commit completo de main>
 #     promueve ese commit sin esperar, con el mismo control de ancestría.
 #
+# Compuerta de pruebas (C26): en automático, antes de mover `estable` el script mira los resultados de vigia-tests que
+# GitHub registró para el commit candidato; si alguno está en rojo no se mueve (y la corrida sale en rojo), si alguno sigue
+# corriendo espera a la próxima hora, y si no hay ninguno registrado pasa. El código del candidato NUNCA se ejecuta acá
+# (el job tiene la clave de despliegue): solo se lee el veredicto de otro workflow. El «pasalo ya» no consulta pruebas.
+#
 # EMERGENCIA (entró algo malo a `main`): `gh workflow disable estable.yml`, revertir en `main`, y reactivar
 # (`gh workflow enable estable.yml`) recién 48 h DESPUÉS del revert. Detalle del porqué en el encabezado del script.
 #

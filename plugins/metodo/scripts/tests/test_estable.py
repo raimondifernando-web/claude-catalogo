@@ -130,7 +130,7 @@ class _Manejador(BaseHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
-        cuerpo = json.dumps(srv.actividad).encode("utf-8")
+        cuerpo = json.dumps({"check_runs": srv.pruebas} if "/check-runs" in self.path else srv.actividad).encode("utf-8")
         self.send_response_only(srv.estado)  # sin send_response: no agrega Date solo
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(cuerpo)))
@@ -160,6 +160,7 @@ class TestScript(unittest.TestCase):
         self.dir = Path(self.tmp.name)
         self.remoto = self.dir / "remoto.git"
         self.srv.actividad, self.srv.estado, self.srv.redirigir, self.srv.pedidos = [], 200, False, []
+        self.srv.pruebas = []   # check-runs que la API simulada devuelve para cualquier commit
         self.srv.fecha = format_datetime(AHORA, usegmt=True)
         self._git(self.dir, "init", "--quiet", "--bare", str(self.remoto))
         self._git(self.remoto, "symbolic-ref", "HEAD", "refs/heads/main")
@@ -459,7 +460,52 @@ class TestScript(unittest.TestCase):
     def test_pide_la_actividad_de_main_con_100_por_pagina(self):
         self._eventos_normales()
         self.correr()
-        self.assertEqual(self.srv.pedidos, ["/repos/dueno/repo/activity?ref=refs/heads/main&per_page=100"])
+        self.assertEqual(self.srv.pedidos[0], "/repos/dueno/repo/activity?ref=refs/heads/main&per_page=100")
+
+    # -- compuerta de pruebas (C26) --
+    def _prueba(self, nombre, estado="completed", conclusion="success"):
+        return {"name": nombre, "status": estado, "conclusion": conclusion}
+
+    def test_pruebas_en_verde_dejan_pasar_y_se_anota(self):
+        self._eventos_normales()
+        self.srv.pruebas = [self._prueba("tests (ubuntu-latest, Python 3.12)"), self._prueba("comando del hook con bash (macos-latest)")]
+        r = self.correr()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), self.c[3])
+        self.assertIn("2 en verde", r.resumen)
+        self.assertTrue(any("/commits/%s/check-runs" % self.c[3] in p for p in self.srv.pedidos))
+
+    def test_una_prueba_en_rojo_frena_y_termina_en_rojo(self):
+        self._eventos_normales()
+        self.srv.pruebas = [self._prueba("tests (ubuntu-latest, Python 3.12)"),
+                            self._prueba("tests (windows-latest, Python 3.9)", conclusion="failure")]
+        r = self.correr()
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), self.c[1])
+        self.assertIn("en rojo", r.stdout)
+
+    def test_pruebas_sin_terminar_no_mueven_pero_no_es_error(self):
+        self._eventos_normales()
+        self.srv.pruebas = [self._prueba("tests (ubuntu-latest, Python 3.12)", estado="in_progress", conclusion=None)]
+        r = self.correr()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), self.c[1])
+        self.assertIn("todavía no terminaron", r.stdout)
+
+    def test_sin_pruebas_registradas_pasa(self):
+        self._eventos_normales()
+        self.srv.pruebas = [self._prueba("radar (ubuntu-latest)", conclusion="failure")]   # otro workflow: no cuenta
+        r = self.correr()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), self.c[3])
+        self.assertIn("ninguna registrada", r.resumen)
+
+    def test_el_manual_no_consulta_las_pruebas(self):
+        self.srv.pruebas = [self._prueba("tests (ubuntu-latest, Python 3.12)", conclusion="failure")]
+        r = self.correr("--sha", self.c[2])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), self.c[2])
+        self.assertEqual(self.srv.pedidos, [])
 
     def test_sin_push_decide_pero_no_empuja(self):
         self._eventos_normales()
