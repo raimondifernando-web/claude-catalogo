@@ -664,7 +664,7 @@ class TestSegundaRevision(Base):
     def test_la_guia_que_cambio_deja_una_marca_que_sobrevive_al_pr(self):
         radar = radar_con_versiones()
         radar["fuentes_auto"]["guias"] = {"anthropic_prompting": {"proveedor": "Anthropic", "titulo": "P", "url": "https://platform.claude.com/p.md", "hash": "aaaa"}}
-        nuevo, _ = FU.analizar(radar, fuentes_de(guias={"anthropic_prompting": "bbbb"}))
+        nuevo, _ = FU.analizar(radar, fuentes_de(guias={"anthropic_prompting": "bbbb"}), R.hoy())  # mismo reloj que los resúmenes
         cambio = nuevo["fuentes_auto"]["guias"]["anthropic_prompting"]["cambio"]
         self.assertTrue(cambio)
         carpeta = self.tmp / "consejos"
