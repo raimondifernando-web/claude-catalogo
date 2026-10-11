@@ -744,9 +744,10 @@ class TestHooksJson(unittest.TestCase):
         datos = json.loads(HOOKS_JSON_RUTA.read_text(encoding="utf-8"))
         inicio = [h["command"] for g in datos["hooks"]["SessionStart"] for h in g["hooks"]]
         self.assertEqual(len([c for c in inicio if "radar.py\" hoy " in c]), 1)
-        # el recordatorio del radar nunca bloquea; el freno anti-secretos (matcher Bash) y el de la regla 22
+        # el recordatorio del radar nunca bloquea; el freno anti-secretos (matcher Bash|Read|Grep) y el de la regla 22
         # (consultar-ecosistema, matcher Write|Agent|Task|Workflow) son aparte y sí pueden frenar
-        previos = [g for g in datos["hooks"]["PreToolUse"] if g.get("matcher") not in ("Bash", "Write|Agent|Task|Workflow")]
+        previos = [g for g in datos["hooks"]["PreToolUse"]
+                   if g.get("matcher") not in ("Bash|Read|Grep", "Write|Agent|Task|Workflow")]
         self.assertEqual(len(previos), 1)
         self.assertEqual(sorted(previos[0]["matcher"].split("|")), ["Agent", "Task", "mcp__ccd_session__start_session"])
         orden = previos[0]["hooks"][0]

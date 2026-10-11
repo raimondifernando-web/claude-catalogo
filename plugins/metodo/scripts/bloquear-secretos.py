@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""bloquear-secretos.py — freno PreToolUse de Bash: frena los comandos que MUESTRAN el valor de un secreto
-(contraseña, llave, token) en pantalla, donde quedaría guardado en el historial de la sesión.
+"""bloquear-secretos.py — freno PreToolUse de Bash, Read y Grep: frena lo que MUESTRA el valor de un secreto
+(contraseña, llave, token) en pantalla, donde quedaría guardado en el historial de la sesión, y los comandos que
+MANDAN un archivo de secretos a otra máquina (curl -d @.env).
 
-Contrato del hook: stdin = JSON {tool_name, tool_input:{command}}; exit 0 = deja pasar; exit 2 + stderr = frena.
-Ante cualquier error NO frena (exit 0): nunca rompe Bash.
+Contrato del hook: stdin = JSON {tool_name, tool_input, cwd}; exit 0 = deja pasar; exit 2 + stderr = frena.
+Ante cualquier error NO frena (exit 0): nunca rompe nada. Es un guardarraíl, no un muro: el muro son las reglas
+`deny` de permisos y el sandbox (docs oficiales de permisos y sandbox; un paquete no puede traer reglas `deny`).
+
+Read: frena si `file_path` (o el archivo al que apunta, si es un enlace) es un archivo de secretos. Grep: solo en
+modo «content» (el único que muestra líneas) sobre un archivo o un glob de secretos; «files_with_matches» y «count»
+pasan, igual que `grep -l` y `grep -c` en Bash.
 
 Cómo decide: parte el comando en comandos simples (respetando comillas, sin mirar comentarios) y mira, para cada
 uno, el programa que corre y sus argumentos. Frena solo si un programa que IMPRIME contenido (cat, sed, awk, jq,
@@ -12,9 +18,12 @@ una variable que parece secreta (SECRET, TOKEN, KEY…), o si se vuelca todo el 
 process.env.X en un texto o en un programa que no lo imprime NO frena. El cuerpo de un heredoc se mira solo si lo
 recibe una shell (bash <<X) o un intérprete (python - <<X); si lo recibe cat o un archivo, es texto.
 
-Límites conocidos (no se cubren): buscar con grep -r sin nombrar el archivo, find -exec, ssh a otra máquina.
+Límites conocidos (no se cubren): buscar con grep -r o la herramienta Grep sobre una carpeta sin nombrar el archivo,
+find -exec, ssh a otra máquina, una copia del archivo con otro nombre, y Windows: los comandos de PowerShell no
+pasan por acá (el freno es solo para Mac y Linux).
 """
 import json
+import os
 import re
 import sys
 
@@ -32,6 +41,7 @@ ECHOS = {"echo", "printf", "print"}
 ENVOLTURAS = {"sudo", "command", "builtin", "time", "nohup", "nice", "exec", "stdbuf", "env", "timeout", "xcrun"}
 PALABRAS = {"then", "do", "else", "elif", "if", "while", "until", "fi", "!", "{", "}", "case", "esac", "function"}
 SUMIDEROS = {"wc", "sha1sum", "sha256sum", "sha512sum", "shasum", "md5", "md5sum", "cksum"}
+SUBIDAS = {"curl", "wget", "http", "https", "xh"}  # programas que pueden mandar un archivo a otra máquina
 # $( … ) cuya salida se guarda (VAR=$(…), export VAR=$(…)) o se carga (export $(…), eval "$(…)", source <(…)): no se muestra
 SIN_SALIDA = re.compile(r"^\s*(?:(?:export|declare|local|readonly|typeset)\s+(?:-\w+\s+)*)?[A-Za-z_]\w*=[\"']?$"
                         r"|^\s*(?:export|eval|source|\.)\s+[\"']?<?$")
@@ -47,11 +57,57 @@ def es_archivo_secreto(tok):
         return False
     base = t.rstrip("/").split("/")[-1]
     if re.fullmatch(r"\.env(?:\.[^/]*)?|.*\.env|\.env[*?\[].*", base, I):
-        return not re.fullmatch(r"\.env\." + SIN_VALOR, base, I)
+        # plantillas sin valores: .env.example, .env.local.example, sample.env, example.env
+        return not (re.fullmatch(r"\.env\." + SIN_VALOR, base, I) or re.search(r"\." + SIN_VALOR + r"$", base, I)
+                    or re.fullmatch(SIN_VALOR + r"\.env", base, I))
     if re.fullmatch(r"\.modal\.toml|.+\.(?:pem|key|p12|pfx)|id_rsa|id_ed25519|id_ecdsa|\.npmrc|\.netrc|\.pypirc|"
-                    r"\.envrc|\.git-credentials|credentials\.json|\.pgpass|\.htpasswd|secrets?\.(?:json|ya?ml|toml|env)", base, I):
+                    r"\.envrc|\.git-credentials|\.?credentials\.json|\.pgpass|\.htpasswd|secrets?\.(?:json|ya?ml|toml|env)",
+                    base, I):
         return True
-    return bool(re.search(r"(?:^|/)gh(?:-claude)?/hosts\.yml$|(?:^|/)\.aws/credentials$", t, I))
+    # almacenes de credenciales conocidos (lista basada en el ejemplo oficial settings-hipaa.json de Anthropic)
+    return bool(re.search(r"(?:^|/)gh(?:-claude)?/hosts\.yml$|(?:^|/)\.aws/credentials$|(?:^|/)\.docker/config\.json$"
+                          r"|(?:^|/)\.config/git/credentials$|(?:^|/)\.notebooklm/.|(?:^|/)Library/Keychains/."
+                          r"|(?:^|/)\.config/gcloud/(?:credentials\.db|access_tokens\.db|"
+                          r"application_default_credentials\.json|legacy_credentials/)", t, I))
+
+
+def es_ruta_secreta(ruta, cwd=""):
+    """Read/Grep: ¿la ruta, o el archivo al que apunta si es un enlace, es un archivo de secretos?
+    Acepta rutas relativas (se resuelven contra `cwd`) y separadores de Windows."""
+    if not isinstance(ruta, str) or not ruta.strip():
+        return False
+    ruta = ruta.strip().replace("\\", "/")
+    if es_archivo_secreto(ruta):
+        return True
+    try:
+        completa = os.path.expanduser(ruta)
+        if not os.path.isabs(completa):
+            completa = os.path.join(cwd or os.getcwd(), completa)
+        real = os.path.realpath(completa).replace("\\", "/")
+    except (OSError, ValueError):
+        return False
+    return es_archivo_secreto(real)
+
+
+def glob_secreto(patron):
+    """Grep: ¿el glob apunta a archivos de secretos? (`.env*`, `**/.env`, `*.pem`, `{.env,.env.local}`…)"""
+    if not isinstance(patron, str) or not patron.strip():
+        return False
+    return any(p and es_archivo_secreto(p) for p in re.split(r"[/{},]", patron.replace("\\", "/")))
+
+
+def subida_secreta(args):
+    """curl/wget/httpie: ¿manda el contenido de un archivo de secretos? (-d @.env, -F f=@.env, -T .env…)"""
+    for k, a in enumerate(args):
+        if "@" in a and es_archivo_secreto(a.split("@", 1)[1].split(";")[0]):
+            return True
+        if a in ("-T", "--upload-file", "--post-file", "--body-file") and k + 1 < len(args) \
+                and es_archivo_secreto(args[k + 1]):
+            return True
+        m = re.match(r"^--(?:upload-file|post-file|body-file)=(.+)$", a)
+        if m and es_archivo_secreto(m.group(1)):
+            return True
+    return False
 
 
 def extraer_heredocs(cmd):
@@ -304,6 +360,10 @@ def analizar_pipeline(etapas, razones, profundidad, cuerpos):
             continue
         if not nom:
             continue
+        # mandar un archivo de secretos a otra máquina: se frena aunque la salida vaya a un archivo
+        if nom in SUBIDAS and subida_secreta(args):
+            razones.append(f"`{nom}` manda a otra máquina el contenido de un archivo de secretos.")
+            continue
         # lo que se imprime no llega a la pantalla si va a un archivo, a un contador/hash o a un inicio de sesión por stdin
         if stdout_fuera_de_pantalla(toks) or any(n in SUMIDEROS for n, _a in despues) \
                 or any(n in ("gh", "docker") and any(x in a for x in LOGIN_STDIN) for n, a in despues):
@@ -389,25 +449,48 @@ def analizar(cmd, profundidad=0):
     return out
 
 
+def analizar_lectura(herramienta, ti, cwd):
+    """Read y Grep: las herramientas de archivos de Claude, que el análisis de comandos de Bash no ve."""
+    if herramienta == "Read":
+        ruta = ti.get("file_path") or ""
+        if es_ruta_secreta(ruta, cwd):
+            nombre = str(ruta).replace("\\", "/").rstrip("/").split("/")[-1] or ruta
+            return [f"leer «{nombre}» muestra el contenido de un archivo de secretos."]
+        return []
+    # Grep: solo «content» muestra líneas; «files_with_matches» (el de siempre) y «count» no muestran valores
+    if (ti.get("output_mode") or "files_with_matches") != "content":
+        return []
+    if es_ruta_secreta(ti.get("path") or "", cwd) or glob_secreto(ti.get("glob") or ""):
+        return ["buscar en modo «content» dentro de un archivo de secretos muestra la línea con el valor. "
+                "Para saber si existe, buscá en modo «count» o «files_with_matches»."]
+    return []
+
+
 def main():
     try:
         data = json.loads(sys.stdin.read())
-        if data.get("tool_name") != "Bash":
+        herramienta = data.get("tool_name")
+        ti = data.get("tool_input") or {}
+        if herramienta == "Bash":
+            cmd = ti.get("command") or ""
+            if not cmd.strip():
+                return 0
+            razones = analizar(cmd)
+        elif herramienta in ("Read", "Grep"):
+            razones = analizar_lectura(herramienta, ti, data.get("cwd") or "")
+        else:
             return 0
-        cmd = (data.get("tool_input") or {}).get("command") or ""
-        if not cmd.strip():
-            return 0
-        razones = analizar(cmd)
     except Exception:
         return 0
     if not razones:
         return 0
-    texto = ["Frené este comando porque puede mostrar una contraseña, una llave o un token en pantalla "
-             "(y quedaría guardado en el historial de la conversación):"]
+    texto = ["Frené esta acción porque puede mostrar una contraseña, una llave o un token en pantalla "
+             "(y quedaría guardado en el historial de la conversación) o mandarlo a otra máquina:"]
     texto += ["  · " + r for r in razones]
     texto += ["",
               "Formas seguras:",
               "  · ¿existe la variable? → grep -c '^NOMBRE=' archivo   (cuenta, no muestra el valor)",
+              "  · ¿qué variables tiene? → cut -d= -f1 archivo   (solo los nombres)",
               "  · ¿anda la llave? → probala con un pedido que solo devuelva el estado (curl -s -o /dev/null -w '%{http_code}' …)",
               "  · ¿cuál es? → mostrá solo el largo o las últimas 4 letras: echo \"largo=${#NOMBRE} …${NOMBRE: -4}\"",
               "Las claves las carga la persona dueña de la cuenta; Claude no las lee ni las escribe. "
