@@ -1,5 +1,9 @@
 # paneles
 
+## 0.2.0 — 2026-10-11
+- Tercer panel, **Tareas**: las tareas de la sesión en vivo (lo hecho se tacha). Se alimenta de lo que la sesión anota con sus herramientas de tareas, o de `.claude/tareas.json` de la carpeta si existe. Se abre solo y con `/tareas`.
+- Arreglo: los paneles podían nacer vacíos al abrir una sesión nueva (se arreglaban solos recién cuando cambiaba el archivo). Ahora cada sesión empieza de cero. Probable causa, no reproducida en las pruebas automáticas: confirmar abriendo una sesión nueva.
+
 ## 0.1.0 — 2026-10-10
 - Primera versión. Dos paneles a la derecha de la app, que se abren solos al empezar una sesión:
   - **Uso**: cuánto contexto llevás gastado (partido por categoría), cuánto te queda del cupo del plan y qué comando gastó más en la sesión. Se abre también con `/uso`.

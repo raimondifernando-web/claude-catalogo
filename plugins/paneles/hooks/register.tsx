@@ -1,9 +1,9 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionContextUsage, SessionRateLimit } from 'claude-code'
 
-import type { Categoria, Cambio, Cambios, Fila, Gasto, Limite, Medida, Modelo, Proxima } from '../types'
+import type { Tarea, Categoria, Cambio, Cambios, Fila, Gasto, Limite, Medida, Modelo, Proxima } from '../types'
 
-// Plugin «paneles»: dos paneles a la derecha, «Uso» y «Pendientes». Un plugin tiene un solo
+// Plugin «paneles»: tres paneles a la derecha, «Uso», «Pendientes» y «Tareas». Un plugin tiene un solo
 // módulo de hooks y no admite dos hooks del mismo evento sin filtro, y `$` no cruza archivos:
 // por eso van juntos acá, y los hooks de los dos paneles se encadenan al final.
 
@@ -766,6 +766,8 @@ const VERBO: Record<Cambio['tipo'], string> = {
 
 const pendSessionStart: H = async ($, e, next) => {
   const ran = await next(e)
+  // Cada sesión tiene sus propios átomos: sin esto, el panel nace vacío si el archivo no cambió desde la sesión anterior.
+  ultimoJson = ''
   await $.command.register({ name: 'pendientes', description: 'Abre el panel de pendientes (PENDIENTES.md)' })
   void $.ui.open({ id: P_PANEL, title: P_TITULO, columns: 38 })
   await refrescar($)
@@ -1003,11 +1005,134 @@ const registrarPendientes: Register = on => {
   })
 }
 
+
+// ---------- Panel «Tareas» ----------
+// Las tareas de ESTA sesión, en vivo. Se alimenta de las llamadas que la propia sesión hace a
+// TodoWrite / TaskCreate / TaskUpdate, o de <carpeta>/.claude/tareas.json si existe. Hechas = tachadas.
+const T_PANEL = 'tareas-sesion'
+const tLista = atom({ plugin: 'paneles', key: 'tareasLista' } as const, [])
+// null = no hay archivo.
+const tArchivo = atom({ plugin: 'paneles', key: 'tareasArchivo' } as const, null)
+const T_ARCHIVO = '.claude/tareas.json'
+const T_CADA = 3_000
+const T_ESTADOS = ['pending', 'in_progress', 'completed']
+let tUltimo = ''
+
+function tLeer(texto: string): Tarea[] | null {
+  try {
+    const d = JSON.parse(texto) as { tareas?: unknown }
+    if (!Array.isArray(d.tareas)) return null
+    return d.tareas.flatMap((t, i) => {
+      const o = t as { id?: unknown; texto?: unknown; estado?: unknown }
+      if (typeof o?.texto !== 'string') return []
+      const estado = T_ESTADOS.includes(String(o.estado)) ? (o.estado as Tarea['estado']) : 'pending'
+      return [{ id: String(o.id ?? `a${i + 1}`), texto: o.texto, estado }]
+    })
+  } catch {
+    return null
+  }
+}
+
+async function tRefrescar($: EngineInterface): Promise<void> {
+  try {
+    const carpeta = await $.session.root()
+    let nuevo: Tarea[] | null = null
+    try {
+      nuevo = tLeer(await $.fs.read(`${carpeta}/${T_ARCHIVO}`))
+    } catch {
+      nuevo = null
+    }
+    const json = JSON.stringify(nuevo)
+    if (json !== tUltimo) {
+      tUltimo = json
+      await update($, tArchivo, () => nuevo)
+    }
+  } catch {
+    // se reintenta en el próximo ciclo
+  }
+}
+
+const tSessionStart: H = async ($, e, next) => {
+  const ran = await next(e)
+  // Cada sesión tiene sus propios átomos: sin esto, el panel nace vacío si el archivo no cambió desde la sesión anterior.
+  tUltimo = ''
+  await $.command.register({ name: 'tareas', description: 'Abre el panel de tareas de la sesión' })
+  void $.ui.open({ id: T_PANEL, title: 'Tareas', columns: 38 })
+  await tRefrescar($)
+  $.clock.every(T_CADA, () => tRefrescar($))
+  return ran
+}
+
+const registrarTareas: Register = on => {
+  on('command.run', { command: 'tareas' }, async $ => {
+    await $.ui.open({ id: T_PANEL, title: 'Tareas', columns: 38 })
+    await tRefrescar($)
+    return { text: 'Panel de tareas abierto.' }
+  })
+
+  // TodoWrite trae la lista entera cada vez.
+  on('tool.call', { tool: 'TodoWrite' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true) {
+      const nueva: Tarea[] = e.todos.map((t, i) => ({ id: `t${i + 1}`, texto: t.content, estado: t.status }))
+      await update($, tLista, () => nueva)
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  // TaskCreate: el id lo da el resultado.
+  on('tool.call', { tool: 'TaskCreate' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true) {
+      const id = String(ran.result?.task?.id ?? `n${Date.now()}`)
+      await update($, tLista, l => [...(l ?? []).filter(t => t.id !== id), { id, texto: e.subject, estado: 'pending' as const }])
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'TaskUpdate' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true) {
+      await update($, tLista, l =>
+        (l ?? [])
+          .filter(t => !(t.id === e.taskId && e.status === 'deleted'))
+          .map(t =>
+            t.id === e.taskId
+              ? { ...t, texto: e.subject ?? t.texto, estado: e.status && e.status !== 'deleted' ? e.status : t.estado }
+              : t,
+          ),
+      )
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  on('ui.render', { component: 'Pane', requestId: T_PANEL }, async ($, e) => {
+    const { Box, Text } = $.ui.resolve(e)
+    const deArchivo = await read($, tArchivo)
+    // El archivo manda cuando existe; si no, valen las llamadas a TodoWrite/TaskCreate.
+    const tareas = deArchivo ?? (await read($, tLista)) ?? []
+    const hechas = tareas.filter(t => t.estado === 'completed').length
+    return (
+      <Box flexDirection="column" paddingX={1} gap={1}>
+        <Text dimColor>
+          {tareas.length === 0 ? 'Sin tareas todavía.' : `${hechas} de ${tareas.length} hechas`}
+        </Text>
+        {tareas.map(t => (
+          <Text key={t.id} strikethrough={t.estado === 'completed'} dimColor={t.estado === 'completed'} bold={t.estado === 'in_progress'}>
+            {t.estado === 'completed' ? '✓' : t.estado === 'in_progress' ? '▶' : '○'} {t.texto}
+          </Text>
+        ))}
+      </Box>
+    )
+  })
+}
+
 export const register: Register = on => {
-  on('session.start', ($, e, next) => usoSessionStart($, e, e2 => pendSessionStart($, e2, next)))
+  on('session.start', ($, e, next) => usoSessionStart($, e, e2 => pendSessionStart($, e2, e3 => tSessionStart($, e3, next))))
   on('command.run', ($, e, next) => usoCommandRun($, e, next)).catch(($, e, next) => next(e))
   on('prompt.submit', ($, e, next) => usoPromptSubmit($, e, e2 => pendPromptSubmit($, e2, next))).catch(($, e, next) => next(e))
   on('session.measure', ($, e, next) => usoSessionMeasure($, e, e2 => pendSessionMeasure($, e2, next)))
   registrarUso(on)
   registrarPendientes(on)
+  registrarTareas(on)
 }

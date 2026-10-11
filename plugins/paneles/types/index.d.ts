@@ -1,3 +1,4 @@
+export type Tarea = { id: string; texto: string; estado: 'pending' | 'in_progress' | 'completed' }
 export type Limite = { kind: string; percentUsed: number; resetsAt?: string }
 
 export type Categoria = { name: string; tokens: number; color: string; kind: 'used' | 'free' | 'buffer' }
@@ -89,6 +90,8 @@ declare module 'claude-code' {
       datos: Modelo | null
       abierto: boolean
       detalle: string[]
+      tareasLista: Tarea[]
+      tareasArchivo: Tarea[] | null
     }
   }
 }
