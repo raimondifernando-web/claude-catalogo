@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.32.1 — 2026-10-11
+- **Claude ya no puede leer ni editar las carpetas donde se guardan tus llaves** (SSH, GitHub, nube, llavero de la Mac). Los programas las siguen usando normalmente; la regla es solo para las herramientas de Claude. Se agrega sola al ponerte al día, sin tocar tus reglas y con copia previa de tu configuración (`settings.json.antes-arneses`).
+
 ## 0.32.0 — 2026-10-11
 - **El freno de claves frena más casos.** Ahora también frena leer con la herramienta Read un archivo de claves (variables de entorno) o una llave, buscar con Grep dentro de esos archivos y mandar un archivo afuera con `curl -d @archivo`.
 - Si el freno no puede correr (falta Python), avisa una vez por sesión y se ve en pantalla. Antes ese aviso no lo veía nadie.

@@ -22,7 +22,7 @@ local RES="$CC/metodo/al-dia.resultado"; mkdir -p "$CC/metodo"
 if [ -n "$BUZON" ] && ! [[ $BUZON =~ ^[A-Za-z0-9-]+/[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; then echo "✗ El nombre del buzón no es válido. Mandale esta captura a Fernando."; return 1; fi
 local falta=() paquetes=() nuevos=() avisos=()
 N=""; T=""; LK=""; W=""; NW=""
-trap 'rm -f "${N:-}" "${T:-}"; [ -n "${W:-}" ] && rm -rf "$W"; [ -n "${NW:-}" ] && rm -rf "$NW"; [ -n "${LK:-}" ] && rm -rf "$LK"' EXIT
+trap 'rm -f "${N:-}" "${T:-}" "${DT:-}"; [ -n "${W:-}" ] && rm -rf "$W"; [ -n "${NW:-}" ] && rm -rf "$NW"; [ -n "${LK:-}" ] && rm -rf "$LK"' EXIT
 # Una sola puesta al día a la vez: la automática ya tomó el candado (al-dia-auto.sh); la manual lo toma acá.
 if [ $AUTO -eq 0 ]; then
   local L="$CC/metodo/al-dia.corriendo" P
@@ -120,6 +120,46 @@ if [ -f "$S" ]; then
       && plutil -insert permissions.allow -string "$AP" -append "$AT" \
       && plutil -extract permissions.allow json -o - "$AT" 2>/dev/null | grep -qF "\"$AP\""; then mv "$AT" "$S"; else rm -f "$AT"; fi 2>/dev/null; }
   plutil -extract permissions.allow json -o - "$S" 2>/dev/null | grep -qF "\"$AP\"" || falta+=("permiso para archivar sesiones viejas")
+fi
+# Claude no puede leer ni editar los lugares donde se guardan las llaves (SSH, nube, GitHub, llavero…). Los programas las siguen
+# usando normal: la regla es solo para las herramientas de Claude. Mismas 38 reglas que Fernando (C25, 2026-10-11).
+# NO van las reglas sobre los archivos de variables de entorno de cada proyecto: un bloqueo de lectura rompe el conteo con grep
+# que usamos para verificar sin mostrar. Agrega las que faltan, sin duplicar ni tocar nada del cliente.
+if [ -f "$S" ]; then
+  local DR DN=0 DK=0 DERR=0 DEX   # DT es global a propósito: el trap de salida lo borra si se corta la corrida
+  DT="$S.tmp.deny.$$"
+  # plutil escribe cada barra como \/ en el JSON: se las saca para poder comparar.
+  DEX=$(plutil -extract permissions.deny json -o - "$S" 2>/dev/null | tr -d '\\')
+  for DR in \
+    '~/.ssh/**' '~/.aws/**' '~/.config/gh/**' '~/.config/gh-claude/**' '~/.config/git/credentials' '~/.git-credentials' \
+    '~/.netrc' '~/.npmrc' '~/.pypirc' '~/.docker/config.json' '~/.kube/**' '~/.config/gcloud/**' '~/.modal.toml' \
+    '~/.notebooklm/**' '~/Library/Keychains/**' '~/.claude/.credentials.json' '~/.claude.json' '~/.claude.json.backup*' \
+    '~/.claude/backups/**'; do
+    for DK in Read Edit; do
+      printf '%s' "$DEX" | grep -qF "\"$DK($DR)\"" && continue
+      if [ $DN -eq 0 ]; then
+        [ -e "$S.antes-arneses" ] || cp -p "$S" "$S.antes-arneses" 2>/dev/null
+        # Se trabaja sobre una copia y recién al final reemplaza el archivo: un corte a mitad no lo deja roto.
+        cp -p "$S" "$DT" 2>/dev/null \
+          && { plutil -extract permissions json -o /dev/null "$DT" 2>/dev/null || plutil -insert permissions -dictionary "$DT" 2>/dev/null; } \
+          && { plutil -extract permissions.deny json -o /dev/null "$DT" 2>/dev/null || plutil -insert permissions.deny -array "$DT" 2>/dev/null; } \
+          || { DERR=1; break 2; }
+      fi
+      plutil -insert permissions.deny -string "$DK($DR)" -append "$DT" 2>/dev/null || { DERR=1; break 2; }
+      DN=$((DN+1))
+    done
+  done
+  if [ $DN -gt 0 ]; then
+    # (plutil -lint no sirve acá: rechaza JSON válido.) Se reemplaza solo si la copia ya tiene las reglas y se lee como JSON.
+    if [ $DERR -eq 0 ] && plutil -extract permissions.deny json -o - "$DT" 2>/dev/null | tr -d '\\' | grep -qF '"Edit(~/.claude/backups/**)"' \
+      && plutil -convert json -o /dev/null "$DT" 2>/dev/null; then mv "$DT" "$S" || DERR=1; else DERR=1; rm -f "$DT"; fi
+  fi
+  rm -f "$DT" 2>/dev/null
+  DEX=$(plutil -extract permissions.deny json -o - "$S" 2>/dev/null | tr -d '\\')
+  printf '%s' "$DEX" | grep -qF '"Read(~/.ssh/**)"' \
+    && printf '%s' "$DEX" | grep -qF '"Edit(~/.claude/backups/**)"' \
+    || DERR=1
+  [ $DERR -eq 0 ] || falta+=("bloqueo de las carpetas de llaves")
 fi
 
 # 4. Conexión con GitHub para los paquetes que vienen directo de GitHub (solo si hace falta)
