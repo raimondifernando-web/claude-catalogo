@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.32.2 — 2026-10-11
+- **Receta nueva: arneses.** Antes de tocar automatismos, permisos o skills, Claude consulta las reglas de cómo configurarlos con seguridad (claves por referencia, nada aprobado de antemano en skills ajenas, avisos que se vean). Cada regla trae la página oficial de Claude Code de donde sale.
+
 ## 0.32.1 — 2026-10-11
 - **Claude ya no puede leer ni editar las carpetas donde se guardan tus llaves** (SSH, GitHub, nube, llavero de la Mac). Los programas las siguen usando normalmente; la regla es solo para las herramientas de Claude. Se agrega sola al ponerte al día, sin tocar tus reglas y con copia previa de tu configuración (`settings.json.antes-arneses`).
 
