@@ -11,4 +11,9 @@ parche local 2026-09-28 (pedido de Consultoría IA, retención cero de OpenRoute
      si no, devuelve el cliente sin tocar y se imprime «Aviso: este modelo (X) no tiene modo sin retención; …».
   3. SKILL.md: una línea después del ejemplo «AI-Enhanced Image Descriptions» (usar el script o envolver el cliente).
   batch_convert.py y convert_literature.py no llaman a OpenRouter: sin cambios.
+parche local 2026-10-11 (Tech, C1 «ingeniería de arneses»). Re-aplicar al actualizar:
+  4. SKILL.md, encabezado: allowed-tools «Bash» → "Bash(markitdown *)". La conversión local sigue sin pedir permiso;
+     los scripts (convert_with_ai.py manda imágenes del documento a OpenRouter) y pip install vuelven a preguntar.
+     Motivo: allowed-tools aprueba sin preguntar todo el turno (docs oficiales de skills) y la skill procesa
+     documentos de terceros, que pueden traer instrucciones escondidas.
 licencia: MIT (repo de origen).

@@ -7,11 +7,8 @@ allowed-tools:
   - Read
   - Write
   - Edit
-  - Bash
   - Glob
   - Grep
-  - WebFetch
-  - WebSearch
 hooks:
   SessionStart:
     - hooks:
@@ -30,7 +27,7 @@ hooks:
   Stop:
     - hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/check-complete.sh"
+          command: "sh \"${CLAUDE_PLUGIN_ROOT}/skills/planning-with-files/scripts/check-complete.sh\""
 sync: no
 ---
 
