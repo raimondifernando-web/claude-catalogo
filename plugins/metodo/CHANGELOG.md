@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.32.3 — 2026-10-11
+- **`/metodo:arrancar` más liviano.** Pasa de muchas idas y vueltas a 3 (leer y chequear, poner el título, confirmar). El número de la sesión y las sesiones anteriores abiertas se calculan desde el disco, sin listar todas las sesiones de la app, que era lo más caro. Mantiene todo lo anterior: «de qué veníamos hablando», las líneas de pendientes y la excepción cuando te abre `/cerrar`.
+
 ## 0.32.2 — 2026-10-11
 - **Receta nueva: arneses.** Antes de tocar automatismos, permisos o skills, Claude consulta las reglas de cómo configurarlos con seguridad (claves por referencia, nada aprobado de antemano en skills ajenas, avisos que se vean). Cada regla trae la página oficial de Claude Code de donde sale.
 
