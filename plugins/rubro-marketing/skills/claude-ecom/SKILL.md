@@ -5,7 +5,6 @@ allowed-tools:
   - Read
   - Grep
   - Glob
-  - Bash
   - Write
 sync: no
 ---
