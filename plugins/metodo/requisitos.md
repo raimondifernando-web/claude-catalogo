@@ -27,6 +27,8 @@ es opcional, solo para saber si cada repositorio es privado. Sin la lista de rep
 
 Si igual querés ver el estado de tu equipo, corré el chequeo del catálogo (`docs/CHEQUEO.md`).
 
+**El freno de claves funciona en Mac y Linux, no en Windows** (PowerShell no pasa por el freno). No hay kit de Windows hasta que un cliente lo pague.
+
 ## El vigía de actualizaciones
 
 **Qué hace.** Te avisa cuando sale una versión nueva de algo que tenés instalado (plugins, skills, MCPs y, si lo

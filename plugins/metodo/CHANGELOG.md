@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.32.0 — 2026-10-11
+- **El freno de claves frena más casos.** Ahora también frena leer con la herramienta Read un archivo de claves (variables de entorno) o una llave, buscar con Grep dentro de esos archivos y mandar un archivo afuera con `curl -d @archivo`.
+- Si el freno no puede correr (falta Python), avisa una vez por sesión y se ve en pantalla. Antes ese aviso no lo veía nadie.
+- Menos frenos de más: los archivos de ejemplo (`sample.env`, `.env.local.example`) ya no se frenan.
+- Solo Mac y Linux: en Windows, PowerShell no pasa por el freno (ver `requisitos.md`).
+
 ## 0.31.0 — 2026-10-10
 - **Regla 22: antes de construir algo nuevo, Claude mira qué hay instalado para eso.** Si va a crear una pantalla, o a lanzar un agente o workflow que crea o diseña, primero consulta las recetas del método (qué skills y agentes usar, en qué orden y cuáles no). Un freno automático salta **una sola vez** por carpeta cada 4 horas, solo si hay receta para lo que va a hacer, y trae la receta en el mismo mensaje. Lo demás (leer, auditar, editar archivos que ya existen, scripts) pasa sin molestar.
 - **Tres recetas incluidas:** pantallas web, documentos de oficina y seguridad con claves. Podés agregar las tuyas en `<config de Claude>/recetas/`: si se llama igual, la tuya gana.

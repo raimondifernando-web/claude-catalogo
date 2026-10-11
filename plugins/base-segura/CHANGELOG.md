@@ -1,5 +1,10 @@
 # base-segura
 
+## 0.14.2 — 2026-10-11
+- `markitdown`: la terminal ya no está aprobada de antemano para todo, solo `markitdown`. Convertir archivos de tu compu sigue sin preguntar; mandar imágenes a OpenRouter o instalar algo pregunta antes.
+- `planning-with-files`: ya no tiene terminal ni internet aprobados de antemano (pregunta si los necesita). Conserva sus automatismos.
+- `planning-with-files`: el control del final de cada turno buscaba su script en el lugar equivocado y siempre fallaba. Ruta corregida: ahora corre. Si el plan (`task_plan.md`) no existe o tiene fases pendientes, avisa al final del turno; eso es a propósito.
+
 ## 0.14.1 — 2026-10-09
 - `decisiones-tecnicas`: las recomendaciones pesan alto (Claude se aparta solo con una razón concreta del cliente y la dice); entre n8n, Make y Zapier, la que el cliente ya usa.
 

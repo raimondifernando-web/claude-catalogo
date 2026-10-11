@@ -1,5 +1,8 @@
 # rubro-marketing
 
+## 0.2.6 — 2026-10-11
+- `claude-ecom`: ya no tiene la terminal aprobada de antemano (pregunta si la necesita; la skill solo lee y escribe archivos).
+
 ## 0.2.5 — 2026-10-08
 - `achicar-datos-grandes`: la explicación del formato achicado estaba mal (decía que cada columna trae todos los valores; en realidad `@campo` es un diccionario de valores únicos y cada fila lleva el índice). Corregida en la skill y escrita dentro de cada archivo achicado para que no se lea mal un total.
 
