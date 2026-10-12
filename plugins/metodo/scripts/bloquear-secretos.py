@@ -18,7 +18,13 @@ una variable que parece secreta (SECRET, TOKEN, KEY…), o si se vuelca todo el 
 process.env.X en un texto o en un programa que no lo imprime NO frena. El cuerpo de un heredoc se mira solo si lo
 recibe una shell (bash <<X) o un intérprete (python - <<X); si lo recibe cat o un archivo, es texto.
 
-Límites conocidos (no se cubren): buscar con grep -r o la herramienta Grep sobre una carpeta sin nombrar el archivo,
+Write / Edit / MultiEdit: NO bloquean. Si el archivo es de secretos (no una plantilla .example) y lo que se va a
+escribir tiene forma de clave REAL (prefijos conocidos como ghp_, sk-, AKIA…, bloques de llave privada, o una variable
+que parece secreta con un valor largo y variado), el freno PREGUNTA (permissionDecision «ask»): la persona decide en
+el momento. Valores vacíos, de relleno (changeme, your_key, <token>, ${VAR}) o locales pasan. El valor nunca aparece
+en el mensaje: solo el nombre de la variable y el número de línea.
+
+Límites conocidos (no se cubren): escribir el archivo con redirecciones de Bash (echo X=… > archivo), buscar con grep -r o la herramienta Grep sobre una carpeta sin nombrar el archivo,
 find -exec, ssh a otra máquina, una copia del archivo con otro nombre, y Windows: los comandos de PowerShell no
 pasan por acá (el freno es solo para Mac y Linux).
 """
@@ -473,6 +479,101 @@ def analizar_lectura(herramienta, ti, cwd):
     return []
 
 
+CLAVE_CONOCIDA = (
+    (r"-----BEGIN (?:[A-Z]+ )*PRIVATE KEY-----", "un bloque de llave privada"),
+    (r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{30,}|\bgithub_pat_[A-Za-z0-9_]{30,}", "una clave de GitHub"),
+    (r"\bglpat-[A-Za-z0-9_-]{16,}", "una clave de GitLab"),
+    (r"\bsk-ant-[A-Za-z0-9_-]{20,}|\bsk-(?:proj-|live-)?[A-Za-z0-9_-]{32,}", "una clave de API (sk-…)"),
+    (r"\b(?:sk|rk|pk)_live_[A-Za-z0-9]{16,}", "una clave live de Stripe"),
+    (r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b", "una clave de acceso de AWS"),
+    (r"\bxox[abprs]-[A-Za-z0-9-]{10,}", "un token de Slack"),
+    (r"\bAIza[0-9A-Za-z_-]{35}\b", "una clave de Google"),
+    (r"\bshp(?:at|ca|pa|ss)_[A-Za-z0-9]{24,}", "un token de Shopify"),
+    (r"\bEAA[A-Za-z0-9]{60,}", "un token de Meta"),
+    (r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}", "un token JWT"),
+)
+ASIGNACION = re.compile(r"""^\s*(?:export\s+)?["']?([A-Za-z_][\w.-]*)["']?\s*[:=]\s*(.*?)\s*,?\s*$""")
+RELLENO = re.compile(r"""^(?:|x+|\*+|\.+|-+|_+|0+|changeme|change[-_]?me|todo|tbd|null|none|nil|undefined|true|false
+    |dummy|test|secret|password|pass|token|key|replace[-_ ]?me|<[^>]*>|\$\{?[^}]*\}?|\{\{.*\}\}|%[^%]*%)$""", I | re.X)
+RELLENO_EN_MEDIO = re.compile(r"example|placeholder|change[-_]?me|your[-_ ]|my[-_ ]?(?:key|token|secret)|dummy|fake|sample"
+                              r"|xxxx|\.\.\.|localhost|127\.0\.0\.1|insert|replace|ejemplo|reemplaz|pon[-_ ]?aca|tu[-_ ]?(?:clave|token)|complet", I)
+URL_CON_CLAVE = re.compile(r"\b[a-z][a-z0-9+.-]*://([^:/@\s]+):([^@\s]+)@([^/\s:?#]+)", I)
+
+
+def entropia(v):
+    from math import log2
+    return -sum(v.count(c) / len(v) * log2(v.count(c) / len(v)) for c in set(v)) if v else 0.0
+
+
+def es_valor_real(valor):
+    """¿el valor de una variable que parece secreta tiene pinta de ser real y no de relleno? (heurística)"""
+    v = valor.strip().strip("'\"").strip()
+    if not v or RELLENO.match(v) or RELLENO_EN_MEDIO.search(v) or re.search(r"\s", v):
+        return False
+    clases = sum(bool(re.search(r, v)) for r in (r"[a-z]", r"[A-Z]", r"\d", r"[^A-Za-z0-9]"))
+    return (len(v) >= 16 and clases >= 2 and entropia(v) >= 3.0) or (len(v) >= 10 and clases >= 3 and entropia(v) >= 3.0)
+
+
+def claves_reales(texto):
+    """→ lista de (n.º de línea, descripción SIN el valor) de lo que parece una clave real dentro del texto."""
+    hallazgos = []
+    for n, linea in enumerate(str(texto).splitlines(), 1):
+        motivo = ""
+        for patron, nombre in CLAVE_CONOCIDA:
+            m = re.search(patron, linea)
+            if m and not RELLENO_EN_MEDIO.search(m.group(0)):
+                motivo = f"algo con forma de {nombre}"
+                break
+        if not motivo:
+            u = URL_CON_CLAVE.search(linea)
+            if u and not re.search(r"localhost|127\.0\.0\.1|\[::1\]|\.local$|\.test$", u.group(3), I) \
+                    and es_valor_real(u.group(2)) and not RELLENO_EN_MEDIO.search(u.group(0)):
+                motivo = "una dirección con usuario y contraseña de un servidor que no es local"
+        if not motivo:
+            a = ASIGNACION.match(linea)
+            if a and re.search(SECRETISH, a.group(1), I) and not SUFIJO_NO_SECRETO.search(a.group(1)):
+                valor = a.group(2)
+                if valor[:1] not in ("'", '"'):
+                    valor = re.split(r"\s+#", valor)[0]
+                if es_valor_real(valor):
+                    motivo = f"un valor que parece real en la variable {a.group(1)}"
+        if motivo:
+            hallazgos.append((n, motivo))
+    return hallazgos
+
+
+def textos_escritos(herramienta, ti):
+    """Lo que Write / Edit / MultiEdit van a dejar en el archivo (solo lo nuevo)."""
+    if herramienta == "Write":
+        return [ti.get("content")]
+    if herramienta == "Edit":
+        return [ti.get("new_string")]
+    return [e.get("new_string") for e in (ti.get("edits") or []) if isinstance(e, dict)]
+
+
+def analizar_escritura(herramienta, ti, cwd):
+    """Write / Edit / MultiEdit sobre un archivo de secretos: solo si lo escrito parece una clave real. → motivos.
+    Las plantillas (.example, .sample…) no son archivos de secretos para es_ruta_secreta: pasan sin mirar nada."""
+    if not es_ruta_secreta(ti.get("file_path") or "", cwd):
+        return []
+    motivos = []
+    for t in textos_escritos(herramienta, ti):
+        if isinstance(t, str):
+            motivos += [f"línea {n}: {m}" for n, m in claves_reales(t)]
+    return motivos[:10]
+
+
+def preguntar(ti, motivos):
+    nombre = str(ti.get("file_path") or "").replace("\\", "/").rstrip("/").split("/")[-1]
+    texto = [f"Estás por escribir en «{nombre}» (un archivo de secretos) algo que parece una clave real:"]
+    texto += ["  · " + m for m in motivos]
+    texto += ["", "Si es un valor de relleno, dejalo vacío o poné `changeme` / `<tu-clave>`. Si es una clave de verdad, "
+              "la carga la persona dueña de la cuenta, directamente en el archivo: Claude no la escribe "
+              "(el texto de esta acción queda guardado en el historial de la conversación). ¿Seguimos igual?"]
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
+                                             "permissionDecisionReason": "\n".join(texto)}}))
+
+
 def main():
     try:
         data = json.loads(sys.stdin.read())
@@ -485,6 +586,11 @@ def main():
             razones = analizar(cmd)
         elif herramienta in ("Read", "Grep"):
             razones = analizar_lectura(herramienta, ti, data.get("cwd") or "")
+        elif herramienta in ("Write", "Edit", "MultiEdit"):
+            motivos = analizar_escritura(herramienta, ti, data.get("cwd") or "")
+            if motivos:
+                preguntar(ti, motivos)
+            return 0
         else:
             return 0
     except Exception:
