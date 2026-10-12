@@ -1,5 +1,9 @@
 # escala-desarrollo
 
+## 0.14.2 — 2026-10-12
+- **`security-reviewer` ahora es solo lectura de verdad.** Antes tenía desactivado escribir y editar archivos, pero podía ejecutar comandos (y por ahí modificar cosas). Ahora solo lee y busca, y te entrega el informe con el arreglo propuesto. Usa el método de seguridad del creador de `agent-skills` (`security-and-hardening`), que se instala solo como dependencia y se actualiza sola. Lo llamás igual que antes.
+- **Qué cambia en la práctica:** como no ejecuta comandos ni tiene internet, **no puede correr `npm audit` / `pip-audit` (vulnerabilidades de las librerías) ni buscar claves en el historial de git**. Lo dice en su informe («Qué no pude comprobar») y te pide que le pegues la salida de esos comandos si querés que la analice. Nunca repite una clave completa en el informe.
+
 ## 0.14.1 — 2026-10-12
 - **`code-reviewer` ahora es solo lectura de verdad.** Antes decía que no editaba archivos, pero podía sobrescribirlos ejecutando comandos; en una prueba lo hizo. Ahora no tiene permiso de escribir **ni de ejecutar comandos**: lee, busca y te entrega el informe con el arreglo propuesto. Como no ejecuta nada, para revisar cambios recientes indicale los archivos o pegale el diff.
 - Usa el método de revisión del creador de `agent-skills` (cinco ejes, severidades Critical/Required/Optional/Nit, veredicto), que se actualiza solo. Ese plugin se instala solo como dependencia: no tenés que hacer nada. Lo llamás igual que antes.
