@@ -449,6 +449,9 @@ if [ -f "$S" ]; then
     plutil -remove env.DO_NOT_TRACK "$S" && echo "· Quité DO_NOT_TRACK de tu configuración (cortaba Remote Control). Copia en settings.json.antes-al-dia"
   fi
   [ "$(plutil -extract env.HYPERFRAMES_NO_TELEMETRY raw "$S" 2>/dev/null)" = "1" ] || falta+=("apagar datos de uso de HyperFrames")
+  # claude-security (5d-bis): apagado solo su aviso de escaneo en cada push (escanear gasta mucho cupo; se pide a mano). Variable propia del plugin.
+  [ "$(plutil -extract env.CLAUDE_SECURITY_SCAN_TIP raw "$S" 2>/dev/null)" = "off" ] || plutil -replace env.CLAUDE_SECURITY_SCAN_TIP -string off "$S" 2>/dev/null
+  [ "$(plutil -extract env.CLAUDE_SECURITY_SCAN_TIP raw "$S" 2>/dev/null)" = "off" ] || falta+=("apagar el aviso de escaneo de claude-security")
 fi
 
 # 5d. Figma oficial de Anthropic (la conexión con tu cuenta se hace aparte, con /mcp)
@@ -457,8 +460,9 @@ claude plugin list 2>/dev/null | grep -qE "❯ figma@claude-plugins-official[[:s
 claude plugin list 2>/dev/null | grep -A3 -E "❯ figma@claude-plugins-official[[:space:]]*$" | grep -q "✔ enabled" || falta+=("figma")
 
 # 5d-bis. Skills oficiales de Anthropic que antes viajaban copiadas en el catálogo: una sola pieza por función (Mand. XXVI).
+#         claude-security: escaneo profundo opcional (licencia propietaria: se instala de la fuente oficial, no del catálogo). Nunca se dispara solo.
 #         Mismo patrón que figma. Si ya están instaladas y prendidas, no se toca nada.
-for P in frontend-design skill-creator; do
+for P in frontend-design skill-creator claude-security; do
   claude plugin list 2>/dev/null | grep -qE "❯ $P@claude-plugins-official[[:space:]]*$" || claude plugin install "$P@claude-plugins-official" >/dev/null 2>&1
   claude plugin list 2>/dev/null | grep -A3 -E "❯ $P@claude-plugins-official[[:space:]]*$" | grep -q "✔ enabled" || falta+=("$P")
 done

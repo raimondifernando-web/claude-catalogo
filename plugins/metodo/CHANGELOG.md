@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.32.4 — 2026-10-11
+- **«Poner todo al día» suma `claude-security`**, el plugin oficial de Anthropic para auditar la seguridad de un proyecto a fondo. Se instala de la fuente oficial (no viaja dentro de este catálogo) y **nunca se dispara solo**: escanear gasta mucho cupo, así que se pide a mano. Apaga solo su aviso de escaneo después de cada subida de cambios (variable propia del plugin, no toca nada tuyo). Mientras escanea puede correr comandos de `git` sin preguntar; el escaneo lo pedís vos, sobre tu propio código.
+
 ## 0.32.3 — 2026-10-11
 - **`/metodo:arrancar` más liviano.** Pasa de muchas idas y vueltas a 3 (leer y chequear, poner el título, confirmar). El número de la sesión y las sesiones anteriores abiertas se calculan desde el disco, sin listar todas las sesiones de la app, que era lo más caro. Mantiene todo lo anterior: «de qué veníamos hablando», las líneas de pendientes y la excepción cuando te abre `/cerrar`.
 
