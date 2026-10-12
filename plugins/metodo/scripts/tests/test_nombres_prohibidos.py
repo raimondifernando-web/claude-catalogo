@@ -34,6 +34,11 @@ class TestNombresProhibidos(unittest.TestCase):
             "GIT_COMMITTER_NAME": "Test Committer",
             "GIT_COMMITTER_EMAIL": "test@example.com",
         }
+        # Windows: sin SYSTEMROOT, Python no arranca ("failed to get random numbers"); USERPROFILE hace de HOME
+        for _k in ("SYSTEMROOT", "TEMP", "TMP"):
+            if _k in os.environ:
+                self.env[_k] = os.environ[_k]
+        self.env["USERPROFILE"] = str(self.home)
 
     def tearDown(self):
         self.tmp.cleanup()
