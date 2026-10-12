@@ -6,7 +6,8 @@ Disparador: B (la sugiere `herramientas-para` cuando no hay pieza local; la regl
 
 # /metodo:buscar-skill-externa — traer una skill de afuera sin riesgo
 
-Los programas están en `${CLAUDE_PLUGIN_ROOT}/scripts/skills-externas/` (Python 3 y bash; **Mac y Linux**). **Los corrés vos, Claude**; la persona no toca la terminal.
+Los programas están en `${CLAUDE_PLUGIN_ROOT}/scripts/skills-externas/` (Python 3 y bash). **Los corrés vos, Claude**; la persona no toca la terminal.
+**Windows:** buscar funciona (`py -3` en lugar de `python3`); traer a la cuarentena todavía NO está probado ahí y el programa lo dice y no hace nada: decile a la persona que lo traiga alguien desde una Mac o Linux. El freno del instalador necesita Git for Windows y no ve comandos de PowerShell.
 En los ejemplos: `buscar` = `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/skills-externas/skills-buscar.py"` y `cuarentena` = `bash "${CLAUDE_PLUGIN_ROOT}/scripts/skills-externas/cuarentena-skills.sh"`.
 
 1. **¿Ya lo tenés?** `herramientas-para.py <tema>` (receta y piezas locales). Si hay algo que sirve, usalo y cortá acá.

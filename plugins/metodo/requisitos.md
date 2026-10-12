@@ -14,7 +14,7 @@ Atajos: si no tenés otras skills con esos nombres, `/arrancar` y `/cerrar` a se
 con acceso al repositorio privado del buzón (te invita quien te acompaña). `gh` ayuda a clonarlo, pero no es
 obligatorio. Sin configurarlo no hace nada: ni red ni git. Qué viaja y qué no: `docs/BUZON.md` del catálogo.
 
-`/metodo:buscar-skill-externa` (buscar una skill ya hecha) necesita **Python 3** y, solo para *traer* una a la cuarentena, **Node.js** (`npm`) y **git**: la primera vez baja el instalador oficial `skills@1.7.2` (verifica su hash) a `<config de Claude>/metodo/cuarentena-cli`; si falta Node te lo dice y no toca nada. **Solo Mac y Linux** (el aislamiento usa `env -i`). Buscar no necesita Node.
+`/metodo:buscar-skill-externa` (buscar una skill ya hecha) necesita **Python 3** y, solo para *traer* una a la cuarentena, **Node.js** (`npm`) y **git**: la primera vez baja el instalador oficial `skills@1.7.2` (verifica su hash) a `<config de Claude>/metodo/cuarentena-cli`; si falta Node te lo dice y no toca nada. **Traer una skill: Mac y Linux** (el aislamiento usa `env -i`; en Windows todavía no está probado y el programa lo dice sin hacer nada). **Buscar sí funciona en Windows** (Python 3, `py -3`) y no necesita Node. El freno de `npx skills add|update` en Windows necesita Git for Windows y no ve comandos de PowerShell.
 
 **Mapa de código a pedido** («mapeá este repo»): `scripts/graphify-en-repo` necesita **git** y **Graphify 0.9.65**
 (`uv tool install graphifyy==0.9.65`, una vez). Si falta, te lo dice en una línea y no toca nada. Cómo funciona y

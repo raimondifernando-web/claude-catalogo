@@ -12,6 +12,10 @@ DRY=0; ARGS=()
 for a in "$@"; do case "$a" in --dry-run) DRY=1 ;; *) ARGS+=("$a") ;; esac; done
 FUENTE=${ARGS[0]:?Uso: cuarentena-skills <owner/repo|ruta|url> [skill|*] [--dry-run]}; SKILL=${ARGS[1]:-*}
 AQUI=$(cd "$(dirname "$0")" && pwd)
+# Windows (Git Bash / MSYS / Cygwin): el aislamiento de esta cuarentena (env -i, rutas, TMPDIR) todavía NO está probado ahí. Falla claro, no a medias.
+case "${CUARENTENA_SO:-$(uname -s 2>/dev/null)}" in
+  MINGW*|MSYS*|CYGWIN*) echo "Falta: traer una skill a la cuarentena todavía no está probado en Windows ✗ (buscar sí funciona: skills-buscar.py). Pedile a quien te acompaña que la traiga desde una Mac o Linux."; exit 1 ;;
+esac
 VERSION_FIJA=1.7.2
 HASH_FIJO='sha512-j+GzyF/oNahsjjjup6y3lJpFkC1lQjIkf4kAMXICA1hboBqi0fAGXAGoE4x9FRZiP1br/YE9+L3/Tqq6PIAe0A=='
 # El CLI vive junto a este script (cli/) si ya está instalado ahí (Tech); si no, se instala UNA vez, con scripts apagados, en <config de Claude>/metodo/cuarentena-cli

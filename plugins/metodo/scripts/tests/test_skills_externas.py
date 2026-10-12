@@ -77,5 +77,13 @@ class TestDryRun(unittest.TestCase):
         self.assertIn("dry-run", r.stdout)
 
 
+    def test_windows_falla_claro(self):
+        with tempfile.TemporaryDirectory() as cfg:
+            r = subprocess.run(["bash", str(AQUI / "cuarentena-skills.sh"), "a/b", "x", "--dry-run"], capture_output=True, text=True, timeout=30,
+                               env=dict(__import__("os").environ, CLAUDE_CONFIG_DIR=cfg, CUARENTENA_SO="MINGW64_NT-10.0"))
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("Windows", r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
