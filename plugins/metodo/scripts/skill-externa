@@ -17,6 +17,13 @@ Nunca deja una skill a medias: arma todo en una carpeta aparte y la cambia al fi
 entra en la versión nueva, no cambia nada y lo dice (eso es lo único que puede necesitar una mano).
 """
 import re, shutil, subprocess, sys, tempfile
+
+# Windows: la consola usa cp1252; se fuerza UTF-8 en entrada y salida.
+for _flujo in (sys.stdin, sys.stdout, sys.stderr):
+    try:
+        _flujo.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 from pathlib import Path
 
 INI, FIN = "<!-- reglas-locales:inicio (generado desde NOTA-LOCAL.md; no editar acá) -->", "<!-- reglas-locales:fin -->"

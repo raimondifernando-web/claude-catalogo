@@ -115,7 +115,7 @@ class ChecksTest(unittest.TestCase):
             (d / f"local_{i}.json").write_text(json.dumps({
                 "sessionId": f"local_{i}", "cliSessionId": f"cli{i}", "cwd": str(self.proyecto), "title": titulo,
                 "isArchived": archivada, "lastActivityAt": ahora - minutos * 60000}), encoding="utf-8")
-        env = dict(os.environ, HOME=str(home), APPDATA=str(self.dir / "sin-appdata"), CLAUDE_CONFIG_DIR=str(self.config),
+        env = dict(os.environ, HOME=str(home), USERPROFILE=str(home), APPDATA=str(self.dir / "sin-appdata"), CLAUDE_CONFIG_DIR=str(self.config),
                    CLAUDE_SESSION_ID=f"cli{len(todas) - 1}")
         r = subprocess.run([sys.executable, str(ARRANCAR), str(self.proyecto)], env=env, capture_output=True,
                            text=True, encoding="utf-8", errors="replace", timeout=60)

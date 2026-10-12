@@ -114,9 +114,9 @@ def raiz_del_repo(ruta):
 
 def es_carpeta_privada(repo_path):
     """(es_privada, motivo). Verifica rutas sensibles que no deben delegarse a planes externos."""
-    repo_str = str(repo_path)
+    repo_str = str(repo_path).replace("\\", "/")   # Windows: mismas comparaciones con «/»
     repo_slash = repo_str.rstrip("/") + "/"
-    home = str(Path.home().resolve()).rstrip("/") + "/"
+    home = str(Path.home().resolve()).replace("\\", "/").rstrip("/") + "/"
     # tu carpeta personal entera (o la raíz del disco) no es «un proyecto»: adentro hay de todo
     if repo_slash.lower() in (home.lower(), "/"):
         return True, "carpeta personal o raíz del disco"
@@ -128,14 +128,14 @@ def es_carpeta_privada(repo_path):
 
     extra = os.environ.get("METODO_NO_DELEGAR", "").strip()
     if extra:
-        for p in extra.split(":"):
+        for p in extra.split(os.pathsep):
             p = p.strip()
             if not p:
                 continue
             if p.lower() in repo_slash.lower():
                 return True, p
             try:
-                p_res = str(Path(p).resolve())
+                p_res = str(Path(p).resolve()).replace("\\", "/")
                 if repo_slash.lower().startswith(p_res.lower().rstrip("/") + "/"):
                     return True, p
             except Exception:

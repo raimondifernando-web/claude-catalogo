@@ -29,7 +29,7 @@ class TestSkillExterna(unittest.TestCase):
     allow = always
 [uploadpack]
     allowFilter = true
-[url "file://{self.autor_repo}"]
+[url "{self.autor_repo.as_uri()}"]
     insteadOf = https://github.com/alguien/repo.git
     insteadOf = https://github.com/alguien/repo
 """)

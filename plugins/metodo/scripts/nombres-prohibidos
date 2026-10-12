@@ -16,6 +16,13 @@ import shlex
 import subprocess
 import sys
 import tempfile
+
+# Windows: la consola usa cp1252; se fuerza UTF-8 en entrada y salida.
+for _flujo in (sys.stdin, sys.stdout, sys.stderr):
+    try:
+        _flujo.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 from pathlib import Path
 
 MARCA = "# nombres-prohibidos (metodo)"
