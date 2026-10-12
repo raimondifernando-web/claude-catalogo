@@ -21,7 +21,7 @@ def correr(entrada, cfg, cwd, extra=None):
     env.pop("CONSULTAR_ECOSISTEMA_OFF", None)
     env.update(extra or {})
     d = dict(entrada, cwd=str(cwd))
-    return subprocess.run(["bash", str(HOOK)], input=json.dumps(d), capture_output=True, text=True, env=env, timeout=20)
+    return subprocess.run(["bash", str(HOOK)], input=json.dumps(d), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=20)
 
 
 class TestFreno(unittest.TestCase):
@@ -72,7 +72,7 @@ class TestFreno(unittest.TestCase):
 
     def test_entrada_rota_o_apagado_dejan_pasar(self):
         env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg))
-        r = subprocess.run(["bash", str(HOOK)], input="{no es json", capture_output=True, text=True, env=env, timeout=20)
+        r = subprocess.run(["bash", str(HOOK)], input="{no es json", capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=20)
         self.assertEqual(r.returncode, 0)
         self.assertEqual(correr(self.agente(), self.cfg, self.cwd, {"CONSULTAR_ECOSISTEMA_OFF": "1"}).returncode, 0)
         (self.cfg / "metodo").mkdir()
@@ -90,7 +90,7 @@ class TestFreno(unittest.TestCase):
     def test_herramientas_para_sin_receta_lo_dice_y_no_rompe(self):
         env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg))
         r = subprocess.run([sys.executable, str(SCRIPTS / "herramientas-para.py"), "tema", "inexistente", "zzqq"],
-                           capture_output=True, text=True, env=env, cwd=self.cwd, timeout=20)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, cwd=self.cwd, timeout=20)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("Sin receta", r.stdout)
 

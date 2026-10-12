@@ -38,7 +38,7 @@ class Base(unittest.TestCase):
         self.tmp.cleanup()
 
     def py(self, *args):
-        r = subprocess.run([sys.executable, str(SCRIPT)] + list(args), env=self.env, text=True,
+        r = subprocess.run([sys.executable, str(SCRIPT)] + list(args), env=self.env, text=True, encoding="utf-8", errors="replace",
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
         return r.returncode, r.stdout + r.stderr
 
@@ -125,13 +125,13 @@ class SeguridadPyTest(Base):
         r = self.repo_sucio("otro-repo")
         antes = {str(p): (p.stat().st_mtime_ns, p.stat().st_mode) for p in r.rglob("*") if ".git" not in p.parts}
         estado_antes = subprocess.run(["git", "-C", str(r), "status", "--porcelain"], env=self.env,
-                                      stdout=subprocess.PIPE, text=True).stdout
+                                      stdout=subprocess.PIPE, text=True, encoding="utf-8", errors="replace").stdout
         self.lista([{"ruta": str(r)}])
         self.py("correr")
         despues = {str(p): (p.stat().st_mtime_ns, p.stat().st_mode) for p in r.rglob("*") if ".git" not in p.parts}
         self.assertEqual(antes, despues)
         self.assertEqual(estado_antes, subprocess.run(["git", "-C", str(r), "status", "--porcelain"], env=self.env,
-                                                      stdout=subprocess.PIPE, text=True).stdout)
+                                                      stdout=subprocess.PIPE, text=True, encoding="utf-8", errors="replace").stdout)
 
     def test_carpeta_inexistente_falla_sin_frenar_a_los_demas(self):
         self.repo_limpio("mi-repo")
@@ -178,7 +178,7 @@ class SeguridadPyTest(Base):
 
 class SeguridadAutoTest(Base):
     def auto(self):
-        r = subprocess.run(["bash", str(AUTO)], env=self.env, text=True, stdout=subprocess.PIPE,
+        r = subprocess.run(["bash", str(AUTO)], env=self.env, text=True, encoding="utf-8", errors="replace", stdout=subprocess.PIPE,
                            stderr=subprocess.PIPE, timeout=20)
         return r.stdout.strip().splitlines()
 

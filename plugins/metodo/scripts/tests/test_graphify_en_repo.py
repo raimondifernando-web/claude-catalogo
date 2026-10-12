@@ -59,7 +59,7 @@ class GraphifyEnRepoTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def git(self, *args):
-        return subprocess.run(["git", "-C", str(self.repo)] + list(args), env=self.env, text=True,
+        return subprocess.run(["git", "-C", str(self.repo)] + list(args), env=self.env, text=True, encoding="utf-8", errors="replace",
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout
 
     def iniciar_repo(self, settings=None):
@@ -81,7 +81,7 @@ class GraphifyEnRepoTest(unittest.TestCase):
         self.env["FALSO_VERSION"] = version
 
     def correr(self, cwd=None):
-        r = subprocess.run(["bash", str(SCRIPT)], cwd=str(cwd or self.repo), env=self.env, text=True,
+        r = subprocess.run(["bash", str(SCRIPT)], cwd=str(cwd or self.repo), env=self.env, text=True, encoding="utf-8", errors="replace",
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
         return r.returncode, (r.stdout + r.stderr).strip().splitlines()
 

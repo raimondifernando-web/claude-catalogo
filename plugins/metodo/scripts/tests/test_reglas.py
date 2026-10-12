@@ -23,7 +23,7 @@ def correr(config_dir):
     env = dict(os.environ, CLAUDE_CONFIG_DIR=str(config_dir))
     env.pop("CLAUDE_PLUGIN_ROOT", None)
     return subprocess.run([sys.executable, str(SCRIPT), "sincronizar"], env=env,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", timeout=30)
 
 
 @unittest.skipIf(ES_WINDOWS, "reglas.py es para Mac")

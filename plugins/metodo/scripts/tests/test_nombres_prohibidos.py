@@ -39,12 +39,12 @@ class TestNombresProhibidos(unittest.TestCase):
         self.tmp.cleanup()
 
     def run_script(self, *args, stdin_text=None):
-        r = subprocess.run([sys.executable, str(SCRIPT)] + list(args), env=self.env, text=True,
+        r = subprocess.run([sys.executable, str(SCRIPT)] + list(args), env=self.env, text=True, encoding="utf-8", errors="replace",
                            input=stdin_text, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
         return r.returncode, r.stdout + r.stderr
 
     def git(self, repo, *args):
-        r = subprocess.run(["git", "-C", str(repo)] + list(args), env=self.env, text=True,
+        r = subprocess.run(["git", "-C", str(repo)] + list(args), env=self.env, text=True, encoding="utf-8", errors="replace",
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
         return r.returncode, r.stdout + r.stderr
 

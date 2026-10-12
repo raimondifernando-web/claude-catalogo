@@ -50,7 +50,7 @@ class ChecksTest(unittest.TestCase):
 
     def correr(self, script, *args):
         env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.config))
-        r = subprocess.run([sys.executable, str(script), *args], env=env, capture_output=True, text=True, timeout=60)
+        r = subprocess.run([sys.executable, str(script), *args], env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
         return r.returncode, r.stdout
 
     def repo(self):
@@ -118,7 +118,7 @@ class ChecksTest(unittest.TestCase):
         env = dict(os.environ, HOME=str(home), APPDATA=str(self.dir / "sin-appdata"), CLAUDE_CONFIG_DIR=str(self.config),
                    CLAUDE_SESSION_ID=f"cli{len(todas) - 1}")
         r = subprocess.run([sys.executable, str(ARRANCAR), str(self.proyecto)], env=env, capture_output=True,
-                           text=True, timeout=60)
+                           text=True, encoding="utf-8", errors="replace", timeout=60)
         return r.stdout
 
     def test_arrancar_serie_mismo_ancho_y_cero_relleno(self):

@@ -256,7 +256,7 @@ class _Correr:
     def correr(self, payload, via=SCRIPT, env=None):
         cmd = [sys.executable, str(via)] if via == SCRIPT else ["bash", str(via)]
         return subprocess.run(cmd, input=payload if isinstance(payload, str) else json.dumps(payload),
-                              capture_output=True, text=True, timeout=20, env=env)
+                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20, env=env)
 
 
 class ContratoLecturaTest(_Correr, unittest.TestCase):
@@ -341,7 +341,7 @@ class ContratoBashTest(_Correr, unittest.TestCase):
         # solo se exige que no frene y no rompa
         env = dict(os.environ, PATH="/nonexistent")
         r = subprocess.run(["/bin/bash", str(WRAPPER)], input=json.dumps({"tool_name": "Bash", "tool_input": {"command": "ls"}}),
-                           capture_output=True, text=True, env=env, timeout=20)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=20)
         self.assertEqual(r.returncode, 0)
 
     def test_hooks_json_lo_registra_para_bash_read_y_grep_sin_o_true(self):

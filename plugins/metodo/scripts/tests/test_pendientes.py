@@ -30,7 +30,7 @@ def fila(i, texto="hacer algo", prio="1", estado="pendiente", quien="C"):
 
 
 def correr(script, carpeta, *extra):
-    return subprocess.run([sys.executable, str(script), str(carpeta), *extra], capture_output=True, text=True, timeout=30)
+    return subprocess.run([sys.executable, str(script), str(carpeta), *extra], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
 
 
 class Base(unittest.TestCase):
@@ -196,14 +196,14 @@ class ListarTest(Base):
 class CerrarCheckTest(Base):
     def test_cerrar_check_corre_pendientes_sin_lista_ni_git(self):
         env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.dir / "cfg"))
-        r = subprocess.run([sys.executable, str(CERRAR), "2026-10-10-prueba"], cwd=self.dir, capture_output=True, text=True, env=env, timeout=60)
+        r = subprocess.run([sys.executable, str(CERRAR), "2026-10-10-prueba"], cwd=self.dir, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=60)
         self.assertIn("PENDIENTES.md: no hay en esta carpeta", r.stdout + r.stderr)
         self.assertNotIn("Traceback", r.stdout + r.stderr)
 
     def test_cerrar_check_marca_lista_rota(self):
         self.escribir(lista([fila("A1", estado="raro")]))
         env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.dir / "cfg"))
-        r = subprocess.run([sys.executable, str(CERRAR), "2026-10-10-prueba"], cwd=self.dir, capture_output=True, text=True, env=env, timeout=60)
+        r = subprocess.run([sys.executable, str(CERRAR), "2026-10-10-prueba"], cwd=self.dir, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=60)
         self.assertIn("✗ PENDIENTES.md", r.stdout)
         self.assertIn("PENDIENTES:", r.stdout)
         self.assertNotIn("Traceback", r.stdout + r.stderr)

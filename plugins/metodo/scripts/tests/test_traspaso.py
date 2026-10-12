@@ -35,8 +35,8 @@ def git(cwd, *a):
 
 
 def correr(script, *args, stdin=None, cwd=None, config=None):
-    r = subprocess.run([sys.executable, str(script), *map(str, args)], input=stdin, capture_output=True, text=True,
-                       timeout=60, cwd=cwd, env=dict(os.environ, CLAUDE_CONFIG_DIR=config or tempfile.gettempdir() + "/sin-config-xyz"))
+    r = subprocess.run([sys.executable, str(script), *map(str, args)], input=stdin, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       timeout=60, cwd=cwd, env=dict(os.environ, CLAUDE_CONFIG_DIR=str(config) if config else tempfile.gettempdir() + "/sin-config-xyz"))
     return r.returncode, r.stdout + r.stderr
 
 

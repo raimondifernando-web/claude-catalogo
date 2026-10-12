@@ -70,11 +70,11 @@ class TestSkillExterna(unittest.TestCase):
 
     def git_out(self, repo, *args):
         r = subprocess.run(["git", "-C", str(repo)] + list(args), env=self.env, check=True,
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
         return r.stdout
 
     def run_script(self, *args):
-        r = subprocess.run([sys.executable, str(SCRIPT)] + list(args), env=self.env, text=True,
+        r = subprocess.run([sys.executable, str(SCRIPT)] + list(args), env=self.env, text=True, encoding="utf-8", errors="replace",
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
         return r.returncode, r.stdout + r.stderr
 

@@ -9,7 +9,7 @@ de 4 horas en la carpeta temporal para que el freno (consultar-ecosistema.py) no
 import glob, hashlib, os, re, sys, time, unicodedata
 
 # Windows: la consola usa cp1252; se fuerza UTF-8 en la salida.
-for _flujo in (sys.stdout, sys.stderr):
+for _flujo in (sys.stdin, sys.stdout, sys.stderr):
     try:
         _flujo.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
