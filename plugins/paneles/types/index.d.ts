@@ -92,6 +92,7 @@ declare module 'claude-code' {
       detalle: string[]
       tareasLista: Tarea[]
       tareasArchivo: Tarea[] | null
+      tareasDerivadas: Tarea[] | null
     }
   }
 }

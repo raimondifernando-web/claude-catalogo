@@ -1017,6 +1017,121 @@ const T_ARCHIVO = '.claude/tareas.json'
 const T_CADA = 3_000
 const T_ESTADOS = ['pending', 'in_progress', 'completed']
 let tUltimo = ''
+// Tareas que salen de PENDIENTES.md + git (ver abajo). null = la carpeta no tiene lista.
+const derivadas = atom({ plugin: 'paneles', key: 'tareasDerivadas' } as const, null)
+
+// ---------- Tareas derivadas de PENDIENTES.md + git ----------
+// El panel se arma solo: en curso → ▶, pendientes de prioridad 1 (y nuevos de prioridad 2) → ○, y lo cerrado desde la
+// versión anterior del archivo (según git) → ✓. Lo que está en tareas.json con el mismo ID se reemplaza: PENDIENTES manda.
+const TP_ARCHIVO = '.claude/PENDIENTES.md'
+const TP_MAX = 15
+const TP_DIAS_HECHO = 2
+
+type TpFila = { id: string; texto: string; prio: number; estado: string }
+
+function tpCeldas(linea: string): string[] {
+  const t = linea.trim()
+  if (!t.startsWith('|')) return []
+  const salida: string[] = []
+  let actual = ''
+  let codigo = false
+  for (const ch of t.slice(1)) {
+    if (ch === '`') codigo = !codigo
+    if (ch === '|' && !codigo) {
+      salida.push(actual.trim())
+      actual = ''
+    } else {
+      actual += ch
+    }
+  }
+  if (actual.trim() !== '') salida.push(actual.trim())
+  return salida
+}
+
+function tpCorto(texto: string): string {
+  const sin = (s: string) => s.replace(/\*\*(.+?)\*\*/g, '$1').replace(/`([^`]*)`/g, '$1')
+  const negrita = /^\*\*(.+?)\*\*/.exec(texto)
+  let t = negrita?.[1] ?? sin(texto)
+  if (!negrita) {
+    const corte = [': ', '. ', ' ('].map(s => t.indexOf(s)).filter(i => i > 0)
+    if (corte.length > 0) t = t.slice(0, Math.min(...corte))
+  }
+  t = sin(t).trim()
+  return t.length > 60 ? `${t.slice(0, 59).trimEnd()}…` : t
+}
+
+function tpFilas(texto: string): TpFila[] {
+  const filas: TpFila[] = []
+  for (const linea of texto.split('\n')) {
+    const c = tpCeldas(linea)
+    if (c.length < 8 || !/^[A-Z]\d+$/.test(c[0] ?? '')) continue
+    filas.push({ id: c[0] ?? '', texto: tpCorto(c[1] ?? ''), prio: Number(c[2]), estado: c[3] ?? '' })
+  }
+  return filas
+}
+
+// viejo = la versión anterior del archivo (null si no hay historial). `reciente` = el cambio es de hace poco.
+function tpDerivar(nuevo: string, viejo: string | null, reciente: boolean): Tarea[] {
+  const antes = new Map(tpFilas(viejo ?? '').map(f => [f.id, f]))
+  const hay = viejo !== null
+  const encurso: Tarea[] = []
+  const pendientes: Tarea[] = []
+  const hechas: Tarea[] = []
+  for (const f of tpFilas(nuevo)) {
+    const texto = `${f.id}: ${f.texto}`
+    const a = antes.get(f.id)
+    if (f.estado === 'en curso') encurso.push({ id: f.id, texto, estado: 'in_progress' })
+    else if (f.estado === 'pendiente' && (f.prio === 1 || (f.prio === 2 && hay && !a))) pendientes.push({ id: f.id, texto, estado: 'pending' })
+    else if (f.estado === 'hecho' && hay && reciente && a && a.estado !== 'hecho') hechas.push({ id: f.id, texto, estado: 'completed' })
+  }
+  return [...encurso, ...pendientes, ...hechas].slice(0, TP_MAX)
+}
+
+// Quita de la lista manual lo que PENDIENTES ya cubre (mismo ID al principio del texto).
+function tpMezclar(manual: Tarea[], derivadas: Tarea[]): Tarea[] {
+  const ids = new Set(derivadas.map(t => t.id))
+  return [...manual.filter(t => !ids.has(t.texto.replace(':', ' ').split(' ')[0] ?? '')), ...derivadas]
+}
+
+let tpUltimoTexto: string | null = null
+let tpCache: Tarea[] | null = null
+let tpUltimoJson = ''
+
+// Lee PENDIENTES.md de la carpeta y la versión anterior en git. null = la carpeta no tiene lista.
+async function tpLeer($: EngineInterface, carpeta: string): Promise<Tarea[] | null> {
+  let texto: string
+  try {
+    texto = await $.fs.read(`${carpeta}/${TP_ARCHIVO}`)
+  } catch {
+    return null
+  }
+  // Sin cambios en el archivo no se vuelve a llamar a git (esto corre cada pocos segundos).
+  if (texto === tpUltimoTexto) return tpCache
+  let viejo: string | null = null
+  let reciente = false
+  try {
+    const git = (args: string[]) => $.process.run(['git', '--no-optional-locks', '-C', carpeta, ...args])
+    const estado = await git(['status', '--porcelain', '--', TP_ARCHIVO])
+    const log = await git(['log', '--format=%H %cs', '-n', '2', '--', TP_ARCHIVO])
+    if (estado.exitCode === 0 && log.exitCode === 0) {
+      const v = log.stdout.trim().split('\n').filter(Boolean).map(l => l.split(' '))
+      const sucio = estado.stdout.trim() !== ''
+      const base = sucio ? v[0] : v[1]
+      const fecha = Date.parse(`${(sucio ? 'hoy' : v[0]?.[1]) ?? ''}T12:00:00Z`)
+      reciente = sucio || (!Number.isNaN(fecha) && Date.now() - fecha < TP_DIAS_HECHO * 86_400_000 + 43_200_000)
+      if (base?.[0]) {
+        const r = await git(['show', `${base[0]}:./${TP_ARCHIVO}`])
+        if (r.exitCode === 0) viejo = r.stdout
+      }
+    }
+  } catch {
+    // sin git: se muestran en curso y prioridad 1, sin lo cerrado
+  }
+  tpUltimoTexto = texto
+  tpCache = tpDerivar(texto, viejo, reciente)
+  return tpCache
+}
+
 
 function tLeer(texto: string): Tarea[] | null {
   try {
@@ -1047,6 +1162,12 @@ async function tRefrescar($: EngineInterface): Promise<void> {
       tUltimo = json
       await update($, tArchivo, () => nuevo)
     }
+    const der = await tpLeer($, carpeta)
+    const jd = JSON.stringify(der)
+    if (jd !== tpUltimoJson) {
+      tpUltimoJson = jd
+      await update($, derivadas, () => der)
+    }
   } catch {
     // se reintenta en el próximo ciclo
   }
@@ -1056,6 +1177,9 @@ const tSessionStart: H = async ($, e, next) => {
   const ran = await next(e)
   // Cada sesión tiene sus propios átomos: sin esto, el panel nace vacío si el archivo no cambió desde la sesión anterior.
   tUltimo = ''
+  tpUltimoTexto = null
+  tpCache = null
+  tpUltimoJson = ''
   await $.command.register({ name: 'tareas', description: 'Abre el panel de tareas de la sesión' })
   void $.ui.open({ id: T_PANEL, title: 'Tareas', columns: 38 })
   await tRefrescar($)
@@ -1110,7 +1234,8 @@ const registrarTareas: Register = on => {
     const { Box, Text } = $.ui.resolve(e)
     const deArchivo = await read($, tArchivo)
     // El archivo manda cuando existe; si no, valen las llamadas a TodoWrite/TaskCreate.
-    const tareas = deArchivo ?? (await read($, tLista)) ?? []
+    const manual = deArchivo ?? (await read($, tLista)) ?? []
+    const tareas = tpMezclar(manual, (await read($, derivadas)) ?? [])
     const hechas = tareas.filter(t => t.estado === 'completed').length
     return (
       <Box flexDirection="column" paddingX={1} gap={1}>

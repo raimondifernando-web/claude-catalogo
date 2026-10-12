@@ -1,5 +1,8 @@
 # paneles
 
+## 0.2.1 — 2026-10-11
+- **El panel Tareas se arma solo.** Además de lo que anota la sesión, muestra lo que sale de `.claude/PENDIENTES.md` y de git: lo que está «en curso» (▶), lo urgente (prioridad 1) y lo nuevo de esta semana (○), y lo que se cerró desde la versión anterior del archivo, hasta 2 días atrás (✓ tachado). Si la misma tarea está también en `tareas.json`, manda PENDIENTES. Sin lista de pendientes, el panel funciona como antes. Nadie tiene que acordarse de actualizarlo.
+
 ## 0.2.0 — 2026-10-11
 - Tercer panel, **Tareas**: las tareas de la sesión en vivo (lo hecho se tacha). Se alimenta de lo que la sesión anota con sus herramientas de tareas, o de `.claude/tareas.json` de la carpeta si existe. Se abre solo y con `/tareas`.
 - Arreglo: los paneles podían nacer vacíos al abrir una sesión nueva (se arreglaban solos recién cuando cambiaba el archivo). Ahora cada sesión empieza de cero. Probable causa, no reproducida en las pruebas automáticas: confirmar abriendo una sesión nueva.
