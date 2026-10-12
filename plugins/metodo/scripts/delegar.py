@@ -53,6 +53,13 @@ import re
 import signal
 import subprocess
 import sys
+
+# Windows: la consola usa cp1252 y los ✓/✗ y acentos hacían caer el script; se fuerza UTF-8 en la salida.
+for _flujo in (sys.stdout, sys.stderr):
+    try:
+        _flujo.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 import time
 from pathlib import Path
 

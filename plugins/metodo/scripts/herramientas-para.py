@@ -8,6 +8,13 @@ de 4 horas en la carpeta temporal para que el freno (consultar-ecosistema.py) no
 """
 import glob, hashlib, os, re, sys, time, unicodedata
 
+# Windows: la consola usa cp1252; se fuerza UTF-8 en la salida.
+for _flujo in (sys.stdout, sys.stderr):
+    try:
+        _flujo.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 HOME = os.path.expanduser("~")
 CFG = os.environ.get("CLAUDE_CONFIG_DIR", os.path.join(HOME, ".claude"))
 AQUI = os.path.dirname(os.path.abspath(__file__))

@@ -58,6 +58,7 @@ jobs:
     environment: estable        # limitado a la rama main; acá vive el secreto de la clave de despliegue
     permissions:
       contents: read
+      checks: read   # la compuerta C26 lee los check-runs del commit
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
