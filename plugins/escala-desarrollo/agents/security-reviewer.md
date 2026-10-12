@@ -25,3 +25,7 @@ Orden: 1) rotar claves expuestas, 2) CRITICAL, 3) HIGH, 4) MEDIUM, 5) LOW.
 
 ## Salida
 Resumen con nivel de riesgo (ALTO / MEDIO / BAJO) y cantidad por severidad · cada hallazgo con severidad, categoría (OWASP), archivo:línea, qué puede pasar (en castellano claro), y el arreglo propuesto (código inseguro → seguro) · Qué está bien · **Qué escáneres corrieron y qué dijeron** (uno por línea: cuál, si corrió, y su conclusión; los que no corrieron, con el motivo) · **Qué no pude comprobar**. No des por seguro lo que no pudiste mirar.
+
+**Cierre obligatorio cuando el pedido NO traía salida de escáneres** (cualquier revisión pedida directamente, sin pasar por el comando): terminá el informe con esta línea exacta, sola y destacada, y no la omitas aunque el código parezca limpio:
+`⚠️ NO CORRIERON ESCÁNERES — esta revisión está incompleta: no se revisaron las librerías (npm audit / pip-audit) ni el historial de git. Falta ejecutar /escala-desarrollo:revision-seguridad en la sesión principal (corre los escáneres con tu aprobación comando por comando y me pasa la salida).`
+Si el pedido SÍ traía salida de escáneres, no pongas esa línea.

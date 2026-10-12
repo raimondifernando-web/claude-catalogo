@@ -1,5 +1,9 @@
 # escala-desarrollo
 
+## 0.14.4 — 2026-10-12
+- **`/escala-desarrollo:revision-seguridad` se activa sola con más pedidos.** Claude la usa cuando le pedís revisar la seguridad, auditar el código, buscar vulnerabilidades o claves sueltas, hacer un pentest liviano o «chequear que sea seguro antes de publicar», también si lo decís de forma indirecta («me preocupa que roben datos», «¿se puede publicar sin riesgos?»). En las pruebas la usó en todas esas frases y en ninguna que no era de seguridad.
+- **Si pedís el revisor de seguridad directamente** (sin pasar por el comando), su informe termina con una línea destacada: «NO CORRIERON ESCÁNERES — esta revisión está incompleta», con el comando que falta correr. Así nunca queda la sensación de que se revisó todo cuando no se corrieron los escáneres.
+
 ## 0.14.3 — 2026-10-12
 - **Comando nuevo: `/escala-desarrollo:revision-seguridad`.** El revisor de seguridad no puede ejecutar nada (por diseño), así que los escáneres los corre **tu sesión, y vos aprobás cada comando**: `npm audit` (si hay `package-lock.json`), `pip-audit -r requirements.txt` (si hay) y una búsqueda de claves en el historial de git. Después le pasa todo al revisor, que lo analiza junto con el código y lo resume en «Qué escáneres corrieron y qué dijeron».
 - **Las claves nunca se muestran completas:** la búsqueda en el historial tapa cada valor (4 caracteres y el largo) y avisa si la clave sigue en el código; una clave que estuvo en el historial hay que rotarla aunque ya no esté.

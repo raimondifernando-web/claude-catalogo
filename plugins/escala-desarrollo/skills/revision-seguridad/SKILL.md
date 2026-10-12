@@ -1,10 +1,12 @@
 ---
 name: revision-seguridad
-description: "Revisión de seguridad completa de tu app, en dos pasos: primero corre en tu sesión, pidiéndote aprobación comando por comando, los escáneres que apliquen a tu proyecto (npm audit, pip-audit y una búsqueda de claves en el historial de git con los valores tapados); después le pasa esa salida al revisor de seguridad de solo lectura, que la analiza junto con el código. Usala antes de publicar o entregar una herramienta, o cuando pidas «revisá la seguridad»."
+description: "Revisión de seguridad completa de tu app o proyecto. Usala SIEMPRE que pidan revisar la seguridad, hacer una revisión o auditoría de seguridad, auditar el código o el proyecto, buscar vulnerabilidades, contraseñas o claves sueltas, secretos o tokens en el código o en el historial, hacer un pentest liviano, o chequear que algo sea seguro antes de publicar, entregar, subir a producción o hacer un deploy (incluso si lo piden de forma indirecta, como «me preocupa que roben datos» o «¿se puede publicar sin riesgos?»), aunque no nombren escáneres. Corre en tu sesión, con tu aprobación comando por comando, los escáneres que apliquen (npm audit, pip-audit y una búsqueda de claves en el historial de git, con los valores tapados) y después le pasa esa salida al revisor de seguridad de solo lectura, que la analiza junto con el código. Es la forma correcta de revisar seguridad: el revisor por sí solo no puede ejecutar escáneres."
 argument-hint: "[carpeta del proyecto; por defecto la actual]"
 ---
 
 # Revisión de seguridad con escáneres
+
+**Disparador:** por intención + encadenada. (1) La `description` trae las frases con las que se la pide (medido: 10 de 10 con frases normales y 4 de 5 con frases indirectas, sin falsos positivos). (2) El `security-reviewer`, si lo llaman sin salida de escáneres, cierra con la línea «NO CORRIERON ESCÁNERES» que nombra este comando. Límite honesto: no es automática; si la persona delega a mano en el revisor, la skill no corre sola y solo queda a la vista el cierre del revisor.
 
 El revisor (`escala-desarrollo:security-reviewer`) es de **solo lectura**: no puede ejecutar nada. Por eso los escáneres los corrés **vos, acá, en la sesión principal**, donde la persona ve cada comando y lo aprueba; después le pasás la salida al revisor para que la analice.
 
