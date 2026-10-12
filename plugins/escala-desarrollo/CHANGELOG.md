@@ -1,5 +1,9 @@
 # escala-desarrollo
 
+## 0.14.1 — 2026-10-12
+- **`code-reviewer` ahora es solo lectura de verdad.** Antes decía que no editaba archivos, pero podía sobrescribirlos ejecutando comandos; en una prueba lo hizo. Ahora no tiene permiso de escribir **ni de ejecutar comandos**: lee, busca y te entrega el informe con el arreglo propuesto. Como no ejecuta nada, para revisar cambios recientes indicale los archivos o pegale el diff.
+- Usa el método de revisión del creador de `agent-skills` (cinco ejes, severidades Critical/Required/Optional/Nit, veredicto), que se actualiza solo. Ese plugin se instala solo como dependencia: no tenés que hacer nada. Lo llamás igual que antes.
+
 ## 0.14.0 — 2026-10-03
 - **Agente nuevo: `scientific-literature-researcher`.** Busca estudios publicados (revistas, PubMed, arXiv) y te arma una respuesta apoyada en evidencia: qué método usó cada estudio, con cuántos casos y qué límites tiene. Lo llamás pidiéndoselo a Claude, por ejemplo «que scientific-literature-researcher busque qué dicen los estudios sobre X». Busca en la web abierta, sin servicios pagos.
 
