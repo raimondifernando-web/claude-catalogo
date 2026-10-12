@@ -4,8 +4,11 @@ Recomendado junto con `base-segura` (ver `plugins/base-segura/requisitos.md`). E
 paquete. Para saber qué te falta: corré el chequeo (`docs/CHEQUEO.md`).
 
 ## Lo que NO necesita nada extra
-`estilo-de-marca` · `video-content-strategist` · `frontend-ui-engineering` · `components-build` · `ui-design-system` · `algorithmic-art` (arte generativo
+`estilo-de-marca` · `video-content-strategist` · `components-build` · `ui-design-system` · `algorithmic-art` (arte generativo
 en un HTML que abrís en el navegador). Funcionan con Claude Code solo.
+
+## Viene con otro plugin
+`frontend-ui-engineering` (interfaces accesibles y responsive) ya no está dentro de este paquete: llega con el plugin `agent-skills`, que este paquete declara como dependencia y se instala solo. Si lo ves como `agent-skills:frontend-ui-engineering`, es la misma skill, mantenida por su autor.
 
 ## Lo que sí necesita algo
 

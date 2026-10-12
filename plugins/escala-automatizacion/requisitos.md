@@ -4,8 +4,11 @@ Recomendado junto con `base-segura` (ver `plugins/base-segura/requisitos.md`). P
 (`docs/CHEQUEO.md`).
 
 ## Lo que NO necesita nada extra
-`workflow-automation` · `zapier-make-patterns` · `ci-cd-and-automation` · los 3 agentes. Ayudan a diseñar y revisar; lo que
+`workflow-automation` · `zapier-make-patterns` · los 3 agentes. Ayudan a diseñar y revisar; lo que
 se construye después vive en la herramienta que elijas.
+
+## Viene con otro plugin
+`ci-cd-and-automation` (CI/CD) ya no está dentro de este paquete: llega con el plugin `agent-skills`, que este paquete declara como dependencia y se instala solo. Si lo ves como `agent-skills:ci-cd-and-automation`, es la misma skill, mantenida por su autor.
 
 ## Lo que sí necesita algo
 

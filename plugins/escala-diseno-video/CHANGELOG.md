@@ -1,5 +1,8 @@
 # escala-diseno-video — qué cambia para vos
 
+## 0.1.8 — 2026-10-12
+- **`frontend-ui-engineering` se mueve al plugin `agent-skills`** (mismo contenido, lo mantiene su autor y se actualiza solo). Este paquete lo declara como dependencia: se instala solo, no tenés que hacer nada. Antes quedaba repetida si ya tenías `agent-skills`.
+
 ## 0.1.6 — 2026-10-07
 - `hyperframes-animation` al día con su autor: cómo hacer cortes de cámara y luz de relleno en escenas 3D, y cómo renderizar sin placa de video. Solo texto.
 

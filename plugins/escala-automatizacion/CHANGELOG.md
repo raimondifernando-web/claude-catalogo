@@ -1,5 +1,8 @@
 # escala-automatizacion — qué cambia para vos
 
+## 0.1.1 — 2026-10-12
+- **`ci-cd-and-automation` se mueve al plugin `agent-skills`** (mismo contenido, lo mantiene su autor y se actualiza solo). Este paquete lo declara como dependencia: se instala solo, no tenés que hacer nada. Antes quedaba repetida si ya tenías `agent-skills`.
+
 ## 0.1.0 — 2026-09-27
 - **Paquete nuevo, para automatizar procesos**: «cuando entra un mail con X, que se cargue en Y y me avise por WhatsApp».
 - **n8n** (7 skills de czlonkowski/n8n-skills): código JavaScript y Python, expresiones, configurar nodos, validar flujos y patrones de workflows. Si tenés conectado el MCP de n8n, Claude lo usa mejor.
