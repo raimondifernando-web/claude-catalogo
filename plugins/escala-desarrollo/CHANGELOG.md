@@ -1,5 +1,10 @@
 # escala-desarrollo
 
+## 0.14.3 — 2026-10-12
+- **Comando nuevo: `/escala-desarrollo:revision-seguridad`.** El revisor de seguridad no puede ejecutar nada (por diseño), así que los escáneres los corre **tu sesión, y vos aprobás cada comando**: `npm audit` (si hay `package-lock.json`), `pip-audit -r requirements.txt` (si hay) y una búsqueda de claves en el historial de git. Después le pasa todo al revisor, que lo analiza junto con el código y lo resume en «Qué escáneres corrieron y qué dijeron».
+- **Las claves nunca se muestran completas:** la búsqueda en el historial tapa cada valor (4 caracteres y el largo) y avisa si la clave sigue en el código; una clave que estuvo en el historial hay que rotarla aunque ya no esté.
+- Si una herramienta no está instalada, lo dice y no inventa el resultado. No instala nada ni toca tus archivos. Necesita `python3` para la parte del historial; `npm` y `pip-audit` son opcionales (solo se usan si tu proyecto los necesita).
+
 ## 0.14.2 — 2026-10-12
 - **`security-reviewer` ahora es solo lectura de verdad.** Antes tenía desactivado escribir y editar archivos, pero podía ejecutar comandos (y por ahí modificar cosas). Ahora solo lee y busca, y te entrega el informe con el arreglo propuesto. Usa el método de seguridad del creador de `agent-skills` (`security-and-hardening`), que se instala solo como dependencia y se actualiza sola. Lo llamás igual que antes.
 - **Qué cambia en la práctica:** como no ejecuta comandos ni tiene internet, **no puede correr `npm audit` / `pip-audit` (vulnerabilidades de las librerías) ni buscar claves en el historial de git**. Lo dice en su informe («Qué no pude comprobar») y te pide que le pegues la salida de esos comandos si querés que la analice. Nunca repite una clave completa en el informe.

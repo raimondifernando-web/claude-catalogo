@@ -48,8 +48,8 @@
     {
       "name": "escala-desarrollo",
       "source": "./plugins/escala-desarrollo",
-      "description": "Capa L4 para desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive, investigación profunda) y 14 agentes. Revisores de solo lectura de verdad (no escriben ni ejecutan nada): code-reviewer y security-reviewer, con el método de agent-skills (se instala solo), revisan tu app entera y explican en castellano qué puede pasar y en qué orden arreglarlo. Para construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer, documentation-engineer. Para decidir: product-manager, technology-scout. Investigación: research-analyst y afines.",
-      "version": "0.14.2",
+      "description": "Capa L4 para desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive, investigación profunda) y 14 agentes. Revisores de solo lectura de verdad (no escriben ni ejecutan nada): code-reviewer y security-reviewer, con el método de agent-skills (se instala solo), revisan tu app entera y explican en castellano qué puede pasar y en qué orden arreglarlo. El comando /escala-desarrollo:revision-seguridad suma los escáneres (npm audit, pip-audit, claves en el historial de git) con tu aprobación. Para construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer, documentation-engineer. Para decidir: product-manager, technology-scout. Investigación: research-analyst y afines.",
+      "version": "0.14.3",
       "category": "development",
       "tags": [
         "l4",
