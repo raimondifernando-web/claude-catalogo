@@ -105,6 +105,9 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     nombre que a una general: gana la general y la del proyecto queda muda sin avisar. Si dos hacen lo mismo, queda
     prendida una (gana la del fabricante, después la de Anthropic, después la de un repositorio de confianza y al final la
     propia) y la otra se apaga, no se borra. Nunca borra skills para hacer lugar: si la conversación se llena, usa `/compact`.
+    **Una skill de afuera entra solo por `/metodo:buscar-skill-externa`**: buscar (solo lectura) → traerla a una cuarentena que la
+    audita → tu OK en el chat → copiarla a mano. Nunca `npx skills add|update` contra tu carpeta de skills (un freno lo impide)
+    ni copiar a ciegas una skill que viste en la web: el instalador de Vercel copia todo sin auditar, incluidos archivos de prueba.
 
 ## Cuándo repartir el trabajo entre sesiones (regla 20)
 

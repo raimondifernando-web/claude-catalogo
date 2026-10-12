@@ -135,6 +135,8 @@ def main():
     for tipo in ("skill", "agente"):
         for (t, n), (sc, d) in [x for x in pz if x[0][0] == tipo][:6]:
             print(f"- {t} `{n}` — {d[:150]}")
+    if not rs and not pz:
+        print("Nada instalado para eso. Probá /metodo:buscar-skill-externa (buscar <tema en inglés>) antes de crear (regla 19).")
     print("\nSi tenés que desviarte de la receta, decilo en una línea y por qué.")
 
 

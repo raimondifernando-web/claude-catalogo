@@ -1,0 +1,6 @@
+{
+  "name": "cuarentena-skills-cli",
+  "private": true,
+  "description": "CLI oficial de Vercel (skills) fijado a una versión, SOLO para usar dentro de cuarentena-skills. Instalar con: npm ci --ignore-scripts",
+  "dependencies": { "skills": "1.7.2" }
+}

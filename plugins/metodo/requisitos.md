@@ -1,6 +1,6 @@
 # metodo — qué necesita tu computadora
 
-**Casi nada.** Las 10 skills (`/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar`, `/metodo:cerrar`, `/metodo:crear-agente`, `/metodo:otra-sesion`, `/metodo:darwin-skill`, `/metodo:vigia`, `/metodo:cowork`, `/metodo:buzon`) funcionan con Claude Code, sin claves. Lo que corre solo al abrir la sesión es el **vigía de actualizaciones** (abajo), que necesita Python 3, y, solo si lo configuraste, el aviso del **buzón**.
+**Casi nada.** Las 11 skills (`/metodo:arrancar`, `/metodo:planear`, `/metodo:criticar`, `/metodo:cerrar`, `/metodo:crear-agente`, `/metodo:otra-sesion`, `/metodo:darwin-skill`, `/metodo:vigia`, `/metodo:cowork`, `/metodo:buzon`) funcionan con Claude Code, sin claves. Lo que corre solo al abrir la sesión es el **vigía de actualizaciones** (abajo), que necesita Python 3, y, solo si lo configuraste, el aviso del **buzón**.
 
 `/metodo:darwin-skill` usa **git** para guardar o deshacer cada mejora, y trabaja **siempre en una copia aparte** (`git worktree`), nunca en la carpeta que usan tus otras sesiones. Tiene un script opcional que arma una imagen con el resultado: solo corre si tenés Playwright (`npm install -g playwright-core`). Sin eso, todo lo demás funciona igual.
 
@@ -13,6 +13,8 @@ Atajos: si no tenés otras skills con esos nombres, `/arrancar` y `/cerrar` a se
 `/metodo:buzon` (el buzón con quien te acompaña) es opcional y necesita **Python 3**, **git** y una **cuenta de GitHub**
 con acceso al repositorio privado del buzón (te invita quien te acompaña). `gh` ayuda a clonarlo, pero no es
 obligatorio. Sin configurarlo no hace nada: ni red ni git. Qué viaja y qué no: `docs/BUZON.md` del catálogo.
+
+`/metodo:buscar-skill-externa` (buscar una skill ya hecha) necesita **Python 3** y, solo para *traer* una a la cuarentena, **Node.js** (`npm`) y **git**: la primera vez baja el instalador oficial `skills@1.7.2` (verifica su hash) a `<config de Claude>/metodo/cuarentena-cli`; si falta Node te lo dice y no toca nada. **Solo Mac y Linux** (el aislamiento usa `env -i`). Buscar no necesita Node.
 
 **Mapa de código a pedido** («mapeá este repo»): `scripts/graphify-en-repo` necesita **git** y **Graphify 0.9.65**
 (`uv tool install graphifyy==0.9.65`, una vez). Si falta, te lo dice en una línea y no toca nada. Cómo funciona y
