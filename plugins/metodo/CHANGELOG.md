@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.33.0 — 2026-10-12
+- **Lista de herramientas que ya se evaluaron y se descartaron.** Antes de probar o instalar algo de afuera, Claude mira una lista corta con lo que ya se analizó: qué es, qué se decidió y cuándo, por qué (con las cifras medidas) y **qué tendría que cambiar para volver a mirarla**. Hoy trae cuatro: OmniRoute (portero de IA), Ponytail (reglas de «código mínimo»), Gbrain (cerebro con búsqueda) y claude-mem (memoria automática de sesiones). Si lo que querés probar está ahí, no hace falta repetir el análisis: se comprueba solo si cambió la condición.
+- **Cómo la ves:** pedile a Claude «evaluá/instalá X» y, si hay una coincidencia, el freno de la regla 22 la trae **una sola vez** por carpeta cada 4 horas; o a mano con `herramientas-para.py herramientas rechazadas`. La regla 21 suma una línea que lo dice.
+- La lista la mantiene tu consultor: no la edites. Si querés una propia, creá `<config de Claude>/recetas/herramientas-rechazadas.md` y esa gana.
+- Límite: el freno mira cuando Claude lanza un agente o un trabajo largo; no mira los comandos sueltos de instalación (`claude plugin install …`).
+- Se activa solo con `/plugin update`; no hay nada que correr.
+
 ## 0.32.5 — 2026-10-11
 - **El freno de claves ahora también mira cuando Claude escribe.** Si Claude está por guardar en un archivo de claves (el de variables de entorno, una llave, un archivo de credenciales) algo que parece una clave de verdad, **te pregunta antes**; no bloquea ni corta el trabajo. Dejar los valores vacíos o de relleno (`changeme`, `<tu-clave>`) o escribir en los archivos de ejemplo sigue pasando sin preguntar. El mensaje nunca muestra la clave: solo el nombre de la variable y el número de línea. Lo que ya frenaba (leer o imprimir claves) sigue igual. Escribir con redirecciones de la terminal (`echo X=… > archivo`) todavía no se mira.
 - **Funciona mejor en Windows.** Se arreglaron las pruebas automáticas de este paquete en Windows (lectura de textos con tildes, rutas de carpetas privadas, variables del sistema); si usás Windows, no tenés que hacer nada.

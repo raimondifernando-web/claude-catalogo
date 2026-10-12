@@ -11,6 +11,9 @@
 5. **Crear una propia** con `skill-creator`. Es más fácil de lo que parece y queda en tu repo.
 
 ## 2. El filtro: 5 preguntas antes de instalar cualquier cosa de afuera
+
+**Antes de aplicar el filtro, mirá la lista de herramientas ya descartadas:** `python3 <ruta>/herramientas-para.py herramientas rechazadas` (la ruta está junto a `radar.py`). Si la herramienta está, no repitas el análisis: comprobá solo si cambió la condición para reabrirla.
+
 | # | Pregunta | Cómo se ve en GitHub | Si falla |
 |---|---|---|---|
 | 1 | **¿Es confiable el que lo hizo?** Alcanza con **UNO** de tres: (a) lo usa mucha gente · (b) es de una organización oficial · (c) alguien leyó el contenido entero | (a) ≥ 5.000 estrellas ★ (arriba a la derecha) · (b) Anthropic, Microsoft, Google, Vercel, Cursor y equivalentes · (c) **solo si son puros archivos de texto**: ningún `.py`, `.sh`, `.js`, nada que se ejecute ni se instale | Ninguno de los tres → no se instala. Y el camino (c) **no vale si hay código adentro**: leer un programa no dice qué hace cuando corre |

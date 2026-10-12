@@ -97,6 +97,30 @@ class TestFreno(unittest.TestCase):
         self.assertIn("RECETA PROPIA DE LA EMPRESA", r.stderr)
         self.assertNotIn("frontend-design", r.stderr)
 
+    @unittest.skipIf(os.name == "nt", "el freno es un hook de bash (consultar-ecosistema.sh)")
+    def test_evaluar_o_instalar_una_herramienta_trae_la_lista_de_rechazadas(self):
+        r = correr(self.agente("Evaluá e instalá Ponytail como plugin de reglas"), self.cfg, self.cwd)
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn("herramientas-rechazadas", r.stderr)
+        self.assertIn("no repitas el análisis", r.stderr)
+        self.assertEqual(correr(self.agente("Evaluá e instalá Ponytail como plugin de reglas"), self.cfg, self.cwd).returncode, 0)
+
+    def test_herramientas_para_devuelve_la_lista_por_tema(self):
+        env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg))
+        for tema in (["gateway", "de", "IA"], ["instalar", "un", "plugin", "de", "reglas"], ["omniroute"]):
+            with self.subTest(tema=tema):
+                r = subprocess.run([sys.executable, str(SCRIPTS / "herramientas-para.py")] + tema,
+                                   capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, cwd=self.cwd, timeout=20)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertIn("## herramientas-rechazadas", r.stdout)
+
+    def test_la_lista_de_rechazadas_no_nombra_clientes_ni_rutas_propias(self):
+        txt = (SCRIPTS.parent / "recetas" / "herramientas-rechazadas.md").read_text(encoding="utf-8").lower()
+        for malo in ("eb" + "ras", "da" + "ni", "/users/", "~/proyectos", "hetzner", "fernando"):  # partidos: el control de nombres no debe verse a sí mismo
+            self.assertNotIn(malo, txt)
+        for herramienta in ("omniroute", "ponytail", "gbrain", "claude-mem"):
+            self.assertIn(herramienta, txt)
+
     def test_herramientas_para_sin_receta_lo_dice_y_no_rompe(self):
         env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg))
         r = subprocess.run([sys.executable, str(SCRIPTS / "herramientas-para.py"), "tema", "inexistente", "zzqq"],

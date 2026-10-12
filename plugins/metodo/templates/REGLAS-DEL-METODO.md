@@ -125,6 +125,8 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     aparezca a mitad de otro trabajo («subí esta herramienta», «armemos un robot que mande mails», «guardemos esto en una
     base»). Primero mira lo que la empresa ya paga, y te muestra costo, riesgo y qué datos salen a terceros antes de elegir.
     Si la decisión es nueva para la empresa, la anota en su ficha (`CLAUDE.md`) con el motivo, para no volver a discutirla.
+    Y antes de evaluar o instalar una herramienta de afuera, mira la lista de las ya descartadas (`herramientas-para.py
+    herramientas rechazadas`): si está, no repite el análisis; solo comprueba si cambió la condición para reabrirla.
 
 ## Antes de construir algo nuevo (regla 22)
 

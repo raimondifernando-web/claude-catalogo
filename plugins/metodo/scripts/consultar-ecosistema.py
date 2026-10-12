@@ -9,7 +9,7 @@ CFG = os.environ.get("CLAUDE_CONFIG_DIR", os.path.expanduser("~/.claude"))
 AQUI = os.path.dirname(os.path.abspath(__file__))
 TTL = 4 * 3600
 EXT = {".html", ".css", ".scss", ".tsx", ".jsx", ".vue", ".svelte", ".swift"}
-VERBOS = re.compile(r"(cre[aá]|constru|arm[aá]|implement|dise[nñ]|prototip|desarroll|build|create|design|develop)", re.I)
+VERBOS = re.compile(r"(cre[aá]|constru|arm[aá]|implement|dise[nñ]|prototip|desarroll|build|create|design|develop|evalu|instal|adopt|install)", re.I)
 
 
 def main():
