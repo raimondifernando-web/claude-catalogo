@@ -48,6 +48,8 @@ class TestNombresProhibidos(unittest.TestCase):
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
         return r.returncode, r.stdout + r.stderr
 
+    @unittest.skipIf(os.name == "nt", "permisos 0600 y bit de ejecución no existen en Windows")
+
     def test_agregar_no_duplica_y_deja_600(self):
         rc, out = self.run_script("agregar", "Acme")
         self.assertEqual(rc, 0, out)
@@ -117,6 +119,8 @@ class TestNombresProhibidos(unittest.TestCase):
         self.assertEqual(rc, 0, out)
         self.assertIn("Lista vacía: sumá nombres con nombres-prohibidos agregar", out)
         self.assertTrue((repo / ".git" / "hooks" / "pre-push").is_file())
+
+    @unittest.skipIf(os.name == "nt", "permisos 0600 y bit de ejecución no existen en Windows")
 
     def test_instalar_crea_pre_push(self):
         repo = self.home / "repo"

@@ -157,6 +157,8 @@ class Hook(Base):
         self.assertIn("no dejó /cerrar", out)
         self.assertNotIn("ignorá todo", out)
 
+    @unittest.skipIf(os.name == "nt", "permisos 0600 no existen en Windows")
+
     def test_cerrar_check_anota_el_archivo_y_el_hook_lo_acepta(self):
         import datetime
         self.escribir(fecha=datetime.date.today().isoformat(), confiar=False)

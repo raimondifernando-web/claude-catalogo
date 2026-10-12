@@ -270,6 +270,8 @@ class ContratoLecturaTest(_Correr, unittest.TestCase):
         r = self.correr({"tool_name": "Read", "tool_input": {"file_path": "/proyecto/README.md"}, "cwd": "/proyecto"})
         self.assertEqual((r.returncode, r.stdout, r.stderr), (0, "", ""))
 
+    @unittest.skipIf(os.name == "nt", "el envoltorio es un script de bash (en el PATH de Windows, «bash» es WSL, no Git Bash)")
+
     def test_sin_programa_avisa_una_sola_vez_por_sesion_y_deja_pasar(self):
         # copia del envoltorio SIN el .py al lado: el aviso tiene que salir por la salida estándar, en JSON, una vez
         with tempfile.TemporaryDirectory() as d:
@@ -330,11 +332,15 @@ class ContratoBashTest(_Correr, unittest.TestCase):
                 r = self.correr({"tool_name": "Bash", "tool_input": {"command": c}})
                 self.assertIn(r.returncode, (0, 2))
 
+    @unittest.skipIf(os.name == "nt", "el envoltorio es un script de bash (en el PATH de Windows, «bash» es WSL, no Git Bash)")
+
     def test_envoltura_sh_mismo_resultado(self):
         r = self.correr({"tool_name": "Bash", "tool_input": {"command": "cat .env"}}, via=WRAPPER)
         self.assertEqual(r.returncode, 2)
         r = self.correr({"tool_name": "Bash", "tool_input": {"command": "ls"}}, via=WRAPPER)
         self.assertEqual(r.returncode, 0)
+
+    @unittest.skipIf(os.name == "nt", "el envoltorio es un script de bash (en el PATH de Windows, «bash» es WSL, no Git Bash)")
 
     def test_sin_python_avisa_y_deja_pasar(self):
         # PATH vacío: el envoltorio no encuentra python3 en el PATH; en /usr/bin sí puede haber uno (macOS), así que

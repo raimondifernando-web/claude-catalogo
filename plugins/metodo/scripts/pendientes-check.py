@@ -21,7 +21,7 @@ ESTADOS_TXT = "pendiente · en curso · espera dato · espera OK · hecho"
 
 def raiz(cwd):
     try:
-        r = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"], capture_output=True, text=True, timeout=10)
+        r = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10)
         return r.stdout.strip() or cwd
     except Exception:
         return cwd

@@ -35,7 +35,7 @@ faltan = []
 
 def git(*a):
     try:
-        r = subprocess.run(["git", "-C", cwd, *a], capture_output=True, text=True, timeout=20)
+        r = subprocess.run(["git", "-C", cwd, *a], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
         return r.stdout.strip() if r.returncode == 0 else None
     except Exception:
         return None
@@ -190,7 +190,7 @@ if slug:
 # (CLAUDE.md) peso, filas largas y punteros: lo mide claude-md-check.py (solo lee; si no se puede correr, lo dice)
 try:
     _r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude-md-check.py"), cwd],
-                        capture_output=True, text=True, timeout=20)
+                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
     for _l in _r.stdout.splitlines():
         print(_l)
         if _l.startswith("✗"):
@@ -201,7 +201,7 @@ except Exception as e:
 # (pendientes del proyecto) formato de .claude/PENDIENTES.md y si el cierre es más nuevo que su última línea de «Cambios»
 try:
     _r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "pendientes-check.py"), cwd],
-                        capture_output=True, text=True, timeout=20)
+                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
     for _l in _r.stdout.splitlines():
         print(_l)
         if _l.startswith("✗"):

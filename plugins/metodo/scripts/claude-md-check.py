@@ -42,7 +42,7 @@ def main():
         return
     try:
         top = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"],
-                             capture_output=True, text=True, timeout=10).stdout.strip() or cwd
+                             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10).stdout.strip() or cwd
     except Exception:
         top = cwd
     base = next((d for d in (cwd, top) if os.path.isfile(os.path.join(d, "CLAUDE.md"))), None)

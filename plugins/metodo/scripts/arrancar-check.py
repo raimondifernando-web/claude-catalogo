@@ -30,7 +30,7 @@ faltan = []
 
 def git(*args):
     try:
-        r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, timeout=15)
+        r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
         return r.stdout.strip() if r.returncode == 0 else None
     except Exception:
         return None
@@ -117,7 +117,7 @@ if texto:
 # (CLAUDE.md) peso, filas largas y punteros: lo mide claude-md-check.py (solo lee; si no se puede correr, lo dice)
 try:
     _r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude-md-check.py"), cwd],
-                        capture_output=True, text=True, timeout=20)
+                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
     for _l in _r.stdout.splitlines():
         print(_l)
         if _l.startswith("✗"):
@@ -148,7 +148,7 @@ def mi_sesion(ses):
     pid = os.getppid()
     for _ in range(8):
         try:
-            r = subprocess.run(["ps", "-o", "ppid=,args=", "-p", str(pid)], capture_output=True, text=True,
+            r = subprocess.run(["ps", "-o", "ppid=,args=", "-p", str(pid)], capture_output=True, text=True, encoding="utf-8", errors="replace",
                                timeout=5).stdout.strip()
         except Exception:
             break

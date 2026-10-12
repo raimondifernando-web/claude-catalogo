@@ -38,6 +38,8 @@ class TestFreno(unittest.TestCase):
     def agente(self, prompt=UI):
         return {"tool_name": "Agent", "tool_input": {"prompt": prompt}}
 
+    @unittest.skipIf(os.name == "nt", "el freno es un hook de bash (consultar-ecosistema.sh)")
+
     def test_frena_una_vez_con_la_receta(self):
         r = correr(self.agente(), self.cfg, self.cwd)
         self.assertEqual(r.returncode, 2, r.stderr)
@@ -45,6 +47,8 @@ class TestFreno(unittest.TestCase):
         self.assertIn("frontend-design", r.stderr)
         r2 = correr(self.agente(), self.cfg, self.cwd)  # reintento: pasa
         self.assertEqual(r2.returncode, 0)
+
+    @unittest.skipIf(os.name == "nt", "el freno es un hook de bash (consultar-ecosistema.sh)")
 
     def test_archivo_nuevo_de_interfaz_frena_y_existente_no(self):
         nuevo = {"tool_name": "Write", "tool_input": {"file_path": str(self.cwd / "index.html"), "content": "<html>dashboard pantalla interfaz"}}
@@ -54,6 +58,8 @@ class TestFreno(unittest.TestCase):
         (otra / "index.html").write_text("x")
         existente = {"tool_name": "Write", "tool_input": {"file_path": str(otra / "index.html"), "content": "dashboard pantalla interfaz"}}
         self.assertEqual(correr(existente, self.cfg, otra).returncode, 0)
+
+    @unittest.skipIf(os.name == "nt", "el freno es un hook de bash (consultar-ecosistema.sh)")
 
     def test_lo_que_no_es_construir_no_frena(self):
         casos = [
@@ -70,6 +76,8 @@ class TestFreno(unittest.TestCase):
             with self.subTest(c=c):
                 self.assertEqual(correr(c, self.cfg, self.cwd).returncode, 0)
 
+    @unittest.skipIf(os.name == "nt", "el freno es un hook de bash (consultar-ecosistema.sh)")
+
     def test_entrada_rota_o_apagado_dejan_pasar(self):
         env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg))
         r = subprocess.run(["bash", str(HOOK)], input="{no es json", capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=20)
@@ -78,6 +86,8 @@ class TestFreno(unittest.TestCase):
         (self.cfg / "metodo").mkdir()
         (self.cfg / "metodo" / "consultar-ecosistema.apagado").write_text("")
         self.assertEqual(correr(self.agente(), self.cfg, self.cwd).returncode, 0)
+
+    @unittest.skipIf(os.name == "nt", "el freno es un hook de bash (consultar-ecosistema.sh)")
 
     def test_receta_propia_gana_a_la_del_paquete(self):
         (self.cfg / "recetas").mkdir()

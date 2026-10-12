@@ -33,7 +33,7 @@ def main():
     if os.path.exists(marca) and time.time() - os.path.getmtime(marca) < TTL:
         return 0
     r = subprocess.run([sys.executable, os.path.join(AQUI, "herramientas-para.py"), "--solo-recetas", texto[:1500]],
-                       capture_output=True, text=True, timeout=10, cwd=cwd)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10, cwd=cwd)
     if "══ RECETAS" not in r.stdout:
         return 0  # sin receta para esto: no se molesta
     try:
