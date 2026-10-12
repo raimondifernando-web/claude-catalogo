@@ -2,6 +2,7 @@
 
 ## 0.32.5 — 2026-10-11
 - **El freno de claves ahora también mira cuando Claude escribe.** Si Claude está por guardar en un archivo de claves (el de variables de entorno, una llave, un archivo de credenciales) algo que parece una clave de verdad, **te pregunta antes**; no bloquea ni corta el trabajo. Dejar los valores vacíos o de relleno (`changeme`, `<tu-clave>`) o escribir en los archivos de ejemplo sigue pasando sin preguntar. El mensaje nunca muestra la clave: solo el nombre de la variable y el número de línea. Lo que ya frenaba (leer o imprimir claves) sigue igual. Escribir con redirecciones de la terminal (`echo X=… > archivo`) todavía no se mira.
+- **Funciona mejor en Windows.** Se arreglaron las pruebas automáticas de este paquete en Windows (lectura de textos con tildes, rutas de carpetas privadas, variables del sistema); si usás Windows, no tenés que hacer nada.
 
 ## 0.32.4 — 2026-10-11
 - **«Poner todo al día» suma `claude-security`**, el plugin oficial de Anthropic para auditar la seguridad de un proyecto a fondo. Se instala de la fuente oficial (no viaja dentro de este catálogo) y **nunca se dispara solo**: escanear gasta mucho cupo, así que se pide a mano. Apaga solo su aviso de escaneo después de cada subida de cambios (variable propia del plugin, no toca nada tuyo). Mientras escanea puede correr comandos de `git` sin preguntar; el escaneo lo pedís vos, sobre tu propio código.
