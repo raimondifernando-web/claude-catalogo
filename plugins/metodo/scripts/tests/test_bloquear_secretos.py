@@ -475,6 +475,7 @@ class EscrituraTest(_Correr, unittest.TestCase):
                     r = self.correr({"tool_name": h, "tool_input": ti, "cwd": "/p"})
                     self.assertEqual((r.returncode, r.stdout), (0, ""))
 
+    @unittest.skipIf(os.name == "nt", "el envoltorio es un script de bash (en el PATH de Windows, «bash» es WSL, no Git Bash)")
     def test_envoltura_sh_mismo_resultado(self):
         r = self.correr({"tool_name": "Write", "cwd": "/p",
                          "tool_input": {"file_path": "/p/.env", "content": "ALGO=" + FALSAS["sk"]}}, via=WRAPPER)
