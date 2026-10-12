@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Disparador: pre-push de main/estable (hook de git que instala Tech/.claude/instalar-disparadores.sh) y a mano antes de cada release.
 # Verifica que lo que el catálogo DICE coincida con lo que CONTIENE.
 # Nace de tres errores reales ya publicados (2026-09-22):
 #   1) base-segura decía "12 skills" y tenía 14 (0.8.0 sumó dos y nadie tocó el plugin.json)
@@ -91,6 +92,25 @@ for p in plugins/*/skills/*/; do
   [ -f "$p/SKILL.md" ] || rojo "sin SKILL.md: $p"
 done
 [ "$fallos" -eq 0 ] && ok "skills revisadas"
+
+echo "== 6. Toda pieza tiene quién la ejecute (regla 23 / Mand. XXIX)"
+# Causa raíz 2026-10-12: /revision-seguridad se publicó sin ningún agente ni proceso que la ejecutara; dependía de que alguien se acordara.
+# Una skill, agente, comando o script sin «Disparador:» ni quien lo llame (hook, otra skill, tarea) frena la publicación.
+# Las excepciones aceptadas, con motivo, viven en scripts/disparadores-excepciones.txt.
+if [ -f plugins/metodo/scripts/disparadores.py ]; then
+  sal=$(python3 plugins/metodo/scripts/disparadores.py --catalogo . --check --excepciones scripts/disparadores-excepciones.txt 2>&1); rc=$?
+  if [ "$rc" -eq 0 ]; then ok "todas las piezas tienen disparador"
+  else
+    if printf '%s\n' "$sal" | grep -qE '^  - '; then
+      printf '%s\n' "$sal" | grep -E '^  - ' | while IFS= read -r l; do printf '         %s\n' "$l"; done
+    else
+      printf '%s\n' "$sal" | tail -15 | sed 's/^/         /'   # el programa falló por otra causa: se muestra entero, no se esconde
+    fi
+    rojo "hay piezas sin disparador (arriba): escribí «Disparador: …» en su texto, enlazalas desde algo que las ejecute, o aceptá la excepción con motivo"
+  fi
+else
+  rojo "falta plugins/metodo/scripts/disparadores.py"
+fi
 
 echo
 if [ "$fallos" -eq 0 ]; then echo "TODO COINCIDE — se puede publicar"; exit 0

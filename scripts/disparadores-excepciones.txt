@@ -1,0 +1,9 @@
+# Piezas del catálogo que el chequeo de disparadores (regla 23) acepta en rojo A PROPÓSITO. Formato:  ámbito/tipo:nombre | motivo
+# Entra solo con motivo escrito. Lo que no está acá y queda en rojo frena scripts/verificar-metadatos.sh (y el pre-push a main/estable).
+catalogo:base-segura/skill:i-have-adhd | de un tercero: se activa a mano con /i-have-adhd y queda puesta hasta «stop adhd mode» (disable-model-invocation)
+catalogo:escala-desarrollo/agent:security-reviewer | PENDIENTE DE ENGANCHE: es un control. El caso puntual lo cierra la rama tech/revision-seguridad-escaneres (skill /revision-seguridad); falta que algo la dispare solo (propuesta: paso del cierre de sesión cuando se tocó código o credenciales). Sacar esta línea al enganchar
+catalogo:escala-desarrollo/agent:technology-scout | descripción del autor (VoltAgent) sin «cuándo»; la mejora está propuesta en C28 y no se edita la pieza de un tercero
+catalogo:rubro-estudio-arquitectura/skill:theme-factory | de Anthropic (anthropics/skills): se pide por intención (temas para presentaciones); no se edita
+catalogo:rubro-estudio-arquitectura/agent:project-idea-validator | el nombre dice «validator» pero no es un control de proceso: es un entregable que la persona pide a demanda («validame esta idea»)
+catalogo:rubro-marketing/skill:seo-audit | auditoría SEO a demanda: es un entregable que la persona pide («auditá el SEO de mi web»), no un control que deba correr solo
+catalogo:metodo/script:control-ruteo.py | PENDIENTE DE ENGANCHE: es un control mensual y hoy se corre a mano (ningún hook lo lanza; lo dice docs/SECURITY-CHECKS.md). Propuesta: que lo lance el mismo hook mensual de seguridad.py (solo lectura). Sacar esta línea al enganchar

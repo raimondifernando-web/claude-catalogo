@@ -209,6 +209,32 @@ try:
 except Exception as e:
     print(f"• PENDIENTES.md: no se pudo correr pendientes-check ({type(e).__name__})")
 
+# (regla 23) piezas que hiciste hoy sin quién las ejecute: skill, agente o script nuevo sin «Disparador:» ni nadie que lo llame.
+# Solo cuentan como falta las de las últimas 36 h; las más viejas salen como aviso (no frenan el cierre).
+try:
+    _cfg = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
+    _exc = os.path.join(_cfg, "metodo", "disparadores-excepciones.txt")
+    _lineas = []
+    _bases = [_cfg] + [b for b in (os.path.join(cwd, ".claude"),) if os.path.realpath(b) != os.path.realpath(_cfg)
+                       and (os.path.isdir(os.path.join(b, "skills")) or os.path.isdir(os.path.join(b, "agents")))]
+    for _base in _bases:   # la configuración general y, si existen, las piezas propias de esta carpeta de trabajo
+        _cmd = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "disparadores.py"), "--home", _base,
+                "--check", "--recientes", "36", "--corpus-extra", os.path.join(cwd, "CLAUDE.md")] + (["--excepciones", _exc] if os.path.isfile(_exc) else [])
+        _r = subprocess.run(_cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+        _lineas += [l for l in _r.stdout.splitlines() if l.strip()]
+    _rojas = [l.strip()[2:] for l in _lineas if l.startswith("  - ")]
+    if _rojas:
+        linea(False, "Pieza nueva sin disparador (regla 23): " + " · ".join(_rojas[:4]) +
+              " — escribí «Disparador: …» (quién la ejecuta y cuándo) o enlazala desde una skill, un agente o un hook",
+              "pieza nueva sin disparador: " + ", ".join(r.split(":")[0] for r in _rojas[:3]))
+    else:
+        print("✓ Piezas nuevas con disparador (regla 23)")
+    for _l in _lineas:
+        if _l.startswith("  (aviso)"):
+            print("• Aviso:" + _l.strip()[len("(aviso)"):])
+except Exception as e:
+    print(f"• Disparadores: no se pudo medir ({type(e).__name__})")
+
 # (verificación propia) ramas ya mergeadas que quedaron vivas + línea de prueba del resultado (regla 1 del método)
 try:
     if git("rev-parse", "--show-toplevel"):

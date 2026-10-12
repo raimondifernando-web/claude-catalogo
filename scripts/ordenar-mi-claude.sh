@@ -1,4 +1,5 @@
 #!/bin/bash
+# Disparador: manual a propósito — se corre UNA vez en la Terminal con la app cerrada (lo explica la guía de ordenar); toca carpetas, por eso no es automático.
 # ordenar-mi-claude.sh — ordena las carpetas de trabajo de Claude: una carpeta madre (~/Proyectos) con una por área.
 # Se corre una vez, en la Terminal, con la app de Claude cerrada. Es seguro repetirlo: lo que ya está hecho no se toca.
 # No borra nada. Antes de cambiar un archivo, guarda una copia al lado (.antes-ordenar-<fecha>).

@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.34.0 — 2026-10-12
+- **Regla 23: todo lo que creás tiene que tener quién lo ejecute.** Una skill, un agente, un script o un aviso sin nadie que lo dispare (ni un hook, ni una tarea programada, ni otra skill, ni palabras en su descripción que hagan que Claude lo use) es un cartel en una puerta cerrada: funciona solo si te acordás de pedirlo. Desde ahora, lo que creás nace con una línea `Disparador:` (quién lo llama y cuándo), se prueba en una sesión limpia antes de darlo por terminado y, si **revisa, audita o respalda** algo, se engancha a algo que ocurra solo. Está en `REGLAS-DEL-METODO.md` (se pone al día solo al abrir la sesión).
+- **`/metodo:cerrar` te avisa si creaste hoy algo sin disparador.** Si en las últimas 36 horas hiciste (en tu configuración general o en la carpeta de trabajo) una skill, un agente o un script que nadie ejecuta, el cierre lo marca en rojo con el nombre y qué hacer. Lo más viejo sale solo como aviso, sin frenar nada.
+- **`/metodo:crear-agente` suma el paso del disparador** (quién lo invoca, cómo probarlo) y el error típico «un agente que nadie invoca».
+- **Programa nuevo `disparadores.py`** (junto a `radar.py`): mide todas tus piezas y dice cuáles no tienen quién las ejecute, aunque se nombren entre sí (dos piezas que solo se mencionan una a la otra no cuentan). Solo lee. `python3 disparadores.py --home`.
+
 ## 0.33.0 — 2026-10-12
 - **Lista de herramientas que ya se evaluaron y se descartaron.** Antes de probar o instalar algo de afuera, Claude mira una lista corta con lo que ya se analizó: qué es, qué se decidió y cuándo, por qué (con las cifras medidas) y **qué tendría que cambiar para volver a mirarla**. Hoy trae cuatro: OmniRoute (portero de IA), Ponytail (reglas de «código mínimo»), Gbrain (cerebro con búsqueda) y claude-mem (memoria automática de sesiones). Si lo que querés probar está ahí, no hace falta repetir el análisis: se comprueba solo si cambió la condición.
 - **Cómo la ves:** pedile a Claude «evaluá/instalá X» y, si hay una coincidencia, el freno de la regla 22 la trae **una sola vez** por carpeta cada 4 horas; o a mano con `herramientas-para.py herramientas rechazadas`. La regla 21 suma una línea que lo dice.

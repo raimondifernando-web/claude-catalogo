@@ -1,4 +1,5 @@
 #!/bin/bash
+# Disparador: a pedido — Claude lo corre cuando la persona dice «mapeá este repo» (está contado en el README del plugin y en docs/GRAPHIFY.md).
 # graphify-en-repo — arma el mapa de tu código (Graphify) en el repositorio donde estás parado, en el único
 # orden seguro. Es lo que corre Claude cuando le pedís «mapeá este repo». Detalle: docs/GRAPHIFY.md del catálogo.
 #

@@ -160,6 +160,45 @@ class ChecksTest(unittest.TestCase):
         self.assertIn("sin remoto", out)  # el repo de prueba no tiene remoto: eso es una falla real
         self.assertEqual(rc, 1, out)
 
+    def test_cerrar_pieza_nueva_sin_disparador_falla(self):
+        self.repo()
+        sk = self.config / "skills" / "misteriosa"
+        sk.mkdir(parents=True)
+        (sk / "SKILL.md").write_text('---\nname: misteriosa\ndescription: "Herramienta."\n---\n# x\n', encoding="utf-8")
+        rc, out = self.correr(CERRAR, str(self.proyecto))
+        self.assertEqual(rc, 1, out)
+        self.assertIn("Pieza nueva sin disparador (regla 23)", out)
+        self.assertIn("skill:misteriosa", out)
+
+    def test_cerrar_pieza_nueva_con_disparador_pasa_ese_chequeo(self):
+        self.repo()
+        sk = self.config / "skills" / "bien-hecha"
+        sk.mkdir(parents=True)
+        (sk / "SKILL.md").write_text('---\nname: bien-hecha\ndescription: "Resume reuniones. Usala cuando la persona pida resumir una reunión o una llamada larga."\n---\n# x\n', encoding="utf-8")
+        rc, out = self.correr(CERRAR, str(self.proyecto))
+        self.assertIn("Piezas nuevas con disparador (regla 23)", out)
+        self.assertNotIn("Pieza nueva sin disparador", out)
+
+    def test_cerrar_pieza_vieja_sin_disparador_solo_avisa(self):
+        self.repo()
+        sk = self.config / "skills" / "antigua"
+        sk.mkdir(parents=True)
+        f = sk / "SKILL.md"
+        f.write_text('---\nname: antigua\ndescription: "Herramienta."\n---\n# x\n', encoding="utf-8")
+        os.utime(f, (1_000_000_000, 1_000_000_000))
+        rc, out = self.correr(CERRAR, str(self.proyecto))
+        self.assertIn("Piezas nuevas con disparador (regla 23)", out)
+        self.assertIn("Aviso: 1 pieza(s) más antiguas", out)
+
+    def test_cerrar_agente_local_del_proyecto_sin_disparador_falla(self):
+        self.repo()
+        ag = self.proyecto / ".claude" / "agents"
+        ag.mkdir(parents=True)
+        (ag / "pm-huerfano.md").write_text('---\nname: pm-huerfano\ndescription: "Un agente."\n---\ncuerpo\n', encoding="utf-8")
+        rc, out = self.correr(CERRAR, str(self.proyecto))
+        self.assertEqual(rc, 1, out)
+        self.assertIn("agent:pm-huerfano", out)
+
     def test_cerrar_sin_reanudar_falla(self):
         rc, out = self.correr(CERRAR, str(self.proyecto))
         self.assertEqual(rc, 1, out)

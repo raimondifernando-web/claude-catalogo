@@ -65,6 +65,12 @@ Campos opcionales útiles: `tools:` (lista blanca de herramientas; si un agente 
 3. **Verificar**: `ls` del archivo; en una sesión nueva, `/agents` lo lista; probalo con una tarea real chica.
 4. **Registrar**: una línea en el `CLAUDE.md` de la carpeta ("Agentes: `pm-miempresa` → coordina; …") para que
    la próxima sesión sepa que existe. Sin esto, el agente queda huérfano.
+5. **Disparador y prueba de disparo (regla 23)**: escribí en el cuerpo del agente una línea `Disparador: …` con quién lo
+   invoca y cuándo — *encadenado* (lo nombra tu PM o una skill: cuál), *por intención* (la `description` empieza con
+   «Invocar cuando…» y trae las frases con las que se lo pide) o *manual a propósito* (y por qué). Un PM se dispara porque
+   abrís la sesión con él. Si el agente **revisa, audita o controla algo**, «por intención» no alcanza: engancharlo a un paso
+   que ocurra solo (el cierre, un hook, el PM que corresponda). Probalo en una sesión limpia: pedí lo que dice su descripción
+   y confirmá que se invoca. Al terminar, el reporte lleva «disparado por: X (probado)».
 
 ## Modificar
 Leé el archivo actual entero antes de tocarlo. Cambiá solo lo que cambia. Si le sacás una skill o una
@@ -75,6 +81,7 @@ herramienta, decí por qué en el mensaje.
 Y sacá la línea del `CLAUDE.md`. Un agente archivado se puede volver a traer; uno borrado, no.
 
 ## Errores típicos
+- Crear un agente que nadie invoca (sin `Disparador:` ni quién lo llame) → no existe: nada lo ejecuta (regla 23).
 - Crear un agente para cada tarea → termina con 30 agentes que nadie usa. Regla: si en 2 semanas no lo
   invocaste 3 veces, archivalo.
 - PM que hace de todo → se convierte en un chat genérico. El PM **deriva**; si no tiene a quién derivar, primero

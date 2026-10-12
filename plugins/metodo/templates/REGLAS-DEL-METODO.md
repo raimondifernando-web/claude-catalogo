@@ -1,4 +1,4 @@
-# Las 22 reglas del método
+# Las 23 reglas del método
 
 > Agregá este bloque al final de tu `~/.claude/CLAUDE.md` (o reemplazá las reglas que ya tenías por estas).
 > Son las que hacen que Claude trabaje con criterio y no como un asistente que dice a todo que sí.
@@ -137,3 +137,16 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     subagentes **no heredan** las skills de la sesión: Claude las nombra en el prompt de cada uno y comprueba que las usó.
     Si hay que desviarse de la receta, lo dice en una línea. Las recetas del paquete están en `recetas/`; las propias de la
     persona, en `<config de Claude>/recetas/` (la propia gana si se llaman igual).
+
+## Que cada cosa que creás tenga quién la ejecute (regla 23)
+
+23. **Toda skill, agente, script o aviso que creás nace con su «Disparador»: quién lo pone en marcha y cuándo.** Se escribe en
+    el texto de la pieza, en una línea que empieza exactamente con `Disparador:` y sigue con una de cuatro respuestas:
+    **automático** (algo lo lanza solo: un aviso al abrir o cerrar la sesión, una tarea programada) · **encadenado** (otra
+    skill, un agente o un paso de `/cerrar` o `/arrancar` lo usa: decí cuál) · **por intención** (su descripción trae las
+    frases con las que lo pedirías: «Usala cuando…») · **manual a propósito** (y por qué). Lo que **controla, revisa, audita,
+    respalda o sincroniza** no puede quedar solo «por intención»: vale justo cuando nadie se acuerda de pedirlo, así que se
+    engancha a algo que ocurra solo. Antes de decir «hecho», probalo en una sesión nueva y limpia (pedí lo que dice su
+    descripción, o provocá el evento) y comprobá que se pone en marcha; el reporte lleva la línea **«disparada por: X
+    (probado)»**. «Debería dispararse» no cuenta. El cierre de sesión (`/metodo:cerrar`) te avisa si creaste hoy algo sin
+    disparador; `scripts/disparadores.py` (junto a `radar.py`) mide todas tus piezas cuando quieras.

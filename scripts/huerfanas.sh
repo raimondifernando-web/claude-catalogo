@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Disparador: manual a propósito — lo corre la persona cuando quiere saber qué carpetas no están respaldadas (la guía de inicio lo cuenta); solo lee.
 # huerfanas.sh — ¿qué carpetas tuyas no están respaldadas en ningún lado?
 # Uso:  bash <(curl -fsSL https://raw.githubusercontent.com/raimondifernando-web/claude-catalogo/main/scripts/huerfanas.sh) [carpeta-extra ...]
 #   o:  bash ~/.claude/plugins/marketplaces/claude-catalogo/scripts/huerfanas.sh [carpeta-extra ...]
