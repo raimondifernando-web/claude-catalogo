@@ -101,7 +101,7 @@ TRAMOS_DEBILES = {"key", "keys", "private"}
 PARES_SECRETOS = {(".config", "gh"), (".config", "gcloud"), (".claude", "projects")}
 # 2) Nombres de archivo conocidos:
 NOMBRE_SECRETO = re.compile(
-    r"^(\.env(?!\.(example|sample|template|dist)$)(\..*)?|\.envrc|\.netrc|\.npmrc|\.pypirc|\.pgpass|\.git-credentials"
+    r"^(\.env(?!\.(example|sample|template|dist)$)(\..*)?|.+\.env|\.envrc|\.netrc|\.npmrc|\.pypirc|\.pgpass|\.git-credentials"
     r"|\.mcp\.json|\.claude\.json|id_(rsa|ed25519|ecdsa|dsa)[^/]*|known_hosts|authorized_keys|kubeconfig"
     r"|.*\.(pem|key|p12|p8|pfx|ppk|ovpn|tfvars|tfstate|tfstate\.backup|keystore|jks|kdbx|keychain(-db)?)"
     r"|client_secret.*\.json|service-account.*\.json|\.yarnrc\.yml|auth\.json|\.htpasswd|local\.settings\.json"
@@ -181,6 +181,30 @@ def _misma(a, b):
         return False
 
 
+def carpeta_de_llaves(ruta):
+    """Descripción de la carpeta de llaves o de configuración de herramientas que contiene `ruta` (o que es), o None."""
+    ruta_str = str(ruta).replace("\\", "/")
+    ruta_slash = ruta_str.rstrip("/") + "/"
+    casa = Path(str(Path.home().resolve()))
+    for d in CARPETAS_DE_LLAVES:
+        llaves = casa / d
+        llaves_txt = str(llaves).replace("\\", "/").rstrip("/") + "/"
+        if ruta_slash.lower().startswith(llaves_txt.lower()) or any(_misma(x, llaves) for x in [Path(ruta_str)] + list(Path(ruta_str).parents)):
+            return "una carpeta de llaves o de configuración de tus herramientas (~/%s)" % d
+    for var in VARIABLES_DE_LLAVES:
+        valor = os.environ.get(var, "").strip()
+        if not valor:
+            continue
+        try:
+            llaves = Path(valor).expanduser().resolve()
+        except (OSError, RuntimeError):
+            continue
+        llaves_txt = str(llaves).replace("\\", "/").rstrip("/") + "/"
+        if ruta_slash.lower().startswith(llaves_txt.lower()) or any(_misma(x, llaves) for x in [Path(ruta_str)] + list(Path(ruta_str).parents)):
+            return "la carpeta de configuración de una herramienta (%s=%s)" % (var, valor)
+    return None
+
+
 def es_carpeta_privada(repo_path):
     """(es_privada, motivo). Verifica rutas sensibles que no deben delegarse a planes externos."""
     repo_str = str(repo_path).replace("\\", "/")   # Windows: mismas comparaciones con «/»
@@ -197,24 +221,9 @@ def es_carpeta_privada(repo_path):
     if any(_misma(repo_path, c) for c in [casa] + list(casa.parents)):
         return True, "tu carpeta personal entera o la raíz del disco: adentro hay de todo; delegá desde la carpeta del proyecto"
     # carpetas de llaves y de configuración de las herramientas (incluida la de Claude): ahí no se delega nunca
-    for d in CARPETAS_DE_LLAVES:
-        llaves = casa / d
-        llaves_txt = str(llaves).replace("\\", "/").rstrip("/") + "/"
-        if repo_slash.lower().startswith(llaves_txt.lower()) or any(_misma(x, llaves) for x in [Path(repo_str)] + list(Path(repo_str).parents)):
-            return True, ("una carpeta de llaves o de configuración de tus herramientas (~/%s): ahí no se delega; "
-                          "delegá desde la carpeta del proyecto" % d)
-    for var in VARIABLES_DE_LLAVES:
-        valor = os.environ.get(var, "").strip()
-        if not valor:
-            continue
-        try:
-            llaves = Path(valor).expanduser().resolve()
-        except (OSError, RuntimeError):
-            continue
-        llaves_txt = str(llaves).replace("\\", "/").rstrip("/") + "/"
-        if repo_slash.lower().startswith(llaves_txt.lower()) or any(_misma(x, llaves) for x in [Path(repo_str)] + list(Path(repo_str).parents)):
-            return True, ("la carpeta de configuración de una herramienta (%s=%s): ahí no se delega; delegá desde la "
-                          "carpeta del proyecto" % (var, valor))
+    llaves = carpeta_de_llaves(repo_path)
+    if llaves:
+        return True, "%s: ahí no se delega; delegá desde la carpeta del proyecto" % llaves
 
     extra = os.environ.get("METODO_NO_DELEGAR", "").strip()
     if extra:
@@ -634,8 +643,20 @@ def leer_pedido(args, repo_path):
     else:
         p = Path(args.pedido)
         real = Path(os.path.realpath(str(p)))
+        escrito = Path(os.path.abspath(str(p)))
         if NOMBRES_DE_CLAVES.search(p.name) or NOMBRES_DE_CLAVES.search(real.name):
             return None, "«%s» parece un archivo de claves: no se manda." % p.name
+        # mismo filtro que los archivos que viajan del repo: nombre y carpetas (secrets/, keys/…), medidos desde el repo o
+        # la carpeta temporal donde está el pedido, por la ruta escrita y por la real (un enlace no lo saltea)
+        for ruta in (escrito, real):
+            txt = str(ruta).replace("\\", "/")
+            base = next((b for b in bases_permitidas(repo_path) if (txt + "/").startswith(b)), None)
+            rel = txt[len(base):] if base else ruta.name
+            if es_secreto(rel):
+                return None, "«%s» parece un archivo de claves (por el nombre o la carpeta en la que está): no se manda." % p.name
+            if carpeta_de_llaves(ruta):
+                return None, ("«%s» está en %s: parece un archivo de claves, no se manda."
+                              % (p.name, carpeta_de_llaves(ruta)))
         if not any((str(real) + "/").startswith(b) for b in bases_permitidas(repo_path)):
             return None, "el archivo del pedido tiene que estar dentro del repo o en una carpeta temporal (no en «%s»)." % real.parent
         try:
