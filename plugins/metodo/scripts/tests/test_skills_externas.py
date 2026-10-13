@@ -24,6 +24,11 @@ class TestHook(unittest.TestCase):
                   "cuarentena-skills.sh x && npx skills add y", "git commit -m 'npx skills add x cuarentena-skills'"]:
             self.assertEqual(hook(c), 2, c)
 
+    def test_la_cuarentena_con_otro_comando_adentro_no_exime(self):  # L-2 de la 2.ª revisión
+        for c in ['cuarentena-skills.sh "$(npx skills add x -g)"', "bash cuarentena-skills.sh `npx skills add x`",
+                  "cuarentena-skills.sh <(npx skills add x)", "cuarentena-skills.sh a/b >(npx skills update)"]:
+            self.assertEqual(hook(c), 2, c)
+
     def test_deja_pasar_lo_inofensivo_y_la_cuarentena(self):
         for c in ["npx skills find n8n", "npx skills list", "npx skills --version", "ls ~/.claude/skills", "git commit -m 'arreglo'",
                   "cuarentena-skills unclecatvn/agent-skills odoo-17", "python3 skills-buscar.py odoo",

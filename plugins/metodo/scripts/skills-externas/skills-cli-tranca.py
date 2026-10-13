@@ -25,8 +25,13 @@ except Exception:
 ES_CUARENTENA = re.compile(r"^\s*(?:[A-Za-z_]\w*=\S*\s+)*(?:(?:bash|sh|zsh)\s+)?(?:\S*/)?cuarentena-skills(?:\.sh)?(?=\s|$)")
 
 
+# L-2 (2.ª revisión): un tramo que trae otro comando adentro ($(…), `…`, <(…), >(…)) no se exime aunque empiece por la cuarentena.
+OTRO_COMANDO_ADENTRO = re.compile(r"\$\(|`|<\(|>\(")
+
+
 def instala_sin_cuarentena(texto):
-    return any(INSTALA.search(tramo) and not ES_CUARENTENA.match(tramo) for tramo in re.split(r"[;&|\n]", texto))
+    return any(INSTALA.search(tramo) and not (ES_CUARENTENA.match(tramo) and not OTRO_COMANDO_ADENTRO.search(tramo))
+               for tramo in re.split(r"[;&|\n]", texto))
 
 
 if instala_sin_cuarentena(cmd):
