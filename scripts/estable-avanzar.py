@@ -135,6 +135,23 @@ def pruebas_del_commit(repo, api, credencial, sha, timeout=30):
     return rojas, pendientes, len(mias)
 
 
+TOPE_COMMITS_A_MIRAR = 40   # commits del rango estable..candidato cuyas pruebas se consultan (de más nuevo a más viejo)
+
+
+def pruebas_del_rango(repo, api, credencial, cwd, actual, destino):
+    """F10 (security check 0.35.0): mirar solo el commit candidato dejaba pasar «un commit en rojo seguido de otro sin pruebas». Acá manda el
+    commit MÁS NUEVO del rango estable..candidato que tenga pruebas registradas: si ese está en rojo (o sin terminar) no se mueve, aunque
+    el candidato no haya corrido pruebas; si un commit posterior las corrió en verde (el arreglo), pasa. Devuelve (rojas, pendientes, total, sha)."""
+    r = git(["rev-list", "--topo-order", "--max-count=%d" % TOPE_COMMITS_A_MIRAR, "%s..%s" % (actual, destino)], cwd)
+    if r.returncode != 0:
+        raise Frena("git no pudo listar los commits que entrarían a estable: %s" % (r.stderr or "").strip()[:200])
+    for sha in r.stdout.split() or [destino]:
+        rojas, pendientes, total = pruebas_del_commit(repo, api, credencial, sha)
+        if total:
+            return rojas, pendientes, total, sha
+    return [], [], 0, None
+
+
 def hora_del_servidor(fecha):
     if not fecha:
         raise Frena("la respuesta de la API no trae el encabezado Date: sin hora del servidor no se mueve nada")
@@ -394,14 +411,14 @@ def main(argv=None):
                                % (candidato[:7], _hace(ahora, par[0])))
             destino = decidir(cwd, principal, actual, candidato, bool(manual))
             if not manual:
-                rojas, pendientes, total = pruebas_del_commit(a.repo, a.api, credencial, destino)
+                rojas, pendientes, total, de_quien = pruebas_del_rango(a.repo, a.api, credencial, cwd, actual, destino)
                 if rojas:
-                    raise Frena("las pruebas de %s están en rojo (%s): no se mueve hasta que main tenga un commit en verde"
-                                % (destino[:7], ", ".join(rojas[:3])))
+                    raise Frena("las pruebas de %s (último commit con pruebas entre estable y %s) están en rojo (%s): no se mueve hasta que main tenga un commit en verde"
+                                % (de_quien[:7], destino[:7], ", ".join(rojas[:3])))
                 if pendientes:
                     raise SinMovimiento("las pruebas de %s todavía no terminaron (%d): se reintenta en la próxima corrida"
-                                        % (destino[:7], len(pendientes)))
-                resumen.append("pruebas de `%s`: %s" % (destino[:7], "%d en verde" % total if total else "ninguna registrada"))
+                                        % (de_quien[:7], len(pendientes)))
+                resumen.append("pruebas de `%s`: %s" % ((de_quien or destino)[:7], "%d en verde" % total if total else "ninguna registrada"))
         except SinMovimiento as e:
             sin_mover = e
         if actividad is not None:     # solo en automático: hay una hora del servidor con la que medir el atraso

@@ -30,7 +30,7 @@ if [ ! -d "$CLI_DIR/node_modules/skills" ]; then
       || { echo "Falta: no pude instalar el CLI skills@$VERSION_FIJA en $CLI_DIR ✗"; exit 1; }
   fi
 fi
-CLI=${SKILLS_CLI:-$CLI_DIR/node_modules/skills}
+CLI="$CLI_DIR/node_modules/skills"   # F12: sin override por variable de entorno (SKILLS_CLI permitía apuntar a otro CLI sin que se revisara su hash)
 if [ "$DRY" = 1 ] && [ ! -d "$CLI" ]; then
   echo "[dry-run] el CLI skills@$VERSION_FIJA todavía no está instalado: se instalaría (npm ci --ignore-scripts) en $CLI_DIR · traería «${FUENTE}» (skill: $SKILL) a una cuarentena temporal y la auditaría. No toqué la red ni el disco."
   exit 0
@@ -40,6 +40,25 @@ v=$(node -p "require('$CLI/package.json').version")
 [ "$v" = "$VERSION_FIJA" ] || { echo "Falta: skills@$v instalada, la fijada es $VERSION_FIJA ✗"; exit 1; }
 h=$(node -p "require('$CLI_DIR/package-lock.json').packages['node_modules/skills'].integrity")
 [ "$h" = "$HASH_FIJO" ] || { echo "Falta: el hash de skills@$VERSION_FIJA no coincide con el verificado ✗"; exit 1; }
+# F12: el hash de arriba es el ANOTADO en package-lock.json, no el del contenido instalado. La primera vez (justo después de `npm ci`, que sí verifica la integridad) se guarda la
+# huella de todo node_modules; en cada corrida se vuelve a calcular: si algo se modificó después, se frena. (Un CLI que ya estaba instalado sin huella la recibe en su primera corrida.)
+arbol_sha() { python3 -I -c 'import hashlib,os,sys
+h=hashlib.sha256()
+for d,ds,fs in os.walk(sys.argv[1]):
+    ds.sort()
+    for f in sorted(fs):
+        p=os.path.join(d,f)
+        if f==".package-lock.json" and d==sys.argv[1]: continue
+        h.update(os.path.relpath(p,sys.argv[1]).encode()+b"\0")
+        h.update((os.readlink(p).encode() if os.path.islink(p) else open(p,"rb").read())+b"\0")
+print(h.hexdigest())' "$1"; }
+MARCA="$CLI_DIR/.arbol-sha256"
+HUELLA=$(arbol_sha "$CLI_DIR/node_modules") || { echo "Falta: no pude calcular la huella del CLI instalado ✗"; exit 1; }
+if [ -f "$MARCA" ]; then
+  [ "$(cat "$MARCA")" = "$HUELLA" ] || { echo "Falta: el CLI instalado en $CLI_DIR cambió desde que se verificó ✗ (borrá esa carpeta para reinstalarlo desde package-lock.json)"; exit 1; }
+elif [ "$DRY" = 0 ]; then
+  printf '%s\n' "$HUELLA" > "$MARCA" 2>/dev/null || true
+fi
 if [ "$DRY" = 1 ]; then
   echo "[dry-run] CLI skills@$v con hash verificado ✓ · traería «${FUENTE}» (skill: $SKILL) a una cuarentena temporal y la auditaría. No toqué la red ni el disco."
   exit 0

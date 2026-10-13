@@ -15,7 +15,15 @@ try:
     cmd = (json.load(sys.stdin).get("tool_input") or {}).get("command", "")
 except Exception:
     sys.exit(0)
-if INSTALA.search(cmd) and "cuarentena-skills" not in cmd:
+# F7: se exime solo el tramo que ES el programa de cuarentena (primera palabra), no cualquier comando que nombre «cuarentena-skills» en un comentario o argumento
+ES_CUARENTENA = re.compile(r"^\s*(?:[A-Za-z_]\w*=\S*\s+)*(?:(?:bash|sh|zsh)\s+)?(?:\S*/)?cuarentena-skills(?:\.sh)?(?=\s|$)")
+
+
+def instala_sin_cuarentena(texto):
+    return any(INSTALA.search(tramo) and not ES_CUARENTENA.match(tramo) for tramo in re.split(r"[;&|\n]", texto))
+
+
+if instala_sin_cuarentena(cmd):
     sys.stderr.write("BLOQUEADO (skills-cli-tranca): el instalador `skills` no se usa contra tu carpeta de skills. "
                      "Para traer una skill de afuera: /metodo:buscar-skill-externa (cuarentena + auditoría), y recién con tu OK se copia. "
                      "Buscar sí se puede: `skills-buscar` o `npx skills find`.\n")

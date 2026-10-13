@@ -19,9 +19,15 @@ class TestHook(unittest.TestCase):
                   "npx skills remove foo", "bunx skills install a/b", "pnpm dlx skills add a/b", "cd x && npx skills add a/b"]:
             self.assertEqual(hook(c), 2, c)
 
+    def test_el_texto_cuarentena_skills_no_exime_al_instalador(self):  # F7
+        for c in ["npx skills add x -g # cuarentena-skills", "echo cuarentena-skills; npx skills add x", "npx skills add cuarentena-skills",
+                  "cuarentena-skills.sh x && npx skills add y", "git commit -m 'npx skills add x cuarentena-skills'"]:
+            self.assertEqual(hook(c), 2, c)
+
     def test_deja_pasar_lo_inofensivo_y_la_cuarentena(self):
         for c in ["npx skills find n8n", "npx skills list", "npx skills --version", "ls ~/.claude/skills", "git commit -m 'arreglo'",
-                  "cuarentena-skills unclecatvn/agent-skills odoo-17", "python3 skills-buscar.py odoo"]:
+                  "cuarentena-skills unclecatvn/agent-skills odoo-17", "python3 skills-buscar.py odoo",
+                  "bash /x/y/cuarentena-skills.sh owner/repo@skill", "SKILLS_X=1 bash cuarentena-skills.sh a/b mi-skill --dry-run"]:
             self.assertEqual(hook(c), 0, c)
 
     def test_entrada_rota_no_bloquea(self):
@@ -148,6 +154,34 @@ class TestEnlaces(unittest.TestCase):
             r, _ = self._correr(Path(d), "esto no es una fuente")
         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
         self.assertIn("Fuente no reconocida", r.stdout)
+
+
+class TestHuellaCLI(unittest.TestCase):
+    """F12: el CLI instalado se vuelve a verificar en cada corrida; SKILLS_CLI ya no se obedece."""
+    def _instalado(self):
+        cfg = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "metodo/cuarentena-cli"
+        return cfg if (cfg / "node_modules/skills").is_dir() and not (AQUI / "cli/node_modules/skills").is_dir() else None
+
+    def test_cli_modificado_despues_de_instalar_se_frena_y_skills_cli_se_ignora(self):
+        origen = self._instalado()
+        if not (origen and shutil.which("node")):
+            self.skipTest("el CLI skills no está instalado en <config>/metodo/cuarentena-cli (o hay uno junto al script)")
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d); cfg = d / "cfg"; destino = cfg / "metodo/cuarentena-cli"
+            shutil.copytree(origen, destino, symlinks=True, ignore=shutil.ignore_patterns(".arbol-sha256"))
+            env = dict(os.environ, CLAUDE_CONFIG_DIR=str(cfg), SKILLS_CLI=str(d / "no-existe"))
+            cmd = ["bash", str(AQUI / "cuarentena-skills.sh"), "a/b", "x", "--dry-run"]
+            r1 = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
+            self.assertEqual(r1.returncode, 0, r1.stdout + r1.stderr)       # SKILLS_CLI apuntando a la nada no influye
+            fuente = d / "src"; fuente.mkdir(); (fuente / "x").mkdir()
+            sin_dry = ["bash", str(AQUI / "cuarentena-skills.sh"), str(fuente), "nada"]
+            subprocess.run(sin_dry, capture_output=True, text=True, timeout=120, env=dict(env, TMPDIR=str(d)))   # primera corrida real: guarda la huella
+            self.assertTrue((destino / ".arbol-sha256").is_file())
+            with open(destino / "node_modules/skills/package.json", "a", encoding="utf-8") as f:
+                f.write(" ")
+            r2 = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
+        self.assertEqual(r2.returncode, 1, r2.stdout + r2.stderr)
+        self.assertIn("cambió desde que se verificó", r2.stdout)
 
 
 class TestDryRun(unittest.TestCase):

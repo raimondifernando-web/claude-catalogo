@@ -130,7 +130,12 @@ class _Manejador(BaseHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
-        cuerpo = json.dumps({"check_runs": srv.pruebas} if "/check-runs" in self.path else srv.actividad).encode("utf-8")
+        if "/check-runs" in self.path:
+            por_commit = getattr(srv, "pruebas_por_commit", {})
+            sha = self.path.split("/commits/")[1].split("/")[0]
+            cuerpo = json.dumps({"check_runs": por_commit.get(sha, srv.pruebas)}).encode("utf-8")
+        else:
+            cuerpo = json.dumps(srv.actividad).encode("utf-8")
         self.send_response_only(srv.estado)  # sin send_response: no agrega Date solo
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(cuerpo)))
@@ -161,6 +166,7 @@ class TestScript(unittest.TestCase):
         self.remoto = self.dir / "remoto.git"
         self.srv.actividad, self.srv.estado, self.srv.redirigir, self.srv.pedidos = [], 200, False, []
         self.srv.pruebas = []   # check-runs que la API simulada devuelve para cualquier commit
+        self.srv.pruebas_por_commit = {}   # sha -> check-runs, para los que difieren
         self.srv.fecha = format_datetime(AHORA, usegmt=True)
         self._git(self.dir, "init", "--quiet", "--bare", str(self.remoto))
         self._git(self.remoto, "symbolic-ref", "HEAD", "refs/heads/main")
@@ -483,6 +489,22 @@ class TestScript(unittest.TestCase):
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertEqual(self._estable_remoto(), self.c[1])
         self.assertIn("en rojo", r.stdout)
+
+    def test_commit_en_rojo_seguido_de_otro_sin_pruebas_no_pasa(self):  # F10
+        self._eventos_normales()   # candidato c3; el rango estable(c1)..c3 es c2, c3
+        self.srv.pruebas_por_commit = {self.c[2]: [self._prueba("tests (ubuntu-latest, Python 3.12)", conclusion="failure")], self.c[3]: []}
+        r = self.correr()
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), self.c[1])
+        self.assertIn("en rojo", r.stdout)
+
+    def test_commit_en_rojo_arreglado_por_uno_posterior_en_verde_pasa(self):  # F10: el arreglo no queda frenado para siempre
+        self._eventos_normales()
+        self.srv.pruebas_por_commit = {self.c[2]: [self._prueba("tests (ubuntu-latest, Python 3.12)", conclusion="failure")],
+                                       self.c[3]: [self._prueba("tests (ubuntu-latest, Python 3.12)")]}
+        r = self.correr()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), self.c[3])
 
     def test_pruebas_sin_terminar_no_mueven_pero_no_es_error(self):
         self._eventos_normales()
