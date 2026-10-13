@@ -676,6 +676,62 @@ class TestScript(unittest.TestCase):
         self.assertNotIn("PROMOVIDO SIN SECURITY CHECK", r.stdout + r.resumen)
         self.assertIn("sin_check=false", r.salida)
 
+    # -- M1/L7 (revisión de la rama): falla cerrado --
+    def _frena_manual(self, sha, texto):
+        r = self.correr("--sha", sha, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn(texto, r.stdout)
+        self.assertEqual(self._estable_remoto(), self.c[1])
+        return r
+
+    def test_version_que_no_es_x_y_z_frena(self):
+        for raro in ("0.36.0-rc.1", "0.36.0+fix", "v0.36.0", "0.36"):
+            with self.subTest(version=raro):
+                v = self._version("metodo", raro)
+                self._frena_manual(v, "versión que la compuerta no reconoce")
+
+    def test_plugin_json_ilegible_o_sin_version_frena(self):
+        v = self._archivo("plugins/metodo/.claude-plugin/plugin.json", "{roto", "roto")
+        self._frena_manual(v, "no es JSON válido")
+        w = self._archivo("plugins/metodo/.claude-plugin/plugin.json", json.dumps({"name": "metodo"}), "sin versión")
+        self._frena_manual(w, "versión que la compuerta no reconoce")
+
+    def test_carpeta_del_paquete_sin_plugin_json_frena(self):
+        v = self._archivo("plugins/paneles/register.tsx", "x", "paneles sin manifiesto")
+        self._frena_manual(v, "no tiene .claude-plugin/plugin.json")
+
+    def _catalogo(self, entradas):
+        return self._archivo(".claude-plugin/marketplace.json", json.dumps({"name": "c", "plugins": entradas}), "catálogo")
+
+    def test_catalogo_que_apunta_afuera_frena(self):  # L7
+        self._version("metodo", "0.36.0")
+        self._check("### metodo 0.36.0")
+        v = self._catalogo([{"name": "metodo", "version": "0.36.0", "source": {"source": "github", "repo": "otro/repo"}}])
+        self._frena_manual(v, "apunta a otra fuente")
+
+    def test_catalogo_con_otra_version_frena(self):  # L7
+        self._version("metodo", "0.36.0")
+        self._check("### metodo 0.36.0")
+        v = self._catalogo([{"name": "metodo", "version": "0.35.0", "source": "./plugins/metodo"}])
+        self._frena_manual(v, "no coincide con su plugin.json")
+
+    def test_catalogo_coherente_pasa(self):  # L7
+        self._version("metodo", "0.36.0")
+        self._check("### metodo 0.36.0")
+        v = self._catalogo([{"name": "metodo", "version": "0.36.0", "source": "./plugins/metodo"},
+                            {"name": "otro", "source": {"source": "github", "repo": "x/y"}}])   # los demás no se miran
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_codigo_cambiado_sin_subir_version_avisa_sin_frenar(self):  # M1, refuerzo
+        v = self._version("metodo", "0.36.0")
+        self._git(self.remoto, "update-ref", "refs/heads/estable", v)
+        w = self._archivo("plugins/metodo/scripts/nuevo.py", "print('x')", "código sin versión nueva")
+        r = self.correr("--sha", w, api="http://127.0.0.1:1", extra_env={"GITHUB_ACTIONS": "true"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("::warning::estable: cambió código de plugins/metodo", r.stdout)
+        self.assertIn("sin subir la versión", r.resumen)
+
     def test_clon_superficial_se_rechaza(self):
         self._eventos_normales()
         r = self.correr(superficial=True)

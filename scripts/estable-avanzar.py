@@ -23,6 +23,11 @@ Cómo decide:
     una versión MÁS NUEVA (revisó un código que ya la incluye); el resumen dice qué archivo la validó. Si falta,
     no se mueve y la corrida sale en rojo. Salida explícita: `--sin-check "<motivo>"` (en el workflow: `-f sin_check=...`)
     promueve igual y lo deja anotado en el resumen de la corrida, en un aviso de GitHub y en `sin_check=true` de la salida.
+    Falla cerrado (M1/L7): plugin.json ilegible, sin versión o con versión que no es X.Y.Z, o un bloque del catálogo
+    (.claude-plugin/marketplace.json) de metodo/paneles que apunte a otra fuente o declare otra versión → no se mueve.
+    Si cambió código de metodo/paneles sin subir la versión, avisa (no frena). Queda FUERA de la compuerta: los demás
+    paquetes del catálogo, los de afuera fijados por sha, `scripts/` de la raíz (al-dia.sh lo baja el portal por su huella)
+    y `.github/`.
   - Este script corre desde el checkout de la propia rama `estable` (ver el workflow): el código que decide ya esperó 48 h.
     Trae `main` por su cuenta.
 
@@ -315,17 +320,82 @@ def revertido_despues(cwd, actual, candidato, principal):
     return None
 
 
-def version_del_paquete(cwd, sha, paquete):
-    """Versión de plugins/<paquete>/.claude-plugin/plugin.json en ese commit, o None si no está o no se puede leer.
-    Solo lee el archivo con git: el código del commit nunca se ejecuta."""
-    r = git(["show", "%s:plugins/%s/.claude-plugin/plugin.json" % (sha, paquete)], cwd)
+def _una_linea(texto, tope=60):
+    """Texto de un archivo del repo para un mensaje: una línea, sin «::» (no arma comandos de GitHub), recortado."""
+    return " ".join(str(texto).replace("::", ": :").split())[:tope]
+
+
+def _existe(cwd, sha, ruta):
+    return git(["cat-file", "-e", "%s:%s" % (sha, ruta)], cwd).returncode == 0
+
+
+def _leer_json(cwd, sha, ruta):
+    """El JSON de `ruta` en ese commit, o None si el archivo no está. Si está pero no se puede leer: Frena (falla cerrado)."""
+    if not _existe(cwd, sha, ruta):
+        return None
+    r = git(["show", "%s:%s" % (sha, ruta)], cwd)
     if r.returncode != 0:
-        return None
+        raise Frena("no se pudo leer %s en %s: no se mueve nada" % (ruta, sha[:7]))
     try:
-        v = json.loads(r.stdout).get("version")
-    except (ValueError, AttributeError):
+        return json.loads(r.stdout)
+    except ValueError:
+        raise Frena("%s en %s no es JSON válido: no se puede saber qué versión llega a los clientes, no se mueve nada" % (ruta, sha[:7]))
+
+
+def version_del_paquete(cwd, sha, paquete):
+    """Versión de plugins/<paquete>/.claude-plugin/plugin.json en ese commit; None solo si el paquete no existe ahí.
+    M1 (revisión de la rama): falla CERRADO. Si el archivo está pero es ilegible, no tiene versión, o la versión no es X.Y.Z
+    exacto (0.36.0-rc.1, 0.36.0+fix), frena: antes eso contaba como «no hay versión nueva» y pasaba sin check.
+    Solo lee el archivo con git: el código del commit nunca se ejecuta."""
+    ruta = "plugins/%s/.claude-plugin/plugin.json" % paquete
+    datos = _leer_json(cwd, sha, ruta)
+    if datos is None:
+        if _existe(cwd, sha, "plugins/%s" % paquete):
+            raise Frena("plugins/%s existe en %s pero no tiene .claude-plugin/plugin.json: no se puede saber su versión, no se mueve nada"
+                        % (paquete, sha[:7]))
         return None
-    return v if isinstance(v, str) and PATRON_VERSION.fullmatch(v) else None
+    v = datos.get("version") if isinstance(datos, dict) else None
+    if not isinstance(v, str) or not PATRON_VERSION.fullmatch(v):
+        raise Frena("%s en %s tiene una versión que la compuerta no reconoce (%r; tiene que ser X.Y.Z): no se mueve nada"
+                    % (ruta, sha[:7], _una_linea(v, 40)))
+    return v
+
+
+def bloque_del_catalogo(cwd, sha, paquete):
+    """L7: la entrada de `paquete` en .claude-plugin/marketplace.json de ese commit, o None si no está listado.
+    Falla cerrado si el catálogo es ilegible."""
+    datos = _leer_json(cwd, sha, ".claude-plugin/marketplace.json")
+    if datos is None:
+        return None
+    entradas = datos.get("plugins") if isinstance(datos, dict) else None
+    if not isinstance(entradas, list):
+        raise Frena(".claude-plugin/marketplace.json en %s no tiene la lista de plugins: no se mueve nada" % sha[:7])
+    propias = [e for e in entradas if isinstance(e, dict) and e.get("name") == paquete]
+    if len(propias) > 1:
+        raise Frena("%s aparece %d veces en el catálogo de %s: no se mueve nada" % (paquete, len(propias), sha[:7]))
+    return propias[0] if propias else None
+
+
+def version_que_llega(cwd, sha, paquete):
+    """La versión de `paquete` que reciben los clientes en ese commit (plugin.json), controlando su bloque del catálogo (L7):
+    la fuente tiene que ser la carpeta del propio repo (si apuntara afuera, la compuerta no estaría revisando lo que se instala)
+    y, si el catálogo declara versión, tiene que coincidir con plugin.json."""
+    v = version_del_paquete(cwd, sha, paquete)
+    entrada = bloque_del_catalogo(cwd, sha, paquete)
+    if entrada is None:
+        return v
+    fuente = entrada.get("source")
+    if fuente != "./plugins/%s" % paquete:
+        raise Frena("en el catálogo de %s, %s apunta a otra fuente (%r) en vez de ./plugins/%s: la compuerta no puede revisar código de "
+                    "afuera, no se mueve nada" % (sha[:7], paquete, _una_linea(json.dumps(fuente), 80), paquete))
+    if v is None:
+        raise Frena("%s está en el catálogo de %s pero no existe plugins/%s/.claude-plugin/plugin.json: no se mueve nada"
+                    % (paquete, sha[:7], paquete))
+    vc = entrada.get("version")
+    if vc is not None and vc != v:
+        raise Frena("en %s la versión de %s del catálogo (%r) no coincide con su plugin.json (%s): no se mueve nada"
+                    % (sha[:7], paquete, _una_linea(vc, 40), v))
+    return v
 
 
 def versiones_con_check(cwd, sha):
@@ -354,20 +424,26 @@ def _tupla(version):
 
 
 def sin_security_check(cwd, actual, destino, principal):
-    """(faltan, validados) para las versiones nuevas de metodo/paneles que entrarían a estable. Una versión queda cubierta por
-    un check de ESA versión o de una más nueva (que revisó un código que ya la incluye); `validados` dice con qué archivo."""
+    """(faltan, validados, avisos) para lo que entraría a estable de metodo/paneles. `avisos` no frena: dice, por ejemplo, que
+    cambió código de un paquete vigilado sin subir la versión (M1: no llega a los clientes como actualización, pero se ve)."""
     cubiertas = versiones_con_check(cwd, principal)
-    faltan, validados = [], []
+    faltan, validados, avisos = [], [], []
     for paquete in VIGILADOS:
-        nueva = version_del_paquete(cwd, destino, paquete)
-        if not nueva or nueva == version_del_paquete(cwd, actual, paquete):
+        nueva = version_que_llega(cwd, destino, paquete)
+        vieja = version_que_llega(cwd, actual, paquete)
+        if not nueva:
+            continue
+        if nueva == vieja:
+            if git(["diff", "--quiet", actual, destino, "--", "plugins/%s" % paquete], cwd).returncode == 1:
+                avisos.append("cambió código de plugins/%s entre estable y %s sin subir la versión (%s): no se pide check, pero miralo"
+                              % (paquete, destino[:7], nueva))
             continue
         sirven = sorted((v for v in cubiertas[paquete] if _tupla(v) >= _tupla(nueva)), key=_tupla)
         if sirven:
             validados.append("%s %s → check de %s en `%s`" % (paquete, nueva, sirven[0], cubiertas[paquete][sirven[0]]))
         else:
             faltan.append("%s %s" % (paquete, nueva))
-    return faltan, validados
+    return faltan, validados, avisos
 
 
 def limpiar_motivo(texto):
@@ -508,7 +584,12 @@ def main(argv=None):
                     raise SinMovimiento("las pruebas de %s todavía no terminaron (%d): se reintenta en la próxima corrida"
                                         % (de_quien[:7], len(pendientes)))
                 resumen.append("pruebas de `%s`: %s" % ((de_quien or destino)[:7], "%d en verde" % total if total else "ninguna registrada"))
-            faltan, validados = sin_security_check(cwd, actual, destino, principal)
+            faltan, validados, avisos_check = sin_security_check(cwd, actual, destino, principal)
+            for aviso_check in avisos_check:
+                resumen.append("⚠️ %s" % aviso_check)
+                if os.environ.get("GITHUB_ACTIONS"):
+                    print("::warning::estable: %s" % aviso_check)
+                decir(aviso_check, log)
             if faltan and not motivo_sin_check:
                 raise Frena("falta el security check de %s (lo que corre en las máquinas de los clientes): corré /fable-security-check y "
                             "anotalo con un título que diga «%s» en %s o en %s, o forzá a propósito con "
