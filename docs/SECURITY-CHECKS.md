@@ -954,6 +954,15 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Condiciones (no bloquean) | m3: sin `TMPDIR` la marca va a `/tmp` (riesgo bajo de enlace simbólico). No verificado por nadie: que Claude Code muestre el stderr con código 2 en `Write/Agent/Task/Workflow`, que convivan dos PreToolUse sobre `Agent` (radar + este) y una prueba en una Mac que solo tenga la app. |
 | Veredicto | **PASS con condiciones**, 0 críticos. |
 
+## 2026-10-13 · metodo 0.36.1 → 0.36.2 (commit 8771e3b) — PASS
+| Control | Resultado |
+|---|---|
+| Alcance | `metodo` 0.36.2: textos de reglas (7, 16, 19) y de las skills `cerrar`, `arrancar` y `buscar-skill-externa`; `cerrar-check` lista ramas y copias abiertas (Paso 0, solo lectura de git); `arrancar` archiva la serie anterior sin preguntar (reversible desde la barra lateral); el vigía trata un 404 de un origen fijado como aviso «origen-perdido» en vez de fallo (los demás errores siguen como «corrida parcial»). Sin cambios en frenos, en `delegar.py` ni en `al-dia.sh`. |
+| Riesgo | Bajo: no se agregan permisos, red nueva ni ejecución de código externo. Archivar sin preguntar es reversible (`unarchive`). El 404 como aviso podría ocultar un repo secuestrado que devuelva 404 al vigía: el sha fijado del catálogo sigue mandando, el vigía no instala nada. |
+| Pruebas | Suite de metodo sobre `8771e3b`: **933 OK**, 5 salteadas, 0 fallas; vigía **101 OK** (2 nuevas: 404 y 500). `verificar-metadatos`: TODO COINCIDE. Grep de clientes: 0. |
+| Revisiones | Implementaron dos sesiones Sonnet (ramas `orquesta/c4-vigia` y `orquesta/c5-reglas-cliente`), unidas por cherry-pick y verificadas por Tech. **Sin revisión independiente externa** (cambio de bajo riesgo). |
+| Veredicto | **PASS**, 0 críticos y 0 altos. Lo escribe Tech (coordinación), no un revisor externo. |
+
 ## 2026-10-13 · metodo 0.36.0 → 0.36.1 (commit 27194bc) — PASS
 | Control | Resultado |
 |---|---|
