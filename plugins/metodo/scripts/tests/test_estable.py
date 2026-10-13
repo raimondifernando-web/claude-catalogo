@@ -598,9 +598,71 @@ class TestScript(unittest.TestCase):
         self.assertIn("sin_check=false", r.salida)
 
     def test_rango_en_el_titulo_cubre_y_se_compara_por_numero(self):
-        v = self._version("metodo", "0.9.0")
-        self._check(self._titulo("metodo 0.8.0 → 0.10.0 y paneles 0.3.0", v))   # 0.8.0 <= 0.9.0 <= 0.10.0 por número
+        v = self._version("metodo", "0.10.0")
+        self._check(self._titulo("metodo 0.9.0 → 0.10.0 y paneles 0.3.0", v))   # 0.9.0 <= 0.10.0 por número (como texto, no)
         self._pasa(v)
+
+    def test_rango_con_tope_que_el_commit_revisado_no_trae_no_cuenta(self):  # M-2b de la 2.ª revisión
+        v = self._version("metodo", "0.36.0")
+        self._check(self._titulo("metodo 0.35.0 → 0.40.0", v))   # cubriría 0.37…0.40 sin que nadie las revise
+        self._no_pasa(v)
+
+    def test_commit_revisado_con_otra_version_no_cuenta(self):  # M-2a de la 2.ª revisión
+        viejo = self._version("metodo", "0.35.0")
+        v = self._version("metodo", "0.36.0")
+        self._check(self._titulo("metodo 0.36.0", viejo))   # ancestro, pero revisó 0.35.0
+        self._no_pasa(v)
+
+    def test_veredicto_que_no_esta_al_final_o_nombra_flag_critico_failed_no_cuenta(self):  # M-2c
+        v = self._version("metodo", "0.36.0")
+        for cola in ("PASS — revisar mañana", "17 PASS · 15 FLAG — PASS", "PASS salvo un crítico — PASS", "FAILED — PASS",
+                     "PASS con condiciones (un critico abierto)", "PASS?"):
+            self._check("### metodo 0.36.0 (commit %s) — %s" % (v[:7], cola))
+        self._no_pasa(v)
+
+    def test_veredicto_pass_con_condiciones_al_final_cuenta(self):  # M-2c
+        v = self._version("metodo", "0.36.0")
+        self._check("### metodo 0.36.0 (commit %s) — PASS con condiciones   " % v[:7])
+        self._pasa(v)
+
+    def test_titulo_dentro_de_un_comentario_html_no_cuenta(self):  # M-2d
+        v = self._version("metodo", "0.36.0")
+        self._check("<!--\n%s\n-->" % self._titulo("metodo 0.36.0", v))
+        self._check("<!-- %s -->" % self._titulo("metodo 0.36.0", v))
+        self._check("texto <!-- empieza\notra línea\n%s\nsigue -->" % self._titulo("metodo 0.36.0", v))
+        self._no_pasa(v)
+
+    def test_comentario_que_se_cierra_no_esconde_lo_que_sigue(self):  # M-2d, sin falsos negativos
+        v = self._version("metodo", "0.36.0")
+        self._check("<!-- nota\nvieja -->\n%s" % self._titulo("metodo 0.36.0", v))
+        self._pasa(v)
+
+    def test_estable_ilegible_no_traba_y_avisa(self):  # M-2b
+        roto = self._archivo("plugins/metodo/.claude-plugin/plugin.json", "{roto", "estable con plugin.json roto")
+        self._git(self.remoto, "update-ref", "refs/heads/estable", roto)
+        v = self._version("metodo", "0.36.0")
+        self._check(self._titulo("metodo 0.36.0", v))
+        r = self.correr("--sha", v, api="http://127.0.0.1:1", extra_env={"GITHUB_ACTIONS": "true"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), v)
+        self.assertIn("::warning::estable: no se pudo leer metodo en estable", r.stdout)
+
+    def test_estable_ilegible_y_sin_check_se_puede_forzar(self):  # M-2b
+        roto = self._archivo("plugins/metodo/.claude-plugin/plugin.json", "{roto", "estable con plugin.json roto")
+        self._git(self.remoto, "update-ref", "refs/heads/estable", roto)
+        v = self._version("metodo", "0.36.0")
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("falta el security check de metodo 0.36.0", r.stdout)
+        r = self.correr("--sha", v, "--sin-check", "urgente, estable estaba roto", api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), v)
+
+    def test_lo_que_se_promueve_sigue_fallando_cerrado(self):  # M-2b: solo se perdona el estado viejo
+        v = self._archivo("plugins/metodo/.claude-plugin/plugin.json", "{roto", "candidato roto")
+        r = self.correr("--sha", v, "--sin-check", "esto no tiene que pasar", api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), self.c[1])
 
     def test_rango_con_flecha_ascii_backticks_y_v(self):
         v = self._version("metodo", "0.36.0")

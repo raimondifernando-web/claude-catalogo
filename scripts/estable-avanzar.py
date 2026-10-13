@@ -21,8 +21,10 @@ Cómo decide:
     que estar en un TÍTULO (línea con `#`, fuera de bloques de código) de `docs/SECURITY-CHECKS.md` o de
     `.claude/security-checks/*.md`, leídos de `main` (el check se puede anotar después), que tenga TODO esto (M2):
     el paquete con la versión exacta o un rango que la incluya («metodo 0.36.0», «metodo 0.35.1 → 0.36.0», también `v0.36.0`
-    o entre backticks), «commit <sha>» del código revisado, que tiene que ser ancestro del commit a promover o el mismo, y
-    el veredicto PASS (sin FAIL). Si falta, no se mueve y la corrida sale en rojo. Salida explícita: `--sin-check "<motivo>"`
+    o entre backticks), «commit <sha>» del código revisado, que tiene que ser ancestro del commit a promover o el mismo y traer
+    la versión más alta del título, y el veredicto al final («— PASS» o «— PASS con condiciones»), sin FLAG, «crítico» ni FAIL.
+    No cuentan los títulos dentro de bloques de código ni de comentarios HTML. Si `estable` tiene un plugin.json ilegible,
+    se avisa y se trata como paquete nuevo (lo que se promueve sigue fallando cerrado). Si falta, no se mueve y la corrida sale en rojo. Salida explícita: `--sin-check "<motivo>"`
     (en el workflow: `-f sin_check=...`) promueve igual y lo deja anotado en el resumen de la corrida, en un aviso de GitHub y
     en `sin_check=true` de la salida.
     Falla cerrado (M1/L7): plugin.json ilegible, sin versión o con versión que no es X.Y.Z, o un bloque del catálogo
@@ -94,8 +96,10 @@ PATRON_VERSION = re.compile(r"\d+\.\d+\.\d+")
 PATRON_ENTRADA = re.compile(r"(?<![\w-])(%s)\s+v?(\d+\.\d+\.\d+)(?:\s*(?:→|->)\s*v?(\d+\.\d+\.\d+))?(?![\w+-]|\.\d)"
                             % "|".join(VIGILADOS))
 PATRON_COMMIT_CHECK = re.compile(r"(?<![\w-])commit\s+([0-9a-f]{7,40})(?![0-9A-Za-z])")
-PATRON_PASS = re.compile(r"(?<![\w-])PASS(?![\w-])")
-PATRON_FAIL = re.compile(r"(?<![\w-])(?:FAIL|NO\s+PASS)(?![\w-])", re.IGNORECASE)
+# 2.ª revisión (M-2c): el veredicto va AL FINAL del título («— PASS» o «— PASS con condiciones») y el título no puede nombrar FLAG,
+# «crítico/a» ni FAIL/FAILED en ninguna parte («17 PASS · 15 FLAG» o «PASS salvo un crítico» no cuentan).
+PATRON_PASS = re.compile(r"(?<![\w-])PASS(?:\s+con\s+condiciones)?\s*$")
+PATRON_FAIL = re.compile(r"(?<![\w-])(?:FAIL(?:ED)?|NO\s+PASS|FLAGS?)(?![\w-])|cr[íi]tic", re.IGNORECASE)
 PATRON_TITULO = re.compile(r"^ {0,3}#{1,6}\s")
 MOTIVO_MINIMO = 10   # «x» no es un motivo: la salida tiene que quedar explicada
 
@@ -408,10 +412,32 @@ def version_que_llega(cwd, sha, paquete):
     return v
 
 
+def _titulos(texto):
+    """Las líneas de título de un markdown que se leen de verdad: fuera de bloques de código (``` o ~~~) y fuera de comentarios
+    HTML <!-- … -->, también de varias líneas (M-2d). Un comentario dentro de una línea se borra antes de mirarla."""
+    en_codigo, en_comentario = None, False
+    for linea in texto.splitlines():
+        if en_comentario:
+            if "-->" not in linea:
+                continue
+            linea = linea.split("-->", 1)[1]
+            en_comentario = False
+        if en_codigo is None:
+            linea = re.sub(r"<!--.*?-->", "", linea)
+            if "<!--" in linea:
+                linea, en_comentario = linea.split("<!--", 1)[0], True
+        marca = linea.lstrip()[:3]
+        if marca in ("```", "~~~"):
+            en_codigo = None if en_codigo == marca else (en_codigo or marca)
+            continue
+        if en_codigo is None and PATRON_TITULO.match(linea):
+            yield linea
+
+
 def checks_anotados(cwd, sha):
     """Los checks anotados en ese commit (docs/SECURITY-CHECKS.md y .claude/security-checks/*.md), uno por paquete nombrado en
-    un TÍTULO que cumple TODO (M2): paquete + versión exacta o rango, «commit <sha>» (uno solo) y veredicto PASS sin FAIL.
-    Una mención en el cuerpo no cuenta, ni un título dentro de un bloque de código (``` o ~~~).
+    un TÍTULO que cumple TODO: paquete + versión exacta o rango, «commit <sha>» (uno solo), veredicto PASS al final y nada de
+    FLAG / crítico / FAIL. Una mención en el cuerpo no cuenta, ni un título en un bloque de código o en un comentario HTML.
     Devuelve [{paquete, desde, hasta, commit, archivo, titulo}]."""
     archivos = [DOC_CHECKS]
     r = git(["ls-tree", "-r", "--name-only", sha, "--", CARPETA_CHECKS], cwd)
@@ -422,15 +448,8 @@ def checks_anotados(cwd, sha):
         r = git(["show", "%s:%s" % (sha, archivo)], cwd)
         if r.returncode != 0:
             continue
-        en_codigo = None
-        for linea in r.stdout.splitlines():
-            marca = linea.lstrip()[:3]
-            if marca in ("```", "~~~"):
-                en_codigo = None if en_codigo == marca else (en_codigo or marca)
-                continue
-            if en_codigo or not PATRON_TITULO.match(linea):
-                continue
-            titulo = linea.replace("`", "")
+        for linea in _titulos(r.stdout):
+            titulo = linea.replace("`", "").rstrip()
             commits = PATRON_COMMIT_CHECK.findall(titulo)
             if len(commits) != 1 or not PATRON_PASS.search(titulo) or PATRON_FAIL.search(titulo):
                 continue
@@ -448,13 +467,18 @@ def _tupla(version):
 
 def sin_security_check(cwd, actual, destino, principal):
     """(faltan, validados, avisos) para lo que entraría a estable de metodo/paneles. La versión nueva queda cubierta solo por un
-    check anotado en main que la nombre (exacta o dentro de un rango) y cuyo commit revisado sea ancestro del commit a promover
-    o el mismo (M2). `avisos` no frena: código cambiado sin subir la versión, o cambios después del commit revisado."""
+    check anotado en main que la nombre (exacta o dentro de un rango), cuyo commit revisado sea ancestro del commit a promover o el
+    mismo y TRAIGA la versión más alta del título (M-2a/b: así un rango no cubre versiones futuras que nadie revisó).
+    `avisos` no frena: código cambiado sin subir la versión, cambios después del commit revisado, o un estable ilegible (M-2b)."""
     anotados = checks_anotados(cwd, principal)
     faltan, validados, avisos = [], [], []
     for paquete in VIGILADOS:
-        nueva = version_que_llega(cwd, destino, paquete)
-        vieja = version_que_llega(cwd, actual, paquete)
+        nueva = version_que_llega(cwd, destino, paquete)       # lo que se promueve: falla cerrado
+        try:
+            vieja = version_que_llega(cwd, actual, paquete)
+        except Frena as e:                                     # M-2b: el estado viejo de estable no traba la promoción
+            avisos.append("no se pudo leer %s en estable (%s): se lo trata como paquete nuevo" % (paquete, _una_linea(e, 160)))
+            vieja = None
         if not nueva:
             continue
         if nueva == vieja:
@@ -468,7 +492,13 @@ def sin_security_check(cwd, actual, destino, principal):
                 continue
             r = git(["rev-parse", "--verify", "--quiet", a["commit"] + "^{commit}"], cwd)
             revisado = r.stdout.strip()
-            if r.returncode == 0 and PATRON_SHA.match(revisado) and es_ancestro(revisado, destino, cwd):
+            if r.returncode != 0 or not PATRON_SHA.match(revisado) or not es_ancestro(revisado, destino, cwd):
+                continue
+            try:
+                trae = version_del_paquete(cwd, revisado, paquete)
+            except Frena:
+                continue
+            if trae == a["hasta"]:
                 bueno = (a, revisado)
                 break
         if bueno is None:
