@@ -1,10 +1,11 @@
 # metodo — qué cambia para vos
 
-## 0.36.2 (sin publicar) — reglas que se ponían a mano en la otra Mac
-Cuatro reglas del método quedan más completas. Se aplican solas; no hay nada que correr.
+## 0.36.2 — 2026-10-13
+`/cerrar` y `/arrancar` funcionan igual que en la computadora de quien te acompaña, y cuatro reglas del método quedan más completas. Se aplica solo; no hay nada que correr.
 - **Cerrar sin abandonar a nadie.** `/cerrar` tiene un Paso 0: si abriste otras sesiones o ramas, no se cierra mientras una siga trabajando, tenga un resultado sin revisar o haya una rama sin juntar. `cerrar-check` imprime las ramas y copias abiertas.
 - **Qué hace confiable a algo de afuera**, escrito en la regla 19 y en `buscar-skill-externa` (uno de tres caminos; el de «lo leí entero» solo vale si es puro texto).
 - **`/arrancar` archiva solo las sesiones anteriores de la serie**, sin preguntar (se recuperan desde la barra lateral); si la sesión la abrió `/cerrar` y la app rechaza por «still working», se archiva sola al terminar. `/cerrar` ya se archivaba sin preguntar.
+- **El vigía ya no deja la revisión «a medias» si un paquete apunta a un repositorio que se borró o se movió:** te lo muestra como aviso («origen perdido») y sigue con el resto.
 - **Cupo:** equipos de varios agentes solo con tu OK y gasto estimado; revisiones en bucle con tope de 2 vueltas (regla 16).
 
 ## 0.36.1 — 2026-10-13
