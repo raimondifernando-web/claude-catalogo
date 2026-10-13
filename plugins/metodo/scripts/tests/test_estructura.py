@@ -175,16 +175,12 @@ class TestControl(unittest.TestCase):
             sk_dir.mkdir(parents=True)
             (sk_dir / "SKILL.md").write_text("---\nname: mi_skill\n---\nSin descripcion\n", encoding="utf-8")
 
-            # 6. Falla plantada R8: área que versiona la carpeta de un proyecto
+            # 6. Falla plantada R8: área cuyo .gitignore no ignora la caja de adentro (el caso real: subcarpetas de
+            # un mismo repositorio). Nota: «git add» de un archivo que está dentro de otro repositorio no agrega
+            # nada, por eso la falla se planta en el .gitignore y no versionando un archivo de crm.
             caja_r8 = raiz / "area_versiona_proyecto"
             _armar_base_caja(caja_r8)
-            # Agregar patrón de ignorar para que no falle por falta de patrón
-            (caja_r8 / ".gitignore").write_text(".env\n/*/\n!/.claude/\n!/plugins/\n!/docs/\n", encoding="utf-8")
-            # Proyecto crm adentro es válido en sí mismo
             _armar_base_caja(caja_r8 / "crm")
-            # Pero el área erróneamente versiona un archivo dentro de crm
-            (caja_r8 / "crm" / "archivo.txt").write_text("hola", encoding="utf-8")
-            subprocess.run(["git", "add", "-f", "crm/archivo.txt"], cwd=caja_r8, capture_output=True, check=True)
 
             # Ejecutar revisión con --todas
             buf = io.StringIO()
@@ -384,6 +380,41 @@ class TestAviso(unittest.TestCase):
             self.assertEqual(code2, 0)
             self.assertEqual(buf2.getvalue().strip(), "")
 
+
+
+class TestQueEsCaja(unittest.TestCase):
+    """Qué cuenta como caja y qué nivel le toca (revisión de Claude 2026-10-13)."""
+
+    def test_subcarpetas_comunes_no_son_cajas_y_enlaces_se_saltean(self):
+        with tempfile.TemporaryDirectory() as td:
+            raiz = Path(td) / "Proyectos"
+            empresa = raiz / "Empresa"
+            area = empresa / "Ventas"
+            proyecto = area / "crm"
+            for c in (empresa, area, proyecto):
+                c.mkdir(parents=True)
+                (c / "CLAUDE.md").write_text("# x\n", encoding="utf-8")
+            (proyecto / "src" / "componentes").mkdir(parents=True)  # no es caja: no tiene .git ni CLAUDE.md
+            (raiz / "_latentes" / "Dormido").mkdir(parents=True)
+            (raiz / "_latentes" / "Dormido" / "CLAUDE.md").write_text("# d\n", encoding="utf-8")
+            try:
+                (raiz / "Dormido").symlink_to(raiz / "_latentes" / "Dormido", target_is_directory=True)
+            except (OSError, NotImplementedError):
+                pass  # Windows sin permiso para enlaces: igual se prueba el resto
+            cajas = {c.relative_to(raiz).as_posix(): (n, par) for c, n, par in estructura.descubrir_cajas(raiz)}
+            self.assertEqual(set(cajas), {"Empresa", "Empresa/Ventas", "Empresa/Ventas/crm"})
+            self.assertEqual(cajas["Empresa"][0], "empresa")
+            self.assertEqual(cajas["Empresa/Ventas"][0], "area")
+            self.assertEqual(cajas["Empresa/Ventas/crm"][0], "proyecto")
+            self.assertEqual(cajas["Empresa/Ventas/crm"][1], area)
+
+    def test_proyecto_suelto_en_la_raiz(self):
+        with tempfile.TemporaryDirectory() as td:
+            raiz = Path(td) / "Proyectos"
+            (raiz / "Personal" / "notas").mkdir(parents=True)
+            (raiz / "Personal" / "CLAUDE.md").write_text("# p\n", encoding="utf-8")
+            [(c, n, par)] = estructura.descubrir_cajas(raiz)
+            self.assertEqual((c.name, n, par), ("Personal", "proyecto", None))
 
 if __name__ == "__main__":
     unittest.main()

@@ -591,35 +591,39 @@ def ejecutar_git(*args, cwd=None):
         return None, str(e)
 
 
-def detectar_nivel_carpeta(carpeta: Path, raiz: Path = None, nivel_explicit=None) -> str:
-    """Decide el nivel de la caja según jerarquía o subdirectorios."""
+# Qué cuenta como caja (decisión de diseño, revisión de Claude 2026-10-13):
+# - en la raíz (~/Proyectos/) toda carpeta es una caja: ahí no va nada más;
+# - más adentro, solo la carpeta que tiene .git o CLAUDE.md (src/, app/, datos/ no son cajas);
+# - se saltean los enlaces (los dormidos de _latentes/ aparecerían dos veces) y lo que empieza con «.» o «_»;
+# - dentro de un proyecto no se baja: un proyecto no tiene cajas adentro.
+# El nivel sale de la posición y de si tiene cajas adentro: arriba de todo con cajas adentro = empresa;
+# con cajas adentro dentro de otra caja = área; sin cajas adentro = proyecto.
+
+def _es_carpeta_visible(p: Path) -> bool:
+    return p.is_dir() and not p.is_symlink() and not p.name.startswith((".", "_"))
+
+
+def es_caja(p: Path) -> bool:
+    return _es_carpeta_visible(p) and ((p / ".git").exists() or (p / "CLAUDE.md").is_file())
+
+
+def cajas_hijas(carpeta: Path) -> list:
+    """Cajas que están directamente adentro de esta carpeta."""
+    try:
+        return sorted(h for h in carpeta.iterdir() if es_caja(h))
+    except OSError:
+        return []
+
+
+def detectar_nivel_carpeta(carpeta: Path, raiz: Path = None, nivel_explicit=None, dentro_de_caja=None) -> str:
+    """Decide el nivel de la caja según su posición y si tiene cajas adentro."""
     if nivel_explicit:
         return nivel_explicit
-
-    # Detectar por presencia de subdirectorios que son cajas
-    carpetas_ignoradas = {".git", ".claude", ".claude-plugin", "plugins", "docs", "node_modules", "__pycache__"}
-    subcajas = []
-    if carpeta.is_dir():
-        for sub in carpeta.iterdir():
-            if sub.is_dir() and sub.name not in carpetas_ignoradas and not sub.name.startswith("."):
-                subcajas.append(sub)
-
-    if subcajas:
-        # ¿Tienen sus hijas cajas adentro?
-        hijas_tienen_cajas = False
-        for sc in subcajas:
-            for ssc in sc.iterdir():
-                if ssc.is_dir() and ssc.name not in carpetas_ignoradas and not ssc.name.startswith("."):
-                    hijas_tienen_cajas = True
-                    break
-            if hijas_tienen_cajas:
-                break
-        if hijas_tienen_cajas:
-            return "empresa"
-        return "area"
-
-    # Si estamos dentro de una raíz y no tiene subcajas
-    return "proyecto"
+    if not cajas_hijas(carpeta):
+        return "proyecto"
+    if dentro_de_caja is None:
+        dentro_de_caja = es_caja(carpeta.parent) and (raiz is None or carpeta.parent != raiz)
+    return "area" if dentro_de_caja else "empresa"
 
 
 def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
@@ -683,27 +687,19 @@ def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
     if env_file.exists() and not env_example.is_file():
         hallazgos.append(("aviso", "R7", "hay .env pero falta .env.example"))
 
-    # R8: El repositorio no guarda las cajas de adentro (empresa y área)
-    if nivel in ("empresa", "area"):
-        # 1. Si git versiona archivos en carpetas de proyectos o hijas
-        if git_dir.exists():
-            code, out = ejecutar_git("ls-files", cwd=carpeta)
-            if code == 0 and out:
-                carpetas_permitidas = {".claude", ".claude-plugin", "plugins", "docs", ".git"}
-                for linea_f in out.splitlines():
-                    partes = linea_f.strip().replace("\\", "/").split("/")
-                    if len(partes) > 1 and partes[0] not in carpetas_permitidas:
-                        sub_nombre = partes[0]
-                        hallazgos.append(("error", "R8", f"versiona la carpeta de adentro '{sub_nombre}' (debe ser un repositorio independiente)"))
-                        break
-
-        # 2. .gitignore debe tener un patrón para ignorar carpetas hijas
-        if gitignore.is_file():
-            gi_texto = gitignore.read_text(encoding="utf-8", errors="replace")
-            # Buscar patrones genéricos de ignorar carpetas
-            tiene_patron = any(p in gi_texto for p in ("/*/", "/*", "*", "!/"))
-            if not tiene_patron:
-                hallazgos.append(("error", "R8", ".gitignore no tiene patrón para ignorar las carpetas de adentro"))
+    # R8: El repositorio no guarda las cajas de adentro (empresa y área): cada caja de adentro tiene que estar
+    # ignorada por el .gitignore y no tener nada versionado en este repositorio. Se pregunta a git (check-ignore,
+    # ls-files) en vez de buscar un asterisco en el texto: «*.pyc» no ignora ninguna caja.
+    if nivel in ("empresa", "area") and git_dir.exists() and shutil.which("git"):
+        problemas = []
+        for hija in cajas_hijas(carpeta):
+            code_ls, out_ls = ejecutar_git("ls-files", "--", hija.name, cwd=carpeta)
+            code_ci, _ = ejecutar_git("check-ignore", "-q", "--no-index", hija.name + "/", cwd=carpeta)
+            if (code_ls == 0 and out_ls) or code_ci == 1:
+                problemas.append(hija.name)
+        if problemas:
+            hallazgos.append(("error", "R8", "guarda en su repositorio las cajas de adentro ("
+                              + ", ".join(problemas) + "): cada una va en su propio repositorio y el .gitignore las ignora"))
 
     # R9: Encabezado de skills y agentes con name y description
     skills_dir = carpeta / ".claude" / "skills"
@@ -752,27 +748,37 @@ def revisar_raiz(raiz: Path) -> list:
 
 
 def descubrir_cajas(raiz: Path):
-    """Descubre recursivamente las cajas de trabajo bajo la raíz."""
-    carpetas_ignoradas = {".git", ".claude", ".claude-plugin", "plugins", "docs", "node_modules", "__pycache__"}
+    """Cajas debajo de la raíz: [(carpeta, nivel, caja de arriba o None)]. Ver «Qué cuenta como caja»."""
     cajas = []
+    # Varias copias de trabajo (git worktree) del mismo repositorio tienen lo mismo adentro: el repositorio se revisa
+    # una sola vez (en la copia principal, la que tiene la carpeta .git de verdad), para no repetir cada aviso por copia.
+    repos_vistos = set()
 
-    def recorrer(carpeta: Path, parent: Path = None):
-        if not carpeta.is_dir():
-            return
-        # Es caja si tiene .git, CLAUDE.md, .claude o si es subdirectorio válido de nivel 1..3
-        subdirs = [d for d in carpeta.iterdir() if d.is_dir() and d.name not in carpetas_ignoradas and not d.name.startswith(".")]
+    def repo_comun(carpeta: Path):
+        if not (carpeta / ".git").exists():
+            return None
+        code, out = ejecutar_git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=carpeta)
+        return out if code == 0 and out else None
 
-        # Si no es la raíz, evaluamos si es caja
-        if carpeta != raiz:
-            nivel = detectar_nivel_carpeta(carpeta, raiz)
-            cajas.append((carpeta, nivel, parent))
-            for sub in subdirs:
-                recorrer(sub, parent=carpeta)
-        else:
-            for sub in subdirs:
-                recorrer(sub, parent=None)
+    def recorrer(carpeta: Path, parent, profundidad: int):
+        comun = repo_comun(carpeta)
+        if comun is not None:
+            if comun in repos_vistos:
+                return
+            repos_vistos.add(comun)
+        nivel = detectar_nivel_carpeta(carpeta, raiz, dentro_de_caja=parent is not None)
+        cajas.append((carpeta, nivel, parent))
+        if nivel != "proyecto" and profundidad < 3:
+            for hija in sorted(cajas_hijas(carpeta), key=lambda h: (not (h / ".git").is_dir(), h.name)):
+                recorrer(hija, carpeta, profundidad + 1)
 
-    recorrer(raiz)
+    try:
+        primeras = sorted((d for d in raiz.iterdir() if _es_carpeta_visible(d)),
+                          key=lambda d: (not (d / ".git").is_dir(), d.name))
+    except OSError:
+        primeras = []
+    for d in primeras:
+        recorrer(d, None, 1)
     return cajas
 
 
@@ -832,7 +838,7 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
                 lineas_salida.append(f"✗ {r_id} {objetivo.name}: {msg}")
         else:
             nivel = detectar_nivel_carpeta(objetivo, raiz, nivel_explicit=nivel_arg)
-            parent = objetivo.parent if objetivo.parent != raiz and (objetivo.parent / "CLAUDE.md").exists() else None
+            parent = objetivo.parent if objetivo.parent != raiz and es_caja(objetivo.parent) else None
             hallazgos = revisar_caja(objetivo, nivel, parent_caja=parent)
             display_name = objetivo.name
             for tipo, r_id, msg in hallazgos:
