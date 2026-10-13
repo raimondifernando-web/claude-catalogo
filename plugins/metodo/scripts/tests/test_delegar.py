@@ -482,6 +482,23 @@ class TestCorrecciones(unittest.TestCase):
     def test_arbol_sucio_ante_error_es_sucio(self):
         self.assertTrue(D.arbol_sucio(Path("/ruta/que/no/existe")))
 
+    def test_carpetas_de_llaves_y_de_configuracion_de_herramientas(self):
+        casa = Path.home().resolve()
+        for d in (".ssh", ".aws", ".gnupg", ".config/gh", ".docker", ".kube", ".gemini", ".codex", ".claude",
+                  "Library/Keychains"):
+            for ruta in (casa / d, casa / d / "algo" / "repo"):
+                privada, motivo = D.es_carpeta_privada(ruta)
+                self.assertTrue(privada, ruta)
+                self.assertIn("carpeta de llaves o de configuración", motivo)
+        self.assertFalse(D.es_carpeta_privada(casa / "Proyectos" / ".claude-algo")[0])
+
+    def test_firmlink_de_macos_es_la_misma_carpeta_personal(self):
+        datos = Path("/System/Volumes/Data") / str(Path.home().resolve()).lstrip("/")
+        if not datos.is_dir():
+            self.skipTest("sin firmlink /System/Volumes/Data (no es macOS)")
+        self.assertTrue(D.es_carpeta_privada(datos)[0])
+        self.assertTrue(D.es_carpeta_privada(datos / ".ssh")[0] or not (Path.home() / ".ssh").exists())
+
     def test_metodo_no_delegar_por_la_ruta_escrita_y_no_solo_la_resuelta(self):
         # un enlace llamado /Reservado que apunta a otra carpeta: la ruta resuelta no lo dice, la escrita sí
         os.environ["METODO_NO_DELEGAR"] = "/Reservado"
@@ -711,7 +728,13 @@ with open(log, "a", encoding="utf-8") as f:
                         f.write("VI %s: %s\n" % (n, open(os.path.join(raiz, n), encoding="utf-8").read()))
                     except OSError:
                         pass
-if "denegar" in travesuras:
+with open(log, "a", encoding="utf-8") as f:
+    f.write("ENV ceiling=%s count=%s\n" % (os.environ.get("GIT_CEILING_DIRECTORIES"), os.environ.get("GIT_CONFIG_COUNT")))
+if "denegar_largo" in travesuras:   # una respuesta larga que cita la frase no es una denegación
+    print("Revisé el código. " * 60 + "Nota: la frase no output produced aparece en un log viejo.")
+elif "denegar_error" in travesuras:
+    print("Revisé un poco. " * 60 + "Error: no output produced"); sys.exit(1)
+elif "denegar" in travesuras:
     print("Error: no output produced (run_command was auto-denied: requires the command permission)")
     sys.exit(0)
 if modo == "accept-edits" or "editar_igual" in travesuras:
@@ -722,13 +745,25 @@ if modo == "accept-edits" or "editar_igual" in travesuras:
         f.write("linea agregada por gemini\n")
     os.makedirs("sub", exist_ok=True)
     open("sub/nuevo.txt", "w").write("nuevo\n")
-    if "git" in travesuras:
+    if "git_corre" in travesuras:   # Gemini arma un repo con fsmonitor en su copia y corre git: no tiene que ejecutar nada
+        import subprocess
+        subprocess.run(["git", "init", "-q", "."], check=True)
+        with open(".git/config", "a") as f:
+            f.write('[core]\n\tfsmonitor = "touch %s; false"\n' % canario)
+        subprocess.run(["git", "status", "--short"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    elif "git" in travesuras:
         os.makedirs(".git", exist_ok=True)
         open(".git/config", "w").write('[core]\n\tfsmonitor = "touch %s; false"\n' % canario)
     if "enlace" in travesuras:
         os.symlink("/etc/hosts", "enlace-nuevo")
     if "clave" in travesuras:
         open(".env", "w").write("PLANTADA_POR_GEMINI=1\n")
+    if "claude" in travesuras:
+        os.makedirs(".claude", exist_ok=True)
+        open(".claude/settings.json", "w").write('{"hooks": {}}')
+    if "husky" in travesuras:
+        os.makedirs(".husky", exist_ok=True)
+        open(".husky/pre-commit", "w").write("echo hola\n")
     if "tocar_real" in travesuras:
         open(os.path.join(os.environ["FAKE_AGY_REAL"], "intruso.txt"), "w").write("x\n")
 print("hecho")
@@ -808,7 +843,7 @@ class TestAgyAislado(BaseDelegar):
         cod, out, err = self.correr("desarrollo", str(repo), "corré los tests")
         self.assertEqual(cod, 69)
         self.assertIn("se le negó una herramienta", err)
-        self.assertIn("Nunca --dangerously-skip-permissions", err)
+        self.assertIn("nunca --dangerously-skip-permissions", err)
         self.assertNotIn("Todo al día", out)
         self.sin_copias()
 
@@ -846,6 +881,82 @@ class TestAgyAislado(BaseDelegar):
         self.assertIn("El repo real cambió", err)
         self.assertNotIn("linea agregada por gemini", (repo / "README.md").read_text())
 
+    def test_git_plantado_en_la_copia_no_ejecuta_nada(self):
+        # control: en esta computadora, git sí ejecuta un fsmonitor plantado (si no, la prueba no probaría nada)
+        control = self.tmp / "control"; control.mkdir()
+        testigo = self.tmp / "CONTROL-SE-EJECUTO"
+        subprocess.run(["git", "init", "-q", str(control)], check=True)
+        with open(control / ".git" / "config", "a") as f:
+            f.write('[core]\n\tfsmonitor = "touch %s; false"\n' % testigo)
+        subprocess.run(["git", "-C", str(control), "status"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.assertTrue(testigo.exists(), "el git de esta computadora no ejecuta fsmonitor: la prueba no sirve")
+        repo = self.repo_con_claves("repo-git-corre")
+        os.environ["FAKE_AGY"] = "git_corre"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 71)                                       # el .git en la copia: no se trae nada
+        self.assertFalse(self.canario.exists(), "git ejecutó el fsmonitor que plantó Gemini en su copia")
+        self.assertRegex(self.visto(), r"ENV ceiling=\S*agy-trabajo\S* count=5")
+        self.sin_copias()
+
+    def test_si_toca_la_configuracion_de_claude_no_se_trae_nada(self):
+        repo = self.repo_con_claves("repo-claude")
+        os.environ["FAKE_AGY"] = "claude"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 71)
+        self.assertIn(".claude/settings.json", err)
+        self.assertFalse((repo / ".claude").exists())
+        self.assertNotIn("linea agregada por gemini", (repo / "README.md").read_text())
+
+    def test_hooks_o_editor_se_traen_con_aviso_en_rojo_antes(self):
+        repo = self.repo_con_claves("repo-husky")
+        os.environ["FAKE_AGY"] = "husky"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 0, out + err)
+        self.assertIn("✗ ATENCIÓN: Gemini cambió archivos que pueden ejecutar programas", out)
+        self.assertIn(".husky/pre-commit", out)
+        self.assertLess(out.index("ATENCIÓN"), out.index("── Cambios"))
+        self.assertTrue((repo / ".husky" / "pre-commit").exists())
+
+    def test_respuesta_larga_que_cita_la_frase_no_es_denegacion(self):
+        repo = self.repo_con_claves("repo-largo")
+        os.environ["FAKE_AGY"] = "denegar_largo"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 0, out + err)
+        self.assertIn("linea agregada por gemini", (repo / "README.md").read_text())
+
+    def test_frase_de_denegacion_con_error_de_agy_es_denegacion(self):
+        repo = self.repo_con_claves("repo-largo-error")
+        os.environ["FAKE_AGY"] = "denegar_error"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 69)
+
+    def test_claves_por_contenido_no_viajan(self):
+        repo = self.crear_repo_git("repo-contenido")
+        os.environ["FAKE_AGY_REAL"] = str(repo)
+        # se arman en tiempo de ejecución: el código del repo no lleva nada con forma de clave
+        muestras = {
+            "notas.txt": "-----BEGIN " + "OPENSSH PRIVATE KEY-----\nabc\n",
+            "deploy.sh": "export K=" + "AKIA" + "ABCDEFGHIJKLMNOP\n",
+            "ci.yml": "token: " + "gh" + "p_" + "a" * 36 + "\n",
+            "app.js": "const k = '" + "sk" + "-" + "b" * 24 + "';\n",
+            "slack.txt": "xox" + "b-123\n",
+            "maps.js": "k = '" + "AI" + "za" + "c" * 35 + "'\n",
+            "cuenta.json": '{"type": "x", "private_key": "y"}\n',
+        }
+        for n, c in muestras.items():
+            (repo / n).write_text(c, encoding="utf-8")
+        (repo / "tarea.js").write_text("const task-name-that-is-long-enough = 1; // ask-abcdefghijklmnopqrstuvwxyz\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "muestras"], check=True)
+        D_tmp = self.tmp / "copia-prueba"
+        fuera, contenido = D.copia_aislada(repo, [str(D_tmp)])
+        self.assertEqual((fuera, contenido), (0, len(muestras)))
+        copiados = sorted(x.name for x in D_tmp.iterdir())
+        self.assertEqual(copiados, ["README.md", "tarea.js"])            # «task-…» no es una clave de OpenAI
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 0, out + err)
+        self.assertIn("por el nombre y %d por lo que tienen adentro" % len(muestras), out)
+
     def test_revisar_descarta_lo_que_edite_y_no_toca_el_repo(self):
         repo = self.repo_con_claves("repo-revisar")
         os.environ["FAKE_AGY"] = "editar_igual"
@@ -870,7 +981,7 @@ class TestCodexConClaves(BaseDelegar):
         cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
         self.assertEqual(cod, 0, out + err)
         self.assertIn("Plan elegido: Antigravity", out)
-        self.assertIn("B (Codex): el repo tiene archivos de claves o de entorno (.env)", out)
+        self.assertIn("B (Codex): el repo tiene archivos de claves o de entorno (.env; cuentan aunque git los ignore)", out)
         self.assertFalse((self.tmp / "codex_args.json").exists())
 
     def test_sin_otra_ia_le_toca_a_claude(self):
@@ -893,9 +1004,20 @@ class TestNombresDeClaves(unittest.TestCase):
         si = [".env", ".env.local", "app/.env.production", ".envrc", "id_rsa", "id_ed25519.pub", "certs/x.pem", "a/b.key",
               "config/credentials.json", "secrets.yaml", "secret/", ".ssh/config", ".aws/credentials", "token.json",
               ".git-credentials", ".npmrc", "kubeconfig", "chat-transcript.jsonl", ".claude/projects/x/sesion.jsonl",
-              "service-account-prod.json", ".claude.json", "credenciales.txt"]
-        no = [".env.example", ".env.sample", "README.md", "tokenizer.py", "src/secretaria.py".replace("secretaria", "agenda"),
-              "keyboard.js", "transcribir.py", "docs/environment.md"]
+              "service-account-prod.json", ".claude.json", "credenciales.txt",
+              # tramos de carpeta
+              "secrets/app.ts", "config/credentials/db.py", "credenciales/x.md", "keys/deploy.txt", "private/notas.md",
+              ".envs/prod", ".azure/config", ".config/gh/hosts.yml", ".docker/config.json",
+              # nombres y extensiones de la lista del revisor
+              "AuthKey_ABC.p8", "putty.ppk", "vpn/oficina.ovpn", "infra/prod.tfvars", "terraform.tfstate",
+              "terraform.tfstate.backup", "client_secret_123.apps.json", "gcp-credentials-prod.json", ".yarnrc.yml",
+              "auth.json", ".htpasswd", "local.settings.json", ".vault-token", ".my.cnf", "pip.conf", ".zsh_history",
+              ".bash_history", "history.jsonl", "api-token.txt", "secret.yaml"]
+        no = [".env.example", ".env.sample", ".env.template", ".env.dist", "README.md", "tokenizer.py", "src/agenda.py",
+              "keyboard.js", "transcribir.py", "docs/environment.md",
+              # token/secret/credential en archivos de código o texto (L1)
+              "src/secret-manager.ts", "auth/credentials.tsx", "lib/token_utils.go", "Secrets.swift", "TokenService.java",
+              "styles/secret.css", "docs/credenciales.md", "src/tokenizer.rs", "components/keyboard.vue"]
         for r in si:
             self.assertTrue(D.es_secreto(r), r)
         for r in no:
