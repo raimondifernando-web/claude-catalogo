@@ -41,6 +41,21 @@ def extraer_clases_cajas(html: str) -> list:
     return re.findall(r'class="([^"]*box[^"]*)"', html)
 
 
+def _configurar_repo_git(p: Path, temp_dir: Path = None):
+    """Inicializa repo git y configura user, email, commit.gpgsign=false y core.excludesFile=/dev/null."""
+    subprocess.run(["git", "init"], cwd=p, capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=p, capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=p, capture_output=True, check=True)
+    subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=p, capture_output=True, check=True)
+    if sys.platform == "win32":
+        empty_excludes = (temp_dir if temp_dir else p) / ".empty_excludes"
+        empty_excludes.touch(exist_ok=True)
+        excludes_val = str(empty_excludes)
+    else:
+        excludes_val = "/dev/null"
+    subprocess.run(["git", "config", "core.excludesFile", excludes_val], cwd=p, capture_output=True, check=True)
+
+
 class TestSincronia(unittest.TestCase):
     """Pruebas de sincronía entre ESTRUCTURA.md y el dibujo HTML."""
 
@@ -100,7 +115,7 @@ class TestControl(unittest.TestCase):
             caja.mkdir()
 
             # Configurar git y remoto
-            subprocess.run(["git", "init"], cwd=caja, capture_output=True, check=True)
+            _configurar_repo_git(caja, Path(td))
             subprocess.run(["git", "remote", "add", "origin", "https://github.com/org/repo.git"], cwd=caja, capture_output=True, check=True)
 
             # Archivos obligatorios
@@ -130,7 +145,7 @@ class TestControl(unittest.TestCase):
 
             def _armar_base_caja(p):
                 p.mkdir(parents=True, exist_ok=True)
-                subprocess.run(["git", "init"], cwd=p, capture_output=True, check=True)
+                _configurar_repo_git(p, Path(td))
                 subprocess.run(["git", "remote", "add", "origin", "https://github.com/org/repo.git"], cwd=p, capture_output=True, check=True)
                 (p / "CLAUDE.md").write_text("# Test\n", encoding="utf-8")
                 (p / ".claude").mkdir(exist_ok=True)
@@ -151,7 +166,7 @@ class TestControl(unittest.TestCase):
             caja_r6 = raiz / "caja_env_versionado"
             _armar_base_caja(caja_r6)
             (caja_r6 / ".env").write_text("CLAVE=secreta\n", encoding="utf-8")
-            subprocess.run(["git", "add", ".env"], cwd=caja_r6, capture_output=True, check=True)
+            subprocess.run(["git", "add", "-f", ".env"], cwd=caja_r6, capture_output=True, check=True)
 
             # 5. Falla plantada R9: skill sin description
             caja_r9 = raiz / "caja_skill_sin_desc"
@@ -282,7 +297,7 @@ class TestAviso(unittest.TestCase):
             caja = Path(td) / "caja_ok"
             caja.mkdir()
 
-            subprocess.run(["git", "init"], cwd=caja, capture_output=True, check=True)
+            _configurar_repo_git(caja, Path(td))
             subprocess.run(["git", "remote", "add", "origin", "https://github.com/org/repo.git"], cwd=caja, capture_output=True, check=True)
             (caja / "CLAUDE.md").write_text("# Ok\n", encoding="utf-8")
             (caja / ".claude").mkdir()
@@ -329,7 +344,7 @@ class TestAviso(unittest.TestCase):
 
             caja_ok = raiz / "caja_ok"
             caja_ok.mkdir()
-            subprocess.run(["git", "init"], cwd=caja_ok, capture_output=True, check=True)
+            _configurar_repo_git(caja_ok, Path(td))
             subprocess.run(["git", "remote", "add", "origin", "https://github.com/org/repo.git"], cwd=caja_ok, capture_output=True, check=True)
             (caja_ok / "CLAUDE.md").write_text("# Ok\n", encoding="utf-8")
             (caja_ok / ".claude").mkdir()

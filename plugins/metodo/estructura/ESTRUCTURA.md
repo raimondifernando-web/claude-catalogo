@@ -113,23 +113,53 @@ Archivos de cada persona en su computadora:
 | `~/.claude.json` | mis conectores: correo, calendario, Drive |
 
 ## Textos del dibujo por nivel
-Textos específicos que muestra el dibujo para cada nivel cuando difieren del texto general del molde. Si un archivo no figura acá, se usa la descripción general del molde.
+Textos que muestra el dibujo para cada nivel. El molde define qué archivos existen, en qué niveles y si bajan o se comparten; las frases del dibujo salen de esta tabla.
 
 | Archivo | Nivel | Etiqueta | Descripción |
 |---|---|---|---|
-| `CLAUDE.md` | empresa | `CLAUDE.md` | reglas de la empresa: Claude las lee solo en todo lo de adentro |
-| `CLAUDE.md` | area | `CLAUDE.md` | reglas del área: se suman a las de la empresa |
-| `CLAUDE.md` | proyecto | `CLAUDE.md` | reglas del proyecto: qué es y cómo se trabaja |
-| `.claude/settings.json` | empresa | `.claude/settings.json` | permisos para trabajar acá · activa el paquete de la empresa |
-| `.claude/settings.json` | area | `.claude/settings.json` | permisos para trabajar acá · activa el paquete de la empresa |
-| `.claude/settings.json` | proyecto | `.claude/settings.json` | permisos del proyecto · activa el paquete de la empresa (y el del área, si hay) |
-| `.gitignore` | empresa | `.gitignore` | no guarda las carpetas de adentro (cada una tiene su repositorio) |
-| `.gitignore` | area | `.gitignore` | no guarda las carpetas de los proyectos |
-| `.gitignore` | proyecto | `.gitignore` | lo que no se sube a GitHub |
-| `plugins/<paquete>/` | empresa | `plugins/kit-empresa/ <span class="q">+ .claude-plugin/</span>` | el paquete de la empresa: skills, agentes, avisos automáticos y conectores que usan todos |
-| `plugins/<paquete>/` | area | `plugins/kit-ventas/ <span class="q">(opcional)</span>` | paquete del área, si sus proyectos comparten skills o agentes |
-| `.claude-plugin/marketplace.json` | empresa | — | — |
-| `.claude-plugin/marketplace.json` | area | — | — |
+| .git/ | empresa | .git/ | la conexión con GitHub (carpeta oculta): sabe de qué repositorio vino y adónde subir. Se crea sola al descargar |
+| .git/ | area | .git/ | la conexión con GitHub (carpeta oculta): sabe de qué repositorio vino y adónde subir. Se crea sola al descargar |
+| .git/ | proyecto | .git/ | la conexión con GitHub (carpeta oculta): sabe de qué repositorio vino y adónde subir. Se crea sola al descargar |
+| CLAUDE.md | empresa | CLAUDE.md | reglas de la empresa: Claude las lee solo en todo lo de adentro |
+| CLAUDE.md | area | CLAUDE.md | reglas del área: se suman a las de la empresa |
+| CLAUDE.md | proyecto | CLAUDE.md | reglas del proyecto: qué es y cómo se trabaja |
+| .claude/settings.json | empresa | .claude/settings.json | permisos para trabajar acá · activa el paquete de la empresa |
+| .claude/settings.json | area | .claude/settings.json | permisos para trabajar acá · activa el paquete de la empresa |
+| .claude/settings.json | proyecto | .claude/settings.json | permisos del proyecto · activa el paquete de la empresa (y el del área, si hay) |
+| .claude/skills/ | empresa | .claude/skills/ | habilidades para trabajar acá |
+| .claude/skills/ | area | .claude/skills/ | habilidades para trabajar acá |
+| .claude/skills/ | proyecto | .claude/skills/ | habilidades para trabajar acá |
+| .claude/agents/ | empresa | .claude/agents/ | asistentes para trabajar acá |
+| .claude/agents/ | area | .claude/agents/ | asistentes para trabajar acá |
+| .claude/agents/ | proyecto | .claude/agents/ | asistentes para trabajar acá |
+| .claude/rules/ | empresa | .claude/rules/ | reglas por tema, que se leen cuando hacen falta |
+| .claude/rules/ | area | .claude/rules/ | reglas por tema, que se leen cuando hacen falta |
+| .claude/rules/ | proyecto | .claude/rules/ | reglas por tema, que se leen cuando hacen falta |
+| .mcp.json | empresa | .mcp.json | conectores para trabajar acá |
+| .mcp.json | area | .mcp.json | conectores para trabajar acá |
+| .mcp.json | proyecto | .mcp.json | conectores para trabajar acá |
+| docs/ | empresa | docs/ | documentos |
+| docs/ | area | docs/ | documentos |
+| docs/ | proyecto | docs/ | documentos |
+| .env.example | empresa | .env.example | qué claves hacen falta, sin los valores |
+| .env.example | area | .env.example | qué claves hacen falta, sin los valores |
+| .env.example | proyecto | .env.example | qué claves hacen falta, sin los valores |
+| .gitignore | empresa | .gitignore | no guarda las carpetas de adentro (cada una tiene su repositorio) |
+| .gitignore | area | .gitignore | no guarda las carpetas de los proyectos |
+| .gitignore | proyecto | .gitignore | lo que no se sube a GitHub |
+| plugins/<paquete>/ | empresa | plugins/kit-empresa/ <span class="q">+ .claude-plugin/</span> | el paquete de la empresa: skills, agentes, avisos automáticos y conectores que usan todos |
+| plugins/<paquete>/ | area | plugins/kit-ventas/ <span class="q">(opcional)</span> | paquete del área, si sus proyectos comparten skills o agentes |
+| .claude-plugin/marketplace.json | empresa | — | — |
+| .claude-plugin/marketplace.json | area | — | — |
+| CLAUDE.local.md | empresa | CLAUDE.local.md | mis notas |
+| CLAUDE.local.md | area | CLAUDE.local.md | mis notas |
+| CLAUDE.local.md | proyecto | CLAUDE.local.md | mis notas |
+| .claude/settings.local.json | empresa | .claude/settings.local.json | mis ajustes |
+| .claude/settings.local.json | area | .claude/settings.local.json | mis ajustes |
+| .claude/settings.local.json | proyecto | .claude/settings.local.json | mis ajustes |
+| .env | empresa | .env | las claves |
+| .env | area | .env | las claves |
+| .env | proyecto | .env | las claves |
 
 ## Pie del dibujo
 Cada caja es un repositorio en GitHub, y el acceso se da en GitHub, repositorio por repositorio. En la computadora, cada carpeta es la copia de su repositorio y se conecta por su `.git/`. Cada persona descarga solo los repositorios donde está su punto: Beto nunca tiene Marketing ni Empresa-B, porque no las puede descargar. Los puntos huecos son para que Claude lea las reglas de la empresa o del área, aunque esa persona trabaje solo en un proyecto.

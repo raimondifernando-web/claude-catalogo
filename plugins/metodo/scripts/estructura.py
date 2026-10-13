@@ -153,8 +153,8 @@ def parsear_textos_nivel(md_texto: str):
     for f in filas:
         arch = f.get("Archivo", "").strip().strip("`")
         niv = f.get("Nivel", "").strip().lower()
-        etiq = f.get("Etiqueta", "").strip()
-        desc = f.get("Descripción", "").strip()
+        etiq = f.get("Etiqueta", "").strip().replace("`", "")
+        desc = f.get("Descripción", "").strip().replace("`", "")
         res[(arch, niv)] = {"etiqueta": etiq, "descripcion": desc}
     return res
 
@@ -319,8 +319,16 @@ def _generar_archivos_caja(nivel, molde, textos_nivel, tiene_hijos, indent_str="
     # 1. .git/ link especial si está en el molde
     git_row = next((r for r in molde if r["archivo"] == ".git/"), None)
     if git_row:
-        desc = git_row["que_es"]
-        lineas.append(f'{indent_str}<div class="file link"><span class="mono">.git/</span><span class="q">{desc}</span></div>')
+        custom_git = textos_nivel.get((".git/", nivel))
+        if custom_git and custom_git.get("descripcion") and custom_git["descripcion"] != "—":
+            desc = custom_git["descripcion"]
+            etiqueta = custom_git["etiqueta"] if (custom_git.get("etiqueta") and custom_git["etiqueta"] != "—") else ".git/"
+        else:
+            desc = git_row["que_es"]
+            etiqueta = ".git/"
+        etiqueta = etiqueta.replace("`", "")
+        desc = desc.replace("`", "")
+        lineas.append(f'{indent_str}<div class="file link"><span class="mono">{etiqueta}</span><span class="q">{desc}</span></div>')
 
     # 2. Se comparte (va a GitHub)
     lineas.append(f'{indent_str}<div class="grp">Se comparte (va a GitHub)</div>')
@@ -338,6 +346,8 @@ def _generar_archivos_caja(nivel, molde, textos_nivel, tiene_hijos, indent_str="
                 etiqueta = r["archivo"]
                 desc = r["que_es"]
 
+            etiqueta = etiqueta.replace("`", "")
+            desc = desc.replace("`", "")
             down_tag = ' <span class="down">↓ llega a lo de adentro</span>' if (r["baja"] == "sí" and tiene_hijos) else ''
             lineas.append(f'{indent_str}<div class="file"><span class="mono">{etiqueta}</span><span class="q">{desc}{down_tag}</span></div>')
 
@@ -352,6 +362,8 @@ def _generar_archivos_caja(nivel, molde, textos_nivel, tiene_hijos, indent_str="
             else:
                 etiqueta = r["archivo"]
                 desc = r["que_es"]
+            etiqueta = etiqueta.replace("`", "")
+            desc = desc.replace("`", "")
             lineas.append(f'{indent_str}<div class="file"><span class="mono">{etiqueta}</span><span class="lock">{desc}</span></div>')
 
     return "\n".join(lineas)
@@ -389,8 +401,12 @@ def _generar_nodo_html(nodo, molde, textos_nivel, es_lvl1=False, estilo_extra=No
             kids_class = "kids row" if hijos_son_hojas else "kids"
             lineas.append(f'{indent}  <div class="{kids_class}">')
             for h in nodo["hijos"]:
+                if not hijos_son_hojas:
+                    lineas.append("")
                 estilo_h = "grid-column:1/-1" if (h["modo"] == "completa" and hijos_son_hojas) else None
                 lineas.append(_generar_nodo_html(h, molde, textos_nivel, es_lvl1=False, estilo_extra=estilo_h, indent=indent + "    "))
+            if not hijos_son_hojas:
+                lineas.append("")
             lineas.append(f'{indent}  </div>')
     elif modo.startswith("nota:"):
         nota_texto = modo[5:].strip()
@@ -675,7 +691,7 @@ def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
             if code == 0 and out:
                 carpetas_permitidas = {".claude", ".claude-plugin", "plugins", "docs", ".git"}
                 for linea_f in out.splitlines():
-                    partes = linea_f.strip().split("/")
+                    partes = linea_f.strip().replace("\\", "/").split("/")
                     if len(partes) > 1 and partes[0] not in carpetas_permitidas:
                         sub_nombre = partes[0]
                         hallazgos.append(("error", "R8", f"versiona la carpeta de adentro '{sub_nombre}' (debe ser un repositorio independiente)"))
