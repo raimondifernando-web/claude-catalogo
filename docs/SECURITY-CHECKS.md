@@ -954,6 +954,14 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Condiciones (no bloquean) | m3: sin `TMPDIR` la marca va a `/tmp` (riesgo bajo de enlace simbólico). No verificado por nadie: que Claude Code muestre el stderr con código 2 en `Write/Agent/Task/Workflow`, que convivan dos PreToolUse sobre `Agent` (radar + este) y una prueba en una Mac que solo tenga la app. |
 | Veredicto | **PASS con condiciones**, 0 críticos. |
 
+## 2026-10-13 · metodo 0.36.2 → 0.36.3 (commit 2aa9cea) — PASS
+| Control | Resultado |
+|---|---|
+| Alcance | Solo `cerrar-check.py`: en una copia compartida, los archivos sin guardar FUERA de la carpeta de la sesión pasan de ✗ a aviso «•» con la lista; los de su carpeta siguen dando ✗. Solo lectura de `git status`. Más versión, CHANGELOG y README. |
+| Riesgo | Bajo: no agrega permisos, red ni ejecución. Lo que se afloja es un control de cierre, no un freno de seguridad; lo propio de la sesión sigue frenando. |
+| Pruebas | Suite de metodo sobre `2aa9cea`: **937 OK**, 5 salteadas, 0 fallas (4 tests nuevos: ajeno sucio no frena, propio sucio frena); vigía 101 OK. `verificar-metadatos`: TODO COINCIDE. Grep de clientes: 0. No probado en Windows. |
+| Veredicto | **PASS**, 0 críticos y 0 altos. Implementó una sesión Sonnet (rama `orquesta/cerrar-check-ajenos`), verificó Tech; sin revisión externa (cambio de bajo riesgo). |
+
 ## 2026-10-13 · metodo 0.36.1 → 0.36.2 (commit 8771e3b) — PASS
 | Control | Resultado |
 |---|---|
