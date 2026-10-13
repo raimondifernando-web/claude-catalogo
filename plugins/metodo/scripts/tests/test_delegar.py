@@ -37,6 +37,19 @@ R = cargar_modulo("radar", RADAR_PY)
 D = cargar_modulo("delegar", DELEGAR_PY)
 
 
+# Lo que lista hoy `agy models` (2026-10-13): no hay ningún Gemini Pro. FAKE_AGY_MODELOS la cambia; «falla» = exit 1.
+MODELOS_AGY = ("gemini-3.8-flash-high\ngemini-3.8-flash-medium\ngemini-3.8-flash-low\nclaude-opus-5-5-high\n"
+               "claude-sonnet-5-5-high\ngpt-oss-120b-medium\n")
+RESPUESTA_MODELOS = (
+    "if len(sys.argv) > 1 and sys.argv[1] == 'models':\n"
+    "    import os\n"
+    "    m = os.environ.get('FAKE_AGY_MODELOS', %r)\n"
+    "    if m == 'falla':\n"
+    "        sys.exit(1)\n"
+    "    sys.stdout.write(m); sys.exit(0)\n" % MODELOS_AGY)
+INFORME_LARGO = "Informe: " + "revisé el código y no encontré problemas graves en esta parte. " * 5
+
+
 def plan(letra, herramienta="Claude Code", api=None, privados=True, cupo=None, **extra):
     d = {
         "plan": letra,
@@ -167,14 +180,17 @@ class BaseDelegar(unittest.TestCase):
             "        'command': {'data': {'groups': [{'name': 'Gemini', 'buckets': [{'remaining_fraction': %f}]}]}}\n"
             "    }))\n"
             "    sys.exit(0)\n"
+            + RESPUESTA_MODELOS +
             "with open(%r, 'w', encoding='utf-8') as f:\n"
             "    json.dump(sys.argv[1:], f)\n"
             "with open(%r, 'w', encoding='utf-8') as f:\n"
             "    f.write(sys.stdin.read())\n"
             "if %r:\n"
             "    sys.stdout.write(%r)\n"
+            "elif 'plan' in sys.argv:\n"
+            "    sys.stdout.write(%r)\n"
             "sys.exit(%d)\n"
-        ) % (frac, str(args_file), str(stdin_file), bool(salida), salida, codigo)
+        ) % (frac, str(args_file), str(stdin_file), bool(salida), salida, INFORME_LARGO, codigo)
         ruta.write_text(contenido, encoding="utf-8")
         ruta.chmod(0o755)
         os.environ["RADAR_AGY_BIN"] = str(ruta)
@@ -252,15 +268,17 @@ class TestAdaptadores(BaseDelegar):
         self.assertIn("Todo al día ✓", out)
 
         args = json.loads((self.tmp / "agy_args.json").read_text(encoding="utf-8"))
-        self.assertEqual(args[0:4], ["--model", "gemini-3.8-flash", "--effort", "high"])
-        self.assertEqual(args[4:6], ["--mode", "accept-edits"])
+        # el id del radar + el esfuerzo, confirmado contra `agy models`: un solo --model, agy nunca elige
+        self.assertEqual(args[0:2], ["--model", "gemini-3.8-flash-high"])
+        self.assertNotIn("Modelo:", out)
+        self.assertEqual(args[2:4], ["--mode", "accept-edits"])
         # trabaja sobre una copia aislada (en la carpeta de trabajo del método), nunca sobre el repo real
-        self.assertEqual(args[6], "--add-dir")
-        self.assertNotEqual(args[7], str(repo))
-        self.assertTrue(args[7].startswith(str(self.tmp / "config" / "metodo" / "agy-trabajo") + os.sep), args[7])
-        self.assertTrue(args[7].endswith(os.sep + "trab"))
-        self.assertFalse(Path(args[7]).exists(), "la copia temporal se borra al terminar")
-        self.assertEqual(args[8], "-p")
+        self.assertEqual(args[4], "--add-dir")
+        self.assertNotEqual(args[5], str(repo))
+        self.assertTrue(args[5].startswith(str(self.tmp / "config" / "metodo" / "agy-trabajo") + os.sep), args[5])
+        self.assertTrue(args[5].endswith(os.sep + "trab"))
+        self.assertFalse(Path(args[5]).exists(), "la copia temporal se borra al terminar")
+        self.assertEqual(args[6], "-p")
         esperado_prompt = (
             "Tarea: hacé una función\n\n"
             "Trabajás en una copia del repo (sin .git ni archivos de claves): leé y editá acá, con rutas relativas; "
@@ -268,7 +286,7 @@ class TestAdaptadores(BaseDelegar):
             "Editá solo lo pedido. No toques archivos de claves ni de variables de entorno. "
             "Respondé en castellano, corto: qué hiciste o qué encontraste."
         )
-        self.assertEqual(args[9], esperado_prompt)
+        self.assertEqual(args[7], esperado_prompt)
 
     def test_adaptador_claude_code(self):
         # Codex y Antigravity agotados -> le toca a Claude Code
@@ -320,15 +338,16 @@ class TestRevisar(BaseDelegar):
         self.assertNotIn("── Cambios (revisalos y corré los tests) ──", out)
 
         args = json.loads((self.tmp / "agy_args.json").read_text(encoding="utf-8"))
-        self.assertEqual(args[4:6], ["--mode", "plan"])
+        self.assertEqual(args[2:4], ["--mode", "plan"])
         esperado_prompt = (
             "Tarea: analizá seguridad\n\n"
             "Trabajás en una copia del repo (sin .git ni archivos de claves): leé y editá acá, con rutas relativas; "
             "no edites nada fuera de esta carpeta. NO corras ningún comando. "
-            "Solo leé y analizá; no edites nada. "
+            "Solo leé y analizá; no edites nada. Si el pedido ya trae todo lo que hay que revisar, no uses herramientas: "
+            "respondé con el informe completo. "
             "Respondé en castellano, corto: qué hiciste o qué encontraste."
         )
-        self.assertEqual(args[9], esperado_prompt)
+        self.assertEqual(args[7], esperado_prompt)
 
 
 @unittest.skipIf(ES_WINDOWS, "scripts falsos de bash/sh")
@@ -714,6 +733,9 @@ a = sys.argv[1:]
 if "-p" in a and "/usage" in a:
     print(json.dumps({"command": {"data": {"groups": [{"name": "Gemini", "buckets": [{"remaining_fraction": 0.9}]}]}}}))
     sys.exit(0)
+if len(a) > 0 and a[0] == "models":
+    print("gemini-3.8-flash-high\ngemini-3.8-flash-medium\ngpt-oss-120b-medium")
+    sys.exit(0)
 log, canario = os.environ["FAKE_AGY_LOG"], os.environ["FAKE_AGY_CANARIO"]
 modo = a[a.index("--mode") + 1]
 d = a[a.index("--add-dir") + 1]
@@ -766,6 +788,8 @@ if modo == "accept-edits" or "editar_igual" in travesuras:
         open(".husky/pre-commit", "w").write("echo hola\n")
     if "tocar_real" in travesuras:
         open(os.path.join(os.environ["FAKE_AGY_REAL"], "intruso.txt"), "w").write("x\n")
+if modo == "plan" and "corta" not in travesuras:
+    print("Informe: " + "revisé esta parte del código y está bien armada. " * 6)
 print("hecho")
 '''
 
@@ -957,6 +981,16 @@ class TestAgyAislado(BaseDelegar):
         self.assertEqual(cod, 0, out + err)
         self.assertIn("por el nombre y %d por lo que tienen adentro" % len(muestras), out)
 
+    def test_revision_casi_vacia_termina_en_rojo(self):
+        repo = self.repo_con_claves("repo-corta")
+        os.environ["FAKE_AGY"] = "corta"
+        cod, out, err = self.correr("desarrollo", str(repo), "revisá", "--revisar")
+        self.assertEqual(cod, 74)
+        self.assertIn("La revisión volvió vacía o casi", err)
+        self.assertIn("agy models", err)
+        self.assertNotIn("Todo al día", out)
+        self.sin_copias()
+
     def test_revisar_descarta_lo_que_edite_y_no_toca_el_repo(self):
         repo = self.repo_con_claves("repo-revisar")
         os.environ["FAKE_AGY"] = "editar_igual"
@@ -997,6 +1031,70 @@ class TestCodexConClaves(BaseDelegar):
         cod, out, err = self.correr("desarrollo", str(repo), "hacé algo", "--revisar")
         self.assertEqual(cod, 0, out + err)
         self.assertIn("Plan elegido: Codex", out)
+
+
+@unittest.skipIf(ES_WINDOWS, "scripts falsos de bash/sh")
+class TestModeloAgy(BaseDelegar):
+    """Pedido G: el modelo se confirma contra `agy models`; agy nunca elige uno por su cuenta."""
+
+    def setUp(self):
+        super().setUp()
+        self.cupo_codex_falso(2, "Codex: 95% del cupo mensual — NO lanzar")   # que elija Antigravity
+        os.environ.pop("FAKE_AGY_MODELOS", None)
+
+    def radar_con_modelo(self, api):
+        self.radar["categorias"][0]["planes"][2]["modelo_api"] = api
+        ruta = self.tmp / "config" / "metodo" / "radar" / "RADAR.yaml"
+        ruta.write_text(R.yaml_volcar(self.radar), encoding="utf-8")
+
+    def args(self):
+        return json.loads((self.tmp / "agy_args.json").read_text(encoding="utf-8"))
+
+    def test_id_del_radar_inexistente_usa_el_mejor_gemini_high_y_avisa(self):
+        self.radar_con_modelo("gemini-3.1-pro-preview")      # → «gemini-3.1-pro-high», que agy no tiene
+        repo = self.crear_repo_git("repo-modelo-inexistente")
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
+        self.assertEqual(cod, 0, out + err)
+        self.assertEqual(self.args()[0:2], ["--model", "gemini-3.8-flash-high"])
+        self.assertNotIn("--effort", self.args())
+        self.assertIn("Modelo: el modelo del radar (gemini-3.1-pro-high) no está en Antigravity; uso gemini-3.8-flash-high", out)
+
+    def test_si_la_lista_no_se_puede_leer_usa_uno_conocido_y_avisa(self):
+        os.environ["FAKE_AGY_MODELOS"] = "falla"
+        repo = self.crear_repo_git("repo-modelos-falla")
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
+        self.assertEqual(cod, 0, out + err)
+        self.assertEqual(self.args()[0:2], ["--model", D.MODELO_AGY_CONOCIDO])
+        self.assertIn("no pude leer la lista de modelos de Antigravity", out)
+
+    def test_sin_ningun_gemini_high_no_se_lanza(self):
+        os.environ["FAKE_AGY_MODELOS"] = "claude-opus-5-5-high\ngpt-oss-120b-medium\n"
+        repo = self.crear_repo_git("repo-sin-gemini")
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
+        self.assertEqual(cod, 67)
+        self.assertIn("no lo lanzo para que no elija uno por su cuenta", err)
+        self.assertFalse((self.tmp / "agy_args.json").exists())
+
+    def test_mejor_gemini_high(self):
+        self.assertEqual(D.mejor_gemini_high(["gemini-3.8-flash-high", "gemini-3.8-flash-low", "gpt-oss-120b-medium"]),
+                         "gemini-3.8-flash-high")
+        self.assertEqual(D.mejor_gemini_high(["gemini-3.8-flash-high", "gemini-4.0-pro-high", "gemini-4.0-flash-high"]),
+                         "gemini-4.0-pro-high")
+        self.assertIsNone(D.mejor_gemini_high(["claude-opus-5-5-high"]))
+
+    def test_lista_de_modelos_con_texto_alrededor(self):
+        ruta = self.tmp / "agy-lista"
+        ruta.write_text("#!/bin/bash\necho 'Modelos disponibles:'\necho '  * gemini-3.8-flash-high (Gemini 3.8 Flash, High)'\n"
+                        "echo '  - gpt-oss-120b-medium'\n", encoding="utf-8")
+        ruta.chmod(0o755)
+        self.assertEqual(D.modelos_agy(str(ruta)), ["gemini-3.8-flash-high", "gpt-oss-120b-medium"])
+
+    def test_dry_run_no_consulta_agy(self):
+        os.environ["FAKE_AGY_MODELOS"] = "falla"
+        repo = self.crear_repo_git("repo-modelo-dry")
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo", "--dry-run")
+        self.assertEqual(cod, 0, out + err)
+        self.assertNotIn("Modelo:", out)
 
 
 class TestNombresDeClaves(unittest.TestCase):

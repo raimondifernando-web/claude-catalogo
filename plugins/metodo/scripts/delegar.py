@@ -31,7 +31,8 @@ Códigos de salida:
     65  El repo es tu carpeta personal entera, la raíz del disco o una carpeta de llaves o de configuración de tus
         herramientas (~/.ssh, ~/.claude, ~/.gemini…), o lo marcaste con METODO_NO_DELEGAR.
     66  Árbol sucio al editar (git status no limpio sin --revisar).
-    67  La CLI del plan elegido (codex o agy) no está instalada, o está dentro del repo.
+    67  La CLI del plan elegido (codex o agy) no está instalada, o está dentro del repo, o Antigravity no ofrece ningún
+        modelo Gemini «-high» (agy models): no se lo lanza para que no elija uno por su cuenta.
     68  Falta aceptar el envío del código a un tercero (corré una vez `delegar.py --aceptar`).
     69  Antigravity no pudo trabajar: sin pantalla se le negó una herramienta (el mensaje dice qué hacer).
     70  La herramienta (codex o agy) terminó con error; su código real va en el mensaje.
@@ -39,6 +40,7 @@ Códigos de salida:
     71  La herramienta tocó .git/config o los hooks del repo (o Antigravity creó un .git o un enlace en su copia): no se trae
         nada; no confíes en ese repo hasta revisarlo. También si Antigravity tocó .claude/ en su copia.
     73  El cambio de Antigravity no se pudo traer (el repo real cambió mientras trabajaba, o el parche no aplica).
+    74  En modo revisar, Antigravity devolvió una respuesta vacía o casi (menos de 200 caracteres): no es una revisión.
     124 La herramienta no terminó a tiempo (METODO_DELEGAR_TOPE, 3600 s por defecto) y se cortó con sus hijos.
 
 Antigravity trabaja sobre una COPIA del repo: solo los archivos versionados o nuevos no ignorados, sin .git, sin archivos
@@ -417,6 +419,60 @@ def args_modelo_agy(plan):
     return ["--model", api, "--effort", esfuerzo]
 
 
+# Antigravity no conoce todos los ids del radar (gemini-3.1-pro-preview → «gemini-3.1-pro-high» no existe): si se le pasa
+# uno que no tiene, elige otro por su cuenta (GPT-OSS) y devuelve vacío. El modelo se confirma contra `agy models`.
+MODELO_AGY_CONOCIDO = "gemini-3.8-flash-high"
+ID_MODELO = re.compile(r"(?<![A-Za-z0-9._-])([a-z][a-z0-9]*(?:[.-][a-z0-9]+)+)(?![A-Za-z0-9._-])")
+GEMINI_HIGH = re.compile(r"^gemini-([0-9]+(?:\.[0-9]+)*)-([a-z0-9.-]+-)?high$")
+TOPE_REVISION_VACIA = 200
+
+
+def modelos_agy(bin_cli):
+    """Ids que lista `agy models` (solo lectura), o None si no se pudo ejecutar o no se entendió la salida."""
+    try:
+        r = subprocess.run([bin_cli, "models"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                           stdin=subprocess.DEVNULL, universal_newlines=True, encoding="utf-8", errors="replace", timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    ids = []
+    for m in ID_MODELO.finditer(r.stdout):
+        x = m.group(1)
+        if MODELO_VALIDO.match(x) and any(c.isdigit() for c in x) and x not in ids:
+            ids.append(x)
+    return ids or None
+
+
+def mejor_gemini_high(ids):
+    """El Gemini «-high» de versión más alta (a igual versión, «pro» antes que el resto)."""
+    def clave(x):
+        m = GEMINI_HIGH.match(x)
+        return (tuple(int(n) for n in m.group(1).split(".")), "pro" in x)
+    candidatos = [x for x in ids if GEMINI_HIGH.match(x)]
+    return max(candidatos, key=clave) if candidatos else None
+
+
+def resolver_modelo_agy(plan, bin_cli):
+    """(argumentos --model, aviso o None). Nunca deja que agy elija el modelo: si el del radar no está en `agy models`,
+    usa el mejor Gemini «-high» disponible y lo avisa; si la lista no se puede leer, uno conocido. (None, motivo) si
+    Antigravity no ofrece ningún Gemini «-high». ValueError si el radar trae un id con forma rara."""
+    pedido = args_modelo_agy(plan)
+    candidato = (pedido[1] + "-" + pedido[3] if len(pedido) == 4 else pedido[1]) if pedido else None
+    ids = modelos_agy(bin_cli)
+    if ids is None:
+        return ["--model", MODELO_AGY_CONOCIDO], ("no pude leer la lista de modelos de Antigravity (agy models): uso %s"
+                                                   % MODELO_AGY_CONOCIDO)
+    if candidato in ids:
+        return ["--model", candidato], None
+    elegido = mejor_gemini_high(ids)
+    if not elegido:
+        return None, ("Antigravity no ofrece ningún modelo Gemini «-high» (agy models: %s); no lo lanzo para que no "
+                      "elija uno por su cuenta" % ", ".join(ids[:6]))
+    return ["--model", elegido], ("el modelo del radar (%s) no está en Antigravity; uso %s, el mejor Gemini disponible"
+                                  % (candidato or "ninguno", elegido))
+
+
 def binario_seguro(ruta, repo_path):
     """Ruta absoluta y ejecutable, fuera del repo (cwd de la herramienta: un ./codex plantado por el repo no corre)."""
     if not ruta:
@@ -634,6 +690,12 @@ def ejecutar_agy_aislado(cmd, repo_path, args, tope):
         if codigo != 0:
             sys.stderr.write("La herramienta terminó con error (código %d). El repo real no se tocó.\n" % codigo)
             return 70
+        if args.revisar and len(texto.strip()) < TOPE_REVISION_VACIA:
+            sys.stderr.write(
+                "La revisión volvió vacía o casi (%d caracteres): no es una revisión. Probá otro modelo de Antigravity "
+                "(mirá cuáles hay con «agy models») o pedí el informe con los datos ya puestos en el pedido.\n"
+                % len(texto.strip()))
+            return 74
         problema, claves = revisar_copia(trab)
         if problema:
             sys.stderr.write("Gemini creó «%s» (una carpeta .git o un enlace simbólico) en su copia: no traigo nada al repo.\n" % problema)
@@ -818,14 +880,24 @@ def main(argv=None):
             sys.stderr.write("La CLI de Antigravity («agy») no está instalada, no se encuentra o está dentro del repo.\n")
             return 67
         try:
-            cmd = [bin_cli] + args_modelo_agy(plan)
+            if args.dry_run:   # sin ejecutar nada: el modelo se confirma contra `agy models` al lanzar
+                modelo, aviso_modelo = args_modelo_agy(plan), None
+            else:
+                modelo, aviso_modelo = resolver_modelo_agy(plan, bin_cli)
         except ValueError as e:
             sys.stderr.write("No se ejecuta: %s.\n" % e)
             return 64
+        if modelo is None:
+            sys.stderr.write("No se ejecuta: %s.\n" % aviso_modelo)
+            return 67
+        if aviso_modelo:
+            print("Modelo: %s." % aviso_modelo)
+        cmd = [bin_cli] + modelo
         cmd.extend(["--mode", "plan" if args.revisar else "accept-edits"])
         cmd.extend(["--add-dir", COPIA])   # la carpeta de la copia aislada se pone al ejecutar
         instruccion = (
-            "Solo leé y analizá; no edites nada."
+            "Solo leé y analizá; no edites nada. Si el pedido ya trae todo lo que hay que revisar, no uses herramientas: "
+            "respondé con el informe completo."
             if args.revisar
             else "Editá solo lo pedido. No toques archivos de claves ni de variables de entorno."
         )
