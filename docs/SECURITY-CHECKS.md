@@ -954,6 +954,15 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Condiciones (no bloquean) | m3: sin `TMPDIR` la marca va a `/tmp` (riesgo bajo de enlace simbólico). No verificado por nadie: que Claude Code muestre el stderr con código 2 en `Write/Agent/Task/Workflow`, que convivan dos PreToolUse sobre `Agent` (radar + este) y una prueba en una Mac que solo tenga la app. |
 | Veredicto | **PASS con condiciones**, 0 críticos. |
 
+## 2026-10-13 · metodo 0.36.0 → 0.36.1 (commit 27194bc) — PASS
+| Control | Resultado |
+|---|---|
+| Alcance | `metodo` 0.36.1: solo el freno anti-claves (`bloquear-secretos.py`, +25/−2) y su banco (`test_corpus_ataques.py`, +41), más versión, CHANGELOG y README. Nada más cambia. |
+| Revisiones | Implementó una sesión Opus (esfuerzo alto); **dos rondas de Gemini** de solo lectura sobre el freno: la 1.ª halló variantes de evasión (`env FOO=1`, `env -u`, `security -q`, `gh auth status -ta`, comillas en `$(<…)`), la 2.ª más (`gh auth -h host status -t`, `-th`, `security -p … find-…`, `env -P/-C`, comentario en `$(<…)`) y un falso positivo de `gh search`. Todo corregido y sumado al banco. |
+| Pruebas | Suite completa de metodo sobre `27194bc`: **930 OK**, 5 salteadas, 0 fallas; vigía 99 OK. Banco de frenos: 0 evasiones y 0 falsos positivos (88 casos SECRETOS_BASH, medido por Tech). `verificar-metadatos`: TODO COINCIDE. Grep de clientes: 0. |
+| Límites (lo NO comprobado) | Falsos positivos aceptados a propósito: `echo "$(<.env)" \| sha256sum` y un servicio del llavero cuyo nombre empieza con guion. Falso positivo previo (ya estaba en 0.36.0, no lo trae esta versión): `set -e` solo en una línea se toma por `set` sin nombre; queda como pendiente aparte. No probado en Windows. |
+| Veredicto | **PASS**, 0 críticos y 0 altos abiertos conocidos. Lo escribe Tech (coordinación), no un revisor externo. |
+
 ## 2026-10-13 · metodo 0.35.2 → 0.36.0 (commit 593937d) — PASS con condiciones
 | Control | Resultado |
 |---|---|
