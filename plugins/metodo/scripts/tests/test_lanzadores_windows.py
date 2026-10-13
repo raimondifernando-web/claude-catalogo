@@ -98,6 +98,66 @@ class LanzadoresEnWindows(unittest.TestCase):
         self.assertIn("PowerShell", pre["skills-cli-tranca.sh"].split("|"))
 
 
+@unittest.skipIf(os.name == "nt", "simula Windows desde Mac/Linux con bash")
+class ReglasDenyEnWindows(unittest.TestCase):
+    """F4: en Windows al-dia.sh no corre, así que aplicar-deny.py (lanzado por al-dia-auto.sh) agrega las reglas que bloquean las carpetas de llaves."""
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.d = Path(self.tmp.name)
+        self.cfg = self.d / "cfg"
+        self.cfg.mkdir()
+
+    def aplicar(self, *args):
+        return subprocess.run([sys.executable, str(SCRIPTS / "aplicar-deny.py"), *args], capture_output=True, text=True, encoding="utf-8",
+                              env={**os.environ, "CLAUDE_CONFIG_DIR": str(self.cfg)}, timeout=30)
+
+    def test_las_reglas_son_las_mismas_que_las_de_al_dia(self):
+        import re
+        al_dia = (SCRIPTS / "al-dia.sh").read_text(encoding="utf-8")
+        bloque = al_dia[al_dia.index("for DR in"):al_dia.index("for DK in Read Edit")]
+        de_al_dia = re.findall(r"'(~/[^']+)'", bloque)
+        de_python = [r.split("(", 1)[1][:-1] for r in self.aplicar("--lista").stdout.split() if r.startswith("Read(")]
+        self.assertEqual(de_al_dia, de_python)
+
+    def test_agrega_lo_que_falta_sin_tocar_lo_demas_y_guarda_copia(self):
+        original = {"model": "sonnet", "permissions": {"allow": ["Bash(ls)"], "deny": ["Read(~/.ssh/**)", "Bash(rm -rf /)"]}}
+        (self.cfg / "settings.json").write_text(json.dumps(original), encoding="utf-8")
+        r = self.aplicar()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        d = json.loads((self.cfg / "settings.json").read_text(encoding="utf-8"))
+        self.assertEqual(d["model"], "sonnet")
+        self.assertEqual(d["permissions"]["allow"], ["Bash(ls)"])
+        self.assertIn("Bash(rm -rf /)", d["permissions"]["deny"])
+        self.assertEqual(d["permissions"]["deny"].count("Read(~/.ssh/**)"), 1, "no duplica")
+        for regla in ("Edit(~/.ssh/**)", "Read(~/.aws/**)", "Edit(~/.claude/backups/**)", "Read(~/.npmrc)"):
+            self.assertIn(regla, d["permissions"]["deny"])
+        self.assertEqual(json.loads((self.cfg / "settings.json.antes-arneses").read_text(encoding="utf-8")), original)
+        r2 = self.aplicar()                                    # segunda vez: nada que hacer, sin ruido
+        self.assertEqual((r2.returncode, r2.stdout), (0, ""))
+
+    def test_settings_que_no_es_json_no_se_toca(self):
+        (self.cfg / "settings.json").write_text("{esto no es json", encoding="utf-8")
+        r = self.aplicar()
+        self.assertEqual(r.returncode, 1)
+        self.assertEqual((self.cfg / "settings.json").read_text(encoding="utf-8"), "{esto no es json")
+
+    def test_al_dia_auto_en_windows_aplica_las_reglas_una_vez_por_dia(self):
+        falso = self.d / "bin"
+        falso.mkdir()
+        ejecutable(falso / "python3", "#!/bin/bash\nexit 9\n")
+        ejecutable(falso / "py", f'#!/bin/bash\n[ "$1" = "-3" ] && shift\nexec "{sys.executable}" "$@"\n')
+        env = {"PATH": f"{falso}:/usr/bin:/bin", "METODO_SO_PRUEBA": "MINGW64_NT-10.0", "HOME": str(self.d), "CLAUDE_CONFIG_DIR": str(self.cfg)}
+        r = subprocess.run(["/bin/bash", str(SCRIPTS / "al-dia-auto.sh")], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Agregué", r.stdout)
+        d = json.loads((self.cfg / "settings.json").read_text(encoding="utf-8"))
+        self.assertIn("Read(~/.ssh/**)", d["permissions"]["deny"])
+        self.assertNotIn("Read(~/Library/Keychains/**)", d["permissions"]["deny"] if sys.platform != "darwin" else [])
+        r2 = subprocess.run(["/bin/bash", str(SCRIPTS / "al-dia-auto.sh")], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
+        self.assertEqual((r2.returncode, r2.stdout), (0, ""), "una sola vez por día")
+
+
 @unittest.skipIf(os.name == "nt", "usa rutas de Mac/Linux")
 class PowerShellEnElFreno(unittest.TestCase):
     def correr(self, comando):
