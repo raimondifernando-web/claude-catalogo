@@ -957,17 +957,6 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 ## 2026-10-13 · metodo 0.35.0 → 0.35.2 (commit 0b000dd) — PASS con condiciones
 | Control | Resultado |
 |---|---|
-| Alcance | Lo mismo que la entrada anterior (`9db2361`) más los arreglos de la **segunda** revisión independiente (rama `orquesta/cierre-f8-f14` hasta `0b000dd`). |
-| 2ª revisión independiente | Revisor de seguridad de solo lectura sobre el tip `134a560`: 0 críticos, 0 altos, 3 medios, 9 bajos, 4 informativos. Cerró como correctos los arreglos de la 1ª ronda salvo M2 (parcial) y L4 (abrió M-3). No corrió tests ni escáneres. |
-| Corregidos con prueba | M-1 `cb6268c` (el freno de claves dejaba pasar `env \| grep HOME`, que mostraba claves reales; parte de 0.35.1), M-2/M-2b `cc1ee2c` (la compuerta de `estable` exige que el commit revisado traiga la versión y no se traba por un `estable` viejo), L-2 `9899ed9`, L-3 `4e8c799`, L-4/L-5 `1d058db`, I-3 `21f152b`, L-8 `0b000dd`. |
-| Abiertos (no bloquean el Mac de hoy) | M-3 (al-dia baja a diario librerías de Python que el usuario subió), L-1, L-6, L-7, I-1, I-2, I-4, L-9: registrados en el pendiente interno C71 para después de 0.36.0. |
-| Pruebas | Suite completa sobre `0b000dd`: 581 OK, 5 salteadas (sin el instalador de skills), 0 fallas. `verificar-metadatos`: TODO COINCIDE. Grep de clientes: 0. Compuerta de `estable` ejecutada en seco contra esta rama: no pide más checks para 0.35.2. |
-| Límites | **Estos últimos arreglos no los volvió a revisar un tercero.** Windows real sin probar (F3/F4 solo simulados); la compuerta no se probó en GitHub Actions real; `pip-audit` de la entrada anterior sigue valiendo (11 avisos sin arreglo para Python 3.9). |
-| Veredicto | **PASS con condiciones**, 0 críticos y 0 altos abiertos para Mac. Lo escribe Tech (coordinación), no un revisor externo. |
-
-## 2026-10-13 · metodo 0.35.0 → 0.35.2 (commit 0b000dd) — PASS con condiciones
-| Control | Resultado |
-|---|---|
 | Alcance | Lo que entra a `estable` después de `4f390c7` (metodo 0.35.0): 0.35.1 (`5a1b3c3`, arreglos del check C62) y 0.35.2 (rama `orquesta/cierre-f8-f14` hasta `0b000dd`, que trae 0.35.2). `paneles` sigue en 0.2.1. Esta entrada reemplaza la del mismo día que nombraba `9db2361`: después de ese commit hubo arreglos en `plugins/metodo`. |
 | Check de base | `.claude/security-checks/2026-10-12.md` sobre 0.35.0 (`4f390c7`): 17 PASS · 15 FLAG, 0 críticos, 3 altos (F1–F3). |
 | 0.35.1 | Arreglos F1–F7, F9–F13 y F15 hechos y probados por la sesión que los escribió. **No los re-revisó un tercero como tanda**; la 2.ª revisión de abajo sí miró parte de ese código (freno anti-secretos, cuarentena) y encontró M-1, L-2, L-3, L-4, L-5, corregidos acá. F1 se volvió a probar con un repo real (fila «Cuarentena»). |
