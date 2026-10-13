@@ -579,7 +579,7 @@ class TestScript(unittest.TestCase):
         r = self.correr("--sha", v, api="http://127.0.0.1:1")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(self._estable_remoto(), v)
-        self.assertIn("security check: al día", r.resumen)
+        self.assertIn("metodo 0.36.0 → check de 0.36.0 en `docs/SECURITY-CHECKS.md`", r.resumen)   # dice qué lo validó
         self.assertIn("sin_check=false", r.salida)
 
     def test_rango_en_el_titulo_cubre_la_version_final(self):
@@ -587,6 +587,19 @@ class TestScript(unittest.TestCase):
         self._check("## metodo 0.35.1 → 0.36.0 y paneles 0.3.0 — PASS")
         r = self.correr("--sha", v, api="http://127.0.0.1:1")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_check_de_una_version_mas_nueva_cubre_y_se_compara_por_numero(self):
+        v = self._version("metodo", "0.9.0")
+        self._check("### metodo 0.10.0")          # 0.10.0 > 0.9.0 (por número, no por texto)
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("metodo 0.9.0 → check de 0.10.0", r.resumen)
+
+    def test_check_de_una_version_mas_vieja_no_cubre(self):
+        v = self._version("metodo", "0.10.0")
+        self._check("### metodo 0.9.9")
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
 
     def test_reporte_en_la_carpeta_de_checks_cuenta(self):
         v = self._version("metodo", "0.36.0")

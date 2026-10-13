@@ -19,7 +19,8 @@ Cómo decide:
   - Compuerta de security check (F14 del check 0.35.0), en automático Y en «pasalo ya»: si el commit a promover cambia la
     versión de `metodo` o `paneles` (lo que corre en las máquinas de los clientes) respecto de `estable`, esa versión tiene
     que figurar en un TÍTULO (línea con `#`) de `docs/SECURITY-CHECKS.md` o de `.claude/security-checks/*.md`, leídos de
-    `main` (el check se puede anotar después del commit). Vale «metodo 0.36.0» o un rango «metodo 0.35.1 → 0.36.0». Si falta,
+    `main` (el check se puede anotar después del commit). Vale «metodo 0.36.0», un rango «metodo 0.35.1 → 0.36.0» o el check de
+    una versión MÁS NUEVA (revisó un código que ya la incluye); el resumen dice qué archivo la validó. Si falta,
     no se mueve y la corrida sale en rojo. Salida explícita: `--sin-check "<motivo>"` (en el workflow: `-f sin_check=...`)
     promueve igual y lo deja anotado en el resumen de la corrida, en un aviso de GitHub y en `sin_check=true` de la salida.
   - Este script corre desde el checkout de la propia rama `estable` (ver el workflow): el código que decide ya esperó 48 h.
@@ -328,13 +329,13 @@ def version_del_paquete(cwd, sha, paquete):
 
 
 def versiones_con_check(cwd, sha):
-    """{paquete: {versiones}} nombradas en los TÍTULOS de los checks anotados en ese commit (docs/SECURITY-CHECKS.md y
+    """{paquete: {versión: archivo}} nombradas en los TÍTULOS de los checks anotados en ese commit (docs/SECURITY-CHECKS.md y
     .claude/security-checks/*.md). Un título cuenta; una mención en el cuerpo, no (evita «condiciones para 0.30.1»)."""
     archivos = [DOC_CHECKS]
     r = git(["ls-tree", "-r", "--name-only", sha, "--", CARPETA_CHECKS], cwd)
     if r.returncode == 0:
         archivos += [a for a in r.stdout.splitlines() if a.endswith(".md")]
-    cubiertas = {p: set() for p in VIGILADOS}
+    cubiertas = {p: {} for p in VIGILADOS}
     for archivo in archivos:
         r = git(["show", "%s:%s" % (sha, archivo)], cwd)
         if r.returncode != 0:
@@ -343,19 +344,30 @@ def versiones_con_check(cwd, sha):
             if not linea.startswith("#"):
                 continue
             for paquete, cadena in PATRON_ENTRADA.findall(linea):
-                cubiertas[paquete].update(PATRON_VERSION.findall(cadena))
+                for v in PATRON_VERSION.findall(cadena):
+                    cubiertas[paquete].setdefault(v, archivo)
     return cubiertas
 
 
+def _tupla(version):
+    return tuple(int(x) for x in version.split("."))
+
+
 def sin_security_check(cwd, actual, destino, principal):
-    """Lista de «paquete versión» que entrarían a estable con una versión nueva y sin check anotado (leído de main)."""
+    """(faltan, validados) para las versiones nuevas de metodo/paneles que entrarían a estable. Una versión queda cubierta por
+    un check de ESA versión o de una más nueva (que revisó un código que ya la incluye); `validados` dice con qué archivo."""
     cubiertas = versiones_con_check(cwd, principal)
-    faltan = []
+    faltan, validados = [], []
     for paquete in VIGILADOS:
         nueva = version_del_paquete(cwd, destino, paquete)
-        if nueva and nueva != version_del_paquete(cwd, actual, paquete) and nueva not in cubiertas[paquete]:
+        if not nueva or nueva == version_del_paquete(cwd, actual, paquete):
+            continue
+        sirven = sorted((v for v in cubiertas[paquete] if _tupla(v) >= _tupla(nueva)), key=_tupla)
+        if sirven:
+            validados.append("%s %s → check de %s en `%s`" % (paquete, nueva, sirven[0], cubiertas[paquete][sirven[0]]))
+        else:
             faltan.append("%s %s" % (paquete, nueva))
-    return faltan
+    return faltan, validados
 
 
 def limpiar_motivo(texto):
@@ -496,7 +508,7 @@ def main(argv=None):
                     raise SinMovimiento("las pruebas de %s todavía no terminaron (%d): se reintenta en la próxima corrida"
                                         % (de_quien[:7], len(pendientes)))
                 resumen.append("pruebas de `%s`: %s" % ((de_quien or destino)[:7], "%d en verde" % total if total else "ninguna registrada"))
-            faltan = sin_security_check(cwd, actual, destino, principal)
+            faltan, validados = sin_security_check(cwd, actual, destino, principal)
             if faltan and not motivo_sin_check:
                 raise Frena("falta el security check de %s (lo que corre en las máquinas de los clientes): corré /fable-security-check y "
                             "anotalo con un título que diga «%s» en %s o en %s, o forzá a propósito con "
@@ -510,8 +522,8 @@ def main(argv=None):
                     print("::warning::estable: %s" % aviso)
                 decir(aviso, log)
             else:
-                resumen.append("security check: %s" % ("al día" if any(version_del_paquete(cwd, destino, p) for p in VIGILADOS)
-                                                       else "no aplica"))
+                resumen.append("security check: %s (main `%s`)" % ("; ".join(validados), principal[:7]) if validados
+                               else "security check: no aplica (sin versión nueva de %s)" % " ni ".join(VIGILADOS))
         except SinMovimiento as e:
             sin_mover = e
         if actividad is not None:     # solo en automático: hay una hora del servidor con la que medir el atraso
