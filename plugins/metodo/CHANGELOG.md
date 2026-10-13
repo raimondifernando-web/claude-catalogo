@@ -1,6 +1,7 @@
 # metodo — qué cambia para vos
 
-## 0.36.3 (sin publicar)
+## 0.36.3 — 2026-10-13
+Se aplica solo; no hay nada que correr.
 - **`/cerrar` ya no se traba por cambios de otra sesión.** Si varias sesiones comparten una copia (un repo con una subcarpeta por proyecto), `cerrar-check` avisa con «•» los archivos sin guardar que están fuera de tu carpeta y sigue; los de tu carpeta siguen dando ✗. Así el cierre abre la sesión siguiente y archiva la vieja.
 
 ## 0.36.2 — 2026-10-13
