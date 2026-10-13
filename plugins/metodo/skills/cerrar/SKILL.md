@@ -18,6 +18,20 @@ saltear: el prompt de reanudación copiable**, que el usuario pega al abrir la p
 respuesta: son llamadas, no un mensaje nuevo). Pase lo que pase
 con los demás pasos, nunca termines sin emitir ese bloque.
 
+## ⛔ Paso 0 — No se cierra con sesiones hijas trabajando ni con ramas sin resolver
+**Antes de cualquier otro paso**, y también antes de ofrecerle el cierre al usuario: si en esta sesión abriste otras
+sesiones (las ves en la barra lateral de la app) o copias de trabajo con rama propia, **no se abandonan**.
+1. Llamá `list_sessions` con `{"linked": true}` (herramienta de la app de escritorio; si viene diferida, buscala con
+   ToolSearch; en terminal o Cowork no existe: anotá «no aplica»). Si alguna sesión que abriste figura trabajando
+   (no «idle»), **no se cierra**: archivar esta sesión corta a la hija y pierde el canal por el que te entrega su resultado.
+2. Si todas están «idle», **leé el último mensaje de cada una y mirá su entrega en el disco** (regla 1) antes de cerrar:
+   una hija «idle» puede tener un resultado que nadie revisó.
+3. Corré `git branch --no-merged main` y `git worktree list` en cada repo que tocaste. Cada rama o copia abierta se
+   resuelve (la juntás con el OK del usuario, regla 13) o queda anotada en `PENDIENTES.md` con su dueño.
+Si algo de 1, 2 o 3 está abierto: frená, decile al usuario en una línea qué falta y esperá; **no emitas el prompt ni te
+archives**. Solo si el usuario decide cerrar igual, el `REANUDAR.md` lista cada sesión o rama abierta con su dueño.
+`cerrar-check` (paso 8 bis) imprime las ramas y copias abiertas y repite este punto como ítem MANUAL.
+
 ## Secuencia
 1. **Fecha + tema.** Fecha de hoy (`date +%F`) y tema en minúsculas con guiones. El archivo del handoff se
    llama `handoffs/YYYY-MM-DD-tema.md` dentro de la carpeta de trabajo (crear `handoffs/` si no existe).

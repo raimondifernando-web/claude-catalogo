@@ -187,6 +187,24 @@ class ChecksTest(unittest.TestCase):
         self.assertIn("sin remoto", out)  # el repo de prueba no tiene remoto: eso es una falla real
         self.assertEqual(rc, 1, out)
 
+    def test_cerrar_paso0_pide_mirar_las_sesiones_hijas(self):
+        self.repo()
+        rc, out = self.correr(CERRAR, str(self.proyecto))
+        self.assertIn("MANUAL (Paso 0, PRIMERO)", out)
+        self.assertLess(out.index("Paso 0"), out.index("MANUAL (paso 3, lo durable)"))
+        self.assertNotIn("SIN juntar", out)
+
+    def test_cerrar_paso0_avisa_rama_sin_juntar_y_copia_abierta(self):
+        self.repo()
+        copia = self.proyecto.parent / "copia-paso0"
+        git(self.proyecto, "worktree", "add", "-q", "-b", "tema/2026-10-13", str(copia))
+        (copia / "x.txt").write_text("trabajo a medias", encoding="utf-8")
+        git(copia, "add", "x.txt")
+        git(copia, "commit", "-q", "-m", "avance")
+        rc, out = self.correr(CERRAR, str(self.proyecto))
+        self.assertIn("Ramas SIN juntar a main: tema/2026-10-13", out)
+        self.assertIn("Copias de trabajo abiertas (1)", out)
+
     def test_cerrar_pieza_nueva_sin_disparador_falla(self):
         self.repo()
         sk = self.config / "skills" / "misteriosa"

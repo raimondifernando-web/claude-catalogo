@@ -20,6 +20,8 @@
 5. **Hacer, no preguntar**, cuando ya hay contexto suficiente. Al usuario solo se le pregunta lo que depende de su decisión, con el porqué y una recomendación.
 6. **Arrancar leyendo** (`/metodo:arrancar`): `CLAUDE.md` + último handoff antes de tocar nada. Las decisiones tomadas no se reabren.
 7. **Cerrar dejando registro** (`/metodo:cerrar`): handoff + prompt de reanudación. Sin eso, la próxima sesión arranca ciega.
+   **Y no se cierra dejando a medias a otra sesión:** si abriste sesiones hijas o ramas, mientras haya una trabajando, un
+   resultado sin revisar o una rama sin juntar, no se cierra ni se ofrece cerrar (archivar corta a la hija). `/metodo:cerrar` lo pone como Paso 0.
 8. **Planear con las premisas verificadas** (`/metodo:planear`): qué existe ya, qué es irreversible, qué NO se hace, cómo se verifica.
 9. **Lo durable va a su archivo, no al chat.** Una regla nueva del negocio va al `CLAUDE.md`; una decisión, al handoff. Lo que vive solo en la conversación se pierde.
 10. **Si algo falla, decirlo tal cual.** Qué se intentó, qué error dio. Nunca taparlo ni "arreglarlo" en silencio.
@@ -70,6 +72,10 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     tope de vueltas y solo cuando el resultado se comprueba solo (pruebas que pasan o no) o cuando es un informe que solo
     lee (auditorías, conciliaciones). **Nunca** un bucle que escriba solo en un sistema del negocio (sistema de gestión,
     publicidades, lista de clientes). No se instalan otros «Ralph» (`ralph-wiggum` u otros): el del catálogo es el revisado.
+    **Equipos de agentes y revisiones.** Un equipo de varios agentes a la vez (o un flujo que lance muchos) nunca arranca sin tu OK
+    para ESA tarea y con el gasto estimado antes (agentes × cientos de miles de unidades cada uno), aunque un modo "a fondo" esté
+    prendido. Las revisiones en bucle tienen tope: **como máximo 2 vueltas** implementar→revisar por hito; si no converge, se
+    para, se te cuenta y se cambia de enfoque o de IA. Y al cerrar un hito pesado, una línea con cuánto cupo quedó.
 
 ## Cuando le pedís algo técnico a otra persona (regla 17)
 
@@ -108,6 +114,11 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     **Una skill de afuera entra solo por `/metodo:buscar-skill-externa`**: buscar (solo lectura) → traerla a una cuarentena que la
     audita → tu OK en el chat → copiarla a mano. Nunca `npx skills add|update` contra tu carpeta de skills (un freno lo impide)
     ni copiar a ciegas una skill que viste en la web: el instalador de Vercel copia todo sin auditar, incluidos archivos de prueba.
+    **Qué hace confiable a algo de afuera** (skill, plugin, repo): alcanza **uno** de tres caminos — lo usa mucha gente (unas 5.000
+    estrellas o más), es de una organización oficial (Anthropic, Microsoft, Google y equivalentes), o alguien leyó el contenido
+    entero, **y esto último solo vale si es puro texto** (sin scripts, ejecutables ni enlaces simbólicos). Además, siempre: licencia
+    permisiva, actividad reciente y propósito único. Se fija la versión (hash o número) y se anota de dónde vino. Si hay una
+    excepción bien fundada, se cambia la regla a la vista; no se hace en silencio.
 
 ## Cuándo repartir el trabajo entre sesiones (regla 20)
 

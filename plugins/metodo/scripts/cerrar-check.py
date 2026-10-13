@@ -257,6 +257,27 @@ except Exception:
 print("• MANUAL (verificación propia): ¿qué PROBASTE del resultado de lo que hiciste hoy (que funciona, no que el comando salió "
       "sin error)? Una línea por cosa: qué corriste y qué viste en el disco. Lo no probado, dicho. Nada se limpia ni se da por "
       "«listo» sin eso (regla 1 del método)")
+# Paso 0: no se cierra con sesiones hijas trabajando ni con ramas o copias sin resolver. El estado de las sesiones vive en la
+# app (el script no lo ve): se imprime PRIMERO como MANUAL; las ramas y copias sí las mide el script.
+print("• MANUAL (Paso 0, PRIMERO): si esta sesión abrió otras (barra lateral de la app), ¿alguna sigue trabajando o entregó algo que "
+      "nadie revisó? → NO se cierra: archivar esta sesión corta a las hijas y pierden el canal por el que te entregan. "
+      "Mirá `list_sessions` con `linked: true` y leé la entrega de cada una antes de seguir")
+try:
+    if git("rev-parse", "--show-toplevel"):
+        _base0 = next((b for b in ("main", "master") if git("rev-parse", "--verify", "--quiet", b)), None)
+        if _base0:
+            _nm = [b.strip().lstrip("+*").strip() for b in (git("branch", "--no-merged", _base0) or "").splitlines()]
+            _nm = [b for b in _nm if b and b not in ("estable", "stable")]
+            if _nm:
+                print(f"• Ramas SIN juntar a {_base0}: {', '.join(_nm)[:300]} · cada una: la juntás con el OK del usuario (regla 13) "
+                      "o queda anotada en PENDIENTES con su dueño")
+        _wt = [l for l in (git("worktree", "list") or "").splitlines()[1:]]
+        if _wt:
+            print(f"• Copias de trabajo abiertas ({len(_wt)}): " + " | ".join(w.split()[0] for w in _wt[:4])
+                  + " · no se abandonan: se resuelven o se anotan (nunca borres la de otra sesión)")
+except Exception:
+    pass
+
 # (g) lo que solo puede hacer la sesión
 print("• MANUAL (paso 3, lo durable): lo que esta sesión aprendió como regla permanente ya bajó al CLAUDE.md (o a su archivo), "
       "no solo al prompt — decí dónde fue cada cosa, o «nada»")
