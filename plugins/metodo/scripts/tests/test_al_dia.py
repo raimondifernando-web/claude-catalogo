@@ -214,12 +214,12 @@ class AlDiaConfiguracionAntigravity(unittest.TestCase):
         self.agy.write_text("#!/bin/bash\ntouch %s\n" % self.marca); self.agy.chmod(0o755)
         self.conf = self.d / ".gemini" / "antigravity-cli" / "settings.json"
 
-    def correr(self, agb=None):
+    def correr(self, agb=None, cwd=None):
         agb = str(self.agy) if agb is None else agb
         guion = ("f() {\n  local avisos=() falta=() HOME=%s AGB=%s T='' x\n%s\n"
                  "  for x in ${avisos[@]+\"${avisos[@]}\"}; do echo \"AVISO:$x\"; done\n"
                  "  for x in ${falta[@]+\"${falta[@]}\"}; do echo \"FALTA:$x\"; done\n}\nf\n") % (self.d, agb, self.BLOQUE)
-        r = subprocess.run(["/bin/bash", "-c", guion], capture_output=True, text=True, timeout=60)
+        r = subprocess.run(["/bin/bash", "-c", guion], capture_output=True, text=True, timeout=60, cwd=cwd)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertFalse(self.marca.exists(), "al-dia NO puede ejecutar agy (sin sesión abre el navegador)")
         return r.stdout
@@ -246,8 +246,13 @@ class AlDiaConfiguracionAntigravity(unittest.TestCase):
     def test_avisa_de_las_reglas_amplias_sin_tocarlas(self):
         self.conf.parent.mkdir(parents=True)
         amplias = ["read_url(*)", "command(*)", "command(git *)", "command(git -C*)", "command(git diff*)",
-                   "command(git show*)", "command(git log*)", "command(ls*)"]
-        acotadas = ["command(git log -1 --oneline)", "command(git diff --stat)", "command(npm test)"]
+                   "command(git show*)", "command(git log*)", "command(ls*)",
+                   # N1 de la segunda revisión
+                   "read_file(/Users/x/Proyectos/**)", "read_file(~/notas)", "read_file(/Users/x/a.txt)",
+                   "read_url(https://*.example.com)", "write_file(src/)", "command(python3 tarea.py)",
+                   "command(node x.js)", "command(/bin/bash -c hola)", "command(regex:npm run .*)"]
+        acotadas = ["command(git log -1 --oneline)", "command(git diff --stat)", "command(npm test)",
+                    "read_url(docs.python.org)", "read_file(src/app.py)"]
         original = json.dumps({"permissions": {"allow": amplias + acotadas}})
         self.conf.write_text(original)
         out = self.correr()
@@ -301,10 +306,38 @@ class AlDiaConfiguracionAntigravity(unittest.TestCase):
         self.assertIn("FALTA:configuración de Antigravity", out)
         self.assertEqual([x.name for x in self.conf.parent.iterdir()], ["settings.json"])
 
+    def test_un_json_py_plantado_en_la_carpeta_no_se_ejecuta(self):
+        planta = self.d / "proyecto-hostil"; planta.mkdir()
+        testigo = self.d / "JSON-PLANTADO-SE-EJECUTO"
+        (planta / "json.py").write_text("open(%r, 'w').write('x')\nfrom json import *\n" % str(testigo))
+        # control: sin -I, el Python de Apple sí carga el json.py de la carpeta (si no, la prueba no probaría nada)
+        subprocess.run(["/usr/bin/python3", "-", "x"], input="import json\n", text=True, cwd=planta, capture_output=True)
+        self.assertTrue(testigo.exists(), "el control no cargó el json.py plantado: la prueba no sirve")
+        testigo.unlink()
+        self.conf.parent.mkdir(parents=True)
+        self.conf.write_text(json.dumps({"permissions": {"allow": ["command(git -C *)"]}}))
+        out = self.correr(cwd=planta)
+        self.assertFalse(testigo.exists(), "al-dia cargó el json.py de la carpeta desde la que se corrió")
+        self.assertIn("AVISO:Antigravity: saqué", out)
+
     def test_el_bloque_no_escribe_reglas_allow_ni_deny(self):
         # la única escritura de allow es filtrar (sacar git -C); deny no se toca
         self.assertEqual(re.findall(r'\["allow"\]\s*=.*', self.BLOQUE), ['["allow"] = [r for r in allow if r not in SACAR]'])
         self.assertNotRegex(self.BLOQUE, r'\.(append|extend|insert)\(|setdefault\(|"deny"')
+
+
+class AlDiaPythonAislado(unittest.TestCase):
+    """N3: ningún Python con código en línea carga módulos plantados en la carpeta desde la que se corre al-dia."""
+
+    def test_toda_llamada_en_linea_lleva_menos_I(self):
+        for archivo in (AL_DIA, SCRIPTS / "al-dia-auto.sh"):
+            texto = archivo.read_text(encoding="utf-8")
+            self.assertGreater(len(re.findall(r"/usr/bin/python3 -I (-c|-) ", texto)), 0, archivo.name)
+            self.assertEqual(re.findall(r"/usr/bin/python3 (?!-I )(-c|-) ", texto), [], archivo.name)
+
+    def test_el_python_con_librerias_corre_parado_en_la_raiz(self):
+        self.assertIn('pyd() { ( cd / && "$PY" "$@" ); }', TEXTO)
+        self.assertEqual(re.findall(r'"\$PY" -[cm]', TEXTO), [])
 
 
 class AlDiaAvisaCambios(unittest.TestCase):

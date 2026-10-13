@@ -66,7 +66,7 @@ restaurar() {
 git ls-remote --heads "https://github.com/$REPO.git" "refs/heads/$RAMA" 2>/dev/null | grep -q "[[:space:]]refs/heads/$RAMA$" \
   || { [ $AUTO -eq 1 ] && return 0; echo "✗ No pude confirmar la rama estable del catálogo (¿internet?). Probá de nuevo en un rato."; return 1; }
 if claude plugin marketplace list 2>/dev/null | grep -qF "$CAT"; then
-  REF=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]]["source"].get("ref",""))' "$KM" "$CAT" 2>/dev/null) || REF="?"
+  REF=$(/usr/bin/python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]]["source"].get("ref",""))' "$KM" "$CAT" 2>/dev/null) || REF="?"
   # Ya estaba, siguiendo otra rama: se pasa a «estable» (también en la corrida automática, como mucho una vez por semana).
   # Claude no deja cambiar la rama de un catálogo instalado: hay que quitarlo y volver a agregarlo, y eso desinstala sus
   # paquetes. Antes se guarda una copia de todo; primero se reinstala metodo (el que mantiene todo al día) y, si no queda
@@ -78,8 +78,8 @@ if claude plugin marketplace list 2>/dev/null | grep -qF "$CAT"; then
     for f in "$S" "$KM" "$IP"; do [ ! -f "$f" ] || cp -p "$f" "$RD/" || ok=0; done
     [ ! -d "$M" ] || cp -Rp "$M" "$RD/marketplace" || ok=0
     [ $ok -eq 1 ] || { [ $AUTO -eq 1 ] && return 0; echo "✗ No pude guardar la copia de tu configuración: no toqué nada. Mandale esta captura a Fernando."; return 1; }
-    APAGADOS=$(/usr/bin/python3 -c 'import json,sys; print(" ".join(k for k,v in json.load(open(sys.argv[1])).get("enabledPlugins",{}).items() if v is False and k.endswith("@"+sys.argv[2])))' "$S" "$CAT" 2>/dev/null)
-    INSTALADOS=$(/usr/bin/python3 -c 'import json,sys; print(" ".join(k.split("@")[0] for k in json.load(open(sys.argv[1])).get("plugins",{}) if k.endswith("@"+sys.argv[2])))' "$IP" "$CAT" 2>/dev/null)
+    APAGADOS=$(/usr/bin/python3 -I -c 'import json,sys; print(" ".join(k for k,v in json.load(open(sys.argv[1])).get("enabledPlugins",{}).items() if v is False and k.endswith("@"+sys.argv[2])))' "$S" "$CAT" 2>/dev/null)
+    INSTALADOS=$(/usr/bin/python3 -I -c 'import json,sys; print(" ".join(k.split("@")[0] for k in json.load(open(sys.argv[1])).get("plugins",{}) if k.endswith("@"+sys.argv[2])))' "$IP" "$CAT" 2>/dev/null)
     claude plugin marketplace remove "$CAT" >/dev/null 2>&1
     if claude plugin marketplace list 2>/dev/null | grep -qF "$CAT"; then
       falta+=("pasar el catálogo a la rama estable")                       # no se quitó: sigue todo como estaba
@@ -184,7 +184,7 @@ fi
 # 5. Todos los paquetes del catálogo: instalar los que falten, actualizar los demás
 #    En --auto, un paquete NUEVO entra solo si vive dentro del catálogo (./plugins/…) o viene de afuera fijado por sha;
 #    si no, queda para la próxima vez que se pegue el comando a mano.
-fijo() { /usr/bin/python3 - "$M/.claude-plugin/marketplace.json" "$1" <<'PY' >/dev/null 2>&1
+fijo() { /usr/bin/python3 -I - "$M/.claude-plugin/marketplace.json" "$1" <<'PY' >/dev/null 2>&1
 import json, re, sys
 ps = [x for x in json.load(open(sys.argv[1]))["plugins"] if x.get("name") == sys.argv[2]]
 s = (ps[0] if len(ps) == 1 else {}).get("source")      # nombre repetido: no se toma ninguno
@@ -215,7 +215,7 @@ done
 
 # 5a. Los paquetes que tenías apagados antes del cambio de rama quedan apagados; y el catálogo, en la rama estable
 for p in $APAGADOS; do [[ $p =~ ^[a-z0-9][a-z0-9-]*@$CAT$ ]] && claude plugin disable "$p" >/dev/null 2>&1; done
-[ "$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]]["source"].get("ref",""))' "$KM" "$CAT" 2>/dev/null)" = "$RAMA" ] \
+[ "$(/usr/bin/python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]]["source"].get("ref",""))' "$KM" "$CAT" 2>/dev/null)" = "$RAMA" ] \
   || [ "$REF" = "?" ] || falta+=("el catálogo no quedó en la rama estable")   # ilegible: no se tocó nada, no se avisa todos los días
 
 # 5b. Herramientas de Apple (traen Python) y librerías de las skills de documentos e imágenes, con versiones fijas
@@ -237,7 +237,10 @@ for l in open(sys.argv[1]):
         assert m.version(n) == v
     except Exception:
         sys.exit(1)' PIPLOG="$CC/metodo/al-dia-pip.log"
-  if "$PY" -c 'import sys; sys.exit(sys.version_info[:2] != (3, 9))' 2>/dev/null; then
+  # parado en «/»: un pip.py o json.py plantado en la carpeta desde la que se corre no se carga (no va -I: usa las
+  # librerías de usuario que instala)
+  pyd() { ( cd / && "$PY" "$@" ); }
+  if pyd -c 'import sys; sys.exit(sys.version_info[:2] != (3, 9))' 2>/dev/null; then
     # Python de Apple (3.9, igual en macOS 12 a 27): las 4 librerías y TODAS sus dependencias con versión y huella fijas
     # (--require-hashes: si PyPI sirviera otro archivo, pip no instala nada). Huellas de la API de PyPI, 2026-10-12:
     # ruedas cp39 de Mac arm64 y x86_64 (macOS 10.12 o más). Probado: instala en arm64, resuelve en x86_64, huella mala = falla.
@@ -272,18 +275,18 @@ typing-inspection==0.4.2 --hash=sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44
 tzdata==2026.5 --hash=sha256:b683bd1b6659ddcd810ff02ad09ba821d4bf1065072805063eb35c49617905ac
 urllib3==2.6.3 --hash=sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4
 REQ
-    if ! "$PY" -c "$CPY" "$RQ" 2>/dev/null; then
-      "$PY" -m pip install --user --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
+    if ! pyd -c "$CPY" "$RQ" 2>/dev/null; then
+      pyd -m pip install --user --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
         --require-hashes -r "$RQ" > "$PIPLOG" 2>&1
     fi
-    "$PY" -c "$CPY" "$RQ" 2>/dev/null || falta+=("librerías de Python (detalle en ${PIPLOG#$HOME/})")
+    pyd -c "$CPY" "$RQ" 2>/dev/null || falta+=("librerías de Python (detalle en ${PIPLOG#$HOME/})")
     rm -f "$RQ"
   else   # otro Python (L3): solo las 4 con versión fija; sus dependencias quedan sin fijar. Se avisa solo si de verdad quedaron.
     local RQ4; RQ4=$(mktemp)
     printf '%s\n' pandas==2.3.3 openpyxl==3.1.5 requests==2.32.5 openai==2.48.0 > "$RQ4"
-    if ! "$PY" -c "$CPY" "$RQ4" 2>/dev/null; then
-      if "$PY" -m pip install --user --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
-          -r "$RQ4" > "$PIPLOG" 2>&1 && "$PY" -c "$CPY" "$RQ4" 2>/dev/null; then
+    if ! pyd -c "$CPY" "$RQ4" 2>/dev/null; then
+      if pyd -m pip install --user --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
+          -r "$RQ4" > "$PIPLOG" 2>&1 && pyd -c "$CPY" "$RQ4" 2>/dev/null; then
         avisos+=("tu Python de Apple no es el 3.9: instalé las librerías de Python sin huellas fijas en sus dependencias (contale a Fernando)")
       else falta+=("librerías de Python (tu Python de Apple no es el 3.9 y pip falló; detalle en ${PIPLOG#$HOME/})"); fi
     fi
@@ -371,19 +374,30 @@ fi
 # las reglas de git/ls/wc no le sirven y solo abren riesgo (leer cualquier archivo con git diff --no-index, ejecutar con
 # git grep -O, sacar datos con read_url). Lo único que se hace: (1) quitar `command(git -C *)` si está (dejaba ejecutar
 # programas con -c core.fsmonitor=…), sobre una copia validada, con copia con fecha y reemplazo de una vez (si es un enlace
-# simbólico, se edita el archivo real); (2) avisar en una línea si hay reglas amplias, sin tocarlas: decide la persona.
+# simbólico, se edita el archivo real); (2) avisar en una línea si hay reglas amplias (leer cualquier carpeta, escribir,
+# comandos con comodín o intérprete, cualquier página), sin tocarlas: decide la persona. delegar.py avisa lo mismo al lanzar.
 # Solo si agy está instalado y ya tiene su configuración (entraste al menos una vez): NO se ejecuta agy.
 local AGS="$HOME/.gemini/antigravity-cli/settings.json" AGL
 if [ -n "$AGB" ] && [ -x "$AGB" ] && [ -f "$AGS" ]; then
   T=$(mktemp)   # T: lo borra el trap de salida
-  if /usr/bin/python3 - "$AGS" > "$T" 2>/dev/null <<'PY'
+  if /usr/bin/python3 -I - "$AGS" > "$T" 2>/dev/null <<'PY'
 import json, os, shutil, sys, tempfile, time
 ruta = os.path.realpath(sys.argv[1])
 SACAR = ["command(git -C *)"]
+INTERPRETES = {"python", "python3", "node", "bash", "sh", "zsh", "ruby", "perl", "osascript", "deno", "bun", "npx", "env",
+               "eval", "pwsh", "powershell"}
 def amplia(r):
-    return (r in ("read_url(*)", "command(*)", "command(git *)", "command(ls*)")
-            or r.startswith("command(git -C")
-            or r in ("command(git diff*)", "command(git show*)", "command(git log*)"))
+    if r.startswith("read_url("):
+        return "*" in r
+    if r.startswith("read_file("):
+        return "**" in r or "~" in r or "/Users/" in r or "/home/" in r
+    if r.startswith("write_file("):
+        return True
+    if r.startswith("command("):
+        cuerpo = r[len("command("):].rstrip(")")
+        palabra = (cuerpo.split() or [""])[0]
+        return "*" in cuerpo or cuerpo.startswith("regex:") or os.path.basename(palabra) in INTERPRETES
+    return False
 with open(ruta, encoding="utf-8") as f:
     d = json.load(f)
 p = d.get("permissions") if isinstance(d, dict) else None
@@ -413,7 +427,7 @@ if sacar:
 amplias = [r for r in p["allow"] if isinstance(r, str) and amplia(r)] if sacar else [r for r in allow if isinstance(r, str) and amplia(r)]
 if amplias:
     print("Antigravity: tu configuración tiene reglas amplias que le dejan leer o ejecutar de más, o mandar datos a "
-          "cualquier página, sin preguntar (%s). Si no las pusiste a propósito, borralas de "
+          "cualquier página, sin preguntar (%s): un repo con instrucciones escondidas podría usarlas. Si no las pusiste a propósito, borralas de "
           "~/.gemini/antigravity-cli/settings.json (permissions.allow); delegar.py no las necesita" % ", ".join(amplias))
 PY
   then
@@ -453,7 +467,7 @@ con_tope() {
 }
 if printf '%s\n' "$lista" | grep -A3 -E "❯ $HB@$CAT[[:space:]]*$" | grep -q "✔ enabled"; then
   # Carpeta y versión del paquete instalado para el usuario, tal como las registra Claude Code; dentro de su caché.
-  { read -r HD; read -r HV; } < <(/usr/bin/python3 -c 'import json,sys; es=json.load(open(sys.argv[1]))["plugins"][sys.argv[2]]; e=([x for x in es if x.get("scope")=="user"] or es)[0]; print(e["installPath"]); print(e["version"])' "$IP" "$HB@$CAT" 2>/dev/null)
+  { read -r HD; read -r HV; } < <(/usr/bin/python3 -I -c 'import json,sys; es=json.load(open(sys.argv[1]))["plugins"][sys.argv[2]]; e=([x for x in es if x.get("scope")=="user"] or es)[0]; print(e["installPath"]); print(e["version"])' "$IP" "$HB@$CAT" 2>/dev/null)
   case "$HD" in "$CC/plugins/cache/$CAT/$HB/"*) HD="$HD/skills/huashu-design";; *) HD="";; esac
   case "$HD$HV" in *..*) HD="";; esac
   local PWC="$HD/node_modules/playwright-core/cli.js" BJ="$HD/node_modules/playwright-core/browsers.json"
@@ -679,9 +693,9 @@ if [ -n "$SP" ] && xcode-select -p >/dev/null 2>&1; then
     case "$u" in https://github.com/*|git@github.com:*) cand+=("${d%/}");; esac
   done
   local BJ="$CC/metodo/buzon.json" bc
-  [ -f "$BJ" ] && bc=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("carpeta",""))' "$BJ" 2>/dev/null) && [ -n "$bc" ] && [ -d "$bc/.git" ] && cand+=("$bc")
+  [ -f "$BJ" ] && bc=$(/usr/bin/python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1])).get("carpeta",""))' "$BJ" 2>/dev/null) && [ -n "$bc" ] && [ -d "$bc/.git" ] && cand+=("$bc")
   for d in ${cand[@]+"${cand[@]}"}; do
-    /usr/bin/python3 - "$CC/metodo/seguridad.json" "$d" <<'PY' >/dev/null 2>&1 && /usr/bin/python3 "$SP" agregar "$d" >/dev/null 2>&1
+    /usr/bin/python3 -I - "$CC/metodo/seguridad.json" "$d" <<'PY' >/dev/null 2>&1 && /usr/bin/python3 "$SP" agregar "$d" >/dev/null 2>&1
 import json, os, sys
 from pathlib import Path
 cfg, ruta = Path(sys.argv[1]), Path(sys.argv[2]).resolve()

@@ -33,7 +33,7 @@ if [ -d "$L" ]; then   # candado: si el proceso que lo tomó ya no existe, se li
 fi
 if [ -z "$(find "$D/al-dia.ultimo" -mmin -1200 2>/dev/null)" ] && [ -f "$S" ] && mkdir "$L" 2>/dev/null; then
   touch "$D/al-dia.ultimo"
-  /usr/bin/python3 - "$S" "$L" "$D/al-dia.log" <<'PY' >/dev/null 2>&1 || rm -rf "$L"
+  /usr/bin/python3 -I - "$S" "$L" "$D/al-dia.log" <<'PY' >/dev/null 2>&1 || rm -rf "$L"
 import os, sys, time, signal
 s, l, log = sys.argv[1:4]
 if os.fork(): sys.exit(0)
