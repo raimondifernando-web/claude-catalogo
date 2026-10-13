@@ -78,17 +78,64 @@ Personas: **Vos** (dueño, todo) · **Lucía** (socia, toda la Empresa A) · **B
 proyecto web). Quien trabaja en un área o un proyecto tiene acceso de lectura a las cajas de arriba, para que Claude lea sus
 `CLAUDE.md`.
 
+Las marcas al final de cada línea indican cómo se muestra la caja en el dibujo: `[completa]` muestra todos los archivos del molde, `[nota: …]` muestra esa aclaración, y `[resumen]` muestra solo el título.
+
 ```
-Empresa-A        empresa   empresa-a/empresa-a     vos lu be:lee ca:lee
-  Ventas         area      empresa-a/ventas        vos lu be
-    crm          proyecto  empresa-a/crm           vos lu be
-    presupuestos proyecto  empresa-a/presupuestos  vos lu be
-  Marketing      area      empresa-a/marketing     vos lu ca:lee
-    web          proyecto  empresa-a/web           vos lu ca
-    campañas     proyecto  empresa-a/campanas      vos lu
-Empresa-B        empresa   empresa-b/empresa-b     vos
-Personal         proyecto  vos/personal            vos
+Empresa-A        empresa   empresa-a/empresa-a     vos lu be:lee ca:lee    [completa]
+  Ventas         area      empresa-a/ventas        vos lu be               [completa]
+    crm          proyecto  empresa-a/crm           vos lu be               [completa]
+    presupuestos proyecto  empresa-a/presupuestos  vos lu be               [nota: Igual que crm por dentro.]
+  Marketing      area      empresa-a/marketing     vos lu ca:lee           [nota: Por dentro, igual que Ventas.]
+    web          proyecto  empresa-a/web           vos lu ca               [resumen]
+    campañas     proyecto  empresa-a/campanas      vos lu                  [resumen]
+Empresa-B        empresa   empresa-b/empresa-b     vos                     [nota: Otra empresa tuya. Mismo esquema: áreas y proyectos adentro.]
+Personal         proyecto  vos/personal            vos                     [nota: Lo tuyo. Nadie más entra. Por dentro, igual que un proyecto.]
 ```
+
+## Personas del ejemplo
+| Clave | Nombre | Rol |
+|---|---|---|
+| vos | Vos | Dueño. Entra a todo. |
+| lu | Lucía | Socia. Toda la Empresa A. |
+| be | Beto | Solo el área Ventas. |
+| ca | Caro | Solo el proyecto web. |
+
+## Contenido de ~/.claude/
+Archivos de cada persona en su computadora:
+
+| Archivo | Qué es |
+|---|---|
+| `CLAUDE.md` | quién soy y cómo trabajo |
+| `settings.json` | mis permisos y plugins |
+| `skills/` | mis habilidades para cualquier proyecto |
+| `agents/` | mis asistentes especializados |
+| `projects/…/memory/` | lo que Claude aprende solo, uno por proyecto |
+| `~/.claude.json` | mis conectores: correo, calendario, Drive |
+
+## Textos del dibujo por nivel
+Textos específicos que muestra el dibujo para cada nivel cuando difieren del texto general del molde. Si un archivo no figura acá, se usa la descripción general del molde.
+
+| Archivo | Nivel | Etiqueta | Descripción |
+|---|---|---|---|
+| `CLAUDE.md` | empresa | `CLAUDE.md` | reglas de la empresa: Claude las lee solo en todo lo de adentro |
+| `CLAUDE.md` | area | `CLAUDE.md` | reglas del área: se suman a las de la empresa |
+| `CLAUDE.md` | proyecto | `CLAUDE.md` | reglas del proyecto: qué es y cómo se trabaja |
+| `.claude/settings.json` | empresa | `.claude/settings.json` | permisos para trabajar acá · activa el paquete de la empresa |
+| `.claude/settings.json` | area | `.claude/settings.json` | permisos para trabajar acá · activa el paquete de la empresa |
+| `.claude/settings.json` | proyecto | `.claude/settings.json` | permisos del proyecto · activa el paquete de la empresa (y el del área, si hay) |
+| `.gitignore` | empresa | `.gitignore` | no guarda las carpetas de adentro (cada una tiene su repositorio) |
+| `.gitignore` | area | `.gitignore` | no guarda las carpetas de los proyectos |
+| `.gitignore` | proyecto | `.gitignore` | lo que no se sube a GitHub |
+| `plugins/<paquete>/` | empresa | `plugins/kit-empresa/ <span class="q">+ .claude-plugin/</span>` | el paquete de la empresa: skills, agentes, avisos automáticos y conectores que usan todos |
+| `plugins/<paquete>/` | area | `plugins/kit-ventas/ <span class="q">(opcional)</span>` | paquete del área, si sus proyectos comparten skills o agentes |
+| `.claude-plugin/marketplace.json` | empresa | — | — |
+| `.claude-plugin/marketplace.json` | area | — | — |
+
+## Pie del dibujo
+Cada caja es un repositorio en GitHub, y el acceso se da en GitHub, repositorio por repositorio. En la computadora, cada carpeta es la copia de su repositorio y se conecta por su `.git/`. Cada persona descarga solo los repositorios donde está su punto: Beto nunca tiene Marketing ni Empresa-B, porque no las puede descargar. Los puntos huecos son para que Claude lea las reglas de la empresa o del área, aunque esa persona trabaje solo en un proyecto.
+
+Todas las cajas tienen los mismos archivos (empresa, área y proyecto), porque en cualquiera se puede abrir Claude a trabajar. Lo que está en `.claude/` rige solo cuando trabajás en esa caja. Lo marcado con `↓ llega a lo de adentro` es lo único que pasa a las cajas de adentro: las reglas (`CLAUDE.md`) y el paquete, que cada caja activa en su `settings.json`. Lo verde no se sube a GitHub.
+
 
 ## Fuentes
 Documentación oficial de Claude Code, verificada el 2026-10-13. Si una cambia, se revisa este archivo.
