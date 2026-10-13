@@ -15,7 +15,9 @@
 #
 # Compuerta de security check (F14 del check 0.35.0), también en el «pasalo ya»: si lo que se promueve trae una versión
 # nueva de metodo o paneles (corren en las máquinas de los clientes), esa versión tiene que estar en un título de
-# docs/SECURITY-CHECKS.md o de .claude/security-checks/*.md (leídos de main). Si falta, no se mueve y la corrida sale en rojo.
+# docs/SECURITY-CHECKS.md o de .claude/security-checks/*.md (leídos de main) con versión exacta o rango, «commit <sha>» del
+# código revisado (en la historia del que se promueve) y veredicto PASS. Si falta, no se mueve y la corrida sale en rojo.
+# Controla el PROCESO (que no se olvide el check); no frena a quien ya puede empujar a main.
 # Salida a propósito, que queda anotada (resumen de la corrida, aviso amarillo de GitHub, quién y por qué):
 #         gh workflow run estable.yml -f sha=<commit completo de main> -f sin_check="<motivo>"
 # Mientras el script de `estable` no tenga la compuerta (las primeras 48 h), sin_check se ignora con un aviso.

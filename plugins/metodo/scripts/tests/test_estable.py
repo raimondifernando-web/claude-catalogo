@@ -573,53 +573,112 @@ class TestScript(unittest.TestCase):
         self.assertIn("falta el security check de metodo 0.36.0", r.stdout)
         self.assertEqual(self._estable_remoto(), self.c[1])
 
+    def _titulo(self, que, commit, veredicto="PASS"):
+        return "### 2026-10-20 · %s (commit %s) — %s" % (que, commit[:7], veredicto)
+
+    def _pasa(self, sha):
+        r = self.correr("--sha", sha, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), sha)
+        return r
+
+    def _no_pasa(self, sha):
+        r = self.correr("--sha", sha, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("falta el security check", r.stdout)
+        self.assertEqual(self._estable_remoto(), self.c[1])
+        return r
+
     def test_check_anotado_despues_en_main_deja_pasar(self):
         v = self._version("metodo", "0.36.0")
-        self._check("### 2026-10-20 · metodo 0.36.0 (lo que sea)")   # commit posterior: se lee de main, no del candidato
-        r = self.correr("--sha", v, api="http://127.0.0.1:1")
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(self._estable_remoto(), v)
-        self.assertIn("metodo 0.36.0 → check de 0.36.0 en `docs/SECURITY-CHECKS.md`", r.resumen)   # dice qué lo validó
+        self._check(self._titulo("metodo 0.36.0", v))   # commit posterior: se lee de main, no del candidato
+        r = self._pasa(v)
+        self.assertIn("metodo 0.36.0 → «2026-10-20 · metodo 0.36.0 (commit %s) — PASS» en `docs/SECURITY-CHECKS.md` "
+                      "(commit revisado `%s`)" % (v[:7], v[:7]), r.resumen)   # dice qué lo validó
         self.assertIn("sin_check=false", r.salida)
 
-    def test_rango_en_el_titulo_cubre_la_version_final(self):
-        v = self._version("metodo", "0.36.0")
-        self._check("## metodo 0.35.1 → 0.36.0 y paneles 0.3.0 — PASS")
-        r = self.correr("--sha", v, api="http://127.0.0.1:1")
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-
-    def test_check_de_una_version_mas_nueva_cubre_y_se_compara_por_numero(self):
+    def test_rango_en_el_titulo_cubre_y_se_compara_por_numero(self):
         v = self._version("metodo", "0.9.0")
-        self._check("### metodo 0.10.0")          # 0.10.0 > 0.9.0 (por número, no por texto)
-        r = self.correr("--sha", v, api="http://127.0.0.1:1")
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("metodo 0.9.0 → check de 0.10.0", r.resumen)
+        self._check(self._titulo("metodo 0.8.0 → 0.10.0 y paneles 0.3.0", v))   # 0.8.0 <= 0.9.0 <= 0.10.0 por número
+        self._pasa(v)
 
-    def test_check_de_una_version_mas_vieja_no_cubre(self):
-        v = self._version("metodo", "0.10.0")
-        self._check("### metodo 0.9.9")
-        r = self.correr("--sha", v, api="http://127.0.0.1:1")
-        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+    def test_rango_con_flecha_ascii_backticks_y_v(self):
+        v = self._version("metodo", "0.36.0")
+        self._check("## `metodo v0.35.1 -> v0.36.0` (commit `%s`) — PASS con condiciones" % v[:12])
+        self._pasa(v)
+
+    def test_check_de_otra_version_no_cubre(self):  # M2: exacta o rango, nunca «una más nueva» (un 3.50.0 tipeado mal lo apagaba)
+        v = self._version("metodo", "0.36.0")
+        self._check(self._titulo("metodo 3.50.0", v))
+        self._check(self._titulo("metodo 0.35.9", v))
+        self._no_pasa(v)
+
+    def test_titulo_con_fail_o_sin_pass_no_cuenta(self):  # M2
+        v = self._version("metodo", "0.36.0")
+        self._check(self._titulo("metodo 0.36.0", v, "FAIL"))
+        self._check(self._titulo("metodo 0.36.0", v, "PASS a medias, FAIL en Windows"))
+        self._check(self._titulo("metodo 0.36.0", v, "NO PASS"))
+        self._check("### 2026-10-20 · metodo 0.36.0 (commit %s) — pendiente" % v[:7])
+        self._no_pasa(v)
+
+    def test_titulo_sin_commit_o_con_dos_no_cuenta(self):  # M2
+        v = self._version("metodo", "0.36.0")
+        self._check("### 2026-10-20 · metodo 0.36.0 — PASS")
+        self._check("### metodo 0.36.0 (commit %s, commit %s) — PASS" % (v[:7], self.c[1][:7]))
+        self._no_pasa(v)
+
+    def test_commit_revisado_que_no_es_ancestro_no_cuenta(self):  # M2
+        v = self._version("metodo", "0.36.0")
+        w = self._archivo("docs/despues.md", "x", "commit posterior al candidato")
+        self._check(self._titulo("metodo 0.36.0", w))   # revisó algo que el candidato no tiene en su historia
+        self._no_pasa(v)
+
+    def test_commit_revisado_inexistente_no_cuenta(self):  # M2
+        v = self._version("metodo", "0.36.0")
+        self._check(self._titulo("metodo 0.36.0", "deadbeefdeadbeef"))
+        self._no_pasa(v)
+
+    def test_titulo_dentro_de_un_bloque_de_codigo_no_cuenta(self):  # M2
+        v = self._version("metodo", "0.36.0")
+        self._check("```markdown\n%s\n```" % self._titulo("metodo 0.36.0", v))
+        self._check("~~~\n%s\n~~~" % self._titulo("metodo 0.36.0", v))
+        self._no_pasa(v)
+
+    def test_cambios_despues_del_commit_revisado_avisan(self):  # M2, refuerzo
+        v = self._version("metodo", "0.36.0")
+        w = self._archivo("plugins/metodo/scripts/agregado.py", "print(1)", "código después del check")
+        self._check(self._titulo("metodo 0.36.0", v))
+        r = self.correr("--sha", w, api="http://127.0.0.1:1", extra_env={"GITHUB_ACTIONS": "true"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("::warning::estable: hay cambios en plugins/metodo después del commit revisado", r.stdout)
+
+    def test_otro_nombre_que_termina_en_metodo_no_cuenta(self):  # L6
+        v = self._version("metodo", "0.36.0")
+        self._check(self._titulo("escala-metodo 0.36.0", v))
+        self._check(self._titulo("supermetodo 0.36.0", v))
+        self._no_pasa(v)
+
+    def test_version_con_sufijo_en_el_titulo_no_cuenta(self):
+        v = self._version("metodo", "0.36.0")
+        self._check(self._titulo("metodo 0.36.0-rc.1", v))
+        self._check(self._titulo("metodo 0.36.0.1", v))
+        self._no_pasa(v)
 
     def test_reporte_en_la_carpeta_de_checks_cuenta(self):
         v = self._version("metodo", "0.36.0")
-        self._check("# Security check — claude-catalogo (metodo 0.36.0, commit abc1234) — 2026-10-20",
+        self._check("# Security check — claude-catalogo (metodo 0.36.0, commit %s) — 2026-10-20 — PASS" % v[:7],
                     ruta=".claude/security-checks/2026-10-20.md")
-        r = self.correr("--sha", v, api="http://127.0.0.1:1")
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self._pasa(v)
 
     def test_mencion_en_el_cuerpo_no_cuenta(self):
         v = self._version("metodo", "0.36.0")
-        self._check("### 2026-10-20 · metodo 0.35.1", cuerpo="Condiciones para metodo 0.36.0: ninguna")
-        r = self.correr("--sha", v, api="http://127.0.0.1:1")
-        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
-        self.assertEqual(self._estable_remoto(), self.c[1])
+        self._check(self._titulo("metodo 0.35.1", v), cuerpo="Condiciones para metodo 0.36.0 (commit %s): ninguna — PASS" % v[:7])
+        self._no_pasa(v)
 
     def test_otro_paquete_con_el_mismo_numero_no_cubre(self):
         v = self._version("metodo", "0.3.0")
-        self._check("### paneles 0.3.0")
-        r = self.correr("--sha", v, api="http://127.0.0.1:1")
-        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self._check(self._titulo("paneles 0.3.0", v))
+        self._no_pasa(v)
 
     def test_paneles_tambien_se_vigila(self):
         v = self._version("paneles", "0.3.0")
@@ -650,7 +709,14 @@ class TestScript(unittest.TestCase):
         self.assertIn("::warning::estable: PROMOVIDO SIN SECURITY CHECK de metodo 0.36.0, por fernando. Motivo: arreglo urgente",
                       r.stdout)
         self.assertIn("PROMOVIDO SIN SECURITY CHECK", r.resumen)
+        self.assertIn("Motivo: `arreglo urgente de un cliente`", r.resumen)   # Info8: entre backticks en el resumen
         self.assertIn("sin_check=true", r.salida)
+
+    def test_motivo_con_backticks_no_rompe_el_resumen(self):  # Info8
+        v = self._version("metodo", "0.36.0")
+        r = self.correr("--sha", v, "--sin-check", "urgente `rm -rf` de mentira", api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Motivo: `urgente 'rm -rf' de mentira`", r.resumen)
 
     def test_forzar_sin_motivo_real_es_error_de_uso(self):
         v = self._version("metodo", "0.36.0")
@@ -670,7 +736,7 @@ class TestScript(unittest.TestCase):
 
     def test_forzar_cuando_hay_check_no_anota_nada(self):
         v = self._version("metodo", "0.36.0")
-        self._check("### metodo 0.36.0")
+        self._check(self._titulo("metodo 0.36.0", v))
         r = self.correr("--sha", v, "--sin-check", "por las dudas, igual", api="http://127.0.0.1:1")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertNotIn("PROMOVIDO SIN SECURITY CHECK", r.stdout + r.resumen)
@@ -704,20 +770,20 @@ class TestScript(unittest.TestCase):
         return self._archivo(".claude-plugin/marketplace.json", json.dumps({"name": "c", "plugins": entradas}), "catálogo")
 
     def test_catalogo_que_apunta_afuera_frena(self):  # L7
-        self._version("metodo", "0.36.0")
-        self._check("### metodo 0.36.0")
+        x = self._version("metodo", "0.36.0")
+        self._check(self._titulo("metodo 0.36.0", x))
         v = self._catalogo([{"name": "metodo", "version": "0.36.0", "source": {"source": "github", "repo": "otro/repo"}}])
         self._frena_manual(v, "apunta a otra fuente")
 
     def test_catalogo_con_otra_version_frena(self):  # L7
-        self._version("metodo", "0.36.0")
-        self._check("### metodo 0.36.0")
+        x = self._version("metodo", "0.36.0")
+        self._check(self._titulo("metodo 0.36.0", x))
         v = self._catalogo([{"name": "metodo", "version": "0.35.0", "source": "./plugins/metodo"}])
         self._frena_manual(v, "no coincide con su plugin.json")
 
     def test_catalogo_coherente_pasa(self):  # L7
-        self._version("metodo", "0.36.0")
-        self._check("### metodo 0.36.0")
+        x = self._version("metodo", "0.36.0")
+        self._check(self._titulo("metodo 0.36.0", x))
         v = self._catalogo([{"name": "metodo", "version": "0.36.0", "source": "./plugins/metodo"},
                             {"name": "otro", "source": {"source": "github", "repo": "x/y"}}])   # los demás no se miran
         r = self.correr("--sha", v, api="http://127.0.0.1:1")

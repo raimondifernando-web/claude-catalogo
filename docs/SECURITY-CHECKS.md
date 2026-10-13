@@ -1,10 +1,14 @@
 # Chequeos de seguridad por release
 
 > **Lo lee la compuerta de `estable`** (`scripts/estable-avanzar.py`): una versión nueva de `metodo` o `paneles` no llega a los
-> clientes si no figura en un **título** (línea con `#`) de este archivo o de `.claude/security-checks/*.md`, por ejemplo
-> `### 2026-10-20 · metodo 0.36.0` o `## metodo 0.35.1 → 0.36.0 y paneles 0.3.0` (el check de una versión más nueva también
-> cubre las anteriores). Una mención en el cuerpo no cuenta.
+> clientes si no figura en un **título** (línea con `#`, fuera de bloques de código) de este archivo o de
+> `.claude/security-checks/*.md` que tenga las tres cosas: el paquete con la **versión exacta** o un **rango que la incluya**,
+> **`commit <sha>`** del código revisado (tiene que estar en la historia del commit que se promueve) y el veredicto **PASS**
+> (sin FAIL). Ejemplos: `### 2026-10-20 · metodo 0.36.0 (commit abc1234) — PASS` o
+> `## metodo 0.35.1 → 0.36.0 y paneles 0.3.0 (commit abc1234) — PASS con condiciones`. Una mención en el cuerpo no cuenta.
 > Forzar sin check: `gh workflow run estable.yml -f sha=<commit> -f sin_check="<motivo>"` (queda registrado en la corrida).
+> **Qué controla y qué no:** controla el PROCESO (que no se olvide el check antes de llegar a los clientes). No frena a quien ya
+> puede empujar a `main`: esa persona también puede escribir un título. Contra eso están las 48 h de `estable` y los rulesets.
 
 ## base-segura 0.1.0 — 2026-09-20 — PASS
 | Control | Resultado | Evidencia |

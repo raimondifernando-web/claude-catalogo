@@ -18,16 +18,20 @@ Cómo decide:
   - Alarma de atraso: si algún commit de `main` lleva más de 4 días (96 h) sin entrar a `estable`, la corrida sale en rojo.
   - Compuerta de security check (F14 del check 0.35.0), en automático Y en «pasalo ya»: si el commit a promover cambia la
     versión de `metodo` o `paneles` (lo que corre en las máquinas de los clientes) respecto de `estable`, esa versión tiene
-    que figurar en un TÍTULO (línea con `#`) de `docs/SECURITY-CHECKS.md` o de `.claude/security-checks/*.md`, leídos de
-    `main` (el check se puede anotar después del commit). Vale «metodo 0.36.0», un rango «metodo 0.35.1 → 0.36.0» o el check de
-    una versión MÁS NUEVA (revisó un código que ya la incluye); el resumen dice qué archivo la validó. Si falta,
-    no se mueve y la corrida sale en rojo. Salida explícita: `--sin-check "<motivo>"` (en el workflow: `-f sin_check=...`)
-    promueve igual y lo deja anotado en el resumen de la corrida, en un aviso de GitHub y en `sin_check=true` de la salida.
+    que estar en un TÍTULO (línea con `#`, fuera de bloques de código) de `docs/SECURITY-CHECKS.md` o de
+    `.claude/security-checks/*.md`, leídos de `main` (el check se puede anotar después), que tenga TODO esto (M2):
+    el paquete con la versión exacta o un rango que la incluya («metodo 0.36.0», «metodo 0.35.1 → 0.36.0», también `v0.36.0`
+    o entre backticks), «commit <sha>» del código revisado, que tiene que ser ancestro del commit a promover o el mismo, y
+    el veredicto PASS (sin FAIL). Si falta, no se mueve y la corrida sale en rojo. Salida explícita: `--sin-check "<motivo>"`
+    (en el workflow: `-f sin_check=...`) promueve igual y lo deja anotado en el resumen de la corrida, en un aviso de GitHub y
+    en `sin_check=true` de la salida.
     Falla cerrado (M1/L7): plugin.json ilegible, sin versión o con versión que no es X.Y.Z, o un bloque del catálogo
     (.claude-plugin/marketplace.json) de metodo/paneles que apunte a otra fuente o declare otra versión → no se mueve.
-    Si cambió código de metodo/paneles sin subir la versión, avisa (no frena). Queda FUERA de la compuerta: los demás
-    paquetes del catálogo, los de afuera fijados por sha, `scripts/` de la raíz (al-dia.sh lo baja el portal por su huella)
-    y `.github/`.
+    Avisa sin frenar: código de metodo/paneles cambiado sin subir la versión, o cambios después del commit revisado.
+    Queda FUERA de la compuerta: los demás paquetes del catálogo, los de afuera fijados por sha, `scripts/` de la raíz
+    (al-dia.sh lo baja el portal por su huella) y `.github/`.
+    Qué es y qué no: controla el PROCESO (que no se olvide el check antes de que algo llegue a los clientes). NO frena a quien
+    ya puede empujar a `main`: esa persona también puede escribir el título. Contra eso están las 48 h y los rulesets.
   - Este script corre desde el checkout de la propia rama `estable` (ver el workflow): el código que decide ya esperó 48 h.
     Trae `main` por su cuenta.
 
@@ -86,7 +90,13 @@ VIGILADOS = ("metodo", "paneles")
 DOC_CHECKS = "docs/SECURITY-CHECKS.md"
 CARPETA_CHECKS = ".claude/security-checks/"
 PATRON_VERSION = re.compile(r"\d+\.\d+\.\d+")
-PATRON_ENTRADA = re.compile(r"\b(%s)\s+(\d+\.\d+\.\d+(?:\s*(?:→|->)\s*\d+\.\d+\.\d+)*)" % "|".join(VIGILADOS))
+# M2/L6: «metodo 0.36.0» o «metodo 0.35.1 → 0.36.0» (también con «->», «v0.36.0» o entre backticks), nunca «escala-metodo» ni «0.36.0-rc».
+PATRON_ENTRADA = re.compile(r"(?<![\w-])(%s)\s+v?(\d+\.\d+\.\d+)(?:\s*(?:→|->)\s*v?(\d+\.\d+\.\d+))?(?![\w+-]|\.\d)"
+                            % "|".join(VIGILADOS))
+PATRON_COMMIT_CHECK = re.compile(r"(?<![\w-])commit\s+([0-9a-f]{7,40})(?![0-9A-Za-z])")
+PATRON_PASS = re.compile(r"(?<![\w-])PASS(?![\w-])")
+PATRON_FAIL = re.compile(r"(?<![\w-])(?:FAIL|NO\s+PASS)(?![\w-])", re.IGNORECASE)
+PATRON_TITULO = re.compile(r"^ {0,3}#{1,6}\s")
 MOTIVO_MINIMO = 10   # «x» no es un motivo: la salida tiene que quedar explicada
 
 
@@ -398,25 +408,38 @@ def version_que_llega(cwd, sha, paquete):
     return v
 
 
-def versiones_con_check(cwd, sha):
-    """{paquete: {versión: archivo}} nombradas en los TÍTULOS de los checks anotados en ese commit (docs/SECURITY-CHECKS.md y
-    .claude/security-checks/*.md). Un título cuenta; una mención en el cuerpo, no (evita «condiciones para 0.30.1»)."""
+def checks_anotados(cwd, sha):
+    """Los checks anotados en ese commit (docs/SECURITY-CHECKS.md y .claude/security-checks/*.md), uno por paquete nombrado en
+    un TÍTULO que cumple TODO (M2): paquete + versión exacta o rango, «commit <sha>» (uno solo) y veredicto PASS sin FAIL.
+    Una mención en el cuerpo no cuenta, ni un título dentro de un bloque de código (``` o ~~~).
+    Devuelve [{paquete, desde, hasta, commit, archivo, titulo}]."""
     archivos = [DOC_CHECKS]
     r = git(["ls-tree", "-r", "--name-only", sha, "--", CARPETA_CHECKS], cwd)
     if r.returncode == 0:
         archivos += [a for a in r.stdout.splitlines() if a.endswith(".md")]
-    cubiertas = {p: {} for p in VIGILADOS}
+    anotados = []
     for archivo in archivos:
         r = git(["show", "%s:%s" % (sha, archivo)], cwd)
         if r.returncode != 0:
             continue
+        en_codigo = None
         for linea in r.stdout.splitlines():
-            if not linea.startswith("#"):
+            marca = linea.lstrip()[:3]
+            if marca in ("```", "~~~"):
+                en_codigo = None if en_codigo == marca else (en_codigo or marca)
                 continue
-            for paquete, cadena in PATRON_ENTRADA.findall(linea):
-                for v in PATRON_VERSION.findall(cadena):
-                    cubiertas[paquete].setdefault(v, archivo)
-    return cubiertas
+            if en_codigo or not PATRON_TITULO.match(linea):
+                continue
+            titulo = linea.replace("`", "")
+            commits = PATRON_COMMIT_CHECK.findall(titulo)
+            if len(commits) != 1 or not PATRON_PASS.search(titulo) or PATRON_FAIL.search(titulo):
+                continue
+            for paquete, desde, hasta in PATRON_ENTRADA.findall(titulo):
+                hasta = hasta or desde
+                if _tupla(desde) <= _tupla(hasta):
+                    anotados.append({"paquete": paquete, "desde": desde, "hasta": hasta, "commit": commits[0],
+                                     "archivo": archivo, "titulo": _una_linea(titulo.lstrip("# "), 90)})
+    return anotados
 
 
 def _tupla(version):
@@ -424,9 +447,10 @@ def _tupla(version):
 
 
 def sin_security_check(cwd, actual, destino, principal):
-    """(faltan, validados, avisos) para lo que entraría a estable de metodo/paneles. `avisos` no frena: dice, por ejemplo, que
-    cambió código de un paquete vigilado sin subir la versión (M1: no llega a los clientes como actualización, pero se ve)."""
-    cubiertas = versiones_con_check(cwd, principal)
+    """(faltan, validados, avisos) para lo que entraría a estable de metodo/paneles. La versión nueva queda cubierta solo por un
+    check anotado en main que la nombre (exacta o dentro de un rango) y cuyo commit revisado sea ancestro del commit a promover
+    o el mismo (M2). `avisos` no frena: código cambiado sin subir la versión, o cambios después del commit revisado."""
+    anotados = checks_anotados(cwd, principal)
     faltan, validados, avisos = [], [], []
     for paquete in VIGILADOS:
         nueva = version_que_llega(cwd, destino, paquete)
@@ -438,11 +462,23 @@ def sin_security_check(cwd, actual, destino, principal):
                 avisos.append("cambió código de plugins/%s entre estable y %s sin subir la versión (%s): no se pide check, pero miralo"
                               % (paquete, destino[:7], nueva))
             continue
-        sirven = sorted((v for v in cubiertas[paquete] if _tupla(v) >= _tupla(nueva)), key=_tupla)
-        if sirven:
-            validados.append("%s %s → check de %s en `%s`" % (paquete, nueva, sirven[0], cubiertas[paquete][sirven[0]]))
-        else:
+        bueno = None
+        for a in anotados:
+            if a["paquete"] != paquete or not _tupla(a["desde"]) <= _tupla(nueva) <= _tupla(a["hasta"]):
+                continue
+            r = git(["rev-parse", "--verify", "--quiet", a["commit"] + "^{commit}"], cwd)
+            revisado = r.stdout.strip()
+            if r.returncode == 0 and PATRON_SHA.match(revisado) and es_ancestro(revisado, destino, cwd):
+                bueno = (a, revisado)
+                break
+        if bueno is None:
             faltan.append("%s %s" % (paquete, nueva))
+            continue
+        a, revisado = bueno
+        validados.append("%s %s → «%s» en `%s` (commit revisado `%s`)" % (paquete, nueva, a["titulo"], a["archivo"], revisado[:7]))
+        if git(["diff", "--quiet", revisado, destino, "--", "plugins/%s" % paquete], cwd).returncode == 1:
+            avisos.append("hay cambios en plugins/%s después del commit revisado (%s..%s): el check no los cubre, miralos"
+                          % (paquete, revisado[:7], destino[:7]))
     return faltan, validados, avisos
 
 
@@ -450,7 +486,7 @@ def limpiar_motivo(texto):
     """Una sola línea, sin comandos de GitHub Actions ni caracteres de control; None si no alcanza como motivo."""
     if texto is None:
         return None
-    t = "".join(c if c.isprintable() else " " for c in texto).replace("::", ": :")
+    t = "".join(c if c.isprintable() else " " for c in texto).replace("::", ": :").replace("`", "'")
     t = " ".join(t.split())[:300]
     return t if len(t) >= MOTIVO_MINIMO else None
 
@@ -592,13 +628,14 @@ def main(argv=None):
                 decir(aviso_check, log)
             if faltan and not motivo_sin_check:
                 raise Frena("falta el security check de %s (lo que corre en las máquinas de los clientes): corré /fable-security-check y "
-                            "anotalo con un título que diga «%s» en %s o en %s, o forzá a propósito con "
-                            "-f sin_check=\"<motivo>\" (queda registrado)" % (", ".join(faltan), faltan[0], DOC_CHECKS, CARPETA_CHECKS))
+                            "anotalo con un título que diga «%s (commit <sha revisado>) — PASS» en %s o en %s (el commit tiene que estar "
+                            "en la historia del que se promueve), o forzá a propósito con -f sin_check=\"<motivo>\" (queda registrado)"
+                            % (", ".join(faltan), faltan[0], DOC_CHECKS, CARPETA_CHECKS))
             if faltan:
                 forzado = True
                 quien = " ".join(os.environ.get("GITHUB_ACTOR", "").split())[:40] or "?"
                 aviso = "PROMOVIDO SIN SECURITY CHECK de %s, por %s. Motivo: %s" % (", ".join(faltan), quien, motivo_sin_check)
-                resumen.append("**⚠️ %s**" % aviso)
+                resumen.append("**⚠️ PROMOVIDO SIN SECURITY CHECK de %s, por %s.** Motivo: `%s`" % (", ".join(faltan), quien, motivo_sin_check))
                 if os.environ.get("GITHUB_ACTIONS"):
                     print("::warning::estable: %s" % aviso)
                 decir(aviso, log)
