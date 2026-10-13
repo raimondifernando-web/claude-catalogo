@@ -1554,5 +1554,31 @@ class TestInstaladorAgy(ConHomeTemporal):
         self.assertEqual(vigia.INSTALADOR_AGY_SHA256, m.group(1))
 
 
+class TestOrigenBorrado(unittest.TestCase):
+    """C4: un plugin fijado cuyo repo ya no existe (404) no debe dejar la corrida en «parcial»."""
+
+    def correr(self, gh):
+        novedades, nuevas, degradado = {}, [], []
+        manifiestos = {"mkt": {"plugins": [{"name": "omc", "source": {"source": "github", "repo": "dueno/repo-borrado", "sha": SHA_A}}]}}
+        perfil = {"marketplaces_locales": {"mkt": "x"}, "descubrimiento_mensual": False}
+        vigia.fuente_plugins_fijados(manifiestos, set(), perfil, gh, {}, novedades, {}, nuevas, degradado, "2026-10-13T00:00:00Z")
+        return novedades, degradado
+
+    def test_repo_404_es_aviso_no_corrida_parcial(self):
+        falso = subprocess.CompletedProcess([], 1, stdout="", stderr="gh: Not Found (HTTP 404)")
+        with mock.patch.object(vigia, "_run", return_value=falso):
+            novedades, degradado = self.correr(vigia.ClienteGitHub(vigia.Red(), "gh"))
+        self.assertEqual(degradado, [])
+        self.assertIn("plugin:omc:origen-perdido", novedades)
+        self.assertEqual(novedades["plugin:omc:origen-perdido"]["tipo"], "origen-perdido")
+
+    def test_otro_error_sigue_siendo_parcial(self):
+        falso = subprocess.CompletedProcess([], 1, stdout="", stderr="gh: Server Error (HTTP 500)")
+        with mock.patch.object(vigia, "_run", return_value=falso):
+            novedades, degradado = self.correr(vigia.ClienteGitHub(vigia.Red(), "gh"))
+        self.assertEqual(len(degradado), 1)
+        self.assertEqual(novedades, {})
+
+
 if __name__ == "__main__":
     unittest.main()

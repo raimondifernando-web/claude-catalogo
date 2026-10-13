@@ -501,6 +501,7 @@ class ClienteGitHub:
         self.usadas = 0
         self._cache: dict = {}
         self._repo_info_cache: dict = {}
+        self.repos_inexistentes: set = set()
         self._tree_cache: dict = {}
         self._commit_info_cache: dict = {}
 
@@ -572,6 +573,9 @@ class ClienteGitHub:
                 self._repo_info_cache[repo] = self.api(f"repos/{repo}")
             except CORTAN_FUENTE:
                 raise
+            except NoEncontrado:
+                self.repos_inexistentes.add(repo)  # borrado, movido o privado: no es una falla de la corrida
+                self._repo_info_cache[repo] = None
             except Exception:  # noqa: BLE001
                 self._repo_info_cache[repo] = None
         return self._repo_info_cache[repo]
@@ -1141,6 +1145,8 @@ def _revisar_plugin_github(nombre, fuente, gh, base, novedades, nuevas_ids, ahor
         raise RuntimeError("el origen fijado no tiene forma owner/repo + sha, se omite")
     info = gh.repo_info(repo)
     if not info:
+        if repo in gh.repos_inexistentes:
+            raise NoEncontrado(f"{repo} ya no existe (borrado, movido o privado)")
         raise RuntimeError(f"no se pudo consultar {repo}")
     rama = rama_valida(info, repo)
     ahead, head_sha = gh.comparar(repo, sha, urllib.parse.quote(rama, safe=""))
@@ -1298,6 +1304,15 @@ def fuente_plugins_fijados(
                     degradado.append(f"plugin {nombre}: tipo de origen no soportado ({limpiar_texto(tipo)[:40]})")
             except CORTAN_FUENTE:
                 raise
+            except NoEncontrado as e:
+                # Origen borrado o movido: se avisa una vez como novedad, no rompe la corrida.
+                registrar_novedad(
+                    novedades, nuevas_ids, f"plugin:{nombre}:origen-perdido",
+                    tipo="origen-perdido",
+                    detalle=f"el origen fijado de {nombre} ya no responde: {truncar(str(e))}. "
+                    "Actualizá el sha en el marketplace o sacá el plugin.",
+                    enlace="https://github.com", confianza="otro", desde=ahora,
+                )
             except Exception as e:  # noqa: BLE001
                 degradado.append(f"plugin {nombre}: {truncar(str(e))}")
 
