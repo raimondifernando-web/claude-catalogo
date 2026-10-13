@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estructura de referencia</title>
+<style>
+:root{color-scheme:light;--bg:#F4F3F0;--card:#FFFFFF;--line:#D6D3CC;--ink:#1D1C1A;--ink2:#5E5A53;
+  --vos:#1F6FB2;--lu:#7A4BB0;--be:#C0731A;--ca:#2E8B57;--mac:#2E7D4F}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#121212;--card:#1C1C1B;--line:#3A3936;--ink:#ECE9E3;--ink2:#A8A39A;
+  --vos:#6FAEE6;--lu:#B996E3;--be:#E9A55C;--ca:#6DCB97;--mac:#7FCB9C}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#121212;--card:#1C1C1B;--line:#3A3936;--ink:#ECE9E3;--ink2:#A8A39A;
+  --vos:#6FAEE6;--lu:#B996E3;--be:#E9A55C;--ca:#6DCB97;--mac:#7FCB9C}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,system-ui,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 40px}
+h1{font-size:22px;margin:0 0 16px}
+.f{font:600 13.5px/1.4 ui-monospace,'SF Mono',Menlo,monospace}
+.q{color:var(--ink2);font-size:12.5px;font-weight:400}
+.wrap{display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start}
+.box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.ttl{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.kids{display:grid;gap:10px;margin-top:10px;padding-left:14px;border-left:2px dashed var(--line)}
+.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.lvl1{border-width:2px}
+.dots{display:flex;gap:4px}
+.d{width:14px;height:14px;border-radius:50%;border:2px solid var(--c);background:var(--c)}
+.d.r{background:transparent}
+.vos{--c:var(--vos)}.lu{--c:var(--lu)}.be{--c:var(--be)}.ca{--c:var(--ca)}
+.people .p{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line)}
+.people .p:first-of-type{border-top:0}
+.people .d{flex:none;margin-top:3px}
+.people b{display:block;font-size:14px}
+.key{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+.key span{display:flex;gap:6px;align-items:center}
+.key .d{--c:var(--ink2)}
+.file{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-top:1px solid var(--line);font-size:12.5px}
+.file .mono{font:12.5px ui-monospace,'SF Mono',Menlo,monospace}
+.lock{color:var(--mac);font-weight:600}
+.cfg{margin-top:12px}
+.ghs{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:-10px -12px 8px;padding:6px 12px;border-radius:9px 9px 0 0;background:#24292F;color:#F6F8FA;font-size:12px}
+.ghl{font-weight:700}
+.ghr{font:12px ui-monospace,'SF Mono',Menlo,monospace}
+.gha{margin-left:auto;display:flex;gap:6px;align-items:center}
+.ghs .d{width:12px;height:12px}
+.ghs .d.r{background:#24292F}
+.ghkey b{display:inline;font-size:inherit}
+.ghkey{padding:8px 0;border-top:1px solid var(--line);margin-top:4px}
+.ghkey .mono{font:12px ui-monospace,'SF Mono',Menlo,monospace}
+.addr{font:400 11.5px ui-monospace,'SF Mono',Menlo,monospace;color:var(--ink2);margin-left:6px}
+.link{background:color-mix(in srgb,var(--ink2) 10%,transparent);border-radius:5px;padding:4px 6px;border-top:0}
+.grp{margin:10px 0 2px;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2)}
+.cfg .file{flex-direction:column;gap:0}
+.down{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:var(--vos);white-space:nowrap}
+.foot{margin:16px 0 0;font-size:14px}
+.foot .mono{font:13px ui-monospace,'SF Mono',Menlo,monospace}
+@media (max-width:820px){.wrap{grid-template-columns:minmax(0,1fr)}.row{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<main>
+<h1>Cómo se ordena Claude con varias empresas, áreas y personas</h1>
+
+<div class="wrap">
+
+  <div>
+    <div class="box people">
+      <div class="p"><span class="d vos"></span><div><b>Vos</b><span class="q">Dueño. Entra a todo.</span></div></div>
+      <div class="p"><span class="d lu"></span><div><b>Lucía</b><span class="q">Socia. Toda la Empresa A.</span></div></div>
+      <div class="p"><span class="d be"></span><div><b>Beto</b><span class="q">Solo el área Ventas.</span></div></div>
+      <div class="p"><span class="d ca"></span><div><b>Caro</b><span class="q">Solo el proyecto web.</span></div></div>
+      <div class="ghkey">
+        <div class="ghs" style="margin:0 0 6px"><span class="ghl">⇅ GitHub</span><span class="ghr">empresa/carpeta</span></div>
+        <div class="q">Arriba de cada caja: el repositorio en internet donde se guarda su copia. Los puntos son quién tiene acceso, y se dan ahí.</div>
+        <div class="q" style="margin-top:6px"><b>Descargar:</b> la primera vez trae la caja a tu compu. <b>Subir:</b> manda tus cambios. <b>Actualizar:</b> trae los de los demás. Todo pasa por <span class="mono">.git/</span>.</div>
+      </div>
+      <div class="key">
+        <span><span class="d"></span>trabaja</span>
+        <span><span class="d r"></span>solo lee las reglas</span>
+      </div>
+    </div>
+
+    <div class="box cfg">
+      <div class="f">~/.claude/</div>
+      <div class="q" style="margin-bottom:6px">De cada persona, en su computadora. Vale para todos sus proyectos. No va a GitHub de la empresa.</div>
+      <div class="file"><span class="mono">CLAUDE.md</span><span class="q">quién soy y cómo trabajo</span></div>
+      <div class="file"><span class="mono">settings.json</span><span class="q">mis permisos y plugins</span></div>
+      <div class="file"><span class="mono">skills/</span><span class="q">mis habilidades para cualquier proyecto</span></div>
+      <div class="file"><span class="mono">agents/</span><span class="q">mis asistentes especializados</span></div>
+      <div class="file"><span class="mono">projects/…/memory/</span><span class="q">lo que Claude aprende solo, uno por proyecto</span></div>
+      <div class="file"><span class="mono">~/.claude.json</span><span class="q">mis conectores: correo, calendario, Drive</span></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="ttl"><span class="f">~/Proyectos/</span><span class="q">la carpeta de todo, en la computadora de cada uno · no es un repositorio: no va a GitHub</span></div>
+    <div class="kids">
+
+      <div class="box lvl1">
+        <div class="ghs"><span class="ghl">⇅ GitHub</span><span class="ghr">empresa-a/empresa-a</span><span class="gha">acceso <span class="dots"><span class="d vos"></span><span class="d lu"></span><span class="d r be"></span><span class="d r ca"></span></span></span></div>
+        <div class="ttl"><span class="f">Empresa-A/</span></div>
+        <div class="file link"><span class="mono">.git/</span><span class="q">la conexión con GitHub (carpeta oculta): sabe de qué repositorio vino y adónde subir. Se crea sola al descargar</span></div>
+        <div class="grp">Se comparte (va a GitHub)</div>
+        <div class="file"><span class="mono">CLAUDE.md</span><span class="q">reglas de la empresa: Claude las lee solo en todo lo de adentro <span class="down">↓ llega a lo de adentro</span></span></div>
+        <div class="file"><span class="mono">.claude/settings.json</span><span class="q">permisos para trabajar acá · activa el paquete de la empresa</span></div>
+        <div class="file"><span class="mono">.claude/skills/</span><span class="q">habilidades para trabajar acá</span></div>
+        <div class="file"><span class="mono">.claude/agents/</span><span class="q">asistentes para trabajar acá</span></div>
+        <div class="file"><span class="mono">.claude/rules/</span><span class="q">reglas por tema, que se leen cuando hacen falta</span></div>
+        <div class="file"><span class="mono">.mcp.json</span><span class="q">conectores para trabajar acá</span></div>
+        <div class="file"><span class="mono">docs/</span><span class="q">documentos</span></div>
+        <div class="file"><span class="mono">.env.example</span><span class="q">qué claves hacen falta, sin los valores</span></div>
+        <div class="file"><span class="mono">.gitignore</span><span class="q">no guarda las carpetas de adentro (cada una tiene su repositorio)</span></div>
+        <div class="file"><span class="mono">plugins/kit-empresa/ <span class="q">+ .claude-plugin/</span></span><span class="q">el paquete de la empresa: skills, agentes, avisos automáticos y conectores que usan todos <span class="down">↓ llega a lo de adentro</span></span></div>
+        <div class="grp">Solo en mi compu</div>
+        <div class="file"><span class="mono">CLAUDE.local.md</span><span class="lock">mis notas</span></div>
+        <div class="file"><span class="mono">.claude/settings.local.json</span><span class="lock">mis ajustes</span></div>
+        <div class="file"><span class="mono">.env</span><span class="lock">las claves</span></div>
+        <div class="kids">
+
+          <div class="box">
+            <div class="ghs"><span class="ghl">⇅ GitHub</span><span class="ghr">empresa-a/ventas</span><span class="gha">acceso <span class="dots"><span class="d vos"></span><span class="d lu"></span><span class="d be"></span></span></span></div>
+            <div class="ttl"><span class="f">Ventas/ <span class="q">área</span></span></div>
+            <div class="file link"><span class="mono">.git/</span><span class="q">la conexión con GitHub (carpeta oculta): sabe de qué repositorio vino y adónde subir. Se crea sola al descargar</span></div>
+            <div class="grp">Se comparte (va a GitHub)</div>
+            <div class="file"><span class="mono">CLAUDE.md</span><span class="q">reglas del área: se suman a las de la empresa <span class="down">↓ llega a lo de adentro</span></span></div>
+            <div class="file"><span class="mono">.claude/settings.json</span><span class="q">permisos para trabajar acá · activa el paquete de la empresa</span></div>
+            <div class="file"><span class="mono">.claude/skills/</span><span class="q">habilidades para trabajar acá</span></div>
+            <div class="file"><span class="mono">.claude/agents/</span><span class="q">asistentes para trabajar acá</span></div>
+            <div class="file"><span class="mono">.claude/rules/</span><span class="q">reglas por tema, que se leen cuando hacen falta</span></div>
+            <div class="file"><span class="mono">.mcp.json</span><span class="q">conectores para trabajar acá</span></div>
+            <div class="file"><span class="mono">docs/</span><span class="q">documentos</span></div>
+            <div class="file"><span class="mono">.env.example</span><span class="q">qué claves hacen falta, sin los valores</span></div>
+            <div class="file"><span class="mono">.gitignore</span><span class="q">no guarda las carpetas de los proyectos</span></div>
+            <div class="file"><span class="mono">plugins/kit-ventas/ <span class="q">(opcional)</span></span><span class="q">paquete del área, si sus proyectos comparten skills o agentes <span class="down">↓ llega a lo de adentro</span></span></div>
+            <div class="grp">Solo en mi compu</div>
+            <div class="file"><span class="mono">CLAUDE.local.md</span><span class="lock">mis notas</span></div>
+            <div class="file"><span class="mono">.claude/settings.local.json</span><span class="lock">mis ajustes</span></div>
+            <div class="file"><span class="mono">.env</span><span class="lock">las claves</span></div>
+            <div class="kids row">
+              <div class="box" style="grid-column:1/-1">
+                <div class="ghs"><span class="ghl">⇅ GitHub</span><span class="ghr">empresa-a/crm</span><span class="gha">acceso <span class="dots"><span class="d vos"></span><span class="d lu"></span><span class="d be"></span></span></span></div>
+                <div class="ttl"><span class="f">crm/</span><span class="q">proyecto</span></div>
+                <div class="file link"><span class="mono">.git/</span><span class="q">la conexión con GitHub (carpeta oculta): sabe de qué repositorio vino y adónde subir. Se crea sola al descargar</span></div>
+                <div class="grp">Se comparte (va a GitHub)</div>
+                <div class="file"><span class="mono">CLAUDE.md</span><span class="q">reglas del proyecto: qué es y cómo se trabaja</span></div>
+                <div class="file"><span class="mono">.claude/settings.json</span><span class="q">permisos del proyecto · activa el paquete de la empresa (y el del área, si hay)</span></div>
+                <div class="file"><span class="mono">.claude/skills/</span><span class="q">habilidades para trabajar acá</span></div>
+                <div class="file"><span class="mono">.claude/agents/</span><span class="q">asistentes para trabajar acá</span></div>
+                <div class="file"><span class="mono">.claude/rules/</span><span class="q">reglas por tema, que se leen cuando hacen falta</span></div>
+                <div class="file"><span class="mono">.mcp.json</span><span class="q">conectores para trabajar acá</span></div>
+                <div class="file"><span class="mono">docs/</span><span class="q">documentos</span></div>
+                <div class="file"><span class="mono">.env.example</span><span class="q">qué claves hacen falta, sin los valores</span></div>
+                <div class="file"><span class="mono">.gitignore</span><span class="q">lo que no se sube a GitHub</span></div>
+                <div class="grp">Solo en mi compu</div>
+                <div class="file"><span class="mono">CLAUDE.local.md</span><span class="lock">mis notas</span></div>
+                <div class="file"><span class="mono">.claude/settings.local.json</span><span class="lock">mis ajustes</span></div>
+                <div class="file"><span class="mono">.env</span><span class="lock">las claves</span></div>
+              </div>
+              <div class="box">
+                <div class="ghs"><span class="ghl">⇅ GitHub</span><span class="ghr">empresa-a/presupuestos</span><span class="gha">acceso <span class="dots"><span class="d vos"></span><span class="d lu"></span><span class="d be"></span></span></span></div>
+                <div class="ttl"><span class="f">presupuestos/</span></div>
+                <div class="q">Igual que crm por dentro.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="ghs"><span class="ghl">⇅ GitHub</span><span class="ghr">empresa-a/marketing</span><span class="gha">acceso <span class="dots"><span class="d vos"></span><span class="d lu"></span><span class="d r ca"></span></span></span></div>
+            <div class="ttl"><span class="f">Marketing/ <span class="q">área</span></span></div>
+            <div class="q">Por dentro, igual que Ventas.</div>
+            <div class="kids row">
+              <div class="box">
+                <div class="ghs"><span class="ghl">⇅ GitHub</span><span class="ghr">empresa-a/web</span><span class="gha">acceso <span class="dots"><span class="d vos"></span><span class="d lu"></span><span class="d ca"></span></span></span></div>
+                <div class="ttl"><span class="f">web/</span></div>
+              </div>
+              <div class="box">
+                <div class="ghs"><span class="ghl">⇅ GitHub</span><span class="ghr">empresa-a/campanas</span><span class="gha">acceso <span class="dots"><span class="d vos"></span><span class="d lu"></span></span></span></div>
+                <div class="ttl"><span class="f">campañas/</span></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="box lvl1">
+          <div class="ghs"><span class="ghl">⇅ GitHub</span><span class="ghr">empresa-b/empresa-b</span><span class="gha">acceso <span class="dots"><span class="d vos"></span></span></span></div>
+          <div class="ttl"><span class="f">Empresa-B/</span></div>
+          <div class="q">Otra empresa tuya. Mismo esquema: áreas y proyectos adentro.</div>
+        </div>
+        <div class="box lvl1">
+          <div class="ghs"><span class="ghl">⇅ GitHub</span><span class="ghr">vos/personal</span><span class="gha">acceso <span class="dots"><span class="d vos"></span></span></span></div>
+          <div class="ttl"><span class="f">Personal/</span></div>
+          <div class="q">Lo tuyo. Nadie más entra. Por dentro, igual que un proyecto.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<p class="foot"><b>Cada caja es un repositorio en GitHub, y el acceso se da en GitHub, repositorio por repositorio.</b> En la computadora, cada carpeta
+es la copia de su repositorio y se conecta por su <span class="mono">.git/</span>. Cada persona descarga solo los repositorios donde está su punto: Beto nunca tiene Marketing ni Empresa-B, porque no las puede descargar.
+Los puntos huecos son para que Claude lea las reglas de la empresa o del área, aunque esa persona trabaje solo en un proyecto.</p>
+<p class="foot"><b>Todas las cajas tienen los mismos archivos</b> (empresa, área y proyecto), porque en cualquiera se puede abrir
+Claude a trabajar. Lo que está en <span class="mono">.claude/</span> rige solo cuando trabajás en esa caja. Lo marcado con
+<span class="down" style="margin:0">↓ llega a lo de adentro</span> es lo único que pasa a las cajas de adentro: las reglas
+(<span class="mono">CLAUDE.md</span>) y el paquete, que cada caja activa en su <span class="mono">settings.json</span>.
+Lo verde no se sube a GitHub.</p>
+</main>
+</body>
+</html>
