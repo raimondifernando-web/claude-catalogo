@@ -46,7 +46,7 @@ SECRETISH = (r"(?:SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|APIKEY|CREDENTIAL|PRIVAT
 SUFIJO_NO_SECRETO = re.compile(r"_(?:FILE|PATH|DIR|NAME|URL|ID|LEN|COUNT)$", I)
 LECTORES = {"cat", "bat", "less", "more", "head", "tail", "nl", "tac", "xxd", "od", "strings", "view", "fold", "pr",
             "fmt", "awk", "gawk", "sed", "jq", "yq", "sort", "uniq", "cut", "paste", "column", "expand", "unexpand",
-            "rev", "tr", "dd", "xargs", "base64", "hexdump", "diff", "comm", "join"}
+            "rev", "tr", "dd", "xargs", "base64", "hexdump", "diff", "comm", "join", "tee"}
 GREPS = {"grep", "egrep", "fgrep", "rg", "ag", "ack", "zgrep"}
 INTERPRETES = {"python", "python2", "python3", "ruby", "perl", "node", "deno", "bun", "php"}
 SHELLS = {"bash", "sh", "zsh", "dash"}
@@ -255,6 +255,10 @@ def partir(cmd):
             i += 1
         elif ch == "|":
             cerrar_etapa()
+        elif ch in "<>" and st["sub"] == 0 and st["cur"] and not st["cur"].isdigit() and st["cur"][-1] not in "<>&" \
+                and sig not in ("<", "(", "&"):
+            cerrar_tok()   # `cat<.env` y `cat .env>/dev/stderr` (sin espacios) se leen como `cat < .env` y `cat .env > /dev/stderr`
+            st["cur"] = ch
         else:
             st["cur"] += ch
         i += 1
@@ -321,14 +325,28 @@ def patron_grep(args):
     return ""
 
 
+VARIABLES_INOFENSIVAS = {"path", "home", "user", "logname", "shell", "lang", "language", "pwd", "oldpwd", "term", "editor", "visual",
+                         "tmpdir", "hostname", "node_env", "shlvl", "display", "tz", "pythonpath", "node_path", "virtual_env",
+                         "claude_config_dir", "claude_plugin_root", "claude_project_dir"}
+
+
+def patron_inofensivo(p):
+    """¿el patrón de un grep sobre el entorno solo puede traer variables que no son secretas? Solo vale (a) el nombre de una variable
+    de la lista cerrada (PATH, HOME…), o (b) un nombre EXACTO anclado (`^NOMBRE=` / `NOMBRE=`) que no parezca secreto.
+    Un pedazo suelto como `AWS` o `tok` también trae AWS_SECRET_ACCESS_KEY=… o GH_TOKEN=… (F5 del security check 0.35.0)."""
+    t = (p or "").lstrip("^").rstrip("=")
+    if t.lower() in VARIABLES_INOFENSIVAS:
+        return True
+    return bool(re.fullmatch(r"\^?[A-Za-z_][A-Za-z0-9_]{2,}=", p or "")) and not re.search(SECRETISH, t, I)
+
+
 def solo_filtra(despues):
-    """¿la salida pasa por un grep que busca algo que no es secreto, o solo cuenta?"""
+    """¿la salida pasa por un grep que solo cuenta o que busca una variable que no es secreta?"""
     for n, a in despues:
         if n in GREPS:
             p = patron_grep(a)
             invierte = any(re.fullmatch(r"-[A-Za-z]*v[A-Za-z]*|--invert-match", x) for x in a)
-            if grep_solo_cuenta(a) or (re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_]{2,}", p or "") and not invierte
-                                       and not re.search(SECRETISH, p, I)):
+            if grep_solo_cuenta(a) or (patron_inofensivo(p) and not invierte):
                 return True
     return False
 
@@ -359,6 +377,33 @@ def nombres_secretos(texto):
         if re.search(SECRETISH, nombre, I) and not SUFIJO_NO_SECRETO.search(nombre):
             hallados.append(nombre)
     return hallados
+
+
+def git_muestra_secreto(args):
+    """git show / cat-file / diff / log -p / blame / grep / annotate sobre un archivo de secretos (`HEAD:.env`, `-- .env`, `.env`)."""
+    sub = next((x for x in args if not x.startswith("-")), "")
+    if sub not in ("show", "cat-file", "diff", "log", "blame", "annotate", "grep", "diff-tree", "whatchanged", "format-patch"):
+        return False
+    if any(re.fullmatch(r"--(?:stat|name-only|name-status|numstat|shortstat|summary|quiet|check|exit-code)|-q|-s", x) for x in args):
+        return False
+    if sub == "log" and not any(x in ("-p", "-u", "--patch", "--cc", "-c") or re.fullmatch(r"-[A-Za-z]*p[A-Za-z]*", x) for x in args):
+        return False
+    return any(es_archivo_secreto(x.split(":")[-1].lstrip("/")) or es_archivo_secreto(x) for x in args[1:] if not x.startswith("-"))
+
+
+def todos_env(archivos):
+    """Los nombres-de-variable (cut/awk) solo son seguros en archivos de variables: en una llave .pem las líneas no tienen «=» y se mostrarían enteras."""
+    return all(re.fullmatch(r"\.env(?:\.[^/]*)?|.*\.env", a.strip("'\"").rstrip("/").split("/")[-1], I) for a in archivos)
+
+
+def solo_nombres(nom, args):
+    """cut/awk que muestran SOLO el nombre de cada variable: exigen el delimitador «=» (sin él, cut usa TAB y awk espacios, y la línea KEY=valor sale entera)."""
+    if nom == "cut":
+        delim = any(a in ("-d=", "--delimiter==") for a in args) or any(a == "-d" and args[k + 1:k + 2] == ["="] for k, a in enumerate(args))
+        campo = any(a == "-f1" for a in args) or any(a == "-f" and args[k + 1:k + 2] == ["1"] for k, a in enumerate(args))
+        return delim and campo
+    delim = any(a == "-F=" for a in args) or any(a == "-F" and args[k + 1:k + 2] == ["="] for k, a in enumerate(args))
+    return delim and any(re.fullmatch(r"\{\s*print\s+\$1\s*\}", a) for a in args)
 
 
 def analizar_pipeline(etapas, razones, profundidad, cuerpos):
@@ -401,16 +446,16 @@ def analizar_pipeline(etapas, razones, profundidad, cuerpos):
         archivos = [a for a in args if es_archivo_secreto(a)] + [f for f in stdin if es_archivo_secreto(f)]
         if nom in LECTORES and archivos:
             inofensivo = (nom == "sed" and any(re.fullmatch(r"-[A-Za-z]*i.*|--in-place.*", a) for a in args)) \
-                or (nom == "cut" and any(re.fullmatch(r"-f\s*1|-f1", a) for a in args)) \
-                or (nom == "awk" and any(re.fullmatch(r"\{\s*print\s+\$1\s*\}", a) for a in args))
+                or (nom in ("cut", "awk") and solo_nombres(nom, args) and todos_env(archivos))
             if not inofensivo:
                 razones.append(f"`{nom}` sobre «{archivos[0]}» muestra en pantalla el contenido de un archivo de secretos.")
         elif nom in GREPS and archivos and not grep_solo_cuenta(args):
             razones.append("buscar con grep dentro de un archivo de secretos muestra la línea con el valor. "
                            "Para saber si existe, usá `grep -c '^NOMBRE=' archivo` (cuenta, no muestra).")
-        elif nom == "git" and [x for x in args if not x.startswith("-")][:1] == ["show"] \
-                and any(":" in a and es_archivo_secreto(a.split(":")[-1]) for a in args):
-            razones.append("`git show` de un archivo de secretos muestra su contenido.")
+        elif nom == "git" and git_muestra_secreto(args):
+            razones.append("este comando de git muestra el contenido de un archivo de secretos (show, cat-file, diff, log -p, blame…).")
+        elif nom == "cp" and archivos and any(a in DESTINOS_PANTALLA for a in args):
+            razones.append("`cp` de un archivo de secretos a la pantalla (/dev/stdout, /dev/stderr…) muestra su contenido.")
         elif nom in INTERPRETES:
             razones.extend(razones_interprete(" ".join(args) + "\n" + cuerpo, args))
         elif nom in ECHOS:

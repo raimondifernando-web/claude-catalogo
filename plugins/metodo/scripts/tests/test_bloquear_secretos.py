@@ -209,6 +209,38 @@ DEBEN_PASAR += [
     "cat docker-compose.yml",
 ]
 
+# F5 del security check 0.35.0: siete vías que esquivaban el freno (cada una falla sin el arreglo) y sus variantes.
+DEBEN_FRENARSE += [
+    "env | grep AWS",                      # un pedazo suelto trae AWS_SECRET_ACCESS_KEY=…
+    "printenv | grep -i tok",              # …o GH_TOKEN=…
+    "cut -f1 .env",                        # sin -d= cut usa TAB y la línea KEY=valor sale entera
+    "awk '{print $1}' .env",               # sin -F= awk separa por espacios: idem
+    "cut -d= -f1 llave.pem",               # en una llave las líneas no tienen «=»: salen enteras
+    "cat<.env",                            # sin espacio
+    "cat .env>/dev/stderr",
+    "git cat-file -p HEAD:.env",
+    "git cat-file blob HEAD:config/.env.production",
+    "tee /dev/null < .env",
+    "cp .env /dev/stdout",
+    "git diff -- .env",
+    "git log -p -- .env",
+    "git blame .env",
+]
+DEBEN_PASAR += [
+    "env | grep ^HOME=",
+    "env | grep -c AWS",
+    "cut -d= -f1 .env.local",
+    "cut -d '=' -f 1 .env",
+    "awk -F '=' '{print $1}' .env",
+    "git diff --stat -- .env",
+    "git log --oneline -- .env",
+    "cp .env .env.bak",
+    "cat .env>copia.txt",
+    "echo a>b.txt",
+    "ls 2>&1",
+    "git diff HEAD~1",
+]
+
 
 class LecturasTest(unittest.TestCase):
     """Read y Grep: las herramientas de archivos, que el análisis de Bash no veía (revisión C1)."""
