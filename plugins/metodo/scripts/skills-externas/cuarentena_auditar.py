@@ -111,9 +111,26 @@ def publicas(source, skill):
         return "n/d"
 
 
+def enlaces_borrados():
+    """Rutas (relativas al repo) de los enlaces simbólicos que cuarentena-skills.sh borró ANTES de copiar (CUARENTENA_ENLACES = archivo 'ruta -> destino')."""
+    f = os.environ.get("CUARENTENA_ENLACES")
+    if not f or not Path(f).is_file():
+        return []
+    return [l.split(" -> ", 1)[0].strip() for l in Path(f).read_text(encoding="utf-8", errors="replace").splitlines() if l.strip()]
+
+
 def auditar(skill_dir, lock, rep, piezas):
     nombre = skill_dir.name
     bloquea, leer, info = [], [], []
+    # F6: una carpeta de skill que ES un enlace simbólico se bloquea sin entrar (rglob leería archivos de afuera)
+    if skill_dir.is_symlink():
+        return (f"### {nombre}  ·  fuente `{lock.get(nombre, {}).get('source', '?')}`\n**Decisión del filtro:** NO ENTRA (bloqueo automático)\n"
+                f"- ⛔ la carpeta de la skill es un enlace simbólico -> {os.readlink(skill_dir)} (no se la recorrió)")
+    # F1: enlaces borrados del repo que estaban dentro de la carpeta de esta skill
+    for rel in enlaces_borrados():
+        partes = Path(rel).parts
+        if nombre in partes:
+            bloquea.append(f"enlace simbólico que traía la fuente dentro de esta skill y se borró antes de copiar: {rel}")
     archivos = [p for p in skill_dir.rglob("*") if p.is_file() or p.is_symlink()]
     # 1) controles estructurales
     for p in archivos:
@@ -177,7 +194,7 @@ def auditar(skill_dir, lock, rep, piezas):
     mismo_nombre = [p.origin for p in piezas if p.name == nombre]
     # 5) tamaño
     tot = sum(p.stat().st_size for p in archivos if p.is_file() and not p.is_symlink())
-    src = lock.get(nombre, {}).get("source", "?")
+    src = os.environ.get("CUARENTENA_FUENTE") or lock.get(nombre, {}).get("source", "?")
     pub = publicas(src, nombre) if src != "?" else "n/d"
     solo_texto = not any(p.suffix.lower() in CODE for p in archivos if p.is_file())
     if bloquea:

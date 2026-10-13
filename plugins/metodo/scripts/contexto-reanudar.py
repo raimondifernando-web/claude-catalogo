@@ -7,7 +7,6 @@ Si el archivo no está o no tiene PARTE B, no imprime nada. Si no lo dejó /cerr
 Entrada: el JSON que manda Claude Code por stdin (cwd, source). Solo actúa al abrir (startup) o tras compactar.
 """
 import datetime
-import hashlib
 import json
 import os
 import re
@@ -24,17 +23,20 @@ TOPE_LINEAS = 40
 DIAS_VIEJO = 3
 
 
-def confiable(crudo):
-    """¿Este REANUDAR.md lo dejó /cerrar en ESTA máquina? `cerrar-check --anotar` anota el sha256 del archivo en
-    <config>/reanudar-confiables.txt; un archivo de un repo clonado nunca está ahí aunque copie la cabecera.
-    Recibe los mismos bytes que se van a mostrar (no vuelve a abrir el archivo)."""
+def _cargar_confiable():
+    """`confiable` vive en reanudar_confianza.py (compartido con arrancar-check.py). Se carga por ruta: con `python -I` esta carpeta no está en el path.
+    Si no se puede cargar, nada se considera confiable (falla del lado seguro)."""
+    import importlib.util
     try:
-        base = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
-        h = hashlib.sha256(crudo).hexdigest()
-        with open(os.path.join(base, "reanudar-confiables.txt"), encoding="utf-8", errors="replace") as f:
-            return any(l.split()[:1] == [h] for l in f)
+        spec = importlib.util.spec_from_file_location("reanudar_confianza", os.path.join(os.path.dirname(os.path.abspath(__file__)), "reanudar_confianza.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.confiable
     except Exception:
-        return False
+        return lambda crudo: False
+
+
+confiable = _cargar_confiable()
 
 
 def main():
@@ -61,7 +63,7 @@ def main():
         return
     if not confiable(crudo):
         print("[Hay un REANUDAR.md en esta carpeta que no dejó /cerrar en esta máquina, así que no lo muestro "
-              "(podría venir de un repo ajeno). Corré /arrancar y leelo vos.]")
+              "(podría venir de un repo ajeno). Corré /arrancar: te lo va a mostrar para que confirmes si es tuyo antes de usarlo.]")
         return
     cuerpo = [l for l in texto[m.end():].splitlines() if not l.startswith(("Arrancá con", "Arrancá confirmando"))]
     if len(cuerpo) > TOPE_LINEAS:

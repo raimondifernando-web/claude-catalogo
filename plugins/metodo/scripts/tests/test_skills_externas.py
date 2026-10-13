@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Pruebas mínimas del flujo de skills de afuera (/metodo:buscar-skill-externa): el hook, el auditor de la cuarentena (con una skill falsa maliciosa y una limpia)
 y el --dry-run. No usan la red. Correr desde la raíz del repo: python3 -m unittest discover -s plugins/metodo/scripts/tests -p "test_skills_externas.py" -v"""
-import json, subprocess, sys, tempfile, unittest
+import json, os, re, shutil, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent.parent / "skills-externas"
@@ -66,6 +66,48 @@ class TestAuditor(unittest.TestCase):
         self.assertIn("NO ENTRA", out)
         for pista in ("symlink", "hooks.json", "pruebas/config", "descarga-y-ejecuta"):
             self.assertIn(pista, out, pista)
+
+
+class TestEnlaces(unittest.TestCase):
+    """F1/F6 del security check 0.35.0: enlaces simbólicos en la fuente."""
+    def test_carpeta_de_skill_que_es_enlace_se_bloquea_sin_recorrerla(self):  # F6
+        with tempfile.TemporaryDirectory() as d:
+            afuera = Path(d) / "afuera"; afuera.mkdir(); (afuera / "SKILL.md").write_text("---\nname: x\ndescription: x\n---\nSECRETO_FALSO\n")
+            skills = Path(d) / "work/.claude/skills"; skills.mkdir(parents=True); (skills / "ajena").symlink_to(afuera)
+            r = subprocess.run([sys.executable, "-I", str(AQUI / "cuarentena_auditar.py"), str(Path(d) / "work")], capture_output=True, text=True, timeout=120)
+            b = subprocess.run([sys.executable, str(AQUI / "barrido.py"), str(skills)], capture_output=True, text=True)
+        self.assertIn("NO ENTRA", r.stdout, r.stdout + r.stderr)
+        self.assertIn("enlace simbólico", r.stdout)
+        self.assertNotIn("sin hallazgos", b.stdout)
+        self.assertIn("ENLACES SIMBÓLICOS", b.stdout)
+
+    def _cli_disponible(self):
+        cfg = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+        return shutil.which("node") and shutil.which("git") and ((AQUI / "cli/node_modules/skills").is_dir() or (cfg / "metodo/cuarentena-cli/node_modules/skills").is_dir())
+
+    def test_cuarentena_no_trae_archivos_de_afuera_por_enlaces(self):  # F1 (de punta a punta, sin red; se saltea si el CLI no está instalado)
+        if not self._cli_disponible():
+            self.skipTest("el CLI skills no está instalado en esta máquina")
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            (d / "afuera/carpeta").mkdir(parents=True)
+            (d / "afuera/secreto.txt").write_text("MARCA_SECRETA_FALSA_8841\n")
+            (d / "afuera/carpeta/otro.txt").write_text("MARCA_CARPETA_FALSA_8841\n")
+            sk = d / "fuente/skills/mi-skill"; sk.mkdir(parents=True)
+            (sk / "SKILL.md").write_text("---\nname: mi-skill\ndescription: Use when you need a harmless purple report.\n---\n# Mi skill\n")
+            (sk / "notas.txt").symlink_to(d / "afuera/secreto.txt")
+            (sk / "refs").symlink_to(d / "afuera/carpeta")
+            tmp = d / "tmp"; tmp.mkdir()
+            r = subprocess.run(["bash", str(AQUI / "cuarentena-skills.sh"), str(d / "fuente"), "mi-skill"], capture_output=True, text=True, timeout=180,
+                               env=dict(os.environ, TMPDIR=str(tmp)))
+            q = next(iter(tmp.glob("cuarentena-skills.*")), None)
+            self.assertIsNotNone(q, r.stdout + r.stderr)
+            contenido = "".join(p.read_text(errors="replace") for p in q.rglob("*") if p.is_file() and not p.is_symlink() and "node_modules" not in p.parts)
+            self.assertNotIn("MARCA_SECRETA_FALSA_8841", contenido, r.stdout + r.stderr)
+            self.assertNotIn("MARCA_CARPETA_FALSA_8841", contenido)
+            informe_md = (q / "informe.md").read_text()
+            self.assertIn("Enlaces simbólicos que traía la fuente", informe_md)
+            self.assertIn("NO ENTRA", informe_md)
 
 
 class TestDryRun(unittest.TestCase):

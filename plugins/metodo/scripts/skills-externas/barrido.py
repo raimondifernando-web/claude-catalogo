@@ -1,4 +1,4 @@
-import re, sys, pathlib, unicodedata
+import os, re, sys, pathlib, unicodedata
 root = pathlib.Path(sys.argv[1])
 pats = {
     "inyección/orden al agente": re.compile(r"(ignore (all |any )?(previous|prior|above)|disregard (the )?(previous|system)|do not (tell|inform|mention)[^.\n]{0,40}(user|human)|without (telling|asking|informing) the user|you must not reveal|override (the )?system|new instructions:)", re.I),
@@ -10,8 +10,12 @@ pats = {
 inv = re.compile("[​-‏‪-‮⁠-⁤﻿­]")
 tot = 0
 hits = {}
+enlaces = [str(root.name)] if root.is_symlink() else []
 for p in sorted(root.rglob("*")):
-    if not p.is_file() or p.is_symlink():
+    if p.is_symlink():  # F6: un enlace no se lee (podría apuntar fuera); se avisa en vez de callar
+        enlaces.append(f"{p.relative_to(root)} -> {os.readlink(p)}")
+        continue
+    if not p.is_file():
         continue
     try:
         t = p.read_text(encoding="utf-8")
@@ -33,5 +37,9 @@ for k, v in hits.items():
     print(f"  [{k}] {len(v)}")
     for x in v[:8]:
         print("     ", x)
-if not hits:
+if enlaces:
+    print(f"  [ENLACES SIMBÓLICOS: no se leyeron, el barrido NO cubre lo que apuntan] {len(enlaces)}")
+    for x in enlaces[:8]:
+        print("     ", x)
+if not hits and not enlaces:
     print("  sin hallazgos")

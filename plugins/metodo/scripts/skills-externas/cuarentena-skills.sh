@@ -48,17 +48,36 @@ NODO=$(command -v node); GIT=$(command -v git)
 # sha del repo ANTES de traer (el CLI no lo expone; su computedHash es de contenido): solo si la fuente es de GitHub
 REPO_URL=""
 if [[ "$FUENTE" =~ ^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?$ ]]; then REPO_URL="${FUENTE%/}"; REPO_URL="${REPO_URL%.git}.git"
+elif [[ "$FUENTE" =~ ^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/(tree|blob)/ ]]; then REPO_URL="https://github.com/${BASH_REMATCH[1]}/${BASH_REMATCH[2]%.git}.git"
 elif [[ "$FUENTE" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] && [ ! -e "$FUENTE" ]; then REPO_URL="https://github.com/$FUENTE.git"
 fi
 sha_remoto() { [ -n "$REPO_URL" ] && env -i PATH="$(dirname "$GIT"):/usr/bin:/bin" GIT_TERMINAL_PROMPT=0 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null "$GIT" ls-remote "$REPO_URL" HEAD 2>/dev/null | cut -f1 || true; }
 SHA_ANTES=$(sha_remoto)
 Q=$(mktemp -d "${TMPDIR:-/tmp}/cuarentena-skills.XXXXXX"); mkdir "$Q/home" "$Q/work" "$Q/tmp"
 t0=$(date +%s)
+# F1 (security check 0.35.0): el CLI copia con --copy DESREFERENCIANDO los enlaces simbólicos (traería archivos de tu máquina). Por eso el repo se baja ACÁ
+# (git clone sin --recurse-submodules / cp -RP sin seguir enlaces), se BORRAN todos los enlaces simbólicos (quedan listados en enlaces.txt) y recién entonces
+# el CLI lee esa copia local, que ya no tiene ninguno que seguir.
+ENL="$Q/enlaces.txt"; : > "$ENL"
+if [ -e "$FUENTE" ] || [ -L "$FUENTE" ]; then
+  { [ ! -L "$FUENTE" ] && [ -d "$FUENTE" ]; } || { echo "La fuente tiene que ser una carpeta real (no un enlace simbólico) ✗ (cuarentena: $Q)"; exit 2; }
+  mkdir "$Q/src" && cp -RP "$FUENTE/." "$Q/src/" || { echo "No pude copiar la fuente ✗ (cuarentena: $Q)"; exit 2; }
+elif [ -n "$REPO_URL" ] || [[ "$FUENTE" =~ ^(https://|ssh://|git@) ]]; then
+  env -i PATH="$(dirname "$GIT"):/usr/bin:/bin" HOME="$Q/home" GIT_TERMINAL_PROMPT=0 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_LFS_SKIP_SMUDGE=1 \
+      "$GIT" clone --quiet --depth 1 -c protocol.file.allow=never "${REPO_URL:-$FUENTE}" "$Q/src" 2> "$Q/clone.err" \
+    || { echo "No pude bajar la fuente ✗"; tail -3 "$Q/clone.err"; echo "(cuarentena: $Q)"; exit 2; }
+else
+  echo "Fuente no reconocida ✗ (usar owner/repo, una URL https de git o una carpeta local)"; exit 2
+fi
+rm -rf "$Q/src/.git"
+( cd "$Q/src" && find . -type l -print0 | while IFS= read -r -d '' l; do printf '%s -> %s\n' "${l#./}" "$(readlink "$l")"; done > "$ENL" && find . -type l -delete )
+export CUARENTENA_ENLACES="$ENL"
+[ -s "$ENL" ] && echo "Aviso: la fuente traía $(wc -l < "$ENL" | tr -d ' ') enlace(s) simbólico(s); se borraron antes de copiar (lista en el informe)."
 cd "$Q/work"
 # entorno vacío: el CLI no ve ninguna variable tuya (ni claves, ni GITHUB_TOKEN); git sin configuración global
 env -i PATH="$(dirname "$NODO"):$(dirname "$GIT"):/usr/bin:/bin" HOME="$Q/home" TMPDIR="$Q/tmp" DISABLE_TELEMETRY=1 NO_COLOR=1 CI=1 \
     GIT_TERMINAL_PROMPT=0 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_LFS_SKIP_SMUDGE=1 \
-    node "$CLI/bin/cli.mjs" add "$FUENTE" -s "$SKILL" -a claude-code --copy -y --json > "$Q/instalacion.json" 2> "$Q/instalacion.err" \
+    node "$CLI/bin/cli.mjs" add "$Q/src" -s "$SKILL" -a claude-code --copy -y --json > "$Q/instalacion.json" 2> "$Q/instalacion.err" \
     || { echo "El CLI falló ✗"; tail -5 "$Q/instalacion.err"; echo "(cuarentena: $Q)"; exit 2; }
 [ -d "$Q/work/.claude/skills" ] || { echo "No trajo nada ✗ (cuarentena: $Q)"; exit 2; }
 SHA_DESPUES=$(sha_remoto)
@@ -68,8 +87,9 @@ echo "Traídas a cuarentena en $(( $(date +%s) - t0 )) s: $(ls "$Q/work/.claude/
   elif [ -n "$REPO_URL" ]; then printf '**sha del repo: NO se pudo fijar** (antes=`%s` · después=`%s`): repetir la traída antes de promover.\n' "${SHA_ANTES:-?}" "${SHA_DESPUES:-?}"
   else echo "**sha del repo:** fuente que no es de GitHub; fijar a mano antes de promover."; fi
   echo
-  python3 -I "$AQUI/cuarentena_auditar.py" "$Q/work"
+  CUARENTENA_FUENTE="${REPO_URL:+${REPO_URL%.git}}" python3 -I "$AQUI/cuarentena_auditar.py" "$Q/work"
   python3 -I "$AQUI/barrido.py" "$Q/work/.claude/skills"
+  if [ -s "$ENL" ]; then echo; echo "### ⛔ Enlaces simbólicos que traía la fuente (borrados antes de copiar; el CLI los habría desreferenciado)"; sed 's/^/- /' "$ENL"; fi
 } > "$Q/informe.md"
 echo "Informe: $Q/informe.md  ·  Nada se instaló en ~/.claude ni ~/.agents."
 echo "Siguiente paso (SOLO con el OK de la persona en el chat): leer lo marcado y promover a mano (ver la skill buscar-skill-externa, paso 7). Borrar cuarentena: rm -r $Q"
