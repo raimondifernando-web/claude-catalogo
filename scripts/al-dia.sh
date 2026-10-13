@@ -21,8 +21,8 @@ fi
 local RES="$CC/metodo/al-dia.resultado"; mkdir -p "$CC/metodo"
 if [ -n "$BUZON" ] && ! [[ $BUZON =~ ^[A-Za-z0-9-]+/[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; then echo "✗ El nombre del buzón no es válido. Mandale esta captura a Fernando."; return 1; fi
 local falta=() paquetes=() nuevos=() avisos=()
-N=""; T=""; LK=""; W=""; NW=""; RQ=""
-trap 'rm -f "${N:-}" "${T:-}" "${DT:-}" "${RQ:-}"; [ -n "${W:-}" ] && rm -rf "$W"; [ -n "${NW:-}" ] && rm -rf "$NW"; [ -n "${LK:-}" ] && rm -rf "$LK"' EXIT
+N=""; T=""; LK=""; W=""; NW=""; RQ=""; AT=""; SR=""
+trap 'rm -f "${N:-}" "${T:-}" "${DT:-}" "${RQ:-}" "${AT:-}"; [ -n "${SR:-}" ] && rm -f "$SR".tmp.* 2>/dev/null; [ -n "${W:-}" ] && rm -rf "$W"; [ -n "${NW:-}" ] && rm -rf "$NW"; [ -n "${LK:-}" ] && rm -rf "$LK"' EXIT
 # Una sola puesta al día a la vez: la automática ya tomó el candado (al-dia-auto.sh); la manual lo toma acá.
 if [ $AUTO -eq 0 ]; then
   local L="$CC/metodo/al-dia.corriendo" P
@@ -94,34 +94,50 @@ else
 fi
 [ -f "$M/.claude-plugin/marketplace.json" ] || { echo "✗ No pude bajar el catálogo de Fernando. Mandale esta captura."; return 1; }
 
-# 3. Actualización automática del catálogo (con copia de la configuración, una sola vez)
+# 3. Actualización automática del catálogo y ajustes de seguridad en tu settings.json
+# Toda escritura de settings.json pasa por ajustar() (L5): trabaja sobre una copia temporal, la valida como JSON, guarda UNA copia
+# con fecha por corrida antes del primer cambio y recién ahí reemplaza el archivo. Si settings.json es un enlace simbólico, se edita
+# el archivo real al que apunta (el enlace queda). AT y SR son globales: el trap de salida borra el temporal si se corta la corrida.
+# Cada cambio queda en el aviso diario, con el nombre de la copia solo si la copia salió bien.
+SR=""; AT=""; local CAJ="" CAJI=0
+if [ -L "$S" ]; then SR=$(realpath "$S" 2>/dev/null || readlink -f "$S" 2>/dev/null) || SR=""; elif [ -f "$S" ]; then SR="$S"; fi
+ajustar() {   # $1 = qué cambia (va al aviso diario); $2 = función que edita el archivo que recibe como argumento
+  [ -n "$SR" ] && [ -f "$SR" ] || return 1
+  AT="$SR.tmp.$$"
+  if cp -p "$SR" "$AT" 2>/dev/null && "$2" "$AT" >/dev/null 2>&1 && plutil -convert json -o /dev/null "$AT" 2>/dev/null; then
+    if [ $CAJI -eq 0 ]; then   # una copia por corrida, ANTES del primer cambio (si falla no se reintenta: ya no sería «cómo estaba»)
+      CAJI=1; local c; c="$SR.antes-al-dia-$(date +%Y%m%d-%H%M%S)"
+      cp -p "$SR" "$c" 2>/dev/null && CAJ="${c##*/}"
+    fi
+    if mv "$AT" "$SR" 2>/dev/null; then AT=""; avisos+=("$1${CAJ:+ (copia de cómo estaba: $CAJ)}"); return 0; fi
+  fi
+  rm -f "$AT" 2>/dev/null; AT=""; return 1
+}
+con_env() { plutil -extract env json -o /dev/null "$1" 2>/dev/null || plutil -insert env -dictionary "$1"; }
+e_autoupdate() { plutil -replace "extraKnownMarketplaces.$CAT.autoUpdate" -bool true "$1"; }
 [ "$(plutil -extract "extraKnownMarketplaces.$CAT.autoUpdate" raw "$S" 2>/dev/null)" = "true" ] \
-  || plutil -replace "extraKnownMarketplaces.$CAT.autoUpdate" -bool true "$S" 2>/dev/null
+  || ajustar "prendí la actualización automática del catálogo $CAT en tu settings.json" e_autoupdate
 [ "$(plutil -extract "extraKnownMarketplaces.$CAT.autoUpdate" raw "$S" 2>/dev/null)" = "true" ] || falta+=("actualización automática")
 # La app de escritorio arranca Claude Code con DISABLE_AUTOUPDATER, que apaga también la actualización de paquetes.
 # FORCE_AUTOUPDATE_PLUGINS (la lee solo Claude Code, regla 12b) la vuelve a prender al abrir cada sesión.
 if [ -f "$S" ]; then
-  [ "$(plutil -extract env.FORCE_AUTOUPDATE_PLUGINS raw "$S" 2>/dev/null)" = "1" ] || {
-    plutil -extract env json -o /dev/null "$S" 2>/dev/null || plutil -insert env -dictionary "$S" 2>/dev/null
-    plutil -replace env.FORCE_AUTOUPDATE_PLUGINS -string 1 "$S" 2>/dev/null \
-      && avisos+=("prendí la actualización automática de paquetes en la app (FORCE_AUTOUPDATE_PLUGINS=1 en tu settings.json): se actualizan solos los paquetes de los catálogos que tengas agregados; para apagarla, borrá esa línea de env"); }
+  e_force() { con_env "$1" && plutil -replace env.FORCE_AUTOUPDATE_PLUGINS -string 1 "$1"; }
+  [ "$(plutil -extract env.FORCE_AUTOUPDATE_PLUGINS raw "$S" 2>/dev/null)" = "1" ] \
+    || ajustar "prendí la actualización automática de paquetes en la app (FORCE_AUTOUPDATE_PLUGINS=1 en tu settings.json): se actualizan solos los paquetes de los catálogos que tengas agregados; para apagarla, borrá esa línea de env" e_force
   [ "$(plutil -extract env.FORCE_AUTOUPDATE_PLUGINS raw "$S" 2>/dev/null)" = "1" ] || falta+=("actualización de paquetes en la app")
 fi
 # /arrancar archiva la sesión anterior de la misma serie; sin este permiso el modo automático lo frena (Orquesta, 2026-10-09).
 # Archivar es reversible (se desarchiva desde la barra lateral). Solo agrega la línea si falta; no toca el resto.
 if [ -f "$S" ]; then
-  local AP='mcp__ccd_session_mgmt__archive_session' AT
-  plutil -extract permissions.allow json -o - "$S" 2>/dev/null | grep -qF "\"$AP\"" || {
-    [ -e "$S.antes-al-dia-permisos" ] || cp -p "$S" "$S.antes-al-dia-permisos" 2>/dev/null
-    # Se trabaja sobre una copia y recién al final reemplaza el archivo: un corte a mitad no lo deja roto.
-    AT="$S.tmp.$$"
-    if cp -p "$S" "$AT" \
-      && { plutil -extract permissions json -o /dev/null "$AT" 2>/dev/null || plutil -insert permissions -dictionary "$AT"; } \
-      && { plutil -extract permissions.allow json -o /dev/null "$AT" 2>/dev/null || plutil -insert permissions.allow -array "$AT"; } \
-      && plutil -insert permissions.allow -string "$AP" -append "$AT" \
-      && plutil -extract permissions.allow json -o - "$AT" 2>/dev/null | grep -qF "\"$AP\""; then
-      mv "$AT" "$S" && avisos+=("agregué a tu settings.json el permiso $AP (para que /arrancar archive la sesión anterior sin preguntar); copia en settings.json.antes-al-dia-permisos")
-    else rm -f "$AT"; fi 2>/dev/null; }
+  local AP='mcp__ccd_session_mgmt__archive_session'
+  e_archivar() {
+    { plutil -extract permissions json -o /dev/null "$1" 2>/dev/null || plutil -insert permissions -dictionary "$1"; } \
+      && { plutil -extract permissions.allow json -o /dev/null "$1" 2>/dev/null || plutil -insert permissions.allow -array "$1"; } \
+      && plutil -insert permissions.allow -string "$AP" -append "$1" \
+      && plutil -extract permissions.allow json -o - "$1" 2>/dev/null | grep -qF "\"$AP\""
+  }
+  plutil -extract permissions.allow json -o - "$S" 2>/dev/null | grep -qF "\"$AP\"" \
+    || ajustar "agregué a tu settings.json el permiso $AP (para que /arrancar archive la sesión anterior sin preguntar)" e_archivar
   plutil -extract permissions.allow json -o - "$S" 2>/dev/null | grep -qF "\"$AP\"" || falta+=("permiso para archivar sesiones viejas")
 fi
 # Claude no puede leer ni editar los lugares donde se guardan las llaves (SSH, nube, GitHub, llavero…). Los programas las siguen
@@ -129,8 +145,7 @@ fi
 # NO van las reglas sobre los archivos de variables de entorno de cada proyecto: un bloqueo de lectura rompe el conteo con grep
 # que usamos para verificar sin mostrar. Agrega las que faltan, sin duplicar ni tocar nada del cliente.
 if [ -f "$S" ]; then
-  local DR DN=0 DK=0 DERR=0 DEX   # DT es global a propósito: el trap de salida lo borra si se corta la corrida
-  DT="$S.tmp.deny.$$"
+  local DR DK DEX DFALTAN=()
   # plutil escribe cada barra como \/ en el JSON: se las saca para poder comparar.
   DEX=$(plutil -extract permissions.deny json -o - "$S" 2>/dev/null | tr -d '\\')
   for DR in \
@@ -139,30 +154,21 @@ if [ -f "$S" ]; then
     '~/.notebooklm/**' '~/Library/Keychains/**' '~/.claude/.credentials.json' '~/.claude.json' '~/.claude.json.backup*' \
     '~/.claude/backups/**'; do
     for DK in Read Edit; do
-      printf '%s' "$DEX" | grep -qF "\"$DK($DR)\"" && continue
-      if [ $DN -eq 0 ]; then
-        [ -e "$S.antes-arneses" ] || cp -p "$S" "$S.antes-arneses" 2>/dev/null
-        # Se trabaja sobre una copia y recién al final reemplaza el archivo: un corte a mitad no lo deja roto.
-        cp -p "$S" "$DT" 2>/dev/null \
-          && { plutil -extract permissions json -o /dev/null "$DT" 2>/dev/null || plutil -insert permissions -dictionary "$DT" 2>/dev/null; } \
-          && { plutil -extract permissions.deny json -o /dev/null "$DT" 2>/dev/null || plutil -insert permissions.deny -array "$DT" 2>/dev/null; } \
-          || { DERR=1; break 2; }
-      fi
-      plutil -insert permissions.deny -string "$DK($DR)" -append "$DT" 2>/dev/null || { DERR=1; break 2; }
-      DN=$((DN+1))
+      printf '%s' "$DEX" | grep -qF "\"$DK($DR)\"" || DFALTAN+=("$DK($DR)")
     done
   done
-  if [ $DN -gt 0 ]; then
-    # (plutil -lint no sirve acá: rechaza JSON válido.) Se reemplaza solo si la copia ya tiene las reglas y se lee como JSON.
-    if [ $DERR -eq 0 ] && plutil -extract permissions.deny json -o - "$DT" 2>/dev/null | tr -d '\\' | grep -qF '"Edit(~/.claude/backups/**)"' \
-      && plutil -convert json -o /dev/null "$DT" 2>/dev/null; then mv "$DT" "$S" || DERR=1; else DERR=1; rm -f "$DT"; fi
-  fi
-  rm -f "$DT" 2>/dev/null
+  e_deny() {
+    { plutil -extract permissions json -o /dev/null "$1" 2>/dev/null || plutil -insert permissions -dictionary "$1"; } \
+      && { plutil -extract permissions.deny json -o /dev/null "$1" 2>/dev/null || plutil -insert permissions.deny -array "$1"; } || return 1
+    local x; for x in "${DFALTAN[@]}"; do plutil -insert permissions.deny -string "$x" -append "$1" || return 1; done
+    # (plutil -lint no sirve acá: rechaza JSON válido.) Se reemplaza solo si la copia ya tiene las reglas.
+    plutil -extract permissions.deny json -o - "$1" 2>/dev/null | tr -d '\\' | grep -qF '"Edit(~/.claude/backups/**)"'
+  }
+  [ ${#DFALTAN[@]} -eq 0 ] \
+    || ajustar "agregué a tu settings.json ${#DFALTAN[@]} regla(s) que no dejan a Claude leer ni editar las carpetas de llaves (SSH, nube, GitHub, llavero)" e_deny
   DEX=$(plutil -extract permissions.deny json -o - "$S" 2>/dev/null | tr -d '\\')
-  printf '%s' "$DEX" | grep -qF '"Read(~/.ssh/**)"' \
-    && printf '%s' "$DEX" | grep -qF '"Edit(~/.claude/backups/**)"' \
-    || DERR=1
-  [ $DERR -eq 0 ] || falta+=("bloqueo de las carpetas de llaves")
+  printf '%s' "$DEX" | grep -qF '"Read(~/.ssh/**)"' && printf '%s' "$DEX" | grep -qF '"Edit(~/.claude/backups/**)"' \
+    || falta+=("bloqueo de las carpetas de llaves")
 fi
 
 # 4. Conexión con GitHub para los paquetes que vienen directo de GitHub (solo si hace falta)
@@ -501,14 +507,17 @@ fi
 
 # 5c. Datos de uso de HyperFrames: apagados (solo esa variable; nunca una general como DO_NOT_TRACK)
 if [ -f "$S" ]; then
-  plutil -extract env json -o /dev/null "$S" >/dev/null 2>&1 || plutil -insert env -dictionary "$S" 2>/dev/null
-  [ "$(plutil -extract env.HYPERFRAMES_NO_TELEMETRY raw "$S" 2>/dev/null)" = "1" ] || plutil -replace env.HYPERFRAMES_NO_TELEMETRY -string 1 "$S" 2>/dev/null
-  if plutil -extract env.DO_NOT_TRACK raw "$S" >/dev/null 2>&1; then
-    plutil -remove env.DO_NOT_TRACK "$S" && echo "· Quité DO_NOT_TRACK de tu configuración (cortaba Remote Control). Copia en settings.json.antes-al-dia"
-  fi
+  e_telemetria() { con_env "$1" && plutil -replace env.HYPERFRAMES_NO_TELEMETRY -string 1 "$1"; }
+  e_sin_dnt() { plutil -remove env.DO_NOT_TRACK "$1"; }
+  [ "$(plutil -extract env.HYPERFRAMES_NO_TELEMETRY raw "$S" 2>/dev/null)" = "1" ] \
+    || ajustar "apagué los datos de uso de HyperFrames (HYPERFRAMES_NO_TELEMETRY=1 en tu settings.json)" e_telemetria
+  plutil -extract env.DO_NOT_TRACK raw "$S" >/dev/null 2>&1 \
+    && ajustar "quité DO_NOT_TRACK de tu settings.json (cortaba Remote Control)" e_sin_dnt
   [ "$(plutil -extract env.HYPERFRAMES_NO_TELEMETRY raw "$S" 2>/dev/null)" = "1" ] || falta+=("apagar datos de uso de HyperFrames")
   # claude-security (5d-bis): apagado solo su aviso de escaneo en cada push (escanear gasta mucho cupo; se pide a mano). Variable propia del plugin.
-  [ "$(plutil -extract env.CLAUDE_SECURITY_SCAN_TIP raw "$S" 2>/dev/null)" = "off" ] || plutil -replace env.CLAUDE_SECURITY_SCAN_TIP -string off "$S" 2>/dev/null
+  e_scantip() { con_env "$1" && plutil -replace env.CLAUDE_SECURITY_SCAN_TIP -string off "$1"; }
+  [ "$(plutil -extract env.CLAUDE_SECURITY_SCAN_TIP raw "$S" 2>/dev/null)" = "off" ] \
+    || ajustar "apagué el aviso de escaneo de claude-security (CLAUDE_SECURITY_SCAN_TIP=off en tu settings.json)" e_scantip
   [ "$(plutil -extract env.CLAUDE_SECURITY_SCAN_TIP raw "$S" 2>/dev/null)" = "off" ] || falta+=("apagar el aviso de escaneo de claude-security")
 fi
 

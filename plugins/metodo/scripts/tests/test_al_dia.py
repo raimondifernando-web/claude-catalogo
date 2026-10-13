@@ -6,10 +6,13 @@ No corre al-dia.sh entero (tocaría ~/.zshrc, uv, Node, la configuración de Cla
 Correr desde la raíz del repo:
     python3 -m unittest discover -s plugins/metodo/scripts/tests -p "test_al_dia.py" -v
 """
+import json
 import os
 import re
+import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -131,11 +134,80 @@ class AlDiaPythonFijado(unittest.TestCase):
         self.assertNotIn("FALTA:", out)
 
 
+def tramo(ini, fin):
+    i = TEXTO.index(ini)
+    return TEXTO[i:TEXTO.index(fin, i)]
+
+
+@unittest.skipUnless(sys.platform == "darwin" and shutil.which("plutil"), "al-dia.sh es de Mac: usa plutil")
+class AlDiaAjustesL5(unittest.TestCase):
+    """L5: settings.json se edita sobre una copia, se valida, queda una copia con fecha y se respeta el enlace simbólico."""
+    BLOQUE = tramo("# 3. Actualización automática del catálogo y ajustes", "# 4. Conexión con GitHub") + \
+        tramo("# 5c. Datos de uso de HyperFrames", "# 5d.")
+
+    def correr(self, carpeta, settings):
+        guion = ("f() {\n  local CAT=claude-catalogo S=%s avisos=() falta=() x\n  SR=''; AT=''\n%s\n"
+                 "  for x in ${avisos[@]+\"${avisos[@]}\"}; do echo \"AVISO:$x\"; done\n"
+                 "  for x in ${falta[@]+\"${falta[@]}\"}; do echo \"FALTA:$x\"; done\n}\nf\n") % (settings, self.BLOQUE)
+        r = subprocess.run(["/bin/bash", "-c", guion], capture_output=True, text=True, cwd=carpeta, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout
+
+    def test_enlace_simbolico_copia_con_fecha_y_aviso(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            real = d / "real" / "settings.json"; real.parent.mkdir()
+            original = json.dumps({"model": "sonnet", "env": {"OTRA": "x"},   # como lo deja `claude plugin marketplace add`
+                                   "extraKnownMarketplaces": {"claude-catalogo": {"source": {"source": "github", "repo": "x/y"}}}})
+            real.write_text(original)
+            enlace = d / "cc" / "settings.json"; enlace.parent.mkdir(); enlace.symlink_to(real)
+            out = self.correr(d, enlace)
+            self.assertNotIn("FALTA:", out, out)
+            self.assertTrue(enlace.is_symlink(), "el enlace tiene que seguir siendo un enlace")
+            datos = json.loads(real.read_text())
+            self.assertEqual(datos["env"]["FORCE_AUTOUPDATE_PLUGINS"], "1")
+            self.assertEqual(datos["env"]["OTRA"], "x")
+            self.assertTrue(datos["extraKnownMarketplaces"]["claude-catalogo"]["autoUpdate"])
+            self.assertIn("mcp__ccd_session_mgmt__archive_session", datos["permissions"]["allow"])
+            self.assertEqual(len(datos["permissions"]["deny"]), 38)
+            copias = list(real.parent.glob("settings.json.antes-al-dia-*"))
+            self.assertEqual(len(copias), 1, copias)                        # una sola copia por corrida, antes del primer cambio
+            self.assertEqual(copias[0].read_text(), original)
+            avisos = [l for l in out.splitlines() if l.startswith("AVISO:")]
+            self.assertGreaterEqual(len(avisos), 5)                         # cada cambio queda en el aviso diario
+            for a in avisos:
+                self.assertIn("(copia de cómo estaba: %s)" % copias[0].name, a)
+            self.assertEqual(list(d.rglob("*.tmp.*")), [])                  # no quedan temporales
+            # segunda corrida: nada que cambiar, ni avisos ni copias nuevas
+            out2 = self.correr(d, enlace)
+            self.assertNotIn("AVISO:", out2)
+            self.assertEqual(len(list(real.parent.glob("settings.json.antes-al-dia-*"))), 1)
+
+    def test_archivo_roto_no_se_reemplaza(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            s = d / "settings.json"; s.write_text("{esto no es json")
+            out = self.correr(d, s)
+            self.assertEqual(s.read_text(), "{esto no es json")
+            self.assertIn("FALTA:actualización de paquetes en la app", out)
+            self.assertNotIn("AVISO:", out)
+            self.assertEqual(list(d.glob("*.tmp.*")), [])
+
+    def test_el_trap_borra_los_temporales_de_ajustes(self):
+        linea = next(l for l in TEXTO.splitlines() if l.startswith("trap "))
+        self.assertIn('"${AT:-}"', linea)
+        self.assertIn('rm -f "$SR".tmp.*', linea)
+
+    def test_no_queda_escritura_directa_de_settings(self):
+        self.assertIsNone(re.search(r'plutil -(replace|insert|remove)[^|\n]*"\$S"', TEXTO))
+
+
 class AlDiaAvisaCambios(unittest.TestCase):
     def test_cambios_de_ajustes_y_permisos_van_al_aviso_diario(self):
         # En --auto el echo no lo ve nadie: tienen que quedar en avisos (al-dia.aviso, que se muestra al abrir sesión).
-        self.assertRegex(TEXTO, r'FORCE_AUTOUPDATE_PLUGINS -string 1 "\$S" 2>/dev/null \\\n\s+&& avisos\+=\(')
-        self.assertRegex(TEXTO, r'mv "\$AT" "\$S" && avisos\+=\("agregué a tu settings.json el permiso')
+        self.assertRegex(TEXTO, r'\|\| ajustar "prendí la actualización automática de paquetes en la app \(FORCE_AUTOUPDATE_PLUGINS=1[^"]*" e_force')
+        self.assertRegex(TEXTO, r'\|\| ajustar "agregué a tu settings.json el permiso \$AP[^"]*" e_archivar')
+        self.assertIn('avisos+=("$1${CAJ:+ (copia de cómo estaba: $CAJ)}")', TEXTO)
 
 
 if __name__ == "__main__":
