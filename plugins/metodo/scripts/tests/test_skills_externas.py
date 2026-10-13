@@ -85,29 +85,69 @@ class TestEnlaces(unittest.TestCase):
         cfg = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
         return shutil.which("node") and shutil.which("git") and ((AQUI / "cli/node_modules/skills").is_dir() or (cfg / "metodo/cuarentena-cli/node_modules/skills").is_dir())
 
-    def test_cuarentena_no_trae_archivos_de_afuera_por_enlaces(self):  # F1 (de punta a punta, sin red; se saltea si el CLI no está instalado)
+    def _fuente_con_enlaces(self, d):
+        """Repo falso con una skill que trae un enlace a un archivo y otro a una carpeta de FUERA (marcas falsas)."""
+        (d / "afuera/carpeta").mkdir(parents=True)
+        (d / "afuera/secreto.txt").write_text("MARCA_SECRETA_FALSA_8841\n")
+        (d / "afuera/carpeta/otro.txt").write_text("MARCA_CARPETA_FALSA_8841\n")
+        sk = d / "fuente/skills/mi-skill"; sk.mkdir(parents=True)
+        (sk / "SKILL.md").write_text("---\nname: mi-skill\ndescription: Use when you need a harmless purple report.\n---\n# Mi skill\n")
+        (sk / "notas.txt").symlink_to(d / "afuera/secreto.txt")
+        (sk / "refs").symlink_to(d / "afuera/carpeta")
+        return d / "fuente"
+
+    def _correr(self, d, fuente, *args, base=None):
+        tmp = d / "tmp"; tmp.mkdir(exist_ok=True)
+        env = dict(os.environ, TMPDIR=str(tmp))
+        if base:
+            env["CUARENTENA_GITHUB_BASE"] = base
+        r = subprocess.run(["bash", str(AQUI / "cuarentena-skills.sh"), fuente, *args], capture_output=True, text=True, timeout=180, env=env)
+        q = next(iter(tmp.glob("cuarentena-skills.*")), None)
+        return r, q
+
+    def _sin_fuga(self, r, q):
+        self.assertIsNotNone(q, r.stdout + r.stderr)
+        contenido = "".join(p.read_text(errors="replace") for p in q.rglob("*") if p.is_file() and not p.is_symlink() and "node_modules" not in p.parts)
+        self.assertNotIn("MARCA_SECRETA_FALSA_8841", contenido, r.stdout + r.stderr)
+        self.assertNotIn("MARCA_CARPETA_FALSA_8841", contenido)
+        informe_md = (q / "informe.md").read_text()
+        self.assertIn("Enlaces simbólicos que traía la fuente", informe_md)
+        self.assertIn("NO ENTRA", informe_md)
+        return informe_md
+
+    def test_cuarentena_no_trae_archivos_de_afuera_por_enlaces(self):  # F1, fuente local (de punta a punta, sin red; se saltea si el CLI no está instalado)
         if not self._cli_disponible():
             self.skipTest("el CLI skills no está instalado en esta máquina")
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
-            (d / "afuera/carpeta").mkdir(parents=True)
-            (d / "afuera/secreto.txt").write_text("MARCA_SECRETA_FALSA_8841\n")
-            (d / "afuera/carpeta/otro.txt").write_text("MARCA_CARPETA_FALSA_8841\n")
-            sk = d / "fuente/skills/mi-skill"; sk.mkdir(parents=True)
-            (sk / "SKILL.md").write_text("---\nname: mi-skill\ndescription: Use when you need a harmless purple report.\n---\n# Mi skill\n")
-            (sk / "notas.txt").symlink_to(d / "afuera/secreto.txt")
-            (sk / "refs").symlink_to(d / "afuera/carpeta")
-            tmp = d / "tmp"; tmp.mkdir()
-            r = subprocess.run(["bash", str(AQUI / "cuarentena-skills.sh"), str(d / "fuente"), "mi-skill"], capture_output=True, text=True, timeout=180,
-                               env=dict(os.environ, TMPDIR=str(tmp)))
-            q = next(iter(tmp.glob("cuarentena-skills.*")), None)
-            self.assertIsNotNone(q, r.stdout + r.stderr)
-            contenido = "".join(p.read_text(errors="replace") for p in q.rglob("*") if p.is_file() and not p.is_symlink() and "node_modules" not in p.parts)
-            self.assertNotIn("MARCA_SECRETA_FALSA_8841", contenido, r.stdout + r.stderr)
-            self.assertNotIn("MARCA_CARPETA_FALSA_8841", contenido)
-            informe_md = (q / "informe.md").read_text()
-            self.assertIn("Enlaces simbólicos que traía la fuente", informe_md)
-            self.assertIn("NO ENTRA", informe_md)
+            fuente = self._fuente_con_enlaces(d)
+            r, q = self._correr(d, str(fuente), "mi-skill")
+            self._sin_fuga(r, q)
+
+    def test_fuentes_remotas_owner_repo_arroba_skill_y_urls_siguen_andando_sin_enlaces(self):  # F1 en fuentes remotas + no regresión de owner/repo@skill
+        if not self._cli_disponible():
+            self.skipTest("el CLI skills no está instalado en esta máquina")
+        env_git = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
+        for fuente_txt, args in [("pers/repo@mi-skill", ()), ("pers/repo", ("mi-skill",)), ("https://github.com/pers/repo", ("mi-skill",)),
+                                 ("https://github.com/pers/repo/tree/main/skills", ("mi-skill",)), ("github:pers/repo@mi-skill", ()), ("pers/repo/skills", ("mi-skill",))]:
+            with self.subTest(fuente=fuente_txt), tempfile.TemporaryDirectory() as d:
+                d = Path(d)
+                src = self._fuente_con_enlaces(d)
+                gh = d / "gh/pers"; gh.mkdir(parents=True)
+                shutil.copytree(src, gh / "repo.git", symlinks=True)       # "el repo remoto" (simulado con una carpeta local vía file://)
+                for c in (["init", "-q", "-b", "main"], ["add", "-A"], ["commit", "-q", "-m", "x"]):
+                    subprocess.run(["git", "-C", str(gh / "repo.git"), *c], check=True, capture_output=True, env=env_git)
+                r, q = self._correr(d, fuente_txt, *args, base=f"file://{d}/gh")
+                self._sin_fuga(r, q)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_fuente_no_reconocida_falla_claro(self):
+        with tempfile.TemporaryDirectory() as d:
+            if not self._cli_disponible():
+                self.skipTest("el CLI skills no está instalado en esta máquina")
+            r, _ = self._correr(Path(d), "esto no es una fuente")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("Fuente no reconocida", r.stdout)
 
 
 class TestDryRun(unittest.TestCase):

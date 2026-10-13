@@ -45,39 +45,58 @@ if [ "$DRY" = 1 ]; then
   exit 0
 fi
 NODO=$(command -v node); GIT=$(command -v git)
-# sha del repo ANTES de traer (el CLI no lo expone; su computedHash es de contenido): solo si la fuente es de GitHub
-REPO_URL=""
-if [[ "$FUENTE" =~ ^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?$ ]]; then REPO_URL="${FUENTE%/}"; REPO_URL="${REPO_URL%.git}.git"
-elif [[ "$FUENTE" =~ ^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/(tree|blob)/ ]]; then REPO_URL="https://github.com/${BASH_REMATCH[1]}/${BASH_REMATCH[2]%.git}.git"
-elif [[ "$FUENTE" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] && [ ! -e "$FUENTE" ]; then REPO_URL="https://github.com/$FUENTE.git"
+# --- Qué fuente es (mismas formas que acepta el CLI): owner/repo · owner/repo/subcarpeta · owner/repo@skill · github:… · gitlab:… · URL de GitHub (con /tree/<rama>/<subcarpeta>)
+#     · URL https/ssh de git · carpeta local · cualquiera con #rama. REPO_URL/REF/SUB/ATSK se calculan acá; el sha del repo se mide ANTES de traer (el CLI no lo expone).
+REPO_URL=""; REF=""; SUB=""; ATSK=""; OWNER_REPO=""; LOCAL=0
+GH_BASE="${CUARENTENA_GITHUB_BASE:-https://github.com}"   # solo las pruebas lo cambian (para clonar de un repo local sin red)
+F="$FUENTE"
+if [ -e "$F" ] || [ -L "$F" ]; then LOCAL=1
+else
+  if [[ "$F" == *'#'* ]]; then REF="${F#*#}"; F="${F%%#*}"; [[ "$REF" == *'@'* ]] && { ATSK="${REF#*@}"; REF="${REF%%@*}"; }; fi
+  case "$F" in github:*) F="${F#github:}" ;; gitlab:*) F="https://gitlab.com/${F#gitlab:}" ;; esac
+  if [[ "$F" =~ ^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/?$ ]] || [[ "$F" =~ ^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/(tree|blob)/([^/]+)(/(.+))?$ ]]; then
+    OWNER_REPO="${BASH_REMATCH[1]}/${BASH_REMATCH[2]%.git}"
+    [[ "$F" == */tree/* || "$F" == */blob/* ]] && { REF="${BASH_REMATCH[4]}"; SUB="${BASH_REMATCH[6]:-}"; }
+  elif [[ "$F" =~ ^([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)@([^/]+)$ ]]; then OWNER_REPO="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"; ATSK="${BASH_REMATCH[3]}"
+  elif [[ "$F" =~ ^([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)(/(.+))?$ ]]; then OWNER_REPO="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"; SUB="${BASH_REMATCH[4]:-}"
+  fi
+  if [ -n "$OWNER_REPO" ]; then REPO_URL="$GH_BASE/${OWNER_REPO%.git}.git"
+  elif [[ "$F" =~ ^(https://|ssh://|git@) ]]; then REPO_URL="$F"
+  fi
 fi
-sha_remoto() { [ -n "$REPO_URL" ] && env -i PATH="$(dirname "$GIT"):/usr/bin:/bin" GIT_TERMINAL_PROMPT=0 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null "$GIT" ls-remote "$REPO_URL" HEAD 2>/dev/null | cut -f1 || true; }
+[ -z "$SUB" ] || case "/$SUB/" in */../*|//*) echo "Subcarpeta no válida ✗ ($SUB)"; exit 2 ;; esac
+[[ "$REF" == -* ]] && { echo "Rama/etiqueta no válida ✗"; exit 2; }
+[ "$SKILL" = '*' ] && [ -n "$ATSK" ] && SKILL="$ATSK"
+sha_remoto() { [ -n "$REPO_URL" ] && env -i PATH="$(dirname "$GIT"):/usr/bin:/bin" GIT_TERMINAL_PROMPT=0 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null "$GIT" ls-remote "$REPO_URL" "${REF:-HEAD}" 2>/dev/null | head -1 | cut -f1 || true; }
 SHA_ANTES=$(sha_remoto)
 Q=$(mktemp -d "${TMPDIR:-/tmp}/cuarentena-skills.XXXXXX"); mkdir "$Q/home" "$Q/work" "$Q/tmp"
 t0=$(date +%s)
 # F1 (security check 0.35.0): el CLI copia con --copy DESREFERENCIANDO los enlaces simbólicos (traería archivos de tu máquina). Por eso el repo se baja ACÁ
-# (git clone sin --recurse-submodules / cp -RP sin seguir enlaces), se BORRAN todos los enlaces simbólicos (quedan listados en enlaces.txt) y recién entonces
-# el CLI lee esa copia local, que ya no tiene ninguno que seguir.
+# (git clone sin --recurse-submodules / cp -RP sin seguir enlaces: vale igual para fuentes remotas y locales), se BORRAN todos los enlaces simbólicos
+# (quedan listados en enlaces.txt) y recién entonces el CLI lee esa copia local, que ya no tiene ninguno que seguir.
 ENL="$Q/enlaces.txt"; : > "$ENL"
-if [ -e "$FUENTE" ] || [ -L "$FUENTE" ]; then
+if [ "$LOCAL" = 1 ]; then
   { [ ! -L "$FUENTE" ] && [ -d "$FUENTE" ]; } || { echo "La fuente tiene que ser una carpeta real (no un enlace simbólico) ✗ (cuarentena: $Q)"; exit 2; }
   mkdir "$Q/src" && cp -RP "$FUENTE/." "$Q/src/" || { echo "No pude copiar la fuente ✗ (cuarentena: $Q)"; exit 2; }
-elif [ -n "$REPO_URL" ] || [[ "$FUENTE" =~ ^(https://|ssh://|git@) ]]; then
+elif [ -n "$REPO_URL" ]; then
+  PERMITIR_FILE=never; [ -n "${CUARENTENA_GITHUB_BASE:-}" ] && PERMITIR_FILE=always
   env -i PATH="$(dirname "$GIT"):/usr/bin:/bin" HOME="$Q/home" GIT_TERMINAL_PROMPT=0 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_LFS_SKIP_SMUDGE=1 \
-      "$GIT" clone --quiet --depth 1 -c protocol.file.allow=never "${REPO_URL:-$FUENTE}" "$Q/src" 2> "$Q/clone.err" \
+      "$GIT" -c protocol.file.allow=$PERMITIR_FILE clone --quiet --depth 1 ${REF:+--branch "$REF"} "$REPO_URL" "$Q/src" 2> "$Q/clone.err" \
     || { echo "No pude bajar la fuente ✗"; tail -3 "$Q/clone.err"; echo "(cuarentena: $Q)"; exit 2; }
 else
-  echo "Fuente no reconocida ✗ (usar owner/repo, una URL https de git o una carpeta local)"; exit 2
+  echo "Fuente no reconocida ✗ (usar owner/repo, owner/repo@skill, una URL de git o una carpeta local)"; exit 2
 fi
 rm -rf "$Q/src/.git"
 ( cd "$Q/src" && find . -type l -print0 | while IFS= read -r -d '' l; do printf '%s -> %s\n' "${l#./}" "$(readlink "$l")"; done > "$ENL" && find . -type l -delete )
 export CUARENTENA_ENLACES="$ENL"
 [ -s "$ENL" ] && echo "Aviso: la fuente traía $(wc -l < "$ENL" | tr -d ' ') enlace(s) simbólico(s); se borraron antes de copiar (lista en el informe)."
+RAIZ="$Q/src${SUB:+/$SUB}"
+[ -d "$RAIZ" ] || { echo "La subcarpeta «$SUB» no existe en la fuente ✗ (cuarentena: $Q)"; exit 2; }
 cd "$Q/work"
 # entorno vacío: el CLI no ve ninguna variable tuya (ni claves, ni GITHUB_TOKEN); git sin configuración global
 env -i PATH="$(dirname "$NODO"):$(dirname "$GIT"):/usr/bin:/bin" HOME="$Q/home" TMPDIR="$Q/tmp" DISABLE_TELEMETRY=1 NO_COLOR=1 CI=1 \
     GIT_TERMINAL_PROMPT=0 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_LFS_SKIP_SMUDGE=1 \
-    node "$CLI/bin/cli.mjs" add "$Q/src" -s "$SKILL" -a claude-code --copy -y --json > "$Q/instalacion.json" 2> "$Q/instalacion.err" \
+    node "$CLI/bin/cli.mjs" add "$RAIZ" -s "$SKILL" -a claude-code --copy -y --json > "$Q/instalacion.json" 2> "$Q/instalacion.err" \
     || { echo "El CLI falló ✗"; tail -5 "$Q/instalacion.err"; echo "(cuarentena: $Q)"; exit 2; }
 [ -d "$Q/work/.claude/skills" ] || { echo "No trajo nada ✗ (cuarentena: $Q)"; exit 2; }
 SHA_DESPUES=$(sha_remoto)
@@ -87,7 +106,7 @@ echo "Traídas a cuarentena en $(( $(date +%s) - t0 )) s: $(ls "$Q/work/.claude/
   elif [ -n "$REPO_URL" ]; then printf '**sha del repo: NO se pudo fijar** (antes=`%s` · después=`%s`): repetir la traída antes de promover.\n' "${SHA_ANTES:-?}" "${SHA_DESPUES:-?}"
   else echo "**sha del repo:** fuente que no es de GitHub; fijar a mano antes de promover."; fi
   echo
-  CUARENTENA_FUENTE="${REPO_URL:+${REPO_URL%.git}}" python3 -I "$AQUI/cuarentena_auditar.py" "$Q/work"
+  CUARENTENA_FUENTE="$OWNER_REPO" python3 -I "$AQUI/cuarentena_auditar.py" "$Q/work"
   python3 -I "$AQUI/barrido.py" "$Q/work/.claude/skills"
   if [ -s "$ENL" ]; then echo; echo "### ⛔ Enlaces simbólicos que traía la fuente (borrados antes de copiar; el CLI los habría desreferenciado)"; sed 's/^/- /' "$ENL"; fi
 } > "$Q/informe.md"
