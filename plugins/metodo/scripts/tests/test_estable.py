@@ -232,11 +232,12 @@ class TestScript(unittest.TestCase):
         self.srv.actividad = [evento(self.c[5], 1), evento(self.c[4], 47), evento(self.c[3], 50),
                               evento(self.c[2], 60), evento(self.c[1], 100)]
 
-    def correr(self, *args, superficial=False, api=None, rama=None):
+    def correr(self, *args, superficial=False, api=None, rama=None, extra_env=None):
         trabajo = self._clon_de_trabajo(superficial, rama)
         salida, resumen = self.dir / "out.txt", self.dir / "resumen.md"
-        env = {k: v for k, v in os.environ.items() if k not in ("GH_TOKEN", "GITHUB_TOKEN", "GITHUB_ACTIONS")}
+        env = {k: v for k, v in os.environ.items() if k not in ("GH_TOKEN", "GITHUB_TOKEN", "GITHUB_ACTIONS", "GITHUB_ACTOR")}
         env.update(GIT_TERMINAL_PROMPT="0", GITHUB_OUTPUT=str(salida), GITHUB_STEP_SUMMARY=str(resumen))
+        env.update(extra_env or {})
         r = subprocess.run([sys.executable, str(SCRIPT), "--repo", "dueno/repo", "--api", api or self.api] + list(args),
                            cwd=str(trabajo), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                            universal_newlines=True, timeout=60)
@@ -536,6 +537,132 @@ class TestScript(unittest.TestCase):
         self.assertEqual(self._estable_remoto(), self.c[1])
         self.assertIn("se movería", r.stdout)
 
+    # -- compuerta de security check (F14 del check 0.35.0) --
+    def _archivo(self, ruta, contenido, mensaje):
+        """Commit en main que escribe `ruta` (relativa al repo) y lo empuja. Devuelve el sha."""
+        destino = self.origen / ruta
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_text(contenido, encoding="utf-8")
+        self._git(self.origen, "add", ruta)
+        self._git(self.origen, "commit", "--quiet", "-m", mensaje)
+        self._git(self.origen, "push", "--quiet", "origin", "HEAD:refs/heads/main")
+        return self._git(self.origen, "rev-parse", "HEAD")
+
+    def _version(self, paquete, version):
+        return self._archivo("plugins/%s/.claude-plugin/plugin.json" % paquete,
+                             json.dumps({"name": paquete, "version": version}), "%s %s" % (paquete, version))
+
+    def _check(self, titulo, ruta="docs/SECURITY-CHECKS.md", cuerpo=""):
+        previo = (self.origen / ruta).read_text(encoding="utf-8") if (self.origen / ruta).exists() else "# Checks\n"
+        return self._archivo(ruta, previo + "\n%s\n%s\n" % (titulo, cuerpo), "check")
+
+    def test_manual_sin_security_check_no_pasa(self):
+        # El incidente: 0.32.0 → 0.35.0 llegaron a estable con un «pasalo ya» y sin check.
+        v = self._version("metodo", "0.36.0")
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("falta el security check de metodo 0.36.0", r.stdout)
+        self.assertIn("sin_check", r.stdout)                       # dice cómo forzar
+        self.assertEqual(self._estable_remoto(), self.c[1])
+
+    def test_automatico_sin_security_check_no_pasa(self):
+        v = self._version("metodo", "0.36.0")
+        self.srv.actividad = [evento(v, 50), evento(self.c[5], 60), evento(self.c[1], 100)]
+        r = self.correr()
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("falta el security check de metodo 0.36.0", r.stdout)
+        self.assertEqual(self._estable_remoto(), self.c[1])
+
+    def test_check_anotado_despues_en_main_deja_pasar(self):
+        v = self._version("metodo", "0.36.0")
+        self._check("### 2026-10-20 · metodo 0.36.0 (lo que sea)")   # commit posterior: se lee de main, no del candidato
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), v)
+        self.assertIn("security check: al día", r.resumen)
+        self.assertIn("sin_check=false", r.salida)
+
+    def test_rango_en_el_titulo_cubre_la_version_final(self):
+        v = self._version("metodo", "0.36.0")
+        self._check("## metodo 0.35.1 → 0.36.0 y paneles 0.3.0 — PASS")
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_reporte_en_la_carpeta_de_checks_cuenta(self):
+        v = self._version("metodo", "0.36.0")
+        self._check("# Security check — claude-catalogo (metodo 0.36.0, commit abc1234) — 2026-10-20",
+                    ruta=".claude/security-checks/2026-10-20.md")
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_mencion_en_el_cuerpo_no_cuenta(self):
+        v = self._version("metodo", "0.36.0")
+        self._check("### 2026-10-20 · metodo 0.35.1", cuerpo="Condiciones para metodo 0.36.0: ninguna")
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), self.c[1])
+
+    def test_otro_paquete_con_el_mismo_numero_no_cubre(self):
+        v = self._version("metodo", "0.3.0")
+        self._check("### paneles 0.3.0")
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+
+    def test_paneles_tambien_se_vigila(self):
+        v = self._version("paneles", "0.3.0")
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("paneles 0.3.0", r.stdout)
+
+    def test_otros_paquetes_no_piden_check(self):
+        v = self._version("rubro-marketing", "9.9.9")
+        r = self.correr("--sha", v, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("security check: no aplica", r.resumen)
+
+    def test_misma_version_que_estable_no_pide_check(self):
+        v = self._version("metodo", "0.36.0")
+        self._git(self.remoto, "update-ref", "refs/heads/estable", v)   # ya está en estable (forzado antes)
+        w = self._archivo("docs/otra-cosa.md", "x", "doc")
+        r = self.correr("--sha", w, api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), w)
+
+    def test_forzar_con_motivo_pasa_y_queda_registrado(self):
+        v = self._version("metodo", "0.36.0")
+        r = self.correr("--sha", v, "--sin-check", "arreglo urgente de un cliente", api="http://127.0.0.1:1",
+                        extra_env={"GITHUB_ACTIONS": "true", "GITHUB_ACTOR": "fernando"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), v)
+        self.assertIn("::warning::estable: PROMOVIDO SIN SECURITY CHECK de metodo 0.36.0, por fernando. Motivo: arreglo urgente",
+                      r.stdout)
+        self.assertIn("PROMOVIDO SIN SECURITY CHECK", r.resumen)
+        self.assertIn("sin_check=true", r.salida)
+
+    def test_forzar_sin_motivo_real_es_error_de_uso(self):
+        v = self._version("metodo", "0.36.0")
+        r = self.correr("--sha", v, "--sin-check", "x", api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertEqual(self._estable_remoto(), self.c[1])
+
+    def test_el_motivo_no_arma_comandos_de_github(self):
+        v = self._version("metodo", "0.36.0")
+        r = self.correr("--sha", v, "--sin-check", "urgente de verdad\n::error::inventado", api="http://127.0.0.1:1",
+                        extra_env={"GITHUB_ACTIONS": "true"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        comandos = [l for l in r.stdout.splitlines() if l.startswith("::")]
+        self.assertEqual(len(comandos), 1, comandos)
+        self.assertTrue(comandos[0].startswith("::warning::"))
+        self.assertNotIn("::error::", comandos[0])
+
+    def test_forzar_cuando_hay_check_no_anota_nada(self):
+        v = self._version("metodo", "0.36.0")
+        self._check("### metodo 0.36.0")
+        r = self.correr("--sha", v, "--sin-check", "por las dudas, igual", api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("PROMOVIDO SIN SECURITY CHECK", r.stdout + r.resumen)
+        self.assertIn("sin_check=false", r.salida)
+
     def test_clon_superficial_se_rechaza(self):
         self._eventos_normales()
         r = self.correr(superficial=True)
@@ -702,8 +829,19 @@ class TestWorkflow(unittest.TestCase):
 
     def test_el_sha_manual_entra_por_env_y_no_dentro_del_codigo(self):
         for n, linea in enumerate(self.texto.splitlines(), 1):
-            if "github.event.inputs" in linea or "inputs.sha" in linea:
-                self.assertRegex(linea, r"^\s+SHA_MANUAL:\s*\$\{\{", "línea %d: la entrada va a una variable de entorno" % n)
+            if "github.event.inputs" in linea or "inputs.sha" in linea or "inputs.sin_check" in linea:
+                self.assertRegex(linea, r"^\s+(SHA_MANUAL|MOTIVO_SIN_CHECK):\s*\$\{\{",
+                                 "línea %d: la entrada va a una variable de entorno" % n)
+
+    def test_sin_check_es_una_entrada_explicita_y_tolera_el_script_viejo(self):
+        # F14: forzar sin security check es posible solo a propósito (entrada aparte) y no rompe mientras estable
+        # todavía tenga el script sin la compuerta (el workflow es de main; el script, de estable).
+        self.assertRegex(self.texto, r"(?m)^\s+sin_check:\s*$")
+        paso = self._paso("Avanzar estable")
+        self.assertIn("MOTIVO_SIN_CHECK: ${{ github.event.inputs.sin_check }}", paso)
+        self.assertIn("grep -q -- '--sin-check'", paso)
+        self.assertIn('args+=(--sin-check "$MOTIVO_SIN_CHECK")', paso)
+        self.assertNotRegex(paso, r"echo[^\n]*MOTIVO_SIN_CHECK")   # el motivo no se imprime desde bash (lo limpia el script)
 
     def test_solo_corre_sobre_main(self):
         self.assertIn("github.ref == 'refs/heads/main'", self.texto)

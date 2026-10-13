@@ -16,6 +16,12 @@ Cómo decide:
   - En automático, no avanza si algún commit que entraría a `estable` fue revertido después en `main` («This reverts commit
     <sha>» en `candidato..main`): espera a que el revert también cumpla las 48 h. Así no se queda entre el malo y su revert.
   - Alarma de atraso: si algún commit de `main` lleva más de 4 días (96 h) sin entrar a `estable`, la corrida sale en rojo.
+  - Compuerta de security check (F14 del check 0.35.0), en automático Y en «pasalo ya»: si el commit a promover cambia la
+    versión de `metodo` o `paneles` (lo que corre en las máquinas de los clientes) respecto de `estable`, esa versión tiene
+    que figurar en un TÍTULO (línea con `#`) de `docs/SECURITY-CHECKS.md` o de `.claude/security-checks/*.md`, leídos de
+    `main` (el check se puede anotar después del commit). Vale «metodo 0.36.0» o un rango «metodo 0.35.1 → 0.36.0». Si falta,
+    no se mueve y la corrida sale en rojo. Salida explícita: `--sin-check "<motivo>"` (en el workflow: `-f sin_check=...`)
+    promueve igual y lo deja anotado en el resumen de la corrida, en un aviso de GitHub y en `sin_check=true` de la salida.
   - Este script corre desde el checkout de la propia rama `estable` (ver el workflow): el código que decide ya esperó 48 h.
     Trae `main` por su cuenta.
 
@@ -33,7 +39,7 @@ PROCEDIMIENTO DE EMERGENCIA (si entró algo malo a `main`):
   seguro). El detalle de qué actor puede empujar a `estable` lo fijan los rulesets de `.github/rulesets/`.
 
 Uso:
-    estable-avanzar.py [--repo dueño/repo] [--sha SHA40] [--horas 48] [--remoto origin] [--sin-push]
+    estable-avanzar.py [--repo dueño/repo] [--sha SHA40] [--horas 48] [--remoto origin] [--sin-push] [--sin-check MOTIVO]
     estable-avanzar.py --arranque          # imprime el commit inicial para crear `estable` (no empuja nada)
 Salida: 0 = movió o no había nada que mover (incluye esperar por un revert); 1 = no pudo decidir, algo no cuadra o hay atraso
 de más de 4 días (no se mueve nada); 2 = uso incorrecto.
@@ -69,6 +75,13 @@ BUENAS = ("success", "skipped", "neutral")
 # Solo eventos que dejan un commit nuevo en main. Todo lo demás (force_push, borrados) se ignora: ignorar un evento
 # nunca adelanta el candidato, solo lo deja en uno más viejo.
 TIPOS_DE_EVENTO = ("push", "pr_merge", "merge_queue_merge", "branch_creation")
+# Compuerta de security check (F14): paquetes cuyo código corre en las máquinas de los clientes, y dónde se anotan los checks.
+VIGILADOS = ("metodo", "paneles")
+DOC_CHECKS = "docs/SECURITY-CHECKS.md"
+CARPETA_CHECKS = ".claude/security-checks/"
+PATRON_VERSION = re.compile(r"\d+\.\d+\.\d+")
+PATRON_ENTRADA = re.compile(r"\b(%s)\s+(\d+\.\d+\.\d+(?:\s*(?:→|->)\s*\d+\.\d+\.\d+)*)" % "|".join(VIGILADOS))
+MOTIVO_MINIMO = 10   # «x» no es un motivo: la salida tiene que quedar explicada
 
 
 class SinMovimiento(Exception):
@@ -301,6 +314,59 @@ def revertido_despues(cwd, actual, candidato, principal):
     return None
 
 
+def version_del_paquete(cwd, sha, paquete):
+    """Versión de plugins/<paquete>/.claude-plugin/plugin.json en ese commit, o None si no está o no se puede leer.
+    Solo lee el archivo con git: el código del commit nunca se ejecuta."""
+    r = git(["show", "%s:plugins/%s/.claude-plugin/plugin.json" % (sha, paquete)], cwd)
+    if r.returncode != 0:
+        return None
+    try:
+        v = json.loads(r.stdout).get("version")
+    except (ValueError, AttributeError):
+        return None
+    return v if isinstance(v, str) and PATRON_VERSION.fullmatch(v) else None
+
+
+def versiones_con_check(cwd, sha):
+    """{paquete: {versiones}} nombradas en los TÍTULOS de los checks anotados en ese commit (docs/SECURITY-CHECKS.md y
+    .claude/security-checks/*.md). Un título cuenta; una mención en el cuerpo, no (evita «condiciones para 0.30.1»)."""
+    archivos = [DOC_CHECKS]
+    r = git(["ls-tree", "-r", "--name-only", sha, "--", CARPETA_CHECKS], cwd)
+    if r.returncode == 0:
+        archivos += [a for a in r.stdout.splitlines() if a.endswith(".md")]
+    cubiertas = {p: set() for p in VIGILADOS}
+    for archivo in archivos:
+        r = git(["show", "%s:%s" % (sha, archivo)], cwd)
+        if r.returncode != 0:
+            continue
+        for linea in r.stdout.splitlines():
+            if not linea.startswith("#"):
+                continue
+            for paquete, cadena in PATRON_ENTRADA.findall(linea):
+                cubiertas[paquete].update(PATRON_VERSION.findall(cadena))
+    return cubiertas
+
+
+def sin_security_check(cwd, actual, destino, principal):
+    """Lista de «paquete versión» que entrarían a estable con una versión nueva y sin check anotado (leído de main)."""
+    cubiertas = versiones_con_check(cwd, principal)
+    faltan = []
+    for paquete in VIGILADOS:
+        nueva = version_del_paquete(cwd, destino, paquete)
+        if nueva and nueva != version_del_paquete(cwd, actual, paquete) and nueva not in cubiertas[paquete]:
+            faltan.append("%s %s" % (paquete, nueva))
+    return faltan
+
+
+def limpiar_motivo(texto):
+    """Una sola línea, sin comandos de GitHub Actions ni caracteres de control; None si no alcanza como motivo."""
+    if texto is None:
+        return None
+    t = "".join(c if c.isprintable() else " " for c in texto).replace("::", ": :")
+    t = " ".join(t.split())[:300]
+    return t if len(t) >= MOTIVO_MINIMO else None
+
+
 def controlar_atraso(cwd, actividad, ahora, final):
     """Alarma: si algún commit de main lleva más de HORAS_ATRASO esperando y estable (en `final`) no lo tiene, algo la
     frenó en silencio (un revert pendiente, una divergencia…) y hay que mirarlo."""
@@ -327,12 +393,13 @@ def anotar_resumen(lineas):
             pass
 
 
-def anotar_salida(movido, sha):
+def anotar_salida(movido, sha, sin_check=False):
     ruta = os.environ.get("GITHUB_OUTPUT")
     if ruta:
         try:
             with open(ruta, "a", encoding="utf-8") as f:
-                f.write("movido=%s\nsha=%s\n" % ("true" if movido else "false", sha or ""))
+                f.write("movido=%s\nsha=%s\nsin_check=%s\n" % ("true" if movido else "false", sha or "",
+                                                                "true" if sin_check else "false"))
         except OSError:
             pass
 
@@ -353,6 +420,8 @@ def main(argv=None):
     ap.add_argument("--api", default=API_POR_DEFECTO, help=argparse.SUPPRESS)  # solo para las pruebas
     ap.add_argument("--sin-push", action="store_true", help="decide y cuenta, pero no empuja")
     ap.add_argument("--arranque", action="store_true", help="imprime el commit con el que crear estable; no empuja")
+    ap.add_argument("--sin-check", default=None, metavar="MOTIVO",
+                    help="promueve aunque falte el security check de metodo/paneles; queda anotado con el motivo")
     a = ap.parse_args(argv)
 
     if not PATRON_REPO.match(a.repo) or not PATRON_REMOTO.match(a.remoto) or a.horas < 1:
@@ -367,6 +436,13 @@ def main(argv=None):
     if manual and a.arranque:
         print("estable: --sha y --arranque no se combinan", file=sys.stderr)
         return 2
+    motivo_sin_check = None
+    if a.sin_check is not None and a.sin_check.strip() != "":
+        motivo_sin_check = limpiar_motivo(a.sin_check)
+        if motivo_sin_check is None or a.arranque:
+            print("estable: --sin-check necesita un motivo de al menos %d letras (y no va con --arranque)" % MOTIVO_MINIMO,
+                  file=sys.stderr)
+            return 2
 
     cwd = os.getcwd()
     log = sys.stderr if a.arranque else sys.stdout   # con --arranque, stdout lleva solo el sha
@@ -394,6 +470,7 @@ def main(argv=None):
         actividad = ahora = None
         sin_mover = None      # motivo por el que no se mueve (no es un error), si lo hay
         destino = None
+        forzado = False       # se promovió con --sin-check sobre una versión sin security check
         resumen.append("estable actual: `%s`" % actual[:7])
         try:
             if manual:
@@ -419,6 +496,22 @@ def main(argv=None):
                     raise SinMovimiento("las pruebas de %s todavía no terminaron (%d): se reintenta en la próxima corrida"
                                         % (de_quien[:7], len(pendientes)))
                 resumen.append("pruebas de `%s`: %s" % ((de_quien or destino)[:7], "%d en verde" % total if total else "ninguna registrada"))
+            faltan = sin_security_check(cwd, actual, destino, principal)
+            if faltan and not motivo_sin_check:
+                raise Frena("falta el security check de %s (lo que corre en las máquinas de los clientes): corré /fable-security-check y "
+                            "anotalo con un título que diga «%s» en %s o en %s, o forzá a propósito con "
+                            "-f sin_check=\"<motivo>\" (queda registrado)" % (", ".join(faltan), faltan[0], DOC_CHECKS, CARPETA_CHECKS))
+            if faltan:
+                forzado = True
+                quien = " ".join(os.environ.get("GITHUB_ACTOR", "").split())[:40] or "?"
+                aviso = "PROMOVIDO SIN SECURITY CHECK de %s, por %s. Motivo: %s" % (", ".join(faltan), quien, motivo_sin_check)
+                resumen.append("**⚠️ %s**" % aviso)
+                if os.environ.get("GITHUB_ACTIONS"):
+                    print("::warning::estable: %s" % aviso)
+                decir(aviso, log)
+            else:
+                resumen.append("security check: %s" % ("al día" if any(version_del_paquete(cwd, destino, p) for p in VIGILADOS)
+                                                       else "no aplica"))
         except SinMovimiento as e:
             sin_mover = e
         if actividad is not None:     # solo en automático: hay una hora del servidor con la que medir el atraso
@@ -429,7 +522,7 @@ def main(argv=None):
             resumen.append("`--sin-push`: se movería a `%s` (no se empujó)" % destino[:7])
             decir("se movería de %s a %s (--sin-push: no se empujó)" % (actual[:7], destino[:7]), log)
             anotar_resumen(resumen)
-            anotar_salida(False, destino)
+            anotar_salida(False, destino, forzado)
             return 0
         r = git(["push", a.remoto, "%s:refs/heads/%s" % (destino, ESTABLE)], cwd)
         if r.returncode != 0:
@@ -438,7 +531,7 @@ def main(argv=None):
         resumen.append("**movida a `%s`**" % destino[:7])
         decir("movida de %s a %s" % (actual[:7], destino[:7]), log)
         anotar_resumen(resumen)
-        anotar_salida(True, destino)
+        anotar_salida(True, destino, forzado)
         return 0
     except SinMovimiento as e:
         decir(str(e), log)

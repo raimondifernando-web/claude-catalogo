@@ -1,5 +1,10 @@
 # Chequeos de seguridad por release
 
+> **Lo lee la compuerta de `estable`** (`scripts/estable-avanzar.py`): una versión nueva de `metodo` o `paneles` no llega a los
+> clientes si no figura en un **título** (línea con `#`) de este archivo o de `.claude/security-checks/*.md`, por ejemplo
+> `### 2026-10-20 · metodo 0.36.0` o `## metodo 0.35.1 → 0.36.0 y paneles 0.3.0`. Una mención en el cuerpo no cuenta.
+> Forzar sin check: `gh workflow run estable.yml -f sha=<commit> -f sin_check="<motivo>"` (queda registrado en la corrida).
+
 ## base-segura 0.1.0 — 2026-09-20 — PASS
 | Control | Resultado | Evidencia |
 |---|---|---|
