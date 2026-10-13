@@ -147,6 +147,32 @@ class TestEnlaces(unittest.TestCase):
                 self._sin_fuga(r, q)
                 self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    def test_repo_bare_con_enlace_relativo_que_se_escapa(self):  # C62 «qué no se verificó»: la ruta de clonado real de git, como sirve GitHub
+        # Repo BARE (lo que hay del otro lado de un clone de GitHub) con objetos de enlace (modo 120000), incluido uno RELATIVO que sube
+        # carpetas hasta salir de la cuarentena: ese no necesita adivinar el usuario. Para que no se saltee en una Mac sin el CLI:
+        #   CLAUDE_CONFIG_DIR=<carpeta temporal> bash skills-externas/cuarentena-skills.sh <carpeta con una skill>   (lo instala fijado ahí)
+        if not self._cli_disponible():
+            self.skipTest("el CLI skills no está instalado en esta máquina")
+        env_git = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
+        for fuente_txt, args in [("pers/repo", ("mi-skill",)), ("pers/repo@mi-skill", ()), ("https://github.com/pers/repo", ("mi-skill",))]:
+            with self.subTest(fuente=fuente_txt), tempfile.TemporaryDirectory() as d:
+                d = Path(d).resolve()
+                src = self._fuente_con_enlaces(d)
+                (src / "skills/mi-skill/relativo.txt").symlink_to("../" * 30 + str(d / "afuera/secreto.txt").lstrip("/"))
+                for c in (["init", "-q", "-b", "main"], ["add", "-A"], ["commit", "-q", "-m", "x"]):
+                    subprocess.run(["git", "-C", str(src), *c], check=True, capture_output=True, env=env_git)
+                arbol = subprocess.run(["git", "-C", str(src), "ls-tree", "-r", "HEAD"], capture_output=True, text=True).stdout
+                self.assertEqual(arbol.count("120000 blob"), 3, arbol)       # los tres viajan como enlaces de git
+                (d / "gh/pers").mkdir(parents=True)
+                subprocess.run(["git", "clone", "-q", "--bare", str(src), str(d / "gh/pers/repo.git")], check=True, capture_output=True)
+                r, q = self._correr(d, fuente_txt, *args, base=f"file://{d}/gh")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                informe_md = self._sin_fuga(r, q)
+                self.assertEqual([p for p in q.rglob("*") if p.is_symlink() and "node_modules" not in p.parts], [])
+                self.assertEqual(sorted(p.name for p in (q / "work/.claude/skills/mi-skill").iterdir()), ["SKILL.md"])
+                for nombre in ("notas.txt", "refs", "relativo.txt"):
+                    self.assertIn("skills/mi-skill/%s ->" % nombre, informe_md)
+
     def test_fuente_no_reconocida_falla_claro(self):
         with tempfile.TemporaryDirectory() as d:
             if not self._cli_disponible():
