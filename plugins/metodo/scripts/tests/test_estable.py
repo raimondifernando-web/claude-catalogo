@@ -664,6 +664,14 @@ class TestScript(unittest.TestCase):
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertEqual(self._estable_remoto(), self.c[1])
 
+    def test_motivo_que_empieza_con_guion(self):  # L-8: el workflow pasa --sin-check=MOTIVO
+        v = self._version("metodo", "0.36.0")
+        r = self.correr("--sha", v, "--sin-check", "-urgentisimo-ya", api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)          # así (como antes en el workflow) se rompe
+        r = self.correr("--sha", v, "--sin-check=-urgentisimo-ya", api="http://127.0.0.1:1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Motivo: `-urgentisimo-ya`", r.resumen)
+
     def test_rango_con_flecha_ascii_backticks_y_v(self):
         v = self._version("metodo", "0.36.0")
         self._check("## `metodo v0.35.1 -> v0.36.0` (commit `%s`) — PASS con condiciones" % v[:12])
@@ -1037,7 +1045,7 @@ class TestWorkflow(unittest.TestCase):
         paso = self._paso("Avanzar estable")
         self.assertIn("MOTIVO_SIN_CHECK: ${{ github.event.inputs.sin_check }}", paso)
         self.assertIn("grep -q -- '--sin-check'", paso)
-        self.assertIn('args+=(--sin-check "$MOTIVO_SIN_CHECK")', paso)
+        self.assertIn('args+=("--sin-check=$MOTIVO_SIN_CHECK")', paso)   # L-8: con «=», un motivo que empieza con «-» no rompe
         self.assertNotRegex(paso, r"echo[^\n]*MOTIVO_SIN_CHECK")   # el motivo no se imprime desde bash (lo limpia el script)
 
     def test_solo_corre_sobre_main(self):

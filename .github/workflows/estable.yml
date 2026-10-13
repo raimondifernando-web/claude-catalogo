@@ -112,7 +112,7 @@ jobs:
           if [ -n "${SHA_MANUAL:-}" ]; then args+=(--sha "$SHA_MANUAL"); fi
           if [ -n "${MOTIVO_SIN_CHECK:-}" ]; then
             if python3 scripts/estable-avanzar.py --help | grep -q -- '--sin-check'; then
-              args+=(--sin-check "$MOTIVO_SIN_CHECK")
+              args+=("--sin-check=$MOTIVO_SIN_CHECK")   # con «=»: un motivo que empiece con «-» no se toma por otra opción
             else
               echo "::warning::estable: el script de estable todavía no tiene la compuerta de security check; sin_check no hace falta y se ignora"
             fi
