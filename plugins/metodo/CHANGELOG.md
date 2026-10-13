@@ -1,5 +1,14 @@
 # metodo — qué cambia para vos
 
+## 0.36.0 — 2026-10-13
+Gemini (Antigravity) trabaja igual que en la computadora de quien te acompaña. Se aplica solo; no hay nada que correr.
+- **Cuando `delegar.py` le pasa un trabajo a Gemini, Gemini trabaja sobre una copia de tu repo**, no sobre la carpeta real: la copia no lleva la historia de git, ni archivos de claves, de entorno, llaves o transcripts, ni accesos directos (enlaces) a otras carpetas. Lo que Gemini cambia vuelve a tu repo como un parche, solo en archivos comunes. Si Gemini intenta crear una carpeta `.git` o un enlace en la copia, no se trae nada; si crea un archivo con nombre de clave, se descarta. Las plantillas (`.env.example` y parecidas) sí viajan.
+- **Si a Gemini se le niega una herramienta, ahora termina en rojo y te dice qué hacer** (antes terminaba «bien» sin haber hecho nada). Pasa cuando corre sin pantalla y no hay quién apruebe un comando.
+- **«Poner todo al día» deja a Antigravity unas pocas reglas de solo lectura** (ver la historia de git, buscar en el código, listar archivos, contar líneas y leer páginas web) y frena las variantes de esos mismos comandos que escriben archivos o ejecutan programas. Solo si Antigravity está instalado y ya entraste alguna vez; no lo abre. Lo hace una sola vez, con copia de cómo estaba, y te avisa en una línea. Si tenías la regla `git -C *`, la saca (dejaba ejecutar programas).
+- **Ya no se frena delegar por el nombre de la carpeta** (clientes, finanzas, personal…): podés delegar desde cualquier carpeta de proyecto. Siguen frenados tu carpeta personal entera y la raíz del disco (adentro hay de todo), y lo que marques con `METODO_NO_DELEGAR`.
+- **Codex se salta si el repo tiene archivos de claves o de entorno**, porque Codex trabaja sobre la carpeta real (necesita correr tus tests). El trabajo pasa a Gemini, que usa la copia sin esos archivos, o a Claude en tu sesión.
+- Windows: `delegar.py` usa solo Python y debería andar igual, pero todavía no se probó en una PC; las reglas de Antigravity las escribe solo la puesta al día de Mac.
+
 ## 0.35.2 — 2026-10-13
 Cierre de lo que quedó abierto en la revisión de seguridad de 0.35.0. Se aplica solo con `/plugin update`; no hay nada que correr.
 - **«Poner todo al día» instala las librerías de Python con versión y huella fijas** (en el Python de Apple): si el archivo que sirve el repositorio público no es el esperado, no se instala nada. En otro Python quedan con versión fija pero sin huellas, y te lo avisa.

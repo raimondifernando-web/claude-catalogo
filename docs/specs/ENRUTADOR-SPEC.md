@@ -20,17 +20,25 @@ pieza que mida, elija y ejecute, y que la usen las sesiones, el Bicho y los clie
    herramienta distinta de Claude Code primero (en el orden A/B/C del radar) y Claude Code al final. Motivo: Claude es
    el coordinador y su cupo es el más caro; delegar lo acotado a Codex/Antigravity mientras tengan cupo.
 3. **`delegar.py`** (nuevo): `delegar.py <categoria> <repo> <pedido.txt> [--revisar] [--sensible] [--dry-run]`.
-   - elige con `elegir(delegar=True)`; `--sensible` pasa el filtro de datos privados del radar; además se niega en
-     rutas que contengan `/Finanzas`, `/Personal`, `/Consultoria-Negocio`, `/clientes/` (lista ampliable con la
-     variable `METODO_NO_DELEGAR`, rutas separadas por `:`), porque los planes gratuitos pueden entrenar con lo enviado.
+   - elige con `elegir(delegar=True)`; `--sensible` pasa el filtro de datos privados del radar; además se niega (65)
+     si el repo es la carpeta personal entera, una que la contiene o la raíz del disco (por alcance), o si coincide con
+     `METODO_NO_DELEGAR` (rutas separadas por `:`). Desde 0.36.0 ya no frena por nombre de carpeta (`/clientes/`,
+     `/Finanzas`…): las claves y los archivos de entorno quedan afuera siempre (ver el adaptador de antigravity y el
+     salto de Codex).
    - exige repo git; para editar, árbol limpio (si no, sale con 66 y dice qué hacer).
    - adaptadores: **codex** → `codex exec -C <repo> --sandbox workspace-write -` (con `--revisar`: `--sandbox read-only`),
-     pedido por stdin; **antigravity** → `agy --model <modelo del plan> --mode accept-edits|plan --add-dir <repo> -p "<pedido>\n\nNO corras ningún comando…"`
-     (como `~/.claude/scripts/agy-delegar`, que es la versión de Orquesta); **claude** → no ejecuta: imprime
+     pedido por stdin; si el repo tiene archivos de claves o de entorno (versionados, nuevos o ignorados), Codex se salta
+     (trabaja sobre la carpeta real) y pasa al plan siguiente; **antigravity** (desde 0.36.0, igual que
+     `~/.claude/scripts/agy-delegar`) → arma una COPIA del repo (archivos versionados o nuevos no ignorados, sin `.git`,
+     sin claves/entorno/llaves/transcripts, sin enlaces simbólicos) en `<config>/metodo/agy-trabajo/`, corre
+     `agy --model <modelo del plan> --mode accept-edits|plan --add-dir <copia> -p "<pedido>…NO corras ningún comando…"`
+     con la copia como carpeta de trabajo y trae lo editado al repo real como parche (`git apply`), solo por archivos
+     comunes; si agy niega una herramienta sin pantalla («no output produced», auto-denied) sale con 69 y dice qué hacer; **claude** → no ejecuta: imprime
      «el plan elegido es Claude Code: hacelo en esta sesión» y sale con 3.
    - al terminar: `git status --short` + `git diff --stat` y «Todo al día ✓»; nunca corre tests ni commitea.
    - códigos: 0 bien · 1 sin plan disponible · 2 categoría desconocida · 3 le toca a Claude · 64 uso · 65 carpeta
-     privada · 66 árbol sucio · 67 la CLI del plan elegido no está instalada · 70 la herramienta terminó con error (no se devuelve su código: podría chocar con los reservados) · 124 no terminó a tiempo (`METODO_DELEGAR_TOPE`, 1 h).
+     personal/raíz o `METODO_NO_DELEGAR` · 66 árbol sucio · 67 la CLI del plan elegido no está instalada · 69 a agy se le
+     negó una herramienta · 70 la herramienta terminó con error (no se devuelve su código: podría chocar con los reservados) · 71 tocó `.git` (o agy creó un `.git` o un enlace en su copia) · 73 el cambio de agy no se pudo traer · 124 no terminó a tiempo (`METODO_DELEGAR_TOPE`, 1 h).
 4. **Distribución:** plugin `metodo` → clientes (rama `estable`, 48 h). Las reglas del método (`reglas.py`) y la skill
    `radar` pasan a decir «delegá con `delegar.py`» en vez de «elegí de memoria». Orquesta: `~/.claude/scripts/agy-delegar`
    queda como atajo y la regla XXVII apunta a `delegar.py`.
