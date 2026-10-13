@@ -666,7 +666,9 @@ def analizar_powershell(cmd, profundidad=0):
             if ".Substring(" not in limpio:
                 nombres_env = [m.group(1) for m in re.finditer(r"\$\{?env:([A-Za-z_]\w*)\}?", limpio, I)
                                if re.search(SECRETISH, m.group(1), I) and not SUFIJO_NO_SECRETO.search(m.group(1))]
-                pelado = re.fullmatch(r"\s*\$\{?env:\w+\}?\s*", limpio, I) is not None
+                # Suelta o dentro de una cadena con comillas DOBLES que es la instrucción entera ("$env:X", "token: $env:X"): PowerShell
+                # la imprime igual (L-3 de la 2.ª revisión). Con comillas simples no se expande.
+                pelado = re.fullmatch(r"""\s*(?:\$\{?env:\w+\}?|"[^"]*\$\{?env:\w+\}?[^"]*")\s*""", limpio, I) is not None
                 if nombres_env and (nom in ECHOS_PS or pelado) and not any(d in ("set-clipboard", "scb", "clip", "clip.exe") for d in despues):
                     razones.append("mostrar una variable de entorno que parece secreta (clave, token o contraseña) la imprime en pantalla.")
             if profundidad < 3:   # $( … ) y ( … ) que no se guardan en una variable: el comando de adentro también corre
