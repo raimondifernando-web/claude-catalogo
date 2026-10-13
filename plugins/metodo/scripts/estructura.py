@@ -19,6 +19,7 @@ Subcomandos:
 - dibujo [--salida RUTA] [--origen RUTA]
 - revisar [CARPETA] [--todas] [--nivel empresa|area|proyecto] [--aviso] [--raiz RUTA] [--origen RUTA]
 - completar CARPETA --nivel empresa|area|proyecto [--origen RUTA]
+- arreglar [CARPETA] [--todas] [--raiz RUTA] [--origen RUTA] [--si]   (sin --si solo muestra el plan)
 """
 import argparse
 from datetime import date
@@ -112,8 +113,18 @@ def parsear_reglas(md_texto: str):
             "regla": f.get("Regla", "").strip(),
             "donde": f.get("Dónde", "").strip(),
             "si_falla": f.get("Si falla", "").strip(),
+            "arreglo": f.get("Cómo se arregla", "").strip(),
         })
     return reglas
+
+
+def cargar_arreglos(origen_arg=None) -> dict:
+    """Mapa Id de regla -> «Cómo se arregla», leído de ESTRUCTURA.md (nunca escrito a mano acá)."""
+    try:
+        md = resolver_origen_md(origen_arg).read_text(encoding="utf-8", errors="replace")
+    except (OSError, FileNotFoundError):
+        return {}
+    return {r["id"]: r["arreglo"] for r in parsear_reglas(md) if r["id"] and r["arreglo"]}
 
 
 def parsear_personas(md_texto: str):
@@ -784,6 +795,9 @@ def descubrir_cajas(raiz: Path):
     return cajas
 
 
+MAX_LINEAS_AVISO = 10
+
+
 def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, raiz_arg=None, origen_arg=None) -> int:
     """Implementa el subcomando revisar."""
     raiz = Path(raiz_arg).resolve() if raiz_arg else (Path.home() / "Proyectos")
@@ -809,6 +823,11 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
         except Exception:
             pass
 
+    arreglos = cargar_arreglos(origen_arg)
+
+    def con_arreglo(r_id, linea):
+        return f"{linea} → {arreglos[r_id]}" if arreglos.get(r_id) else linea
+
     lineas_salida = []
     total_errores = 0
 
@@ -816,7 +835,7 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
         # Revisar R11 en la raíz
         for tipo, r_id, msg in revisar_raiz(raiz):
             total_errores += 1
-            lineas_salida.append(f"✗ {r_id} {raiz.name}: {msg}")
+            lineas_salida.append(con_arreglo(r_id, f"✗ {r_id} {raiz.name}: {msg}"))
 
         # Recorrer cajas
         cajas = descubrir_cajas(raiz)
@@ -826,16 +845,16 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
             for tipo, r_id, msg in hallazgos:
                 if tipo == "error":
                     total_errores += 1
-                    lineas_salida.append(f"✗ {r_id} {rel_display}: {msg}")
+                    lineas_salida.append(con_arreglo(r_id, f"✗ {r_id} {rel_display}: {msg}"))
                 else:
-                    lineas_salida.append(f"• {r_id} {rel_display}: {msg}")
+                    lineas_salida.append(con_arreglo(r_id, f"• {r_id} {rel_display}: {msg}"))
     else:
         objetivo = Path(carpeta_arg).resolve() if carpeta_arg else Path.cwd()
         # Si se apunta a la raíz directamente
         if objetivo == raiz or (raiz_arg and objetivo == Path(raiz_arg).resolve()):
             for tipo, r_id, msg in revisar_raiz(objetivo):
                 total_errores += 1
-                lineas_salida.append(f"✗ {r_id} {objetivo.name}: {msg}")
+                lineas_salida.append(con_arreglo(r_id, f"✗ {r_id} {objetivo.name}: {msg}"))
         else:
             nivel = detectar_nivel_carpeta(objetivo, raiz, nivel_explicit=nivel_arg)
             parent = objetivo.parent if objetivo.parent != raiz and es_caja(objetivo.parent) else None
@@ -844,9 +863,9 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
             for tipo, r_id, msg in hallazgos:
                 if tipo == "error":
                     total_errores += 1
-                    lineas_salida.append(f"✗ {r_id} {display_name}: {msg}")
+                    lineas_salida.append(con_arreglo(r_id, f"✗ {r_id} {display_name}: {msg}"))
                 else:
-                    lineas_salida.append(f"• {r_id} {display_name}: {msg}")
+                    lineas_salida.append(con_arreglo(r_id, f"• {r_id} {display_name}: {msg}"))
 
     # En modo aviso: si todo está bien, no imprime nada y sale 0. Si hay fallas, imprime y sale 0.
     if aviso:
@@ -857,10 +876,15 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
             except OSError:
                 pass
         if lineas_salida:
-            for l in lineas_salida:
+            # primero los ✗ (sort estable), como mucho 10 líneas
+            ordenadas = sorted(lineas_salida, key=lambda l: not l.startswith("✗"))
+            for l in ordenadas[:MAX_LINEAS_AVISO]:
                 print(l)
+            if len(ordenadas) > MAX_LINEAS_AVISO:
+                print(f"… y {len(ordenadas) - MAX_LINEAS_AVISO} más (estructura.py revisar --todas)")
             palabra = "cosa" if total_errores == 1 else "cosas"
             print(f"Falta: {total_errores} {palabra} ✗")
+            print("Claude: ofrecé arreglarlo con `estructura.py arreglar` (primero el plan; pedí OK antes de `--si`).")
         return 0
 
     # Modo normal
@@ -880,62 +904,68 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
 # 4. COMPLETAR (CREAR LO OBLIGATORIO)
 # ==============================================================================
 
+def nombres_de_env(env_file: Path) -> list:
+    """Solo los NOMBRES de las variables de un archivo de entorno (lo que está antes del «=»); nunca un valor."""
+    nombres = []
+    try:
+        texto = env_file.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return nombres
+    for linea in texto.splitlines():
+        linea = linea.strip()
+        if not linea or linea.startswith("#") or "=" not in linea:
+            continue
+        nombre = linea.split("=", 1)[0].strip()
+        if nombre.startswith("export "):
+            nombre = nombre[len("export "):].strip()
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", nombre) and nombre not in nombres:
+            nombres.append(nombre)
+    return nombres
+
+
+def plan_seguro(carpeta: Path, nivel: str) -> list:
+    """Lo seguro y reversible que falta: [(ruta relativa, contenido, regla)]. Nunca incluye lo que ya existe."""
+    plan = []
+    if not (carpeta / "CLAUDE.md").exists():
+        plan.append(("CLAUDE.md", f"# {carpeta.name}\n\nReglas de trabajo.\n", "R2"))
+    if not (carpeta / ".claude" / "settings.json").exists():
+        plan.append((".claude/settings.json", "{}\n", "R4"))
+    if not (carpeta / ".gitignore").exists():
+        lineas_gi = [".env", ".claude/settings.local.json", "CLAUDE.local.md"]
+        if nivel in ("empresa", "area"):
+            lineas_gi.extend(["", "# Cajas de adentro: cada una tiene su propio repositorio",
+                              "/*/", "!/.claude/", "!/plugins/", "!/docs/"])
+        plan.append((".gitignore", "\n".join(lineas_gi) + "\n", "R5"))
+    if (carpeta / ".env").exists() and not (carpeta / ".env.example").exists():
+        cuerpo = "# Claves y variables de entorno requeridas (sin valores)\n"
+        cuerpo += "".join(f"{n}=\n" for n in nombres_de_env(carpeta / ".env"))
+        plan.append((".env.example", cuerpo, "R7"))
+    return plan
+
+
 def comando_completar(carpeta_arg: str, nivel: str, origen_arg=None) -> int:
     """Crea los archivos obligatorios según el molde sin pisar nada existente."""
     carpeta = Path(carpeta_arg).resolve()
     carpeta.mkdir(parents=True, exist_ok=True)
 
-    # 1. CLAUDE.md
-    claude_md = carpeta / "CLAUDE.md"
-    if claude_md.exists():
-        print("= Ya existe: CLAUDE.md")
-    else:
-        claude_md.write_text(f"# {carpeta.name}\n\nReglas de trabajo.\n", encoding="utf-8")
-        print("+ Creado: CLAUDE.md")
-
-    # 2. .claude/settings.json = {}
-    settings_dir = carpeta / ".claude"
-    settings_dir.mkdir(parents=True, exist_ok=True)
-    settings_json = settings_dir / "settings.json"
-    if settings_json.exists():
-        print("= Ya existe: .claude/settings.json")
-    else:
-        settings_json.write_text("{}\n", encoding="utf-8")
-        print("+ Creado: .claude/settings.json")
-
-    # 3. .gitignore
-    gitignore = carpeta / ".gitignore"
-    if gitignore.exists():
-        print("= Ya existe: .gitignore")
-    else:
-        lineas_gi = [
-            ".env",
-            ".claude/settings.local.json",
-            "CLAUDE.local.md",
-        ]
-        if nivel in ("empresa", "area"):
-            lineas_gi.extend([
-                "",
-                "# Cajas de adentro: cada una tiene su propio repositorio",
-                "/*/",
-                "!/.claude/",
-                "!/plugins/",
-                "!/docs/",
-            ])
-        gitignore.write_text("\n".join(lineas_gi) + "\n", encoding="utf-8")
-        print("+ Creado: .gitignore")
-
-    # 4. .env.example si hay .env
-    env_file = carpeta / ".env"
-    env_example = carpeta / ".env.example"
-    if env_file.exists():
-        if env_example.exists():
-            print("= Ya existe: .env.example")
+    plan = {rel: cont for rel, cont, _ in plan_seguro(carpeta, nivel)}
+    for rel in ("CLAUDE.md", ".claude/settings.json", ".gitignore"):
+        if rel in plan:
+            destino = carpeta / rel
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            destino.write_text(plan[rel], encoding="utf-8")
+            print(f"+ Creado: {rel}")
         else:
-            env_example.write_text("# Claves y variables de entorno requeridas (sin valores)\n", encoding="utf-8")
-            print("+ Creado: .env.example")
+            print(f"= Ya existe: {rel}")
 
-    # 5. Git y remoto (informa como pendiente)
+    if (carpeta / ".env").exists():
+        if ".env.example" in plan:
+            (carpeta / ".env.example").write_text(plan[".env.example"], encoding="utf-8")
+            print("+ Creado: .env.example")
+        else:
+            print("= Ya existe: .env.example")
+
+    # Git y remoto (informa como pendiente)
     git_dir = carpeta / ".git"
     if not git_dir.exists():
         print("! Pendiente: inicializar git y configurar remoto (git init / git remote add)")
@@ -946,6 +976,72 @@ def comando_completar(carpeta_arg: str, nivel: str, origen_arg=None) -> int:
         else:
             print("✓ Git y remoto configurados")
 
+    return 0
+
+
+# ==============================================================================
+# 4b. ARREGLAR (PLAN Y, CON --si, LO SEGURO)
+# ==============================================================================
+
+def comando_arreglar(carpeta_arg=None, todas=False, raiz_arg=None, origen_arg=None, aplicar=False) -> int:
+    """Sin aplicar: muestra el plan. Con aplicar: crea solo lo seguro; el resto queda para hacer con Claude."""
+    raiz = Path(raiz_arg).resolve() if raiz_arg else (Path.home() / "Proyectos")
+    arreglos = cargar_arreglos(origen_arg)
+
+    if todas:
+        objetivos = descubrir_cajas(raiz)
+        pendientes_raiz = revisar_raiz(raiz)
+    else:
+        objetivo = Path(carpeta_arg).resolve() if carpeta_arg else Path.cwd()
+        if objetivo == raiz:
+            objetivos, pendientes_raiz = [], revisar_raiz(raiz)
+        else:
+            parent = objetivo.parent if objetivo.parent != raiz and es_caja(objetivo.parent) else None
+            objetivos = [(objetivo, detectar_nivel_carpeta(objetivo, raiz), parent)]
+            pendientes_raiz = []
+
+    creados = 0
+    pendientes = 0
+
+    def mostrar_pendiente(r_id, msg):
+        extra = f" → {arreglos[r_id]}" if arreglos.get(r_id) else ""
+        print(f"  ! para hacer con Claude (pide tu OK): {r_id} {msg}{extra}")
+
+    for _tipo, r_id, msg in pendientes_raiz:
+        pendientes += 1
+        print(f"== {raiz.name} ==")
+        mostrar_pendiente(r_id, msg)
+
+    for c_path, c_nivel, parent in objetivos:
+        try:
+            rel = str(c_path.relative_to(raiz))
+        except ValueError:
+            rel = c_path.name
+        plan = plan_seguro(c_path, c_nivel)
+        cubiertas = {r for _, _, r in plan}
+        # lo que queda se mide ANTES de aplicar y sin lo que el plan va a resolver
+        resto = [h for h in revisar_caja(c_path, c_nivel, parent_caja=parent) if h[1] not in cubiertas]
+        if not plan and not resto:
+            continue
+        print(f"== {rel} ==")
+        for ruta, contenido, _r in plan:
+            if aplicar:
+                destino = c_path / ruta
+                destino.parent.mkdir(parents=True, exist_ok=True)
+                with open(destino, "x", encoding="utf-8") as fh:  # "x": jamás pisa un archivo existente
+                    fh.write(contenido)
+                print(f"  + creado: {ruta}")
+            else:
+                print(f"  + crearía: {ruta}")
+            creados += 1
+        for _tipo, r_id, msg in resto:
+            pendientes += 1
+            mostrar_pendiente(r_id, msg)
+
+    if aplicar:
+        print(f"Arreglado ✓ ({creados} archivos creados) · quedan {pendientes} para hacer con Claude")
+    else:
+        print(f"Plan: {creados} archivos para crear · {pendientes} para hacer con Claude — corré con --si para aplicarlo")
     return 0
 
 
@@ -977,6 +1073,14 @@ def main():
     p_completar.add_argument("--nivel", required=True, choices=["empresa", "area", "proyecto"], help="Nivel de la caja")
     p_completar.add_argument("--origen", default=None, help="Ruta de ESTRUCTURA.md")
 
+    # Subcomando arreglar
+    p_arreglar = subparsers.add_parser("arreglar", help="Muestra el plan (o con --si crea) lo seguro que falta")
+    p_arreglar.add_argument("carpeta", nargs="?", default=None, help="Carpeta a arreglar (por defecto la actual)")
+    p_arreglar.add_argument("--todas", action="store_true", help="Todas las cajas bajo ~/Proyectos/ o --raiz")
+    p_arreglar.add_argument("--raiz", default=None, help="Raíz de proyectos (por defecto ~/Proyectos)")
+    p_arreglar.add_argument("--origen", default=None, help="Ruta de ESTRUCTURA.md")
+    p_arreglar.add_argument("--si", action="store_true", help="Aplica el plan (sin esto solo lo muestra)")
+
     args = parser.parse_args()
 
     if args.comando == "dibujo":
@@ -989,6 +1093,14 @@ def main():
             aviso=args.aviso,
             raiz_arg=args.raiz,
             origen_arg=args.origen,
+        ))
+    elif args.comando == "arreglar":
+        sys.exit(comando_arreglar(
+            carpeta_arg=args.carpeta,
+            todas=args.todas,
+            raiz_arg=args.raiz,
+            origen_arg=args.origen,
+            aplicar=args.si,
         ))
     elif args.comando == "completar":
         sys.exit(comando_completar(

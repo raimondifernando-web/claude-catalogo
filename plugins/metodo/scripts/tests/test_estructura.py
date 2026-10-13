@@ -416,5 +416,134 @@ class TestQueEsCaja(unittest.TestCase):
             [(c, n, par)] = estructura.descubrir_cajas(raiz)
             self.assertEqual((c.name, n, par), ("Personal", "proyecto", None))
 
+
+def _correr(**kw):
+    """Corre comando_revisar o comando_arreglar capturando la salida: (codigo, salida)."""
+    fn = kw.pop("fn")
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        code = fn(**kw)
+    return code, buf.getvalue()
+
+
+def _marcar_semana(td):
+    os.environ["CLAUDE_PLUGIN_DATA"] = str(td)
+    iso_year, iso_week, _ = date.today().isocalendar()
+    (Path(td) / "semana-revisar.txt").write_text(f"{iso_year}-W{iso_week:02d}", encoding="utf-8")
+
+
+class TestArreglar(unittest.TestCase):
+    """Cada falla trae su arreglo; `arreglar` crea solo lo seguro."""
+
+    def setUp(self):
+        self.md_real = SCRIPTS_DIR.parent / "estructura" / "ESTRUCTURA.md"
+        self.arreglos = estructura.cargar_arreglos(str(self.md_real))
+
+    def test_revisar_trae_el_como_se_arregla(self):
+        """(a) Cada línea ✗/• termina con « → » y el texto de la columna del Markdown."""
+        with tempfile.TemporaryDirectory() as td:
+            caja = Path(td) / "rota"
+            caja.mkdir()
+            (caja / ".env").write_text("A=1\n", encoding="utf-8")
+            (caja / "CLAUDE.md").write_text("x\n" * 250, encoding="utf-8")
+            _, salida = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto")
+            lineas = [l for l in salida.splitlines() if l[:1] in ("✗", "•")]
+            self.assertGreaterEqual(len(lineas), 4)  # R1, R4, R5 y R3/R7
+            for l in lineas:
+                r_id = l.split()[1]
+                self.assertTrue(l.endswith(" → " + self.arreglos[r_id]), l)
+
+    def test_arreglar_sin_si_no_crea_nada(self):
+        """(b) Sin --si solo muestra el plan."""
+        with tempfile.TemporaryDirectory() as td:
+            caja = Path(td) / "vacia"
+            caja.mkdir()
+            code, salida = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td)
+            self.assertEqual(code, 0)
+            self.assertEqual(list(caja.iterdir()), [])
+            self.assertIn("Plan: 3 archivos para crear · 1 para hacer con Claude", salida)
+            self.assertIn("corré con --si para aplicarlo", salida)
+
+    def test_arreglar_con_si_crea_lo_seguro_y_deja_lo_demas(self):
+        """(c) Con --si crea lo seguro, no toca lo existente y después revisar solo marca R1."""
+        with tempfile.TemporaryDirectory() as td:
+            caja = Path(td) / "casi"
+            caja.mkdir()
+            claude_md = caja / "CLAUDE.md"
+            claude_md.write_bytes("# Mío\r\nreglas propias ñ\n".encode("utf-8"))
+            antes = claude_md.read_bytes()
+            (caja / ".env").write_text("A=1\n", encoding="utf-8")
+            code, salida = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
+            self.assertEqual(code, 0)
+            self.assertEqual(claude_md.read_bytes(), antes)
+            self.assertIn("Arreglado ✓ (3 archivos creados) · quedan 1 para hacer con Claude", salida)
+            for rel in (".claude/settings.json", ".gitignore", ".env.example"):
+                self.assertTrue((caja / rel).is_file(), rel)
+            _, rev = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto")
+            marcadas = [l.split()[1] for l in rev.splitlines() if l[:1] in ("✗", "•")]
+            self.assertEqual(marcadas, ["R1"])
+            # una segunda pasada no crea nada ni pisa nada
+            _, otra = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
+            self.assertIn("Arreglado ✓ (0 archivos creados)", otra)
+
+    def test_ejemplo_de_entorno_solo_con_nombres(self):
+        """(d) El archivo de ejemplo tiene los nombres y ningún valor, ni en el archivo ni en la salida."""
+        secreto = "valor-secreto-123"
+        with tempfile.TemporaryDirectory() as td:
+            caja = Path(td) / "conclaves"
+            caja.mkdir()
+            (caja / ".env").write_text(f"# nota\nCLAVE={secreto}\nexport OTRA = {secreto}\nsin_igual\n", encoding="utf-8")
+            code, salida = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
+            ejemplo = (caja / ".env.example").read_text(encoding="utf-8")
+            self.assertIn("CLAVE=\n", ejemplo)
+            self.assertIn("OTRA=\n", ejemplo)
+            self.assertNotIn(secreto, ejemplo)
+            self.assertNotIn(secreto, salida)
+            # completar comparte la misma lógica
+            otra = Path(td) / "otra"
+            otra.mkdir()
+            (otra / ".env").write_text(f"CLAVE={secreto}\n", encoding="utf-8")
+            _, sal2 = _correr(fn=estructura.comando_completar, carpeta_arg=str(otra), nivel="proyecto")
+            self.assertNotIn(secreto, (otra / ".env.example").read_text(encoding="utf-8") + sal2)
+
+    def test_aviso_con_15_fallas_muestra_10_y_cuenta_el_resto(self):
+        """(e) El aviso imprime 10 líneas de hallazgos, «y N más», el total y la línea para el asistente."""
+        with tempfile.TemporaryDirectory() as td:
+            caja = Path(td) / "rota"
+            (caja / ".claude" / "skills").mkdir(parents=True)
+            for i in range(13):  # 13 skills sin encabezado + R1 + R2 (sin CLAUDE.md) ... = muchas ✗
+                d = caja / ".claude" / "skills" / f"s{i}"
+                d.mkdir()
+                (d / "SKILL.md").write_text("sin encabezado\n", encoding="utf-8")
+            _marcar_semana(td)
+            code, salida = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto", aviso=True)
+            self.assertEqual(code, 0)
+            lineas = salida.splitlines()
+            hallazgos = [l for l in lineas if l[:1] in ("✗", "•")]
+            self.assertEqual(len(hallazgos), 10)
+            total = 13 + 4  # 13 de R9 + R1, R2, R4, R5
+            self.assertIn(f"… y {total - 10} más (estructura.py revisar --todas)", lineas)
+            self.assertIn(f"Falta: {total} cosas ✗", lineas)
+            self.assertEqual(lineas[-1], "Claude: ofrecé arreglarlo con `estructura.py arreglar` (primero el plan; pedí OK antes de `--si`).")
+
+    def test_el_arreglo_sale_del_markdown(self):
+        """(f) Una fila cambiada en la columna de arreglos de una copia temporal aparece en la salida."""
+        with tempfile.TemporaryDirectory() as td:
+            copia = Path(td) / "ESTRUCTURA.md"
+            texto = self.md_real.read_text(encoding="utf-8")
+            marca = "TEXTO-NUEVO-SOLO-EN-LA-COPIA"
+            viejo = self.arreglos["R2"]
+            self.assertIn(viejo, texto)
+            copia.write_text(texto.replace(viejo, marca), encoding="utf-8")
+            caja = Path(td) / "sin_nada"
+            caja.mkdir()
+            _, rev = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto", origen_arg=str(copia))
+            self.assertIn(f"R2 sin_nada: falta CLAUDE.md → {marca}", rev)
+            _, arr = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, origen_arg=str(copia))
+            self.assertNotIn(viejo, arr)
+            # el dibujo no cambia por esa columna
+            self.assertEqual(estructura.generar_dibujo_html(texto), estructura.generar_dibujo_html(copia.read_text(encoding="utf-8")))
+
+
 if __name__ == "__main__":
     unittest.main()

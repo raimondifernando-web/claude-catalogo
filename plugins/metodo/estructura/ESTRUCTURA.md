@@ -53,19 +53,19 @@ Fuera de las cajas:
 | `~/.claude.json` | los conectores personales (correo, calendario, Drive) | no |
 
 ## Reglas que revisa el control
-| Id | Regla | Dónde | Si falla |
-|---|---|---|---|
-| R1 | Tiene `.git/` con un remoto (copia en GitHub) | toda caja | ✗ |
-| R2 | Tiene `CLAUDE.md` | toda caja | ✗ |
-| R3 | `CLAUDE.md` con menos de 200 líneas | toda caja | aviso |
-| R4 | Tiene `.claude/settings.json` y es un JSON válido | toda caja | ✗ |
-| R5 | Tiene `.gitignore` | toda caja | ✗ |
-| R6 | `.env`, `.claude/settings.local.json` y `CLAUDE.local.md` no están en GitHub | toda caja | ✗ |
-| R7 | Si hay `.env`, hay `.env.example` | toda caja | aviso |
-| R8 | El repositorio no guarda las cajas de adentro (las ignora por patrón) | empresa y área | ✗ |
-| R9 | Cada skill (`.claude/skills/<nombre>/SKILL.md`) y cada agente (`.claude/agents/*.md`) tiene encabezado con `name` y `description` | toda caja | ✗ |
-| R10 | Si la empresa o el área de arriba tiene paquete, `settings.json` lo activa | toda caja de adentro | aviso |
-| R11 | `~/Proyectos/` no es un repositorio | raíz | ✗ |
+| Id | Regla | Dónde | Si falla | Cómo se arregla |
+|---|---|---|---|---|
+| R1 | Tiene `.git/` con un remoto (copia en GitHub) | toda caja | ✗ | crear el repositorio y su copia en GitHub: lo hace Claude con tu OK |
+| R2 | Tiene `CLAUDE.md` | toda caja | ✗ | `estructura.py arreglar` lo crea sin pisar nada |
+| R3 | `CLAUDE.md` con menos de 200 líneas | toda caja | aviso | pasar bloques a `.claude/rules/`: lo propone Claude, decidís vos |
+| R4 | Tiene `.claude/settings.json` y es un JSON válido | toda caja | ✗ | `estructura.py arreglar` lo crea sin pisar nada |
+| R5 | Tiene `.gitignore` | toda caja | ✗ | `estructura.py arreglar` lo crea sin pisar nada |
+| R6 | `.env`, `.claude/settings.local.json` y `CLAUDE.local.md` no están en GitHub | toda caja | ✗ | sacarlo de GitHub sin borrarlo (`git rm --cached <archivo>`); si tenía claves, cambiarlas |
+| R7 | Si hay `.env`, hay `.env.example` | toda caja | aviso | `estructura.py arreglar` crea el `.env.example` con los nombres, sin los valores |
+| R8 | El repositorio no guarda las cajas de adentro (las ignora por patrón) | empresa y área | ✗ | llevar cada caja de adentro a su propio repositorio: es un cambio grande, se planifica con Claude antes de tocar nada |
+| R9 | Cada skill (`.claude/skills/<nombre>/SKILL.md`) y cada agente (`.claude/agents/*.md`) tiene encabezado con `name` y `description` | toda caja | ✗ | agregar `name:` y `description:` al encabezado del archivo |
+| R10 | Si la empresa o el área de arriba tiene paquete, `settings.json` lo activa | toda caja de adentro | aviso | activar el paquete en `.claude/settings.json` |
+| R11 | `~/Proyectos/` no es un repositorio | raíz | ✗ | sacar el `.git` de la carpeta de proyectos, con respaldo: lo hace Claude con tu OK |
 
 El control **solo avisa**: nunca cambia nada solo. Para completar lo que falta: `estructura.py completar <carpeta>`, que
 agrega lo que no está y nunca pisa un archivo existente.
