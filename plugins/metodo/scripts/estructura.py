@@ -805,9 +805,7 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
                 primera_vez_semana = True
 
             if primera_vez_semana:
-                estado_dir.mkdir(parents=True, exist_ok=True)
-                estado_file.write_text(semana_actual, encoding="utf-8")
-                todas = True
+                todas = True  # la marca se guarda al terminar la pasada: si el aviso se corta por tiempo, se repite
         except Exception:
             pass
 
@@ -852,6 +850,12 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
 
     # En modo aviso: si todo está bien, no imprime nada y sale 0. Si hay fallas, imprime y sale 0.
     if aviso:
+        if primera_vez_semana:
+            try:
+                estado_dir.mkdir(parents=True, exist_ok=True)
+                estado_file.write_text(semana_actual, encoding="utf-8")
+            except OSError:
+                pass
         if lineas_salida:
             for l in lineas_salida:
                 print(l)
