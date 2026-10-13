@@ -13,14 +13,14 @@ if [ -f "$A" ] && [ "$A" -nt "$D/al-dia.aviso.visto" -o ! -f "$D/al-dia.aviso.vi
   echo "Puesta al día: $(head -1 "$A" | tr -d '\000-\037\177' | cut -c1-400)"; touch "$D/al-dia.aviso.visto"
 fi
 [ -f "$D/al-dia.apagado" ] && exit 0
-# Windows (F4 del security check 0.35.0): al-dia.sh es de Mac (plutil, Homebrew…); acá solo se aplican, una vez por día, las reglas que bloquean las carpetas de llaves.
+# Windows (F4 del security check 0.35.0): al-dia.sh es de Mac (plutil, Homebrew…); acá solo se aplican, una vez por día, las reglas que bloquean las carpetas de llaves y el apagado de la telemetría de HyperFrames.
 case "${METODO_SO_PRUEBA:-$(uname -s 2>/dev/null)}" in
   MINGW*|MSYS*|CYGWIN*)
     [ -z "$(find "$D/deny-windows.ultimo" -mmin -1200 2>/dev/null)" ] || exit 0
     AQUI="$(cd "$(dirname "$0")" && pwd)"
     . "$AQUI/_python-windows.sh" 2>/dev/null || exit 0
     if elegir_python_windows; then
-      PYTHONUTF8=1 "${PYC[@]}" "$AQUI/aplicar-deny.py" && touch "$D/deny-windows.ultimo"
+      PYTHONUTF8=1 "${PYC[@]}" "$AQUI/ajustes-windows.py" && touch "$D/deny-windows.ultimo"
     fi
     exit 0 ;;
 esac

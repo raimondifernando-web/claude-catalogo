@@ -100,7 +100,7 @@ class LanzadoresEnWindows(unittest.TestCase):
 
 @unittest.skipIf(os.name == "nt", "simula Windows desde Mac/Linux con bash")
 class ReglasDenyEnWindows(unittest.TestCase):
-    """F4: en Windows al-dia.sh no corre, así que aplicar-deny.py (lanzado por al-dia-auto.sh) agrega las reglas que bloquean las carpetas de llaves."""
+    """F4: en Windows al-dia.sh no corre, así que ajustes-windows.py (lanzado por al-dia-auto.sh) agrega las reglas que bloquean las carpetas de llaves."""
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -109,7 +109,7 @@ class ReglasDenyEnWindows(unittest.TestCase):
         self.cfg.mkdir()
 
     def aplicar(self, *args):
-        return subprocess.run([sys.executable, str(SCRIPTS / "aplicar-deny.py"), *args], capture_output=True, text=True, encoding="utf-8",
+        return subprocess.run([sys.executable, str(SCRIPTS / "ajustes-windows.py"), *args], capture_output=True, text=True, encoding="utf-8",
                               env={**os.environ, "CLAUDE_CONFIG_DIR": str(self.cfg)}, timeout=30)
 
     def test_las_reglas_son_las_mismas_que_las_de_al_dia(self):
@@ -132,9 +132,19 @@ class ReglasDenyEnWindows(unittest.TestCase):
         self.assertEqual(d["permissions"]["deny"].count("Read(~/.ssh/**)"), 1, "no duplica")
         for regla in ("Edit(~/.ssh/**)", "Read(~/.aws/**)", "Edit(~/.claude/backups/**)", "Read(~/.npmrc)"):
             self.assertIn(regla, d["permissions"]["deny"])
+        self.assertEqual(d["env"]["HYPERFRAMES_NO_TELEMETRY"], "1")
         self.assertEqual(json.loads((self.cfg / "settings.json.antes-arneses").read_text(encoding="utf-8")), original)
         r2 = self.aplicar()                                    # segunda vez: nada que hacer, sin ruido
         self.assertEqual((r2.returncode, r2.stdout), (0, ""))
+
+    def test_la_telemetria_ya_apagada_y_las_reglas_completas_no_cambian_nada(self):
+        self.aplicar()
+        antes = (self.cfg / "settings.json").read_text(encoding="utf-8")
+        d = json.loads(antes); d["env"]["OTRA"] = "x"
+        (self.cfg / "settings.json").write_text(json.dumps(d), encoding="utf-8")
+        r = self.aplicar()
+        self.assertEqual((r.returncode, r.stdout), (0, ""))
+        self.assertEqual(json.loads((self.cfg / "settings.json").read_text(encoding="utf-8"))["env"], {"HYPERFRAMES_NO_TELEMETRY": "1", "OTRA": "x"})
 
     def test_settings_que_no_es_json_no_se_toca(self):
         (self.cfg / "settings.json").write_text("{esto no es json", encoding="utf-8")
