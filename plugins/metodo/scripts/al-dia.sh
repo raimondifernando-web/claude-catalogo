@@ -367,63 +367,59 @@ if [ -n "$AGB" ] && [ -x "$AGB" ]; then
   codesign --verify --strict -R='anchor apple generic and certificate leaf[subject.OU] = "EQHXZ8M8AV"' "$AGB" 2>/dev/null \
     || falta+=("Antigravity (la firma no es de Google: no lo uses y avisale a Fernando)")
 fi
-# Reglas de solo lectura para Antigravity (las mismas que Fernando, sin `git -C *`): sin pantalla (agy -p) no hay quién apruebe
-# y cualquier comando se niega. Solo si agy está instalado y ya tiene su configuración (entraste al menos una vez): NO se ejecuta agy.
-# Además frena (deny, que le gana a allow) las variantes que escriben archivos o ejecutan programas: --output, --ext-diff,
-# git grep -O, git -c/-C/--git-dir y encadenar con ; & | $ ` < >. Se edita una copia, se valida, queda una copia con fecha y se
-# reemplaza de una vez (si es un enlace simbólico, se edita el archivo real). Si ya están, no hace nada ni avisa.
-local AGS="$HOME/.gemini/antigravity-cli/settings.json" AGR
+# Configuración de Antigravity: NO se le agrega ninguna regla. Gemini trabaja en una copia sin .git (delegar.py), así que
+# las reglas de git/ls/wc no le sirven y solo abren riesgo (leer cualquier archivo con git diff --no-index, ejecutar con
+# git grep -O, sacar datos con read_url). Lo único que se hace: (1) quitar `command(git -C *)` si está (dejaba ejecutar
+# programas con -c core.fsmonitor=…), sobre una copia validada, con copia con fecha y reemplazo de una vez (si es un enlace
+# simbólico, se edita el archivo real); (2) avisar en una línea si hay reglas amplias, sin tocarlas: decide la persona.
+# Solo si agy está instalado y ya tiene su configuración (entraste al menos una vez): NO se ejecuta agy.
+local AGS="$HOME/.gemini/antigravity-cli/settings.json" AGL
 if [ -n "$AGB" ] && [ -x "$AGB" ] && [ -f "$AGS" ]; then
   T=$(mktemp)   # T: lo borra el trap de salida
   if /usr/bin/python3 - "$AGS" > "$T" 2>/dev/null <<'PY'
 import json, os, shutil, sys, tempfile, time
 ruta = os.path.realpath(sys.argv[1])
-LEER = ["read_url(*)", "command(git show*)", "command(git diff*)", "command(git log*)", "command(git status*)",
-        "command(git grep*)", "command(git ls-files*)", "command(git rev-parse*)", "command(ls*)", "command(wc *)"]
-FRENOS = ["command(regex:git .*--output.*)", "command(regex:git .*--ext-diff.*)",
-          "command(regex:git grep .*(-O|--open-files-in-pager).*)",
-          "command(regex:git (-c|-C|--git-dir|--work-tree|--exec-path|--config-env).*)",
-          "command(regex:(git|ls|wc).*[;&|`$<>].*)"]
-SACAR = ["command(git -C *)"]   # dejaba correr git con -c core.fsmonitor=<programa>
+SACAR = ["command(git -C *)"]
+def amplia(r):
+    return (r in ("read_url(*)", "command(*)", "command(git *)", "command(ls*)")
+            or r.startswith("command(git -C")
+            or r in ("command(git diff*)", "command(git show*)", "command(git log*)"))
 with open(ruta, encoding="utf-8") as f:
     d = json.load(f)
-p = d.setdefault("permissions", {}) if isinstance(d, dict) else None
-if not isinstance(p, dict) or not isinstance(p.setdefault("allow", []), list) or not isinstance(p.setdefault("deny", []), list):
+p = d.get("permissions") if isinstance(d, dict) else None
+allow = p.get("allow") if isinstance(p, dict) else None
+if p is not None and not isinstance(p, dict) or allow is not None and not isinstance(allow, list):
     sys.exit(1)
-nuevas = [r for r in LEER if r not in p["allow"]]
-frenos = [r for r in FRENOS if r not in p["deny"]]
-sacar = [r for r in SACAR if r in p["allow"]]
-if not (nuevas or frenos or sacar):
-    sys.exit(0)
-p["allow"] = [r for r in p["allow"] if r not in SACAR] + nuevas
-p["deny"] = p["deny"] + frenos
-texto = json.dumps(d, indent=2, ensure_ascii=False) + "\n"
-json.loads(texto)
-fd, tmp = tempfile.mkstemp(prefix=".settings.json.tmp.", dir=os.path.dirname(ruta))
-try:
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        f.write(texto)
-    os.chmod(tmp, os.stat(ruta).st_mode & 0o777)
-    copia = ruta + ".antes-al-dia-" + time.strftime("%Y%m%d-%H%M%S")
-    shutil.copy2(ruta, copia)
-    os.replace(tmp, ruta)
-except BaseException:
-    if os.path.exists(tmp):
-        os.unlink(tmp)
-    raise
-partes = []
-if nuevas:
-    partes.append("%d regla(s) de solo lectura (git log/show/diff/status/grep, ls, wc y leer páginas web)" % len(nuevas))
-if frenos:
-    partes.append("%d freno(s) para las variantes que escriben archivos o ejecutan programas" % len(frenos))
+allow = allow or []
+sacar = [r for r in SACAR if r in allow]
 if sacar:
-    partes.append("saqué la regla «git -C *», que dejaba ejecutar programas")
-print("Antigravity: " + "; ".join(partes) + " (copia de cómo estaba: %s)" % os.path.basename(copia))
+    p["allow"] = [r for r in allow if r not in SACAR]
+    texto = json.dumps(d, indent=2, ensure_ascii=False) + "\n"
+    json.loads(texto)
+    fd, tmp = tempfile.mkstemp(prefix=".settings.json.tmp.", dir=os.path.dirname(ruta))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(texto)
+        os.chmod(tmp, os.stat(ruta).st_mode & 0o777)
+        copia = ruta + ".antes-al-dia-" + time.strftime("%Y%m%d-%H%M%S")
+        shutil.copy2(ruta, copia)
+        os.replace(tmp, ruta)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+    print("Antigravity: saqué la regla «git -C *» de su configuración, que dejaba ejecutar programas (copia de cómo "
+          "estaba: %s)" % os.path.basename(copia))
+amplias = [r for r in p["allow"] if isinstance(r, str) and amplia(r)] if sacar else [r for r in allow if isinstance(r, str) and amplia(r)]
+if amplias:
+    print("Antigravity: tu configuración tiene reglas amplias que le dejan leer o ejecutar de más, o mandar datos a "
+          "cualquier página, sin preguntar (%s). Si no las pusiste a propósito, borralas de "
+          "~/.gemini/antigravity-cli/settings.json (permissions.allow); delegar.py no las necesita" % ", ".join(amplias))
 PY
   then
-    AGR=$(cat "$T"); [ -z "$AGR" ] || avisos+=("$AGR")
+    while IFS= read -r AGL; do [ -z "$AGL" ] || avisos+=("$AGL"); done < "$T"
   else
-    falta+=("reglas de lectura de Antigravity (no pude leer o escribir su configuración; quedó como estaba)")
+    falta+=("configuración de Antigravity (no pude leerla o escribirla; quedó como estaba)")
   fi
   rm -f "$T"; T=""
 fi
