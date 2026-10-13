@@ -146,11 +146,19 @@ else:
         print("✓ Repo de una sola copia: no hace falta declarar Copia/Rama")
 
     st = git("status", "--short") or ""
-    mod = [l for l in st.splitlines() if not l.startswith("??")]
+    # En una copia compartida (subcarpetas por proyecto) los cambios fuera de esta carpeta son de otra
+    # sesión: se avisan con «•», no frenan. Los de esta carpeta sí frenan (lo que quedó sin guardar es tuyo).
+    ruta = lambda l: l.strip().split(None, 1)[-1]
+    propios_l = {ruta(l) for l in (git("status", "--short", "--", ".") or "").splitlines()}
+    ajenos = [l for l in st.splitlines() if not l.startswith("??") and ruta(l) not in propios_l]
+    mod = [l for l in st.splitlines() if not l.startswith("??") and ruta(l) in propios_l]
     sin = len([l for l in st.splitlines() if l.startswith("??")])
     linea(not mod, f"git: sin cambios versionados sin guardar ({sin} archivo(s) nuevos sin seguir, ajenos o por decidir)" if not mod
-          else f"git: {len(mod)} archivo(s) versionados con cambios sin guardar: {', '.join(l.split(None, 1)[-1] for l in mod[:5])}",
+          else f"git: {len(mod)} archivo(s) versionados con cambios sin guardar: {', '.join(ruta(l) for l in mod[:5])}",
           f"{len(mod)} archivo(s) sin guardar en {os.path.basename(top)}")
+    if ajenos:
+        print(f"• {len(ajenos)} archivo(s) con cambios sin guardar FUERA de esta carpeta (de otra sesión; no frenan): "
+              f"{', '.join(ruta(l) for l in ajenos[:5])}")
     cab = (git("status", "-sb") or "").splitlines()[:1]
     cab = cab[0] if cab else ""
     adelante = re.search(r"ahead (\d+)", cab)

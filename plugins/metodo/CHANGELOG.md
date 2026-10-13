@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.36.3 (sin publicar)
+- **`/cerrar` ya no se traba por cambios de otra sesión.** Si varias sesiones comparten una copia (un repo con una subcarpeta por proyecto), `cerrar-check` avisa con «•» los archivos sin guardar que están fuera de tu carpeta y sigue; los de tu carpeta siguen dando ✗. Así el cierre abre la sesión siguiente y archiva la vieja.
+
 ## 0.36.2 — 2026-10-13
 `/cerrar` y `/arrancar` funcionan igual que en la computadora de quien te acompaña, y cuatro reglas del método quedan más completas. Se aplica solo; no hay nada que correr.
 - **Cerrar sin abandonar a nadie.** `/cerrar` tiene un Paso 0: si abriste otras sesiones o ramas, no se cierra mientras una siga trabajando, tenga un resultado sin revisar o haya una rama sin juntar. `cerrar-check` imprime las ramas y copias abiertas.
