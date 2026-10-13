@@ -14,7 +14,7 @@ const ANTERIOR = EJEMPLO.replace(/^\| E10 \|.*\n/m, '')
   .replace(/^(\| B14 \|.*?\| )1( \| pendiente \|)/m, '$12$2')
   .replace(/^(\| S1 \|.*?\| 1 \| )espera dato de Ana( \|)/m, '$1pendiente$2')
 
-type Mundo = { texto?: string; sucio?: boolean; versiones?: string[]; antes?: string; fallaGit?: boolean; carpeta?: string; sinGit?: boolean }
+type Mundo = { llamadas?: string[][]; texto?: string; sucio?: boolean; versiones?: string[]; antes?: string; fallaGit?: boolean; carpeta?: string; sinGit?: boolean }
 
 function salida(stdout: string, exitCode = 0, stderr = '') {
   return { value: { exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false } } as never
@@ -34,7 +34,8 @@ function fondo(on: On, mundo: Mundo) {
   // Sin texto, la lectura sigue al archivo de verdad, que en /casa no existe.
   on('fs.read', (_$, e, next) => (e.path === RUTA && mundo.texto !== undefined ? ({ value: mundo.texto } as never) : next(e)))
   on('process.run', (_$, e) => {
-    const [, , cmd, ...resto] = e.argv.filter((a: string) => a !== "--no-optional-locks" && a !== "-C")
+    mundo.llamadas?.push([...e.argv])
+    const [, , cmd, ...resto] = e.argv.filter((a: string, i: number, todo: string[]) => a !== "--no-optional-locks" && a !== "-C" && a !== "-c" && todo[i - 1] !== "-c")
     if (cmd === 'rev-parse') return salida(`${(mundo.carpeta ?? CARPETA).startsWith(CARPETA) ? CARPETA : mundo.carpeta}\n`)
     if (mundo.sinGit) return salida('', 128, 'fatal: not a git repository')
     if (mundo.fallaGit) return salida('', 128, 'fatal: index file corrupt')
@@ -276,4 +277,16 @@ test('«espera dato de» o «espera OK de» con cualquier nombre se acepta y se 
   expect(await ui.find({ type: 'Text', text: /Hay 3 esperando un dato o un OK/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /No pude leer bien/ })).toBeUndefined()
   await ui.unmount()
+})
+
+test('todas las llamadas a git apagan fsmonitor y untrackedCache (repo ajeno)', async ($, on) => {
+  const llamadas: string[][] = []
+  fondo(on, { texto: EJEMPLO, llamadas })
+  await abrir($)
+  const deGit = llamadas.filter(a => a[0] === 'git')
+  expect(deGit.length).toBeGreaterThan(0)
+  for (const argv of deGit) {
+    expect(argv.join(' ')).toContain('-c core.fsmonitor=false')
+    expect(argv.join(' ')).toContain('-c core.untrackedCache=false')
+  }
 })

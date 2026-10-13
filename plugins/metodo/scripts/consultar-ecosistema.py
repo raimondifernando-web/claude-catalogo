@@ -30,20 +30,28 @@ def main():
     else:
         return 0
     marca = _marca(cwd)
-    if os.path.exists(marca) and time.time() - os.path.getmtime(marca) < TTL:
+    if os.path.exists(marca) and not os.path.islink(marca) and time.time() - os.path.getmtime(marca) < TTL:
         return 0
     r = subprocess.run([sys.executable, os.path.join(AQUI, "herramientas-para.py"), "--solo-recetas", texto[:1500]],
                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10, cwd=cwd)
     if "══ RECETAS" not in r.stdout:
         return 0  # sin receta para esto: no se molesta
     try:
-        open(marca, "w").write(str(time.time()))
+        _escribir_marca(marca)
     except OSError:
         pass
     sys.stderr.write("⛔ Regla 22 del método — ya hay una receta para lo que vas a construir. Es un freno de UNA vez "
                      "(no vuelve en 4 h en esta carpeta): leela, aplicala (los subagentes NO heredan skills: "
                      "nombralas en SU prompt) y reintentá la misma acción.\n\n" + r.stdout[:5500])
     return 2
+
+
+def _escribir_marca(ruta):
+    """F9 (security check 0.35.0): la marca vive en una carpeta temporal compartida con nombre predecible. Se abre con O_NOFOLLOW y permisos 0600:
+    si alguien dejó ahí un enlace simbólico, la escritura falla en vez de pisar el archivo al que apunta."""
+    fd = os.open(ruta, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(str(time.time()))
 
 
 def _marca(cwd):

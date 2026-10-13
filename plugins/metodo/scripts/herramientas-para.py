@@ -66,9 +66,17 @@ def marca_path(cwd):
                         f"consulta-ecosistema-{uid}-{h}")
 
 
+def _escribir_marca(ruta):
+    """F9 (security check 0.35.0): la marca vive en una carpeta temporal compartida con nombre predecible. Se abre con O_NOFOLLOW y permisos 0600:
+    si alguien dejó ahí un enlace simbólico, la escritura falla en vez de pisar el archivo al que apunta."""
+    fd = os.open(ruta, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(str(time.time()))
+
+
 def marcar(cwd):
     try:
-        open(marca_path(cwd), "w").write(str(time.time()))
+        _escribir_marca(marca_path(cwd))
     except OSError:
         pass
 

@@ -87,7 +87,7 @@ function mundoGit(on: On, ahora: string, anterior: string, fechaCambio: string) 
     throw new Error('ENOENT')
   })
   on('process.run', (_$, e) => {
-    const cmd = e.argv[4]
+    const cmd = e.argv[e.argv.indexOf('-C') + 2]
     const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }) as never
     if (cmd === 'status') return ok('')
     if (cmd === 'log') return ok(`aaa ${fechaCambio === 'hoy' ? hoy : fechaCambio}\nbbb 2026-01-01\n`)

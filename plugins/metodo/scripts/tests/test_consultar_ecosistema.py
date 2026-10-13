@@ -50,6 +50,21 @@ class TestFreno(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "el freno es un hook de bash (consultar-ecosistema.sh)")
 
+    @unittest.skipIf(os.name == "nt", "enlaces simbólicos y hooks de bash")
+    def test_una_marca_que_es_un_enlace_no_pisa_el_archivo_apuntado(self):  # F9
+        import hashlib
+        marca = self.cfg / f"consulta-ecosistema-{os.getuid()}-{hashlib.sha1(os.path.realpath(self.cwd).encode()).hexdigest()[:12]}"
+        victima = Path(self.tmp.name) / "victima.txt"
+        victima.write_text("NO TOCAR")
+        marca.symlink_to(victima)
+        r = correr(self.agente(), self.cfg, self.cwd)                       # el freno (consultar-ecosistema.py) intenta escribir la marca
+        self.assertEqual(victima.read_text(), "NO TOCAR", r.stderr)
+        env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg))
+        subprocess.run([sys.executable, str(SCRIPTS / "herramientas-para.py"), "interfaz web dashboard"], cwd=str(self.cwd), env=env,
+                       capture_output=True, text=True, timeout=30)           # y la otra escritura de marca (herramientas-para.py)
+        self.assertEqual(victima.read_text(), "NO TOCAR")
+
+    @unittest.skipIf(os.name == "nt", "el freno es un hook de bash (consultar-ecosistema.sh)")
     def test_archivo_nuevo_de_interfaz_frena_y_existente_no(self):
         nuevo = {"tool_name": "Write", "tool_input": {"file_path": str(self.cwd / "index.html"), "content": "<html>dashboard pantalla interfaz"}}
         self.assertEqual(correr(nuevo, self.cfg, self.cwd).returncode, 2)

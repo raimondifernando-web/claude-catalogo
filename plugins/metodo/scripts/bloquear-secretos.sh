@@ -11,8 +11,11 @@ avisar() {
   if [[ $ENTRADA =~ \"session_id\"[[:space:]]*:[[:space:]]*\"([A-Za-z0-9._-]+)\" ]]; then sid=${BASH_REMATCH[1]}; fi
   [ -n "$sid" ] || sid="dia-$(date +%Y%m%d 2>/dev/null)"
   marca="${TMPDIR:-/tmp}/bloquear-secretos-aviso-${UID}-$sid"
-  [ -e "$marca" ] && exit 0
-  : > "$marca" 2>/dev/null
+  # F9: si la marca es un enlace simbólico (alguien lo dejó en la carpeta temporal compartida) no se escribe: `: >` pisaría el archivo al que apunta
+  if [ ! -L "$marca" ]; then
+    [ -e "$marca" ] && exit 0
+    ( set -o noclobber; : > "$marca" ) 2>/dev/null
+  fi
   printf '{"systemMessage":"%s","hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}\n' "$1" "$1"
   exit 0
 }

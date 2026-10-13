@@ -599,6 +599,10 @@ function proximaFecha(fechas: Fecha[], ahora: number): Proxima | undefined {
 }
 
 // ---------- Cambios (git) ----------
+// git corre en la carpeta de la sesión, que puede ser un repo ajeno: un `.git/config` con `core.fsmonitor=<comando>` ejecutaría ese comando al hacer `git status`.
+// Se apagan las dos opciones que lanzan programas o escriben caché (F11 del security check 0.35.0). Todas las llamadas a git de este archivo pasan por acá.
+const GIT_SEGURO = ['--no-optional-locks', '-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false']
+
 
 function comparar(vieja: Fila[], nueva: Fila[]): Cambio[] {
   const antes = new Map(vieja.map(f => [f.id, f]))
@@ -641,7 +645,7 @@ function diaCorto(iso: string | undefined): string | undefined {
 // La versión de comparación: si el archivo tiene cambios sin guardar, la última guardada;
 // si no, la anterior a la última. Todo sale de `git log` del archivo.
 async function cambiosDeGit($: EngineInterface, repo: string, nueva: Fila[]): Promise<Cambios> {
-  const git = (args: string[]) => $.process.run(['git', '--no-optional-locks', '-C', repo, ...args])
+  const git = (args: string[]) => $.process.run(['git', ...GIT_SEGURO, '-C', repo, ...args])
   try {
     const estado = await git(['status', '--porcelain', '--', ARCHIVO])
     // Carpeta que no es repo git (código 128): no hay historial, no es un error.
@@ -688,7 +692,7 @@ let ultimoJson = ''
 async function buscar($: EngineInterface, carpeta: string): Promise<{ repo: string; texto: string } | null> {
   const candidatas = [carpeta]
   try {
-    const top = await $.process.run(['git', '-C', carpeta, 'rev-parse', '--show-toplevel'])
+    const top = await $.process.run(['git', ...GIT_SEGURO, '-C', carpeta, 'rev-parse', '--show-toplevel'])
     const raiz = top.exitCode === 0 ? top.stdout.trim() : ''
     if (raiz !== '' && raiz !== carpeta) candidatas.push(raiz)
   } catch {
@@ -1110,7 +1114,7 @@ async function tpLeer($: EngineInterface, carpeta: string): Promise<Tarea[] | nu
   let viejo: string | null = null
   let reciente = false
   try {
-    const git = (args: string[]) => $.process.run(['git', '--no-optional-locks', '-C', carpeta, ...args])
+    const git = (args: string[]) => $.process.run(['git', ...GIT_SEGURO, '-C', carpeta, ...args])
     const estado = await git(['status', '--porcelain', '--', TP_ARCHIVO])
     const log = await git(['log', '--format=%H %cs', '-n', '2', '--', TP_ARCHIVO])
     if (estado.exitCode === 0 && log.exitCode === 0) {

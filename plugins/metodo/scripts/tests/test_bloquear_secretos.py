@@ -374,6 +374,21 @@ class ContratoBashTest(_Correr, unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "el envoltorio es un script de bash (en el PATH de Windows, «bash» es WSL, no Git Bash)")
 
+    @unittest.skipIf(os.name == "nt", "enlaces simbólicos y bash")
+    def test_marca_del_aviso_que_es_un_enlace_no_pisa_el_archivo_apuntado(self):  # F9
+        with tempfile.TemporaryDirectory() as d:
+            victima = Path(d) / "victima.txt"
+            victima.write_text("NO TOCAR")
+            sid = "sesion-f9"
+            (Path(d) / f"bloquear-secretos-aviso-{os.getuid()}-{sid}").symlink_to(victima)
+            solo = Path(d) / "paquete"; solo.mkdir()                          # el wrapper solo, sin el .py: avisa y escribe la marca
+            copia = solo / "bloquear-secretos.sh"; copia.write_text(WRAPPER.read_text())
+            env = dict(os.environ, TMPDIR=d)
+            r = self.correr(json.dumps({"session_id": sid, "tool_name": "Bash", "tool_input": {"command": "ls"}}), via=copia, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("no está activo", r.stdout)
+            self.assertEqual(victima.read_text(), "NO TOCAR")
+
     def test_sin_python_avisa_y_deja_pasar(self):
         # PATH vacío: el envoltorio no encuentra python3 en el PATH; en /usr/bin sí puede haber uno (macOS), así que
         # solo se exige que no frene y no rompa
