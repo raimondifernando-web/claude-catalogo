@@ -103,7 +103,8 @@ fi
 if [ -f "$S" ]; then
   [ "$(plutil -extract env.FORCE_AUTOUPDATE_PLUGINS raw "$S" 2>/dev/null)" = "1" ] || {
     plutil -extract env json -o /dev/null "$S" 2>/dev/null || plutil -insert env -dictionary "$S" 2>/dev/null
-    plutil -replace env.FORCE_AUTOUPDATE_PLUGINS -string 1 "$S" 2>/dev/null; }
+    plutil -replace env.FORCE_AUTOUPDATE_PLUGINS -string 1 "$S" 2>/dev/null \
+      && echo "· Prendí la actualización automática de paquetes en la app (FORCE_AUTOUPDATE_PLUGINS=1 en tu settings.json): se actualizan solos los paquetes de los catálogos que tengas agregados. Para apagarla: borrá esa línea de env."; }
   [ "$(plutil -extract env.FORCE_AUTOUPDATE_PLUGINS raw "$S" 2>/dev/null)" = "1" ] || falta+=("actualización de paquetes en la app")
 fi
 # /arrancar archiva la sesión anterior de la misma serie; sin este permiso el modo automático lo frena (Orquesta, 2026-10-09).
@@ -118,7 +119,9 @@ if [ -f "$S" ]; then
       && { plutil -extract permissions json -o /dev/null "$AT" 2>/dev/null || plutil -insert permissions -dictionary "$AT"; } \
       && { plutil -extract permissions.allow json -o /dev/null "$AT" 2>/dev/null || plutil -insert permissions.allow -array "$AT"; } \
       && plutil -insert permissions.allow -string "$AP" -append "$AT" \
-      && plutil -extract permissions.allow json -o - "$AT" 2>/dev/null | grep -qF "\"$AP\""; then mv "$AT" "$S"; else rm -f "$AT"; fi 2>/dev/null; }
+      && plutil -extract permissions.allow json -o - "$AT" 2>/dev/null | grep -qF "\"$AP\""; then
+      mv "$AT" "$S" && echo "· Agregué a tu settings.json el permiso $AP (para que /arrancar archive la sesión anterior sin preguntar). Copia en settings.json.antes-al-dia-permisos"
+    else rm -f "$AT"; fi 2>/dev/null; }
   plutil -extract permissions.allow json -o - "$S" 2>/dev/null | grep -qF "\"$AP\"" || falta+=("permiso para archivar sesiones viejas")
 fi
 # Claude no puede leer ni editar los lugares donde se guardan las llaves (SSH, nube, GitHub, llavero…). Los programas las siguen
@@ -454,7 +457,10 @@ if [ -f "$S" ]; then
   [ "$(plutil -extract env.CLAUDE_SECURITY_SCAN_TIP raw "$S" 2>/dev/null)" = "off" ] || falta+=("apagar el aviso de escaneo de claude-security")
 fi
 
-# 5d. Figma oficial de Anthropic (la conexión con tu cuenta se hace aparte, con /mcp)
+# 5d. Figma oficial de Anthropic
+# PENDIENTE DE FIJAR (F8, security check 0.35.0): figma / frontend-design / skill-creator / claude-security se instalan de claude-plugins-official SIN versión ni sha fijos y fuera de la
+# demora de 48 h del resto. Fijarlos exige verificar en el marketplace de Anthropic una referencia real (sha de 40 caracteres) que `claude plugin marketplace add` acepte, y probarlo en una
+# máquina de cliente; no se inventó ninguna. Hasta entonces: oficial de Anthropic + el aviso diario lo registra. (la conexión con tu cuenta se hace aparte, con /mcp)
 claude plugin marketplace list 2>/dev/null | grep -qF claude-plugins-official || claude plugin marketplace add anthropics/claude-plugins-official >/dev/null 2>&1
 claude plugin list 2>/dev/null | grep -qE "❯ figma@claude-plugins-official[[:space:]]*$" || claude plugin install figma@claude-plugins-official >/dev/null 2>&1
 claude plugin list 2>/dev/null | grep -A3 -E "❯ figma@claude-plugins-official[[:space:]]*$" | grep -q "✔ enabled" || falta+=("figma")
