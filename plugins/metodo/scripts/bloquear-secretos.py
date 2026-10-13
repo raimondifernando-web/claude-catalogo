@@ -507,6 +507,141 @@ def analizar(cmd, profundidad=0):
     return out
 
 
+# ---------- PowerShell (F4 del security check 0.35.0): la herramienta PowerShell de Windows no pasaba por ningún freno ----------
+LECTORES_PS = {"get-content", "gc", "type", "cat", "more", "select-string", "sls"}
+ECHOS_PS = {"echo", "write-host", "write-output", "write", "out-host", "out-string", "write-information", "write-warning", "write-verbose"}
+SUMIDEROS_PS = {"measure-object", "measure", "out-null", "out-file", "set-content", "sc", "add-content", "ac"}
+LISTAR_PS = {"get-childitem", "gci", "ls", "dir", "get-item", "gi"}
+SOLO_NOMBRES_PS = {"select-object", "select", "format-table", "ft", "format-list", "fl", "foreach-object", "%"}
+POWERSHELLS = {"powershell", "powershell.exe", "pwsh", "pwsh.exe"}
+
+
+def palabras_ps(etapa):
+    """Parte una etapa de PowerShell en palabras respetando comillas simples y dobles (sin las comillas)."""
+    out, cur, q, hay = [], "", "", False
+    for ch in etapa:
+        if q:
+            if ch == q:
+                q = ""
+            else:
+                cur += ch
+        elif ch in "'\"":
+            q, hay = ch, True
+        elif ch in " \t\r":
+            if cur or hay:
+                out.append(cur)
+            cur, hay = "", False
+        else:
+            cur += ch
+    if cur or hay:
+        out.append(cur)
+    return out
+
+
+def partir_ps(texto):
+    """→ lista de sentencias; cada una = lista de etapas (texto). Separa por ; salto de línea && || y |, fuera de comillas y paréntesis."""
+    sentencias, etapas, cur, q, prof, i, n = [], [], "", "", 0, 0, len(texto)
+    while i < n:
+        ch, sig = texto[i], texto[i + 1] if i + 1 < n else ""
+        if q:
+            cur += ch
+            if ch == q:
+                q = ""
+        elif ch in "'\"":
+            q = ch
+            cur += ch
+        elif ch in "({[":
+            prof += 1
+            cur += ch
+        elif ch in ")}]":
+            prof = max(0, prof - 1)
+            cur += ch
+        elif prof == 0 and ch in ";\n":
+            etapas.append(cur)
+            sentencias.append(etapas)
+            etapas, cur = [], ""
+        elif prof == 0 and ch in "&|" and sig == ch:
+            etapas.append(cur)
+            sentencias.append(etapas)
+            etapas, cur = [], ""
+            i += 1
+        elif prof == 0 and ch == "|":
+            etapas.append(cur)
+            cur = ""
+        else:
+            cur += ch
+        i += 1
+    etapas.append(cur)
+    sentencias.append(etapas)
+    return [[e for e in s if e.strip()] for s in sentencias if any(e.strip() for e in s)]
+
+
+def analizar_powershell(cmd, profundidad=0):
+    razones = []
+    for etapas in partir_ps(cmd):
+        pal = [palabras_ps(e) for e in etapas]
+        nombres = [(p[0].lstrip("&.").lower() if p else "") for p in pal]
+        for k, (e, ps) in enumerate(zip(etapas, pal)):
+            if not ps:
+                continue
+            nom = nombres[k]
+            rest = ps[1:]
+            despues = nombres[k + 1:]
+            a_archivo = any(re.match(r"^\d?>{1,2}", w) for w in ps)
+            if a_archivo or any(d in SUMIDEROS_PS for d in despues):
+                continue
+            archivos = [w for w in rest if es_archivo_secreto(w.replace("\\", "/").split("=", 1)[-1])]
+            if nom in LECTORES_PS and archivos and not any(w.lower() in ("-quiet", "-q") for w in rest):
+                razones.append(f"`{ps[0]}` sobre «{archivos[0]}» muestra en pantalla el contenido de un archivo de secretos.")
+            elif nom in ("invoke-webrequest", "iwr", "invoke-restmethod", "irm", "curl.exe", "curl", "wget", "wget.exe") \
+                    and (subida_secreta(rest) or any(rest[j].lower() in ("-infile", "-inputfile") and j + 1 < len(rest)
+                                                      and es_archivo_secreto(rest[j + 1].replace("\\", "/")) for j in range(len(rest)))):
+                razones.append(f"`{ps[0]}` manda a otra máquina el contenido de un archivo de secretos.")
+            elif nom in POWERSHELLS or nom in ("cmd", "cmd.exe"):
+                if profundidad < 3:
+                    for j, w in enumerate(rest):
+                        if w.lower() in ("-c", "-command", "/c", "/k") and j + 1 < len(rest):
+                            razones.extend(analizar_powershell(" ".join(rest[j + 1:]), profundidad + 1))
+                            break
+            if nom in LISTAR_PS:
+                volcado = any(re.fullmatch(r"(?:-path\s*)?(?:env|variable):[\\/]?\*?", w, re.I) for w in rest)
+                puntual = [w for w in rest if re.fullmatch(r"env:[\\/]?([A-Za-z_]\w*)", w, re.I)
+                           and re.search(SECRETISH, w, I) and not SUFIJO_NO_SECRETO.search(w)]
+                solo_nombres = any(d in SOLO_NOMBRES_PS for d in despues) and any(
+                    "name" in " ".join(pal[j + 1]).lower() and "value" not in " ".join(pal[j + 1]).lower()
+                    for j in range(k, len(pal) - 1) if nombres[j + 1] in SOLO_NOMBRES_PS)
+                if volcado and not solo_nombres:
+                    razones.append(f"`{ps[0]} Env:` muestra TODAS las variables del entorno, con sus claves.")
+                elif puntual:
+                    razones.append("leer una variable de entorno que parece secreta la muestra en pantalla.")
+            texto = e
+            if re.search(r"GetEnvironmentVariables\s*\(", texto, I):
+                razones.append("`GetEnvironmentVariables()` muestra TODAS las variables del entorno, con sus claves.")
+            for m in re.finditer(r"""GetEnvironmentVariable\s*\(\s*['"]([^'"]+)['"]""", texto, I):
+                if re.search(SECRETISH, m.group(1), I) and not SUFIJO_NO_SECRETO.search(m.group(1)) and nom not in SUMIDEROS_PS:
+                    razones.append("leer una variable de entorno que parece secreta la muestra en pantalla.")
+            if re.search(r"File\]::(?:ReadAll\w+|OpenText|ReadLines)\s*\(", texto, I) \
+                    and any(es_archivo_secreto(w.replace("\\", "/")) for w in re.findall(r"""['"]([^'"]+)['"]""", texto)):
+                razones.append("leer con .NET un archivo de secretos muestra su contenido.")
+            limpio = re.sub(r"\$\{?env:\w+\}?\.Length", "", texto, flags=I)
+            if ".Substring(" not in limpio:
+                nombres_env = [m.group(1) for m in re.finditer(r"\$\{?env:([A-Za-z_]\w*)\}?", limpio, I)
+                               if re.search(SECRETISH, m.group(1), I) and not SUFIJO_NO_SECRETO.search(m.group(1))]
+                pelado = re.fullmatch(r"\s*\$\{?env:\w+\}?\s*", limpio, I) is not None
+                if nombres_env and (nom in ECHOS_PS or pelado) and not any(d in ("set-clipboard", "scb", "clip", "clip.exe") for d in despues):
+                    razones.append("mostrar una variable de entorno que parece secreta (clave, token o contraseña) la imprime en pantalla.")
+            if profundidad < 3:   # $( … ) y ( … ) que no se guardan en una variable: el comando de adentro también corre
+                for m in re.finditer(r"\$?\(([^()]*)\)", e):
+                    if re.match(r"^\s*\$\w+\s*=\s*$", e[:m.start()]):
+                        continue
+                    razones.extend(analizar_powershell(m.group(1), profundidad + 1))
+    salida = []
+    for r in razones:
+        if r not in salida:
+            salida.append(r)
+    return salida
+
+
 def analizar_lectura(herramienta, ti, cwd):
     """Read y Grep: las herramientas de archivos de Claude, que el análisis de comandos de Bash no ve."""
     if herramienta == "Read":
@@ -629,6 +764,11 @@ def main():
             if not cmd.strip():
                 return 0
             razones = analizar(cmd)
+        elif herramienta == "PowerShell":
+            cmd = ti.get("command") or ""
+            if not cmd.strip():
+                return 0
+            razones = analizar_powershell(cmd)
         elif herramienta in ("Read", "Grep"):
             razones = analizar_lectura(herramienta, ti, data.get("cwd") or "")
         elif herramienta in ("Write", "Edit", "MultiEdit"):

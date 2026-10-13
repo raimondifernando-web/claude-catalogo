@@ -7,6 +7,12 @@ Falla conocida: también frena el texto de un comando que nombre esa instrucció
 distinto o pasando el mensaje por archivo. No ve un alias ni un script que llame al instalador por dentro: es un cinturón, no un sandbox.
 Salida: código 2 + mensaje por stderr = bloquear (convención de hooks de Claude Code)."""
 import json, re, sys
+# Windows: la consola usa cp1252 y los acentos / ⛔ hacían caer el script (UnicodeEncodeError); se fuerza UTF-8 en entrada y salida.
+for _flujo in (sys.stdin, sys.stdout, sys.stderr):
+    try:
+        _flujo.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 INSTALA = re.compile(r"(?:^|[\s;&|(`])(?:npx|pnpx|bunx|pnpm dlx|yarn dlx)\s+(?:-y\s+|--yes\s+)?skills(?:@[\w.\-]+)?\s+(add|a|install|i|update|upgrade|check|remove|rm|r|experimental_install|experimental_sync)\b"
                      r"|(?:^|[\s;&|(`])skills\s+(add|install|update|upgrade|remove|experimental_install|experimental_sync)\b"

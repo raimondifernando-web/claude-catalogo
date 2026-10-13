@@ -19,6 +19,18 @@ avisar() {
   printf '{"systemMessage":"%s","hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}\n' "$1" "$1"
   exit 0
 }
+# Windows (F3 del security check 0.35.0): ruta con barras invertidas normalizada y python3 / python / «py -3» probados de verdad (ver _python-windows.sh).
+# En Mac y Linux este bloque no se ejecuta y todo sigue igual que siempre.
+SRC="${BASH_SOURCE[0]//\\//}"
+case "$SRC" in */*) DIR="${SRC%/*}" ;; *) DIR=. ;; esac
+case "${METODO_SO_PRUEBA:-$(uname -s 2>/dev/null)}" in
+  MINGW*|MSYS*|CYGWIN*)
+    . "$DIR/_python-windows.sh" 2>/dev/null || avisar "Aviso: el freno anti-secretos no está activo (falta _python-windows.sh en el paquete)."
+    elegir_python_windows || avisar "Aviso: el freno anti-secretos no está activo en esta sesión (no encontré Python: python3, python ni py -3). Las claves pueden quedar a la vista."
+    [ -f "$DIR/bloquear-secretos.py" ] || avisar "Aviso: el freno anti-secretos no está activo (falta bloquear-secretos.py en el paquete)."
+    printf '%s' "$ENTRADA" | PYTHONUTF8=1 "${PYC[@]}" "$DIR/bloquear-secretos.py"
+    exit $? ;;
+esac
 PY=$(command -v python3 2>/dev/null)
 [ -z "$PY" ] && [ -x /usr/bin/python3 ] && PY=/usr/bin/python3
 [ -z "$PY" ] && avisar "Aviso: el freno anti-secretos no está activo en esta sesión (no encontré python3). Las claves pueden quedar a la vista."
@@ -26,6 +38,5 @@ PY=$(command -v python3 2>/dev/null)
 if [ "$PY" = "/usr/bin/python3" ] && command -v xcode-select >/dev/null 2>&1 && ! xcode-select -p >/dev/null 2>&1; then
   avisar "Aviso: el freno anti-secretos no está activo (falta instalar las herramientas de línea de comandos de Apple, que traen Python)."
 fi
-case "${BASH_SOURCE[0]}" in */*) DIR="${BASH_SOURCE[0]%/*}" ;; *) DIR=. ;; esac
 [ -f "$DIR/bloquear-secretos.py" ] || avisar "Aviso: el freno anti-secretos no está activo (falta bloquear-secretos.py en el paquete)."
 printf '%s' "$ENTRADA" | "$PY" "$DIR/bloquear-secretos.py"

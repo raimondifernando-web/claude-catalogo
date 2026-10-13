@@ -5,6 +5,13 @@ receta coincide, no dice nada. Solo lee; nunca decide permisos y nunca rompe la 
 Apagar: CONSULTAR_ECOSISTEMA_OFF=1 o crear <config de Claude>/metodo/consultar-ecosistema.apagado."""
 import json, os, re, subprocess, sys, time
 
+# Windows: la consola usa cp1252 y los acentos / ⛔ hacían caer el script (UnicodeEncodeError); se fuerza UTF-8 en entrada y salida.
+for _flujo in (sys.stdin, sys.stdout, sys.stderr):
+    try:
+        _flujo.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 CFG = os.environ.get("CLAUDE_CONFIG_DIR", os.path.expanduser("~/.claude"))
 AQUI = os.path.dirname(os.path.abspath(__file__))
 TTL = 4 * 3600
