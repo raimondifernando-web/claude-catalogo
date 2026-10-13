@@ -954,6 +954,17 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Condiciones (no bloquean) | m3: sin `TMPDIR` la marca va a `/tmp` (riesgo bajo de enlace simbólico). No verificado por nadie: que Claude Code muestre el stderr con código 2 en `Write/Agent/Task/Workflow`, que convivan dos PreToolUse sobre `Agent` (radar + este) y una prueba en una Mac que solo tenga la app. |
 | Veredicto | **PASS con condiciones**, 0 críticos. |
 
+## 2026-10-13 · metodo 0.35.2 → 0.36.0 (commit 593937d) — PASS con condiciones
+| Control | Resultado |
+|---|---|
+| Alcance | `metodo` 0.36.0 (rama de Gemini del kit, tip `593937d`): Gemini/Antigravity en el kit del cliente con paridad con el `agy-delegar` del dueño. `delegar.py` (copia aislada sin `.git`, ni claves, ni enlaces; el cambio vuelve como parche), `al-dia.sh` (ya no escribe reglas en Antigravity; solo quita `git -C *` y avisa de las amplias), afloje de `es_carpeta_privada` decidido por el dueño (clientes y carpetas de proyecto sí; claves, tokens, entorno, llaves y transcripts sin redactar, no). |
+| Revisiones independientes | **Tres** rondas de un revisor de seguridad de solo lectura sobre esta rama: 1.ª ALTO (3 HIGH, 5 MEDIUM, 5 LOW), 2.ª ALTO (2 HIGH nuevos), 3.ª MEDIO (1 HIGH condicional, 6 MEDIUM, 7 LOW). Cada ronda se corrigió con pruebas. **Los arreglos de la 3.ª ronda no los volvió a revisar un tercero.** |
+| Estrategia | Reducir superficie en vez de parchear expresiones: sin reglas de comandos en Antigravity, copia sin `.git`, entorno de git neutro, configuración de otras herramientas (`.gemini`, `.agents`, `.codex`, `.cursor`, `.claude`) no viaja, el parche se revisa por su contenido real y se vuelve a revisar tras aplicarlo. |
+| Pruebas | Suite completa sobre `593937d`: **892 OK**, 5 salteadas, 0 fallas. `verificar-metadatos`: TODO COINCIDE. Grep de clientes: 0. Las dos copias de `al-dia.sh` idénticas. El banco de regresión de los frenos (`test_corpus_ataques.py`, 172+ casos) pasa sin fallas conocidas. |
+| Límites (lo NO comprobado) | **No se probó con el `agy` real ni en Windows.** Se desconoce si Antigravity lee configuración del proyecto o cómo interpreta sus reglas (el aviso en rojo de reglas amplias existe por eso). Si Antigravity sin pantalla no lee la copia bajo `~/.claude`, `delegar.py` termina en rojo (69) y hay que usar otra carpeta de trabajo. El aviso de reglas amplias no frena: el dueño decidió que el cliente ve lo mismo que Claude. |
+| Condiciones | (1) probar en la Mac del cliente `agy` con la copia aislada (visita B11); (2) C71: huecos menores de la 2.ª revisión de 0.35.2 (`al-dia.sh` sin entorno propio de Python, etc.); (3) Windows real (C67). |
+| Veredicto | **PASS con condiciones**, 0 críticos y 0 altos abiertos conocidos para Mac. Lo escribe Tech (coordinación), no un revisor externo. |
+
 ## 2026-10-13 · metodo 0.35.0 → 0.35.2 (commit 0b000dd) — PASS con condiciones
 | Control | Resultado |
 |---|---|
