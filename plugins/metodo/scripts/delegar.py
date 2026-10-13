@@ -46,8 +46,11 @@ Códigos de salida:
 Antigravity trabaja sobre una COPIA del repo: solo los archivos versionados o nuevos no ignorados, sin .git, sin archivos
 de claves, de entorno, llaves, historiales ni transcripts (por la ruta, el nombre o lo que tienen adentro) y sin enlaces
 simbólicos; corre con un entorno en el que git no ejecuta nada aunque plante un .git. Lo que edita vuelve al repo real
-como parche, solo por archivos comunes; si toca .claude/ no se trae nada, y si toca hooks, .vscode o atributos de git se
-avisa en rojo. Codex trabaja sobre la carpeta real (necesita correr los tests con lo instalado): si el repo tiene archivos
+como parche, solo por archivos comunes, con la lista completa de lo que vuelve; si toca .claude/ o un CLAUDE.md, o crea
+archivos en carpetas que git ignora, no se trae nada; si toca hooks, .vscode, .github, instrucciones de otros agentes o
+atributos de git, se avisa en rojo. La copia va en ~/.cache/metodo/agy-trabajo (o METODO_AGY_TRABAJO). Si la
+configuración de Antigravity tiene reglas amplias (leer cualquier carpeta, comandos, cualquier página), se avisa en rojo y
+se sigue (METODO_AGY_SIN_AVISO_REGLAS=1 lo calla). Codex trabaja sobre la carpeta real (necesita correr los tests con lo instalado): si el repo tiene archivos
 de claves o de entorno (aunque git los ignore), Codex se salta y pasa al plan siguiente.
 El pedido le llega a agy como argumento de -p (agy no lee el pedido de la entrada estándar salvo en un modo stream-json
 que no se usa): mientras corre, otros usuarios de la misma computadora lo podrían ver en la lista de procesos.
@@ -89,9 +92,12 @@ MODELO_VALIDO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 NOMBRES_DE_CLAVES = re.compile(r"(^\.env|\.pem$|\.key$|\.p12$|\.pfx$|\.keychain|^id_|credential|credencial|secret|token|\.npmrc$|\.netrc$|known_hosts|authorized_keys|pgpass|history|^config$|kubeconfig|\.git-credentials)", re.I)
 # Archivos que nunca viajan a otra IA aunque estén versionados: claves, entorno, llaves, credenciales, historiales y
 # transcripts. Las plantillas (.env.example, .env.sample, .env.template, .env.dist) sí viajan: están hechas para compartirse.
-# 1) Cualquier tramo de la ruta que sea una de estas carpetas (o el archivo mismo):
-TRAMOS_SECRETOS = {"secret", "secrets", "credential", "credentials", "credencial", "credenciales", "key", "keys", "private",
-                   ".envs", ".ssh", ".aws", ".azure", ".gnupg", ".kube", ".docker"}
+# 1) Cualquier tramo de la ruta que sea una de estas carpetas (o el archivo mismo). Los «débiles» (key, keys, private: p. ej.
+#    storage/app/private/ de Laravel) quedan afuera de la copia de Gemini, pero no hacen saltar a Codex por sí solos: ahí
+#    decide el barrido de contenido.
+TRAMOS_SECRETOS = {"secret", "secrets", "credential", "credentials", "credencial", "credenciales", ".envs", ".ssh", ".aws",
+                   ".azure", ".gnupg", ".kube", ".docker"}
+TRAMOS_DEBILES = {"key", "keys", "private"}
 PARES_SECRETOS = {(".config", "gh"), (".config", "gcloud"), (".claude", "projects")}
 # 2) Nombres de archivo conocidos:
 NOMBRE_SECRETO = re.compile(
@@ -101,10 +107,10 @@ NOMBRE_SECRETO = re.compile(
     r"|client_secret.*\.json|service-account.*\.json|\.yarnrc\.yml|auth\.json|\.htpasswd|local\.settings\.json"
     r"|\.vault-token|\.my\.cnf|pip\.conf|\.zsh_history|\.bash_history|history\.jsonl|.*transcripts?.*\.(jsonl|json|txt|md))$",
     re.I)
-# 3) token / secret / credential en el nombre, salvo en archivos de código o texto (tokenizer.py, secret-manager.ts, …):
-NOMBRE_SENSIBLE = re.compile(r"token|secret|credential|credencial", re.I)
-EXT_CODIGO = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".go", ".swift", ".java", ".kt", ".rb", ".rs", ".css",
-              ".scss", ".md", ".html", ".vue"}
+# 3) token / secret / credential en el nombre, solo en archivos de datos o configuración (o sin extensión): token.json sí;
+#    VerifyCsrfToken.php, tokenizer.py, tokens.css o tokens.json (los «design tokens») no.
+NOMBRE_SENSIBLE = re.compile(r"token(?!s)|secret|credential|credencial", re.I)
+EXT_DATOS = {"", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".txt", ".db"}
 # 4) Contenido (los primeros 64 KB): claves privadas y llaves con forma conocida, aunque el archivo se llame de cualquier modo.
 CONTENIDO_SECRETO = re.compile(
     rb"-----BEGIN [A-Z ]*PRIVATE KEY-----|(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}(?![0-9A-Z])|(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9]{36}"
@@ -118,8 +124,10 @@ TOPE_SALIDA_DENEGADA = 600
 # Archivos que, si Gemini los toca, pueden ejecutar programas o cambiar cómo se comportan git, el editor o Claude:
 # .claude/ no se trae nunca (71); los demás se muestran antes, en rojo.
 TRAMOS_CLAUDE = {".claude"}
-TRAMOS_DELICADOS = {".husky", ".githooks", ".vscode"}
-NOMBRES_DELICADOS = {".gitattributes", ".gitmodules"}
+NOMBRES_CLAUDE = {"claude.md", "claude.local.md"}   # instrucciones que Claude lee solo (en cualquier carpeta)
+TRAMOS_DELICADOS = {".husky", ".githooks", ".vscode", ".gemini", ".codex", ".agents", ".cursor", ".devcontainer", ".idea",
+                    ".github"}
+NOMBRES_DELICADOS = {".gitattributes", ".gitmodules", "agents.md", "gemini.md"}
 # git sin ejecutar nada del repo (un repo bajado de afuera puede traer core.fsmonitor, hooks o diff externo en su config)
 GIT_SEGURO = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "diff.external=", "-c", "protocol.ext.allow=never"]
 
@@ -161,7 +169,8 @@ def raiz_del_repo(ruta):
 
 
 CARPETAS_DE_LLAVES = [".ssh", ".aws", ".gnupg", ".config/gh", ".docker", ".kube", ".gemini", ".codex", ".claude",
-                      "Library/Keychains"]
+                      "Library/Keychains", ".local/share/chezmoi"]
+VARIABLES_DE_LLAVES = ["CLAUDE_CONFIG_DIR", "CODEX_HOME"]   # carpetas de configuración puestas en otro lugar
 
 
 def _misma(a, b):
@@ -194,6 +203,18 @@ def es_carpeta_privada(repo_path):
         if repo_slash.lower().startswith(llaves_txt.lower()) or any(_misma(x, llaves) for x in [Path(repo_str)] + list(Path(repo_str).parents)):
             return True, ("una carpeta de llaves o de configuración de tus herramientas (~/%s): ahí no se delega; "
                           "delegá desde la carpeta del proyecto" % d)
+    for var in VARIABLES_DE_LLAVES:
+        valor = os.environ.get(var, "").strip()
+        if not valor:
+            continue
+        try:
+            llaves = Path(valor).expanduser().resolve()
+        except (OSError, RuntimeError):
+            continue
+        llaves_txt = str(llaves).replace("\\", "/").rstrip("/") + "/"
+        if repo_slash.lower().startswith(llaves_txt.lower()) or any(_misma(x, llaves) for x in [Path(repo_str)] + list(Path(repo_str).parents)):
+            return True, ("la carpeta de configuración de una herramienta (%s=%s): ahí no se delega; delegá desde la "
+                          "carpeta del proyecto" % (var, valor))
 
     extra = os.environ.get("METODO_NO_DELEGAR", "").strip()
     if extra:
@@ -265,18 +286,20 @@ def config_que_ejecuta_programas(repo_path):
     return r.stdout.split() if r and r.returncode == 0 else []
 
 
-def es_secreto(rel):
-    """True si la ruta (relativa al repo) es de claves, entorno, llaves, credenciales, historiales o transcripts."""
+def es_secreto(rel, para_codex=False):
+    """True si la ruta (relativa al repo) es de claves, entorno, llaves, credenciales, historiales o transcripts. Con
+    para_codex, las carpetas «débiles» (key, keys, private) no cuentan por sí solas."""
     partes = [x for x in rel.replace("\\", "/").split("/") if x]
     if not partes:
         return False
     bajas = [x.lower() for x in partes]
-    if any(x in TRAMOS_SECRETOS for x in bajas) or any(par in PARES_SECRETOS for par in zip(bajas, bajas[1:])):
+    tramos = TRAMOS_SECRETOS if para_codex else TRAMOS_SECRETOS | TRAMOS_DEBILES
+    if any(x in tramos for x in bajas) or any(par in PARES_SECRETOS for par in zip(bajas, bajas[1:])):
         return True
     nombre = partes[-1]
     if NOMBRE_SECRETO.match(nombre):
         return True
-    return bool(NOMBRE_SENSIBLE.search(nombre)) and os.path.splitext(nombre)[1].lower() not in EXT_CODIGO
+    return bool(NOMBRE_SENSIBLE.search(nombre)) and os.path.splitext(nombre)[1].lower() in EXT_DATOS
 
 
 def contenido_secreto(ruta):
@@ -289,9 +312,10 @@ def contenido_secreto(ruta):
 
 
 def tramos_delicados(rel):
-    """'claude' si toca .claude/, 'delicado' si toca hooks, editor o atributos de git; None si no."""
+    """'claude' si toca .claude/ o un CLAUDE.md; 'delicado' si toca hooks, editor, instrucciones de otros agentes, flujos de
+    GitHub o atributos de git; None si no."""
     bajas = [x.lower() for x in rel.replace("\\", "/").split("/") if x]
-    if any(x in TRAMOS_CLAUDE for x in bajas):
+    if any(x in TRAMOS_CLAUDE for x in bajas) or (bajas and bajas[-1] in NOMBRES_CLAUDE):
         return "claude"
     if any(x in TRAMOS_DELICADOS for x in bajas) or (bajas and bajas[-1] in NOMBRES_DELICADOS):
         return "delicado"
@@ -307,8 +331,14 @@ def archivos_de_claves(repo_path, tope=5):
         return ["(no pude listar los archivos del repo)"]
     vistos = []
     for rel in sorted(set((r.stdout + "\0" + r2.stdout).split("\0"))):
-        if rel and es_secreto(rel) and rel not in vistos:
+        if not rel or rel in vistos:
+            continue
+        if es_secreto(rel, para_codex=True):
             vistos.append(rel)
+        elif es_secreto(rel):   # solo por una carpeta key/keys/private: decide lo que tiene adentro
+            ruta = os.path.join(str(repo_path), *rel.split("/"))
+            if os.path.isfile(ruta) and not os.path.islink(ruta) and contenido_secreto(ruta):
+                vistos.append(rel)
     return vistos[:tope]
 
 
@@ -347,10 +377,12 @@ def copia_aislada(repo_path, destinos):
 
 
 def revisar_copia(trab):
-    """(problema, claves): un .git o un enlace simbólico en la copia (problema: no se trae nada) y los archivos con nombre
+    """(problema, claves): un .git, un repo pelado o un enlace simbólico en la copia (problema: no se trae nada) y los archivos con nombre
     de claves que creó la herramienta (se descartan: nunca vuelven al repo)."""
     claves = []
     for raiz, dirs, archivos in os.walk(trab):
+        if "HEAD" in archivos and "objects" in dirs and "refs" in dirs:   # un repo sin la carpeta .git
+            return os.path.relpath(raiz, trab).replace(os.sep, "/"), []
         for n in dirs + archivos:
             full = os.path.join(raiz, n)
             rel = os.path.relpath(full, trab).replace(os.sep, "/")
@@ -376,6 +408,23 @@ def archivos_cambiados(base, trab):
     return sorted((a ^ b) | distintos)
 
 
+def rutas_ignoradas(repo_path, rutas):
+    """Las rutas (relativas) que el repo real ignora (.gitignore): no aparecen en git status ni en git diff, así que un
+    archivo que vuelva ahí (node_modules/.bin/…) pasaría sin que nadie lo vea. OSError si git falla."""
+    if not rutas:
+        return []
+    env = dict(os.environ)
+    env["GIT_OPTIONAL_LOCKS"] = "0"
+    r = subprocess.run(GIT_SEGURO + ["-C", str(repo_path), "check-ignore", "--stdin", "-z"],
+                       input="\0".join(rutas) + "\0", stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                       universal_newlines=True, encoding="utf-8", errors="replace", env=env, timeout=60)
+    if r.returncode == 1:
+        return []
+    if r.returncode != 0:
+        raise OSError("git check-ignore falló: %s" % r.stderr[:200])
+    return [x for x in r.stdout.split("\0") if x]
+
+
 def diff_de_la_copia(tmp):
     """Parche (texto binario-seguro) entre tmp/base y tmp/trab, sin ejecutar nada que venga de un repo."""
     env = dict(os.environ)
@@ -390,13 +439,22 @@ def diff_de_la_copia(tmp):
 
 
 def carpeta_de_trabajo_agy():
-    """Dónde va la copia aislada: METODO_AGY_TRABAJO o <configuración de Claude>/metodo/agy-trabajo (solo para vos)."""
-    raiz = Path(os.environ.get("METODO_AGY_TRABAJO") or (radar.carpeta_metodo() / "agy-trabajo"))
+    """Dónde va la copia aislada: METODO_AGY_TRABAJO o ~/.cache/metodo/agy-trabajo (solo para vos, fuera de la
+    configuración de Claude). Borra las copias agy.* de más de 24 h que haya dejado una corrida cortada."""
+    import shutil
+    raiz = Path(os.environ.get("METODO_AGY_TRABAJO") or (Path.home() / ".cache" / "metodo" / "agy-trabajo"))
     raiz.mkdir(parents=True, exist_ok=True)
     try:
         os.chmod(str(raiz), 0o700)
     except OSError:
         pass
+    limite = time.time() - 24 * 3600
+    for d in raiz.glob("agy.*"):
+        try:
+            if d.is_dir() and not d.is_symlink() and d.stat().st_mtime < limite:
+                shutil.rmtree(str(d), ignore_errors=True)
+        except OSError:
+            pass
     return raiz
 
 
@@ -427,17 +485,34 @@ GEMINI_HIGH = re.compile(r"^gemini-([0-9]+(?:\.[0-9]+)*)-([a-z0-9.-]+-)?high$")
 TOPE_REVISION_VACIA = 200
 
 
-def modelos_agy(bin_cli):
-    """Ids que lista `agy models` (solo lectura), o None si no se pudo ejecutar o no se entendió la salida."""
+def modelos_agy(bin_cli, tope=30):
+    """Ids que lista `agy models` (solo lectura), o None si no se pudo ejecutar o no se entendió la salida. Corre en una
+    carpeta temporal vacía, en su propio grupo de procesos, y se corta entero si pasa el tope."""
+    import tempfile
+    carpeta = tempfile.mkdtemp(prefix="agy-modelos.")
     try:
-        r = subprocess.run([bin_cli, "models"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                           stdin=subprocess.DEVNULL, universal_newlines=True, encoding="utf-8", errors="replace", timeout=30)
-    except (OSError, subprocess.SubprocessError):
+        p = subprocess.Popen([bin_cli, "models"], cwd=carpeta, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                             stdin=subprocess.DEVNULL, universal_newlines=True, encoding="utf-8", errors="replace",
+                             start_new_session=True)
+    except OSError:
+        os.rmdir(carpeta)
         return None
-    if r.returncode != 0:
+    try:
+        out, _ = p.communicate(timeout=tope)
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        _cortar_grupo(p)
+        try:
+            p.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        import shutil
+        shutil.rmtree(carpeta, ignore_errors=True)
+    if p.returncode != 0:
         return None
     ids = []
-    for m in ID_MODELO.finditer(r.stdout):
+    for m in ID_MODELO.finditer(out or ""):
         x = m.group(1)
         if MODELO_VALIDO.match(x) and any(c.isdigit() for c in x) and x not in ids:
             ids.append(x)
@@ -453,12 +528,15 @@ def mejor_gemini_high(ids):
     return max(candidatos, key=clave) if candidatos else None
 
 
-def resolver_modelo_agy(plan, bin_cli):
+def resolver_modelo_agy(plan, bin_cli, consultar=True):
     """(argumentos --model, aviso o None). Nunca deja que agy elija el modelo: si el del radar no está en `agy models`,
     usa el mejor Gemini «-high» disponible y lo avisa; si la lista no se puede leer, uno conocido. (None, motivo) si
     Antigravity no ofrece ningún Gemini «-high». ValueError si el radar trae un id con forma rara."""
     pedido = args_modelo_agy(plan)
     candidato = (pedido[1] + "-" + pedido[3] if len(pedido) == 4 else pedido[1]) if pedido else None
+    if not consultar:
+        return ["--model", MODELO_AGY_CONOCIDO], ("no consulté la lista de modelos de Antigravity (su cupo no dio «ok»): "
+                                                   "uso %s" % MODELO_AGY_CONOCIDO)
     ids = modelos_agy(bin_cli)
     if ids is None:
         return ["--model", MODELO_AGY_CONOCIDO], ("no pude leer la lista de modelos de Antigravity (agy models): uso %s"
@@ -592,6 +670,10 @@ def entorno_git_neutro(carpeta):
     su copia, no ejecuta nada de su configuración (fsmonitor, hooks, diff externo, paginador)."""
     env = dict(os.environ)
     env["GIT_CEILING_DIRECTORIES"] = str(carpeta)
+    env["GIT_DIR"] = os.path.join(str(carpeta), "no-existe")   # git no usa ningún repo, ni uno armado en la copia
+    for k in ("GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CONFIG_PARAMETERS", "GIT_OBJECT_DIRECTORY",
+              "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_COMMON_DIR"):
+        env.pop(k, None)
     forzado = [("core.fsmonitor", "false"), ("core.hooksPath", "/dev/null"), ("diff.external", ""), ("core.pager", "cat"),
                ("protocol.ext.allow", "never")]
     for k in [k for k in env if k.startswith(("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_"))]:
@@ -645,11 +727,34 @@ def ejecutar(cmd, cwd, entrada, tope, salida=None, env=None):
 
 
 COPIA = "<copia aislada del repo>"
+
+
+def reglas_amplias_agy():
+    """Reglas de la configuración de Antigravity que dejan leer más allá de la copia, escribir, ejecutar o mandar datos a
+    cualquier página sin preguntar. Solo lee el archivo (no ejecuta agy); [] si no existe o no se entiende."""
+    ruta = Path.home() / ".gemini" / "antigravity-cli" / "settings.json"
+    try:
+        datos = json.loads(ruta.read_text(encoding="utf-8"))
+        allow = datos.get("permissions", {}).get("allow", [])
+    except (OSError, ValueError, AttributeError):
+        return []
+    if not isinstance(allow, list):
+        return []
+    out = []
+    for r in allow:
+        if not isinstance(r, str):
+            continue
+        if (r.startswith("read_file(") and "**" in r) or r.startswith(("write_file(", "command(")) \
+                or (r.startswith("read_url(") and "*" in r):
+            out.append(r)
+    return out
 MENSAJE_DENEGADO = (
     "Gemini no pudo trabajar: sin pantalla se le negó una herramienta y nadie la puede aprobar. Opciones: (1) poné lo "
     "que tiene que leer DENTRO del repo (no en otra carpeta); (2) no le pidas comandos (git, cat, tests…): dale los datos "
-    "ya listos en el pedido (Gemini trabaja en una copia sin la historia de git: los comandos de git no le sirven). No "
-    "agregues reglas amplias a la configuración de Antigravity para destrabarlo, y nunca --dangerously-skip-permissions.\n"
+    "ya listos en el pedido (Gemini trabaja en una copia sin la historia de git: los comandos de git no le sirven); (3) si "
+    "lo que se le niega es leer su propia copia, probá poner la carpeta de trabajo dentro de tus proyectos (por ejemplo "
+    "METODO_AGY_TRABAJO=~/Proyectos/sandbox/agy-trabajo). No agregues reglas amplias a la configuración de Antigravity "
+    "para destrabarlo, y nunca --dangerously-skip-permissions.\n"
 )
 
 
@@ -669,6 +774,13 @@ def ejecutar_agy_aislado(cmd, repo_path, args, tope):
         if fuera or por_contenido:
             print("(no viajan a Gemini %d archivo(s) de claves o de entorno por el nombre y %d por lo que tienen adentro)"
                   % (fuera, por_contenido))
+        amplias = [] if os.environ.get("METODO_AGY_SIN_AVISO_REGLAS") == "1" else reglas_amplias_agy()
+        if amplias:
+            rojo, fin = ("\033[31m", "\033[0m") if sys.stdout.isatty() else ("", "")
+            print("%s✗ ATENCIÓN: tu configuración de Antigravity tiene reglas amplias (%s%s): un repo con instrucciones "
+                  "escondidas podría hacerle leer más allá de la copia y mandar datos afuera. Sigo igual; para no ver este "
+                  "aviso, METODO_AGY_SIN_AVISO_REGLAS=1.%s" % (rojo, ", ".join(amplias[:5]),
+                                                               "…" if len(amplias) > 5 else "", fin))
         cmd = [trab if c == COPIA else c for c in cmd]
         antes = huella_git(repo_path)
         salida = []
@@ -716,8 +828,18 @@ def ejecutar_agy_aislado(cmd, repo_path, args, tope):
         cambiados = archivos_cambiados(base, trab)
         de_claude = [x for x in cambiados if tramos_delicados(x) == "claude"]
         if de_claude:
-            sys.stderr.write("Gemini tocó la configuración de Claude en su copia (%s): no traigo nada al repo. Revisá el "
+            sys.stderr.write("Gemini tocó la configuración o las instrucciones de Claude en su copia (%s): no traigo nada al repo. Revisá el "
                              "pedido; si de verdad hace falta cambiarla, hacelo en esta sesión.\n" % ", ".join(de_claude[:3]))
+            return 71
+        vuelven = [x for x in cambiados if os.path.isfile(os.path.join(trab, *x.split("/")))]
+        try:
+            ignoradas = rutas_ignoradas(repo_path, vuelven)
+        except (OSError, subprocess.SubprocessError) as e:
+            sys.stderr.write("No pude comprobar qué archivos ignora el repo (%s): no traigo nada.\n" % e)
+            return 73
+        if ignoradas:
+            sys.stderr.write("Gemini creó o cambió archivos en carpetas que git ignora (%s): no se verían en git status ni "
+                             "en el diff, así que no traigo nada al repo.\n" % ", ".join(ignoradas[:5]))
             return 71
         delicados = [x for x in cambiados if tramos_delicados(x) == "delicado"]
         if arbol_sucio(repo_path):
@@ -740,6 +862,11 @@ def ejecutar_agy_aislado(cmd, repo_path, args, tope):
             rojo, fin = ("\033[31m", "\033[0m") if sys.stdout.isatty() else ("", "")
             print("%s✗ ATENCIÓN: Gemini cambió archivos que pueden ejecutar programas o cambiar cómo se comportan git o "
                   "tu editor: %s. Revisalo antes de correr nada.%s" % (rojo, ", ".join(delicados), fin))
+        print("── Archivos que vuelven de la copia de Gemini (%d) ──" % len(cambiados))
+        for x in cambiados:
+            en_base = os.path.isfile(os.path.join(base, *x.split("/")))
+            en_trab = os.path.isfile(os.path.join(trab, *x.split("/")))
+            print("  %s %s" % ("cambiado" if en_base and en_trab else ("nuevo   " if en_trab else "borrado "), x))
         print("── Cambios (revisalos y corré los tests) ──")
         res_st = git(repo_path, "status", "--short", "--no-ahead-behind")
         if res_st and res_st.stdout:
@@ -803,7 +930,7 @@ def main(argv=None):
             cat_copia["planes"] = [p for p in cat_copia["planes"] if not str(p.get("herramienta", "")).startswith("Codex")]
 
     # 5. Elegir plan con modo delegar
-    plan, saltados, _ = radar.elegir(radar_data, cat_copia, sensible=args.sensible, delegar=True)
+    plan, saltados, cupos = radar.elegir(radar_data, cat_copia, sensible=args.sensible, delegar=True)
     saltados = saltados_antes + saltados
 
     # Si ningún plan quedó disponible (1)
@@ -883,7 +1010,8 @@ def main(argv=None):
             if args.dry_run:   # sin ejecutar nada: el modelo se confirma contra `agy models` al lanzar
                 modelo, aviso_modelo = args_modelo_agy(plan), None
             else:
-                modelo, aviso_modelo = resolver_modelo_agy(plan, bin_cli)
+                cupo_ok = (cupos or {}).get("antigravity", ("sin_dato",))[0] == "ok"
+                modelo, aviso_modelo = resolver_modelo_agy(plan, bin_cli, consultar=cupo_ok)
         except ValueError as e:
             sys.stderr.write("No se ejecuta: %s.\n" % e)
             return 64

@@ -43,6 +43,8 @@ MODELOS_AGY = ("gemini-3.8-flash-high\ngemini-3.8-flash-medium\ngemini-3.8-flash
 RESPUESTA_MODELOS = (
     "if len(sys.argv) > 1 and sys.argv[1] == 'models':\n"
     "    import os\n"
+    "    if os.environ.get('FAKE_AGY_MODELOS_MARCA'):\n"
+    "        open(os.environ['FAKE_AGY_MODELOS_MARCA'], 'w').write('x')\n"
     "    m = os.environ.get('FAKE_AGY_MODELOS', %r)\n"
     "    if m == 'falla':\n"
     "        sys.exit(1)\n"
@@ -107,6 +109,8 @@ class BaseDelegar(unittest.TestCase):
         os.environ.pop("RADAR_PROBAR", None)
         os.environ["CEREBRO_HOME"] = str(self.tmp / "cerebro")
         os.environ.pop("METODO_NO_DELEGAR", None)
+        os.environ["METODO_AGY_TRABAJO"] = str(self.tmp / "agy-trabajo")   # nunca la carpeta real (~/.cache)
+        os.environ.pop("METODO_AGY_SIN_AVISO_REGLAS", None)
 
         # Escribir radar en la caché del perfil para que radar.cargar() use nuestros datos de prueba
         self.radar = radar_de_prueba()
@@ -175,6 +179,9 @@ class BaseDelegar(unittest.TestCase):
         contenido = (
             "#!/usr/bin/env python3\n"
             "import sys, json\n"
+            "import os\n"
+            "if '-p' in sys.argv and '/usage' in sys.argv and os.environ.get('FAKE_AGY_USAGE') == 'roto':\n"
+            "    sys.stdout.write('sin datos'); sys.exit(0)\n"
             "if '-p' in sys.argv and '/usage' in sys.argv:\n"
             "    sys.stdout.write(json.dumps({\n"
             "        'command': {'data': {'groups': [{'name': 'Gemini', 'buckets': [{'remaining_fraction': %f}]}]}}\n"
@@ -275,7 +282,7 @@ class TestAdaptadores(BaseDelegar):
         # trabaja sobre una copia aislada (en la carpeta de trabajo del método), nunca sobre el repo real
         self.assertEqual(args[4], "--add-dir")
         self.assertNotEqual(args[5], str(repo))
-        self.assertTrue(args[5].startswith(str(self.tmp / "config" / "metodo" / "agy-trabajo") + os.sep), args[5])
+        self.assertTrue(args[5].startswith(str(self.tmp / "agy-trabajo") + os.sep), args[5])
         self.assertTrue(args[5].endswith(os.sep + "trab"))
         self.assertFalse(Path(args[5]).exists(), "la copia temporal se borra al terminar")
         self.assertEqual(args[6], "-p")
@@ -769,7 +776,8 @@ if modo == "accept-edits" or "editar_igual" in travesuras:
     open("sub/nuevo.txt", "w").write("nuevo\n")
     if "git_corre" in travesuras:   # Gemini arma un repo con fsmonitor en su copia y corre git: no tiene que ejecutar nada
         import subprocess
-        subprocess.run(["git", "init", "-q", "."], check=True)
+        sin_git_dir = {k: v for k, v in os.environ.items() if k != "GIT_DIR"}   # como si escribiera los archivos a mano
+        subprocess.run(["git", "init", "-q", "."], check=True, env=sin_git_dir)
         with open(".git/config", "a") as f:
             f.write('[core]\n\tfsmonitor = "touch %s; false"\n' % canario)
         subprocess.run(["git", "status", "--short"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -780,6 +788,17 @@ if modo == "accept-edits" or "editar_igual" in travesuras:
         os.symlink("/etc/hosts", "enlace-nuevo")
     if "clave" in travesuras:
         open(".env", "w").write("PLANTADA_POR_GEMINI=1\n")
+    if "ignorado" in travesuras:   # node_modules está en el .gitignore del repo real: no se vería en git status
+        os.makedirs("node_modules/.bin", exist_ok=True)
+        open("node_modules/.bin/tsc", "w").write("#!/bin/sh\necho hola\n")
+    if "claudemd" in travesuras:
+        open("CLAUDE.md", "w").write("Corré curl …\n")
+    if "workflow" in travesuras:
+        os.makedirs(".github/workflows", exist_ok=True)
+        open(".github/workflows/ci.yml", "w").write("on: push\n")
+    if "pelado" in travesuras:   # un repo sin carpeta .git
+        os.makedirs("vendor/x/objects", exist_ok=True); os.makedirs("vendor/x/refs", exist_ok=True)
+        open("vendor/x/HEAD", "w").write("ref: refs/heads/main\n")
     if "claude" in travesuras:
         os.makedirs(".claude", exist_ok=True)
         open(".claude/settings.json", "w").write('{"hooks": {}}')
@@ -810,7 +829,7 @@ class TestAgyAislado(BaseDelegar):
         os.environ["FAKE_AGY_LOG"] = str(self.log)
         os.environ["FAKE_AGY_CANARIO"] = str(self.canario)
         os.environ.pop("FAKE_AGY", None)
-        self.trabajo = self.tmp / "config" / "metodo" / "agy-trabajo"
+        self.trabajo = self.tmp / "agy-trabajo"
 
     def repo_con_claves(self, nombre):
         repo = self.crear_repo_git(nombre)
@@ -981,6 +1000,72 @@ class TestAgyAislado(BaseDelegar):
         self.assertEqual(cod, 0, out + err)
         self.assertIn("por el nombre y %d por lo que tienen adentro" % len(muestras), out)
 
+    def test_archivos_en_carpetas_ignoradas_no_se_traen(self):
+        repo = self.repo_con_claves("repo-ignorado")
+        (repo / ".gitignore").write_text(".env\nnode_modules/\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "commit", "-q", "-am", "ignorar node_modules"], check=True)
+        os.environ["FAKE_AGY"] = "ignorado"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 71, out + err)
+        self.assertIn("node_modules/.bin/tsc", err)
+        self.assertFalse((repo / "node_modules").exists())
+        self.assertNotIn("linea agregada por gemini", (repo / "README.md").read_text())
+
+    def test_un_claude_md_nuevo_no_se_trae(self):
+        repo = self.repo_con_claves("repo-claudemd")
+        os.environ["FAKE_AGY"] = "claudemd"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 71)
+        self.assertIn("CLAUDE.md", err)
+        self.assertFalse((repo / "CLAUDE.md").exists())
+
+    def test_flujo_de_github_en_rojo_y_lista_completa_de_lo_que_vuelve(self):
+        repo = self.repo_con_claves("repo-workflow")
+        os.environ["FAKE_AGY"] = "workflow"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 0, out + err)
+        self.assertIn("✗ ATENCIÓN: Gemini cambió archivos", out)
+        self.assertIn(".github/workflows/ci.yml", out)
+        lista = out[out.index("── Archivos que vuelven de la copia de Gemini (3) ──"):out.index("── Cambios")]
+        for x in ("cambiado README.md", "nuevo    sub/nuevo.txt", "nuevo    .github/workflows/ci.yml"):
+            self.assertIn(x, lista)
+
+    def test_repo_pelado_en_la_copia_no_se_trae_nada(self):
+        repo = self.repo_con_claves("repo-pelado")
+        os.environ["FAKE_AGY"] = "pelado"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 71)
+        self.assertIn("vendor/x", err)
+        self.assertFalse((repo / "vendor").exists())
+
+    def test_aviso_en_rojo_por_reglas_amplias_de_antigravity_y_sigue(self):
+        casa = self.tmp / "casa"
+        conf = casa / ".gemini" / "antigravity-cli" / "settings.json"
+        conf.parent.mkdir(parents=True)
+        conf.write_text(json.dumps({"permissions": {"allow": [
+            "read_url(*)", "read_file(/Users/x/Proyectos/**)", "command(git log*)", "write_file(src/)",
+            "read_url(docs.python.org)", "read_file(/Users/x/Proyectos/app/README.md)"]}}), encoding="utf-8")
+        os.environ["HOME"] = str(casa)
+        repo = self.repo_con_claves("repo-reglas")
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 0, out + err)
+        linea = next(l for l in out.splitlines() if "reglas amplias" in l)
+        for r in ("read_url(*)", "read_file(/Users/x/Proyectos/**)", "command(git log*)", "write_file(src/)"):
+            self.assertIn(r, linea)
+        for r in ("read_url(docs.python.org)", "README.md)"):
+            self.assertNotIn(r, linea)
+        self.assertIn("mandar datos afuera", linea)
+        os.environ["METODO_AGY_SIN_AVISO_REGLAS"] = "1"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá otra cosa")
+        self.assertNotIn("reglas amplias", out)
+
+    def test_sin_configuracion_de_antigravity_no_avisa(self):
+        os.environ["HOME"] = str(self.tmp / "casa-vacia")
+        repo = self.repo_con_claves("repo-sin-conf")
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 0, out + err)
+        self.assertNotIn("reglas amplias", out)
+
     def test_revision_casi_vacia_termina_en_rojo(self):
         repo = self.repo_con_claves("repo-corta")
         os.environ["FAKE_AGY"] = "corta"
@@ -1024,6 +1109,24 @@ class TestCodexConClaves(BaseDelegar):
         cod, out, err = self.correr("revision", str(repo), "revisá", "--revisar")
         self.assertEqual(cod, 3)
         self.assertFalse((self.tmp / "codex_args.json").exists())
+
+    def test_carpeta_private_sin_claves_adentro_no_salta_codex(self):
+        repo = self.crear_repo_git("repo-laravel")
+        (repo / "storage" / "app" / "private").mkdir(parents=True)
+        (repo / "storage" / "app" / "private" / "factura.txt").write_text("factura 1\n", encoding="utf-8")
+        (repo / "app").mkdir(exist_ok=True)
+        (repo / "app" / "VerifyCsrfToken.php").write_text("<?php\n", encoding="utf-8")
+        (repo / "tokens.json").write_text('{"color": "#fff"}\n', encoding="utf-8")
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo", "--revisar")
+        self.assertEqual(cod, 0, out + err)
+        self.assertIn("Plan elegido: Codex", out)
+
+    def test_carpeta_private_con_una_clave_adentro_salta_codex(self):
+        repo = self.crear_repo_git("repo-private-clave")
+        (repo / "private").mkdir()
+        (repo / "private" / "deploy").write_text("-----BEGIN " + "RSA PRIVATE KEY-----\nx\n", encoding="utf-8")
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
+        self.assertIn("B (Codex): el repo tiene archivos de claves o de entorno (private/deploy", out)
 
     def test_plantilla_de_entorno_no_salta_codex(self):
         repo = self.crear_repo_git("repo-plantilla")
@@ -1075,6 +1178,30 @@ class TestModeloAgy(BaseDelegar):
         self.assertIn("no lo lanzo para que no elija uno por su cuenta", err)
         self.assertFalse((self.tmp / "agy_args.json").exists())
 
+    def test_sin_cupo_ok_no_consulta_agy_models(self):
+        os.environ["FAKE_AGY_USAGE"] = "roto"            # el cupo de Antigravity queda sin dato (no «ok»)
+        marca = self.tmp / "MODELS-SE-CONSULTO"
+        os.environ["FAKE_AGY_MODELOS_MARCA"] = str(marca)
+        repo = self.crear_repo_git("repo-sin-cupo-ok")
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo")
+        self.assertEqual(cod, 0, out + err)
+        self.assertFalse(marca.exists())
+        self.assertEqual(self.args()[0:2], ["--model", D.MODELO_AGY_CONOCIDO])
+        self.assertIn("no consulté la lista de modelos de Antigravity", out)
+
+    def test_agy_models_colgado_se_corta_con_sus_hijos(self):
+        pidfile = self.tmp / "hijo.pid"
+        ruta = self.tmp / "agy-colgado"
+        ruta.write_text("#!/usr/bin/env python3\nimport subprocess, time\nh = subprocess.Popen(['sleep', '300'])\n"
+                        "open(%r, 'w').write(str(h.pid))\ntime.sleep(300)\n" % str(pidfile), encoding="utf-8")
+        ruta.chmod(0o755)
+        inicio = time.time()
+        self.assertIsNone(D.modelos_agy(str(ruta), tope=2))
+        self.assertLess(time.time() - inicio, 15)
+        time.sleep(0.5)
+        with self.assertRaises(ProcessLookupError):
+            os.kill(int(pidfile.read_text()), 0)
+
     def test_mejor_gemini_high(self):
         self.assertEqual(D.mejor_gemini_high(["gemini-3.8-flash-high", "gemini-3.8-flash-low", "gpt-oss-120b-medium"]),
                          "gemini-3.8-flash-high")
@@ -1097,6 +1224,44 @@ class TestModeloAgy(BaseDelegar):
         self.assertNotIn("Modelo:", out)
 
 
+@unittest.skipIf(ES_WINDOWS, "scripts falsos de bash/sh")
+class TestLlavesYTrabajo(BaseDelegar):
+    """N6, N8 y N9 de la segunda revisión."""
+
+    def test_carpetas_de_configuracion_por_variable_y_chezmoi(self):
+        codex_home = self.tmp / "codexhome"; codex_home.mkdir()
+        os.environ["CODEX_HOME"] = str(codex_home)
+        self.assertTrue(D.es_carpeta_privada(codex_home / "repo")[0])
+        self.assertIn("CODEX_HOME", D.es_carpeta_privada(codex_home)[1])
+        self.assertTrue(D.es_carpeta_privada(self.tmp / "config" / "algo")[0])     # CLAUDE_CONFIG_DIR de la prueba
+        self.assertTrue(D.es_carpeta_privada(Path.home().resolve() / ".local" / "share" / "chezmoi")[0])
+        self.assertFalse(D.es_carpeta_privada(self.tmp / "proyecto")[0])
+
+    def test_entorno_git_neutro(self):
+        for k in ("GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_KEY_7"):
+            os.environ[k] = "x"
+        env = D.entorno_git_neutro(self.tmp / "trabajo")
+        self.assertEqual(env["GIT_DIR"], str(self.tmp / "trabajo" / "no-existe"))
+        self.assertFalse((self.tmp / "trabajo" / "no-existe").exists())
+        for k in ("GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_KEY_7"):
+            self.assertNotIn(k, env)
+        self.assertEqual(env["GIT_CONFIG_COUNT"], "5")
+
+    def test_carpeta_de_trabajo_fuera_de_claude_y_limpia_lo_viejo(self):
+        os.environ.pop("METODO_AGY_TRABAJO")
+        os.environ["HOME"] = str(self.tmp / "casa")
+        raiz = D.carpeta_de_trabajo_agy()
+        self.assertEqual(raiz, self.tmp / "casa" / ".cache" / "metodo" / "agy-trabajo")
+        self.assertNotIn(os.environ["CLAUDE_CONFIG_DIR"], str(raiz))
+        viejo, nuevo = raiz / "agy.viejo", raiz / "agy.nuevo"
+        viejo.mkdir(); nuevo.mkdir(); (viejo / "x").write_text("x")
+        hace_dos_dias = time.time() - 48 * 3600
+        os.utime(str(viejo), (hace_dos_dias, hace_dos_dias))
+        D.carpeta_de_trabajo_agy()
+        self.assertFalse(viejo.exists())
+        self.assertTrue(nuevo.exists())
+
+
 class TestNombresDeClaves(unittest.TestCase):
     def test_que_cuenta_como_clave(self):
         si = [".env", ".env.local", "app/.env.production", ".envrc", "id_rsa", "id_ed25519.pub", "certs/x.pem", "a/b.key",
@@ -1107,6 +1272,7 @@ class TestNombresDeClaves(unittest.TestCase):
               "secrets/app.ts", "config/credentials/db.py", "credenciales/x.md", "keys/deploy.txt", "private/notas.md",
               ".envs/prod", ".azure/config", ".config/gh/hosts.yml", ".docker/config.json",
               # nombres y extensiones de la lista del revisor
+              "storage/app/private/notas.php", "keys/x.ts",
               "AuthKey_ABC.p8", "putty.ppk", "vpn/oficina.ovpn", "infra/prod.tfvars", "terraform.tfstate",
               "terraform.tfstate.backup", "client_secret_123.apps.json", "gcp-credentials-prod.json", ".yarnrc.yml",
               "auth.json", ".htpasswd", "local.settings.json", ".vault-token", ".my.cnf", "pip.conf", ".zsh_history",
@@ -1115,11 +1281,19 @@ class TestNombresDeClaves(unittest.TestCase):
               "keyboard.js", "transcribir.py", "docs/environment.md",
               # token/secret/credential en archivos de código o texto (L1)
               "src/secret-manager.ts", "auth/credentials.tsx", "lib/token_utils.go", "Secrets.swift", "TokenService.java",
-              "styles/secret.css", "docs/credenciales.md", "src/tokenizer.rs", "components/keyboard.vue"]
+              "styles/secret.css", "docs/credenciales.md", "src/tokenizer.rs", "components/keyboard.vue",
+              # N4: el nombre sensible solo en datos/configuración, y «tokens» de diseño no
+              "app/Http/Middleware/VerifyCsrfToken.php", "styles/tokens.css", "design/tokens.json", "design-tokens.yaml"]
         for r in si:
             self.assertTrue(D.es_secreto(r), r)
         for r in no:
             self.assertFalse(D.es_secreto(r), r)
+        # las carpetas «débiles» quedan afuera de la copia de Gemini pero no hacen saltar a Codex por sí solas
+        for r in ("storage/app/private/notas.php", "keys/x.ts", "private/README.md"):
+            self.assertTrue(D.es_secreto(r), r)
+            self.assertFalse(D.es_secreto(r, para_codex=True), r)
+        for r in ("api-token.txt", "secrets/app.ts", ".env", "credentials.json"):
+            self.assertTrue(D.es_secreto(r, para_codex=True), r)
 
 
 if __name__ == "__main__":
