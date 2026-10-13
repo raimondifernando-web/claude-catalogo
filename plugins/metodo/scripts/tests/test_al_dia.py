@@ -33,6 +33,8 @@ fi
 if [ "$1" = "-m" ] && [ "$2" = "pip" ]; then
   printf '%s\n' "$@" > "$D/pip-args"
   prev=""; for a in "$@"; do [ "$prev" = "-r" ] && cp "$a" "$D/pip-req"; prev="$a"; done
+  echo "salida de pip de prueba"
+  [ -n "${FAKE_PIP_FALLA:-}" ] && exit 1
   touch "$D/instalado"; exit 0
 fi
 exit 0
@@ -40,8 +42,8 @@ exit 0
 
 
 def bloque_python():
-    ini = TEXTO.index("  local QPY=")
-    fin = TEXTO.index('|| falta+=("librerías de Python")', ini) + len('|| falta+=("librerías de Python")')
+    ini = TEXTO.index("  local CPY=")
+    fin = TEXTO.index('    rm -f "$RQ4"\n  fi\n', ini) + len('    rm -f "$RQ4"\n  fi\n')
     return TEXTO[ini:fin]
 
 
@@ -69,23 +71,26 @@ class AlDiaPythonFijado(unittest.TestCase):
         for dep in ("numpy", "urllib3", "certifi", "pydantic", "httpx"):
             self.assertIn(dep, nombres)
 
-    def test_las_versiones_del_control_coinciden_con_la_lista(self):
-        for q in re.findall(r'q=\{([^}]*)\}', TEXTO):
-            self.assertEqual(dict(re.findall(r'"([a-z]+)":"([^"]+)"', q)), CUATRO)
+    def test_las_cuatro_del_otro_python_son_las_de_la_lista(self):
+        cuatro = re.search(r"printf '%s\\n' ((?:[a-z]+==[0-9.]+ ?)+) > \"\$RQ4\"", TEXTO).group(1).split()
+        self.assertEqual(dict(x.split("==") for x in cuatro), CUATRO)
 
-    def correr(self, ver, ya_instalado=False):
+    def correr(self, ver, ya_instalado=False, pip_falla=False):
         d = Path(tempfile.mkdtemp())
         py = d / "python3"
         py.write_text(PY_FALSO)
         py.chmod(py.stat().st_mode | stat.S_IEXEC)
         if ya_instalado:
             (d / "instalado").touch()
-        guion = ("f() {\n  local avisos=() falta=() PY=%s x\n%s\n  for x in ${avisos[@]+\"${avisos[@]}\"}; do echo \"AVISO:$x\"; done\n"
-                 "  for x in ${falta[@]+\"${falta[@]}\"}; do echo \"FALTA:$x\"; done\n}\nf\n") % (py, bloque_python())
-        r = subprocess.run(["/bin/bash", "-c", guion], capture_output=True, text=True, env={**os.environ, "FAKE_VER": ver}, timeout=30)
+        guion = ("f() {\n  local avisos=() falta=() PY=%s CC=%s HOME=%s x\n%s\n  for x in ${avisos[@]+\"${avisos[@]}\"}; do echo \"AVISO:$x\"; done\n"
+                 "  for x in ${falta[@]+\"${falta[@]}\"}; do echo \"FALTA:$x\"; done\n}\nf\n") % (py, d / "cc", d, bloque_python())
+        (d / "cc" / "metodo").mkdir(parents=True)
+        env = {**os.environ, "FAKE_VER": ver, **({"FAKE_PIP_FALLA": "1"} if pip_falla else {})}
+        r = subprocess.run(["/bin/bash", "-c", guion], capture_output=True, text=True, env=env, timeout=30)
         self.assertEqual(r.returncode, 0, r.stderr)
         args = (d / "pip-args").read_text().split("\n") if (d / "pip-args").exists() else None
         req = (d / "pip-req").read_text().splitlines() if (d / "pip-req").exists() else None
+        self.log = d / "cc" / "metodo" / "al-dia-pip.log"
         return r.stdout, args, req
 
     def test_python_39_instala_con_huellas_todas_las_dependencias(self):
@@ -95,14 +100,30 @@ class AlDiaPythonFijado(unittest.TestCase):
         self.assertEqual(req, heredoc_req())
         self.assertNotIn("AVISO:", out)
         self.assertNotIn("FALTA:", out)
+        self.assertIn("salida de pip de prueba", self.log.read_text())     # L4: la salida de pip queda guardada
+
+    def test_python_39_con_pip_que_falla_lo_dice(self):
+        out, args, _ = self.correr("3.9", pip_falla=True)
+        self.assertIn("--require-hashes", args)
+        self.assertIn("FALTA:librerías de Python (detalle en cc/metodo/al-dia-pip.log)", out)
 
     def test_otro_python_instala_las_cuatro_y_avisa(self):
         out, args, req = self.correr("3.12")
         self.assertNotIn("--require-hashes", args)
-        self.assertIsNone(req)
-        for k, v in CUATRO.items():
-            self.assertIn(f"{k}=={v}", args)
+        self.assertEqual(sorted(req), sorted(f"{k}=={v}" for k, v in CUATRO.items()))
         self.assertIn("AVISO:tu Python de Apple no es el 3.9", out)
+        self.assertNotIn("FALTA:", out)
+
+    def test_otro_python_con_pip_que_falla_no_dice_instalé(self):  # L3
+        out, _, _ = self.correr("3.12", pip_falla=True)
+        self.assertNotIn("AVISO:", out)
+        self.assertIn("FALTA:librerías de Python (tu Python de Apple no es el 3.9 y pip falló", out)
+
+    def test_ya_tenia_las_cuatro_pero_no_las_dependencias_fijadas_reinstala(self):  # L4
+        # El control mira las 28 de la lista: el python3 falso responde «no» a cualquier control mientras no haya instalado.
+        out, args, req = self.correr("3.9")
+        self.assertIsNotNone(args)
+        self.assertEqual(len(req), len(heredoc_req()))
 
     def test_ya_instaladas_no_llama_a_pip(self):
         out, args, _ = self.correr("3.9", ya_instalado=True)

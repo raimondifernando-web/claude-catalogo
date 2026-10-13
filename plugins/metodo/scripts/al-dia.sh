@@ -21,8 +21,8 @@ fi
 local RES="$CC/metodo/al-dia.resultado"; mkdir -p "$CC/metodo"
 if [ -n "$BUZON" ] && ! [[ $BUZON =~ ^[A-Za-z0-9-]+/[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; then echo "✗ El nombre del buzón no es válido. Mandale esta captura a Fernando."; return 1; fi
 local falta=() paquetes=() nuevos=() avisos=()
-N=""; T=""; LK=""; W=""; NW=""
-trap 'rm -f "${N:-}" "${T:-}" "${DT:-}"; [ -n "${W:-}" ] && rm -rf "$W"; [ -n "${NW:-}" ] && rm -rf "$NW"; [ -n "${LK:-}" ] && rm -rf "$LK"' EXIT
+N=""; T=""; LK=""; W=""; NW=""; RQ=""
+trap 'rm -f "${N:-}" "${T:-}" "${DT:-}" "${RQ:-}"; [ -n "${W:-}" ] && rm -rf "$W"; [ -n "${NW:-}" ] && rm -rf "$NW"; [ -n "${LK:-}" ] && rm -rf "$LK"' EXIT
 # Una sola puesta al día a la vez: la automática ya tomó el candado (al-dia-auto.sh); la manual lo toma acá.
 if [ $AUTO -eq 0 ]; then
   local L="$CC/metodo/al-dia.corriendo" P
@@ -223,14 +223,20 @@ if ! xcode-select -p >/dev/null 2>&1; then
   if [ $AUTO -eq 1 ]; then falta+=("herramientas de Apple (se instalan en la llamada con Fernando)")
   else xcode-select --install >/dev/null 2>&1; falta+=("⟳ herramientas de Apple: en la ventana que se abrió tocá Instalar y esperá a que termine"); fi
 else
-  local QPY='import importlib.metadata as m,sys; q={"pandas":"2.3.3","openpyxl":"3.1.5","requests":"2.32.5","openai":"2.48.0"}; sys.exit(any(m.version(k)!=v for k,v in q.items()))'
-  if ! "$PY" -c "$QPY" 2>/dev/null; then
-    if "$PY" -c 'import sys; sys.exit(sys.version_info[:2] != (3, 9))' 2>/dev/null; then
-      # Python de Apple (3.9, igual en macOS 12 a 27): las 4 librerías y TODAS sus dependencias con versión y huella fijas
-      # (--require-hashes: si PyPI sirviera otro archivo, pip no instala nada). Huellas de la API de PyPI, 2026-10-12:
-      # ruedas cp39 de Mac arm64 y x86_64 (macOS 10.12 o más). Probado: instala en arm64, resuelve en x86_64, huella mala = falla.
-      local RQ; RQ=$(mktemp)
-      cat > "$RQ" <<'REQ'
+  # Control (L4): TODAS las piezas de la lista, nombre y versión exactos; quien ya tenía las 4 de antes recibe igual la instalación con huellas.
+  local CPY='import importlib.metadata as m,sys
+for l in open(sys.argv[1]):
+    n, v = l.split()[0].split("==")
+    try:
+        assert m.version(n) == v
+    except Exception:
+        sys.exit(1)' PIPLOG="$CC/metodo/al-dia-pip.log"
+  if "$PY" -c 'import sys; sys.exit(sys.version_info[:2] != (3, 9))' 2>/dev/null; then
+    # Python de Apple (3.9, igual en macOS 12 a 27): las 4 librerías y TODAS sus dependencias con versión y huella fijas
+    # (--require-hashes: si PyPI sirviera otro archivo, pip no instala nada). Huellas de la API de PyPI, 2026-10-12:
+    # ruedas cp39 de Mac arm64 y x86_64 (macOS 10.12 o más). Probado: instala en arm64, resuelve en x86_64, huella mala = falla.
+    RQ=$(mktemp)   # RQ es global a propósito: el trap de salida lo borra si se corta la corrida
+    cat > "$RQ" <<'REQ'
 annotated-types==0.7.0 --hash=sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53
 anyio==4.12.1 --hash=sha256:d405828884fc140aa80a3c667b8beed277f1dfedec42ba031bd6ac3db606ab6c
 certifi==2026.7.22 --hash=sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775
@@ -260,17 +266,23 @@ typing-inspection==0.4.2 --hash=sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44
 tzdata==2026.5 --hash=sha256:b683bd1b6659ddcd810ff02ad09ba821d4bf1065072805063eb35c49617905ac
 urllib3==2.6.3 --hash=sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4
 REQ
-      "$PY" -m pip install --user --quiet --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
-        --require-hashes -r "$RQ" >/dev/null 2>&1
-      rm -f "$RQ"
-    else   # otro Python: solo las 4 con versión fija; sus dependencias quedan sin fijar y se avisa
-      "$PY" -m pip install --user --quiet --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
-        pandas==2.3.3 openpyxl==3.1.5 requests==2.32.5 openai==2.48.0 >/dev/null 2>&1
-      avisos+=("tu Python de Apple no es el 3.9: instalé las librerías de Python sin huellas fijas en sus dependencias (contale a Fernando)")
+    if ! "$PY" -c "$CPY" "$RQ" 2>/dev/null; then
+      "$PY" -m pip install --user --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
+        --require-hashes -r "$RQ" > "$PIPLOG" 2>&1
     fi
+    "$PY" -c "$CPY" "$RQ" 2>/dev/null || falta+=("librerías de Python (detalle en ${PIPLOG#$HOME/})")
+    rm -f "$RQ"
+  else   # otro Python (L3): solo las 4 con versión fija; sus dependencias quedan sin fijar. Se avisa solo si de verdad quedaron.
+    local RQ4; RQ4=$(mktemp)
+    printf '%s\n' pandas==2.3.3 openpyxl==3.1.5 requests==2.32.5 openai==2.48.0 > "$RQ4"
+    if ! "$PY" -c "$CPY" "$RQ4" 2>/dev/null; then
+      if "$PY" -m pip install --user --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
+          -r "$RQ4" > "$PIPLOG" 2>&1 && "$PY" -c "$CPY" "$RQ4" 2>/dev/null; then
+        avisos+=("tu Python de Apple no es el 3.9: instalé las librerías de Python sin huellas fijas en sus dependencias (contale a Fernando)")
+      else falta+=("librerías de Python (tu Python de Apple no es el 3.9 y pip falló; detalle en ${PIPLOG#$HOME/})"); fi
+    fi
+    rm -f "$RQ4"
   fi
-  "$PY" -c 'import importlib.metadata as m,sys; q={"pandas":"2.3.3","openpyxl":"3.1.5","requests":"2.32.5","openai":"2.48.0"}; sys.exit(any(m.version(k)!=v for k,v in q.items()))' 2>/dev/null \
-    || falta+=("librerías de Python")
   if [ ! -x "$UV" ]; then
     local UI; UI=$(mktemp)
     curl -LsSf -o "$UI" "https://astral.sh/uv/$UVV/install.sh" \
