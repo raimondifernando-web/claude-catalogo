@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.35.2 — 2026-10-13
+Cierre de lo que quedó abierto en la revisión de seguridad de 0.35.0. Se aplica solo con `/plugin update`; no hay nada que correr.
+- **«Poner todo al día» instala las librerías de Python con versión y huella fijas** (en el Python de Apple): si el archivo que sirve el repositorio público no es el esperado, no se instala nada. En otro Python quedan con versión fija pero sin huellas, y te lo avisa.
+- **Una versión nueva de `metodo` o `paneles` no llega a los clientes sin su security check anotado.** La promoción a `estable` lo exige; quien promueve puede saltarlo a propósito, y queda registrado quién y por qué.
+- **Prueba nueva con un repositorio que trae enlaces simbólicos:** confirma que la cuarentena no trae archivos de afuera.
+
 ## 0.35.1 — 2026-10-12
 Arreglos de seguridad sobre lo que ya traía 0.35.0 (revisión de seguridad completa del paquete). No hay nada nuevo que aprender: se aplica solo con `/plugin update`.
 - **Traer una skill de afuera a la cuarentena rechaza los enlaces simbólicos** (accesos directos que apuntan a otra carpeta): una skill ajena no puede hacer que la auditoría mire, o copie, archivos fuera de ella. Siguen andando `owner/repo`, `owner/repo@skill`, `github:` y las direcciones de GitHub.
