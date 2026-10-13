@@ -1,5 +1,14 @@
 # metodo — qué cambia para vos
 
+## 0.35.1 — 2026-10-12
+Arreglos de seguridad sobre lo que ya traía 0.35.0 (revisión de seguridad completa del paquete). No hay nada nuevo que aprender: se aplica solo con `/plugin update`.
+- **Traer una skill de afuera a la cuarentena rechaza los enlaces simbólicos** (accesos directos que apuntan a otra carpeta): una skill ajena no puede hacer que la auditoría mire, o copie, archivos fuera de ella. Siguen andando `owner/repo`, `owner/repo@skill`, `github:` y las direcciones de GitHub.
+- **El freno de claves cierra 7 maneras más de mostrar o sacar una clave.** Puede dar algún aviso de más en comandos que listan variables o leen archivos de claves.
+- **«Poner todo al día» avisa en una línea cada vez que cambia permisos de tu configuración**, con la copia previa; antes algunos cambios pasaban sin aviso.
+- **`/arrancar` solo toma como tuyo un `REANUDAR.md` que dejó `/cerrar` en ESTA computadora.** Si aparece uno que no (por ejemplo, llegó por GitHub desde tu otra computadora), te lo muestra y te pide que confirmes si es tuyo; con tu «sí» en el chat se usa igual y no te quedás sin arranque.
+- **Windows (preparación, todavía no probado en una PC real):** los frenos buscan `python3`, `python` o `py`, y avisan una vez por día si no hay Python; el freno también mira PowerShell.
+- Otros ajustes menores: marcas temporales que no siguen enlaces, comprobación del instalador en cada corrida, y la promoción a `estable` ahora mira todos los commits del tramo y no solo el último.
+
 ## 0.35.0 — 2026-10-12
 - **Skills de afuera sin riesgo: `/metodo:buscar-skill-externa`.** Pedile a Claude «buscame una skill para X» o «instalá la skill Y»: busca en el registro público (solo lectura, sin instalar nada), te muestra cuáles ya tenés, trae la que elijas a una **cuarentena** (carpeta temporal, entorno vacío que no ve tus claves, instalador oficial fijado por versión y hash), la audita (archivos de prueba, `hooks.json`, instrucciones para otros agentes, descargar-y-ejecutar, texto oculto) y te hace un informe. **Recién con tu OK** se copia a tu carpeta de skills. La primera vez baja el instalador (necesita Node.js; si falta, te lo dice). Traer a la cuarentena: Mac y Linux (en Windows todavía no está probado: el programa lo dice y no hace nada; buscar sí funciona). Detalle en `requisitos.md`.
 - **Un freno traba `npx skills add|update|check|remove`** contra tu carpeta de skills (el instalador de Vercel copia todo sin auditar). Se registra solo con el plugin; buscar con `find` o `list` sigue pasando. Se apaga desinstalando el plugin.
