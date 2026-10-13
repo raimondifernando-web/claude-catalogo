@@ -154,11 +154,22 @@ class ChecksTest(unittest.TestCase):
         out = self.con_sesiones([("Obra . 09", True, 500)] + [("Obra . 08", True, 900)])
         self.assertIn('"Obra . 10"', out)
 
-    def test_arrancar_serie_lista_anteriores_sin_archivar_para_preguntar(self):
+    def test_arrancar_serie_lista_anteriores_sin_archivar_para_archivar_directo(self):
         out = self.con_sesiones([("PM 2", False, 400), ("PM 1", True, 800)])
         self.assertIn('"PM 3"', out)
         self.assertIn("local_0", out)
-        self.assertIn("preguntá", out)
+        self.assertIn("archivalas directo, sin preguntar", out)
+        self.assertNotIn("preguntá a quien", out)
+
+    def test_arrancar_y_cerrar_archivan_sin_pedir_permiso(self):
+        arr = (AQUI.parent.parent / "skills" / "arrancar" / "SKILL.md").read_text(encoding="utf-8")
+        cer = (AQUI.parent.parent / "skills" / "cerrar" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("archivalas directo, sin preguntar", arr)
+        self.assertNotIn("solo si el usuario dice que sí", arr)
+        self.assertNotIn("con el sí del usuario", arr)
+        self.assertIn("still working", arr)  # la excepción de /cerrar sigue
+        self.assertNotIn("ofrece archivarla", cer)
+        self.assertIn('archive_session("self")', cer)
 
     def test_arrancar_serie_ya_numerada_no_se_renombra(self):
         out = self.con_sesiones([("PM 7", False, 400), ("PM 6", True, 800)], titulo_propio="PM 8")

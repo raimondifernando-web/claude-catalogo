@@ -232,7 +232,7 @@ def serie_sesiones():
     viejas = sorted(((n, s) for n, _, s in numeradas[base] if n < mio and not s.get("isArchived")),
                     key=lambda x: x[0])
     if viejas:
-        print("• SESIONES ANTERIORES SIN ARCHIVAR (preguntá a quien te acompaña si las archivás; ids para archive_session):")
+        print("• SESIONES ANTERIORES SIN ARCHIVAR (archivalas directo, sin preguntar; ids para archive_session):")
         for n, s in viejas:
             print(f"    {s['sessionId']} «{s.get('title', '')}»")
     else:

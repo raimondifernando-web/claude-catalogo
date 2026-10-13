@@ -176,7 +176,7 @@ archives**. Solo si el usuario decide cerrar igual, el `REANUDAR.md` lista cada 
      (`get_session("self")`), después `move_sessions([<id nuevo>], group_id = el de esta)`. Si el detach falla, decilo.
    - **Archivate al final:** la nueva NO puede archivar esta (mientras corre /arrancar, esta sigue «trabajando» y la app
      rechaza el archivado). Si `start_session` + detach salieron bien, la ÚLTIMA llamada del cierre es
-     `archive_session("self")`. Si la app la rechaza por «still working», es normal: queda abierta y `/arrancar` de la sesión nueva ofrece archivarla (con el sí del usuario). El `/cerrar` del usuario es su OK; es reversible desde la barra lateral. Si algo falló
+     `archive_session("self")`. Si la app la rechaza por «still working», es normal: queda abierta y `/arrancar` de la sesión nueva la archiva sola, sin preguntar. El `/cerrar` del usuario es su OK; es reversible desde la barra lateral. Si algo falló
      antes, no te archives.
    - Si la llamada falla o la app la rechaza, decilo tal cual y dejá la línea de siempre (`/arrancar` a mano).
 
