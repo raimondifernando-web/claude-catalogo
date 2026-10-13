@@ -3,7 +3,7 @@
 receta (regla 22 del método) y entrega la receta en el mismo mensaje. Precisión antes que cobertura: si ninguna
 receta coincide, no dice nada. Solo lee; nunca decide permisos y nunca rompe la sesión: ante cualquier error, deja pasar.
 Apagar: CONSULTAR_ECOSISTEMA_OFF=1 o crear <config de Claude>/metodo/consultar-ecosistema.apagado."""
-import json, os, re, subprocess, sys, time
+import json, os, re, stat, subprocess, sys, time
 
 # Windows: la consola usa cp1252 y los acentos / ⛔ hacían caer el script (UnicodeEncodeError); se fuerza UTF-8 en entrada y salida.
 for _flujo in (sys.stdin, sys.stdout, sys.stderr):
@@ -37,7 +37,7 @@ def main():
     else:
         return 0
     marca = _marca(cwd)
-    if os.path.exists(marca) and not os.path.islink(marca) and time.time() - os.path.getmtime(marca) < TTL:
+    if marca_vigente(marca):
         return 0
     r = subprocess.run([sys.executable, os.path.join(AQUI, "herramientas-para.py"), "--solo-recetas", texto[:1500]],
                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10, cwd=cwd)
@@ -51,6 +51,20 @@ def main():
                      "(no vuelve en 4 h en esta carpeta): leela, aplicala (los subagentes NO heredan skills: "
                      "nombralas en SU prompt) y reintentá la misma acción.\n\n" + r.stdout[:5500])
     return 2
+
+
+def marca_vigente(ruta):
+    """¿la marca de «ya avisé en esta carpeta» vale? Tiene que ser un archivo común (no un enlace), del usuario que corre esto
+    (I-3: en una carpeta temporal compartida otro usuario podría dejarla para apagar el aviso) y tener menos de 4 h."""
+    try:
+        st = os.lstat(ruta)
+    except OSError:
+        return False
+    if not stat.S_ISREG(st.st_mode):
+        return False
+    if hasattr(os, "getuid") and st.st_uid != os.getuid():
+        return False
+    return time.time() - st.st_mtime < TTL
 
 
 def _escribir_marca(ruta):

@@ -65,6 +65,30 @@ class TestFreno(unittest.TestCase):
         self.assertEqual(victima.read_text(), "NO TOCAR")
 
     @unittest.skipIf(os.name == "nt", "el freno es un hook de bash (consultar-ecosistema.sh)")
+    def test_marca_de_otro_usuario_no_apaga_el_aviso(self):  # I-3
+        import ast, stat, time, types
+        from unittest import mock
+        # El script corre main() al cargarse: se toma solo la función, sin ejecutar el resto.
+        fuente = (Path(__file__).resolve().parent.parent / "consultar-ecosistema.py").read_text(encoding="utf-8")
+        nodo = next(n for n in ast.parse(fuente).body if isinstance(n, ast.FunctionDef) and n.name == "marca_vigente")
+        mod = types.SimpleNamespace(os=os)
+        espacio = {"os": os, "stat": stat, "time": time, "TTL": 4 * 3600}
+        exec(compile(ast.Module(body=[nodo], type_ignores=[]), "consultar-ecosistema.py", "exec"), espacio)
+        mod.marca_vigente = espacio["marca_vigente"]
+        with tempfile.TemporaryDirectory() as d:
+            marca = Path(d) / "marca"
+            marca.write_text("x")
+            self.assertTrue(mod.marca_vigente(str(marca)))
+            if hasattr(os, "getuid"):
+                with mock.patch.object(mod.os, "getuid", return_value=os.getuid() + 1):
+                    self.assertFalse(mod.marca_vigente(str(marca)))
+            enlace = Path(d) / "enlace"
+            enlace.symlink_to(marca)
+            self.assertFalse(mod.marca_vigente(str(enlace)))
+            os.utime(marca, (0, 0))
+            self.assertFalse(mod.marca_vigente(str(marca)))       # vieja
+            self.assertFalse(mod.marca_vigente(str(Path(d) / "no-existe")))
+
     def test_archivo_nuevo_de_interfaz_frena_y_existente_no(self):
         nuevo = {"tool_name": "Write", "tool_input": {"file_path": str(self.cwd / "index.html"), "content": "<html>dashboard pantalla interfaz"}}
         self.assertEqual(correr(nuevo, self.cfg, self.cwd).returncode, 2)
