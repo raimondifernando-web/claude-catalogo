@@ -202,6 +202,94 @@ class AlDiaAjustesL5(unittest.TestCase):
         self.assertIsNone(re.search(r'plutil -(replace|insert|remove)[^|\n]*"\$S"', TEXTO))
 
 
+class AlDiaReglasAntigravity(unittest.TestCase):
+    """C58: al-dia deja en la configuración de Antigravity las reglas de solo lectura (sin `git -C *`) y los frenos, una vez."""
+    BLOQUE = tramo("# Reglas de solo lectura para Antigravity", "# 5h.")
+    LEER = ["read_url(*)", "command(git show*)", "command(git diff*)", "command(git log*)", "command(git status*)",
+            "command(git grep*)", "command(git ls-files*)", "command(git rev-parse*)", "command(ls*)", "command(wc *)"]
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, str(self.d), True)
+        self.agy = self.d / "bin" / "agy"; self.agy.parent.mkdir()
+        self.marca = self.d / "AGY-SE-EJECUTO"
+        self.agy.write_text("#!/bin/bash\ntouch %s\n" % self.marca); self.agy.chmod(0o755)
+        self.conf = self.d / ".gemini" / "antigravity-cli" / "settings.json"
+
+    def correr(self, agb=None):
+        agb = str(self.agy) if agb is None else agb
+        guion = ("f() {\n  local avisos=() falta=() HOME=%s AGB=%s T='' x\n%s\n"
+                 "  for x in ${avisos[@]+\"${avisos[@]}\"}; do echo \"AVISO:$x\"; done\n"
+                 "  for x in ${falta[@]+\"${falta[@]}\"}; do echo \"FALTA:$x\"; done\n}\nf\n") % (self.d, agb, self.BLOQUE)
+        r = subprocess.run(["/bin/bash", "-c", guion], capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(self.marca.exists(), "al-dia NO puede ejecutar agy (sin sesión abre el navegador)")
+        return r.stdout
+
+    def test_escribe_las_reglas_una_sola_vez_sin_git_C(self):
+        self.conf.parent.mkdir(parents=True)
+        original = json.dumps({"model": "x", "permissions": {"allow": ["command(git -C *)", "command(npm test)"]}})
+        self.conf.write_text(original)
+        out = self.correr()
+        datos = json.loads(self.conf.read_text())
+        allow, deny = datos["permissions"]["allow"], datos["permissions"]["deny"]
+        self.assertEqual(datos["model"], "x")
+        self.assertNotIn("command(git -C *)", allow)
+        self.assertIn("command(npm test)", allow)                       # lo del usuario queda
+        for r in self.LEER:
+            self.assertEqual(allow.count(r), 1, r)
+        self.assertEqual(len(allow), len(self.LEER) + 1)                  # nada más que lo pedido
+        self.assertNotIn("command(*)", allow)                              # nada de «cualquier comando»
+        for r in self.LEER:                                               # nada que escriba, borre, instale o lea entorno
+            self.assertNotRegex(r, r"\brm\b|\bmv\b|\bcp\b|install|write|edit|pip|curl|-C|read_file|\.env")
+        # los frenos (deny le gana a allow) atrapan lo que escribe archivos o ejecuta programas, y dejan pasar las lecturas
+        # (con el motor de Python: el de agy real no se puede probar acá)
+        frenos = [x[len("command(regex:"):-1] for x in deny if x.startswith("command(regex:")]
+        for c in ("git log -1 --format=x --output=/Users/a/.zshrc", "git grep -Ovim foo", "git -c core.fsmonitor=x status",
+                  "git -C /x status", "git diff --ext-diff", "ls; rm -rf x", "git status && curl x", "wc -l a > b"):
+            self.assertTrue(any(re.fullmatch(f, c) for f in frenos), c)
+        for c in ("git log -5 --oneline", "git show HEAD:README.md", "git grep -n foo", "git rev-parse HEAD", "ls -la", "wc -l a.py"):
+            self.assertFalse(any(re.fullmatch(f, c) for f in frenos), c)
+        copias = list(self.conf.parent.glob("settings.json.antes-al-dia-*"))
+        self.assertEqual(len(copias), 1); self.assertEqual(copias[0].read_text(), original)
+        avisos = [l for l in out.splitlines() if l.startswith("AVISO:")]
+        self.assertEqual(len(avisos), 1, out)
+        self.assertIn("saqué la regla «git -C *»", avisos[0])
+        self.assertIn("copia de cómo estaba: %s" % copias[0].name, avisos[0])
+        self.assertNotIn("FALTA:", out)
+        self.assertEqual(list(self.conf.parent.glob(".settings.json.tmp.*")), [])
+        # segunda corrida: ya está, no avisa ni copia de nuevo
+        out2 = self.correr()
+        self.assertNotIn("AVISO:", out2); self.assertNotIn("FALTA:", out2)
+        self.assertEqual(len(list(self.conf.parent.glob("settings.json.antes-al-dia-*"))), 1)
+        self.assertEqual(json.loads(self.conf.read_text()), datos)
+
+    def test_enlace_simbolico_edita_el_archivo_real(self):
+        real = self.d / "dotfiles" / "agy.json"; real.parent.mkdir()
+        real.write_text("{}")
+        self.conf.parent.mkdir(parents=True); self.conf.symlink_to(real)
+        out = self.correr()
+        self.assertTrue(self.conf.is_symlink())
+        self.assertIn("command(git log*)", json.loads(real.read_text())["permissions"]["allow"])
+        self.assertIn("AVISO:Antigravity:", out)
+
+    def test_sin_configuracion_o_sin_agy_no_hace_nada(self):
+        out = self.correr()
+        self.assertFalse(self.conf.exists(), "no se crea la configuración: agy nunca se abrió")
+        self.assertNotIn("AVISO:", out); self.assertNotIn("FALTA:", out)
+        self.conf.parent.mkdir(parents=True); self.conf.write_text("{}")
+        out = self.correr(agb="")
+        self.assertEqual(self.conf.read_text(), "{}")
+        self.assertNotIn("AVISO:", out)
+
+    def test_configuracion_rota_no_se_toca(self):
+        self.conf.parent.mkdir(parents=True); self.conf.write_text("{esto no es json")
+        out = self.correr()
+        self.assertEqual(self.conf.read_text(), "{esto no es json")
+        self.assertIn("FALTA:reglas de lectura de Antigravity", out)
+        self.assertEqual([p.name for p in self.conf.parent.iterdir()], ["settings.json"])
+
+
 class AlDiaAvisaCambios(unittest.TestCase):
     def test_cambios_de_ajustes_y_permisos_van_al_aviso_diario(self):
         # En --auto el echo no lo ve nadie: tienen que quedar en avisos (al-dia.aviso, que se muestra al abrir sesión).
