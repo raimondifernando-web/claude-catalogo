@@ -118,6 +118,14 @@ SECRETOS_BASH = [
     ("C74", "gh auth status --show-token=true", FRENA, None),
     ("C74", "echo \"$(<.\"env\")\"", FRENA, None),
     ("C74", "echo \"$(< \\.env)\"", FRENA, None),
+    # C74 vuelta 2 de Gemini
+    ("C74", "gh auth -h github.com status -t", FRENA, None),
+    ("C74", "gh auth status -th github.com", FRENA, None),
+    ("C74", "security -p llavero find-generic-password -s servicio -w", FRENA, None),
+    ("C74", "env -P /bin", FRENA, None),
+    ("C74", "env -C .", FRENA, None),
+    ("C74", "echo \"$(< .env # comentario\n)\"", FRENA, None),
+    ("C74", "sudo -P cat .env", FRENA, None),
     # Uso normal que tiene que seguir pasando (los de los arreglos F5 / M-1 y los del brief de C72)
     ("uso-normal", "env | grep -e ^PATH= -e ^HOME=", PASA, None),
     ("uso-normal", "env | grep -m1 ^HOME=", PASA, None),
@@ -150,6 +158,10 @@ SECRETOS_BASH = [
     ("uso-normal", "env -i", PASA, None),
     ("uso-normal", "gh auth status -h github.com", PASA, None),
     ("uso-normal", "gh auth status --show-token=false", PASA, None),
+    ("uso-normal", 'gh issue list --search "auth status" -t "{{.title}}"', PASA, None),
+    ("uso-normal", 'gh search issues "auth status" -t "{{.title}}"', PASA, None),
+    ("uso-normal", "gh auth status -ht", PASA, None),
+    ("uso-normal", "env -C /tmp ls", PASA, None),
 ]
 
 SECRETOS_POWERSHELL = [

@@ -279,7 +279,7 @@ def programa(toks):
         elif re.match(r"^<[^<]\S*$", t):
             j += 1
         elif j > 0 and previo in ENVOLTURAS and (t.startswith("-") or re.fullmatch(r"\d+[smhd]?", t)):
-            j += 2 if previo in ("sudo", "env") and t in ("-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T", "-S") else 1
+            j += 2 if (previo in ("sudo", "env") and t in ("-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T", "-S")) or (previo == "env" and t == "-P") else 1
         else:
             break
     if j >= len(toks):
@@ -288,7 +288,7 @@ def programa(toks):
         k = next((i for i, t in enumerate(toks) if t.split("/")[-1] == "env"), None)
         resto = toks[k + 1:] if k is not None else []
         sueltos = [t for i, t in enumerate(resto) if t.startswith("-") or re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", t)
-                   or (i and resto[i - 1] in ("-u", "--unset"))]
+                   or (i and resto[i - 1] in ("-u", "--unset", "-C", "--chdir", "-P"))]
         if resto and len(sueltos) == len(resto) and not any(t in ("-i", "--ignore-environment", "-") for t in resto):
             return "env", [t for t in resto if t.startswith("-")]
         return "", []
@@ -533,11 +533,13 @@ def analizar_pipeline(etapas, razones, profundidad, cuerpos):
             razones.append("`git credential fill` muestra credenciales en claro.")
         elif nom == "gh" and [x for x in args if not x.startswith("-")][:2] == ["auth", "token"]:
             razones.append("`gh auth token` muestra el token de GitHub en claro.")
-        elif nom == "gh" and "auth status" in " ".join(x for x in args if not x.startswith("-")) \
-                and any(re.fullmatch(r"-a*ta*|--show-token(?:=(?!false$).*)?", x) for x in args):
+        elif nom == "gh" and [x for x in args if not x.startswith("-")][:1] == ["auth"] \
+                and "status" in [x for x in args if not x.startswith("-")][1:3] \
+                and any(re.fullmatch(r"-a*t\w*|--show-token(?:=(?!false$).*)?", x) for x in args):
             razones.append("`gh auth status -t` muestra el token de GitHub en claro. Sin `-t` dice lo mismo sin mostrarlo.")
-        elif nom == "security" and [x for x in args if not x.startswith("-")][:1] in (["find-generic-password"], ["find-internet-password"]) \
-                and any(re.fullmatch(r"-[A-Za-z]*[wg][A-Za-z]*", x) for x in args[args.index(next(x for x in args if not x.startswith("-"))) + 1:]):
+        elif nom == "security" and any(x in ("find-generic-password", "find-internet-password") for x in args) \
+                and any(re.fullmatch(r"-[A-Za-z]*[wg][A-Za-z]*", x)
+                        for x in args[next(k for k, x in enumerate(args) if x in ("find-generic-password", "find-internet-password")) + 1:]):
             razones.append("`security find-…-password -w` (o `-g`) muestra la contraseña guardada en el llavero. "
                            "Sin `-w` ni `-g` solo confirma que existe.")
 
@@ -554,7 +556,7 @@ def analizar(cmd, profundidad=0):
             if SIN_SALIDA.match(base[inicio + 1:m.start()]):
                 continue
             adentro = m.group(1) or m.group(2) or ""
-            lee = re.fullmatch(r"\s*<\s*(\S+)\s*", adentro)  # $(<archivo): bash pone el contenido del archivo en el comando
+            lee = re.fullmatch(r"\s*<\s*(\S+)\s*(?:#.*)?", adentro, re.S)  # $(<archivo): bash pone el contenido del archivo en el comando
             if lee and es_archivo_secreto(re.sub(r"[\"'\\]", "", lee.group(1))):  # bash quita comillas y barras: ."env" = .env
                 razones.append("`$(<archivo)` pone el contenido de un archivo de secretos en el comando y lo muestra.")
             razones.extend(analizar(adentro, profundidad + 1))
