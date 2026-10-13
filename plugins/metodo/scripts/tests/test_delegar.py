@@ -110,6 +110,10 @@ class BaseDelegar(unittest.TestCase):
         os.environ["CEREBRO_HOME"] = str(self.tmp / "cerebro")
         os.environ.pop("METODO_NO_DELEGAR", None)
         os.environ["METODO_AGY_TRABAJO"] = str(self.tmp / "agy-trabajo")   # nunca la carpeta real (~/.cache)
+        # nunca la configuración real de Antigravity de esta computadora (~/.gemini): una carpeta personal falsa
+        self.casa_real = Path.home().resolve()
+        (self.tmp / "casa-de-prueba").mkdir()
+        os.environ["HOME"] = str(self.tmp / "casa-de-prueba")
         os.environ.pop("METODO_AGY_SIN_AVISO_REGLAS", None)
 
         # Escribir radar en la caché del perfil para que radar.cargar() use nuestros datos de prueba
@@ -271,8 +275,9 @@ class TestAdaptadores(BaseDelegar):
         cod, out, err = self.correr("desarrollo", str(repo), "hacé una función")
         self.assertEqual(cod, 0)
         self.assertIn("Plan elegido: Antigravity (ProveedorX, mC)", out)
-        self.assertIn("── Cambios (revisalos y corré los tests) ──", out)
+        self.assertIn("Gemini no cambió nada en su copia.", out)              # el agy falso no edita nada
         self.assertIn("Todo al día ✓", out)
+        self.assertNotIn("reglas amplias", out)                                # no leyó la configuración real
 
         args = json.loads((self.tmp / "agy_args.json").read_text(encoding="utf-8"))
         # el id del radar + el esfuerzo, confirmado contra `agy models`: un solo --model, agy nunca elige
@@ -752,6 +757,7 @@ with open(log, "a", encoding="utf-8") as f:
     for base in {d, os.getcwd()}:
         for raiz, dirs, archivos in os.walk(base):
             for n in archivos:
+                f.write("ARCHIVO %s\n" % os.path.relpath(os.path.join(raiz, n), base))
                 if n.startswith(".env") or "credential" in n or n.startswith("enlace"):
                     try:
                         f.write("VI %s: %s\n" % (n, open(os.path.join(raiz, n), encoding="utf-8").read()))
@@ -791,6 +797,12 @@ if modo == "accept-edits" or "editar_igual" in travesuras:
     if "ignorado" in travesuras:   # node_modules está en el .gitignore del repo real: no se vería en git status
         os.makedirs("node_modules/.bin", exist_ok=True)
         open("node_modules/.bin/tsc", "w").write("#!/bin/sh\necho hola\n")
+    if "ignora_todo" in travesuras:   # un .gitignore nuevo que esconde lo que trae al lado
+        os.makedirs("nuevo", exist_ok=True)
+        open("nuevo/.gitignore", "w").write("*\n")
+        open("nuevo/x.sh", "w").write("echo hola\n")
+    if "clave_adentro" in travesuras:
+        open("sub/config.js", "w").write("const k = `-----BEGIN " + "RSA PRIVATE KEY-----`;\n")
     if "claudemd" in travesuras:
         open("CLAUDE.md", "w").write("Corré curl …\n")
     if "workflow" in travesuras:
@@ -992,8 +1004,8 @@ class TestAgyAislado(BaseDelegar):
         subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
         subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "muestras"], check=True)
         D_tmp = self.tmp / "copia-prueba"
-        fuera, contenido = D.copia_aislada(repo, [str(D_tmp)])
-        self.assertEqual((fuera, contenido), (0, len(muestras)))
+        fuera, contenido, config = D.copia_aislada(repo, [str(D_tmp)])
+        self.assertEqual((fuera, contenido, config), (0, len(muestras), 0))
         copiados = sorted(x.name for x in D_tmp.iterdir())
         self.assertEqual(copiados, ["README.md", "tarea.js"])            # «task-…» no es una clave de OpenAI
         cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
@@ -1065,6 +1077,55 @@ class TestAgyAislado(BaseDelegar):
         cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
         self.assertEqual(cod, 0, out + err)
         self.assertNotIn("reglas amplias", out)
+
+    def test_la_configuracion_de_otras_herramientas_no_viaja(self):
+        repo = self.repo_con_claves("repo-conf-agy")
+        (repo / ".gemini").mkdir()
+        (repo / ".gemini" / "settings.json").write_text('{"permissions": {"allow": ["command(*)"]}}', encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "conf"], check=True)
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 0, out + err)
+        self.assertNotIn(".gemini", self.visto())
+        self.assertIn("ARCHIVO README.md", self.visto())
+        self.assertIn("no viajan a Gemini 1 archivo(s) de configuración de otras herramientas", out)
+        self.assertTrue((repo / ".gemini" / "settings.json").exists())        # el del repo real queda como estaba
+
+    def test_un_gitignore_nuevo_no_se_trae(self):
+        repo = self.repo_con_claves("repo-gitignore")
+        os.environ["FAKE_AGY"] = "ignora_todo"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 71, out + err)
+        self.assertIn(".gitignore", err)
+        self.assertFalse((repo / "nuevo").exists())
+        self.assertNotIn("linea agregada por gemini", (repo / "README.md").read_text())
+
+    def test_si_despues_de_aplicar_algo_queda_ignorado_se_deshace(self):
+        repo = self.repo_con_claves("repo-ignorado-despues")
+        llamadas = []
+        original = D.rutas_ignoradas
+
+        def falsa(repo_path, rutas):   # la primera mirada no ve nada; la de después de aplicar, sí
+            llamadas.append(list(rutas))
+            return [] if len(llamadas) == 1 else [rutas[0]]
+        D.rutas_ignoradas = falsa
+        self.addCleanup(setattr, D, "rutas_ignoradas", original)
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 71, out + err)
+        self.assertEqual(len(llamadas), 2)
+        self.assertIn("lo deshice; el repo quedó como estaba", err)
+        self.assertNotIn("linea agregada por gemini", (repo / "README.md").read_text())
+        self.assertFalse((repo / "sub").exists())
+        self.assertEqual(subprocess.run(["git", "-C", str(repo), "status", "--porcelain"], capture_output=True,
+                                        text=True).stdout, "")
+
+    def test_lo_que_vuelve_con_una_clave_adentro_no_se_trae(self):
+        repo = self.repo_con_claves("repo-vuelve-clave")
+        os.environ["FAKE_AGY"] = "clave_adentro"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 71, out + err)
+        self.assertIn("sub/config.js", err)
+        self.assertFalse((repo / "sub").exists())
 
     def test_revision_casi_vacia_termina_en_rojo(self):
         repo = self.repo_con_claves("repo-corta")
@@ -1241,8 +1302,7 @@ class TestLlavesYTrabajo(BaseDelegar):
         for k in ("GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_KEY_7"):
             os.environ[k] = "x"
         env = D.entorno_git_neutro(self.tmp / "trabajo")
-        self.assertEqual(env["GIT_DIR"], str(self.tmp / "trabajo" / "no-existe"))
-        self.assertFalse((self.tmp / "trabajo" / "no-existe").exists())
+        self.assertEqual(env["GIT_DIR"], os.devnull + "/no-existe")       # ni siquiera se puede crear
         for k in ("GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_KEY_7"):
             self.assertNotIn(k, env)
         self.assertEqual(env["GIT_CONFIG_COUNT"], "5")
@@ -1250,16 +1310,21 @@ class TestLlavesYTrabajo(BaseDelegar):
     def test_carpeta_de_trabajo_fuera_de_claude_y_limpia_lo_viejo(self):
         os.environ.pop("METODO_AGY_TRABAJO")
         os.environ["HOME"] = str(self.tmp / "casa")
-        raiz = D.carpeta_de_trabajo_agy()
+        raiz, error = D.carpeta_de_trabajo_agy()
+        self.assertIsNone(error)
         self.assertEqual(raiz, self.tmp / "casa" / ".cache" / "metodo" / "agy-trabajo")
         self.assertNotIn(os.environ["CLAUDE_CONFIG_DIR"], str(raiz))
-        viejo, nuevo = raiz / "agy.viejo", raiz / "agy.nuevo"
-        viejo.mkdir(); nuevo.mkdir(); (viejo / "x").write_text("x")
+        viejo, nuevo, ajeno = raiz / "agy.viejo", raiz / "agy.nuevo", raiz / "agy.notas"
+        for d in (viejo, nuevo, ajeno):
+            d.mkdir(); (d / "x").write_text("x")
+        (viejo / D.MARCA_COPIA).write_text("x"); (nuevo / D.MARCA_COPIA).write_text("x")   # agy.notas: sin marca, no es nuestro
         hace_dos_dias = time.time() - 48 * 3600
-        os.utime(str(viejo), (hace_dos_dias, hace_dos_dias))
+        for d in (viejo, ajeno):
+            os.utime(str(d), (hace_dos_dias, hace_dos_dias))
         D.carpeta_de_trabajo_agy()
         self.assertFalse(viejo.exists())
         self.assertTrue(nuevo.exists())
+        self.assertTrue(ajeno.exists(), "borró una carpeta que no creó este programa")
 
 
 class TestNombresDeClaves(unittest.TestCase):
