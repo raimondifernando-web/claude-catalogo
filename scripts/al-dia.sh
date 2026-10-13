@@ -103,7 +103,8 @@ fi
 if [ -f "$S" ]; then
   [ "$(plutil -extract env.FORCE_AUTOUPDATE_PLUGINS raw "$S" 2>/dev/null)" = "1" ] || {
     plutil -extract env json -o /dev/null "$S" 2>/dev/null || plutil -insert env -dictionary "$S" 2>/dev/null
-    plutil -replace env.FORCE_AUTOUPDATE_PLUGINS -string 1 "$S" 2>/dev/null; }
+    plutil -replace env.FORCE_AUTOUPDATE_PLUGINS -string 1 "$S" 2>/dev/null \
+      && avisos+=("prendí la actualización automática de paquetes en la app (FORCE_AUTOUPDATE_PLUGINS=1 en tu settings.json): se actualizan solos los paquetes de los catálogos que tengas agregados; para apagarla, borrá esa línea de env"); }
   [ "$(plutil -extract env.FORCE_AUTOUPDATE_PLUGINS raw "$S" 2>/dev/null)" = "1" ] || falta+=("actualización de paquetes en la app")
 fi
 # /arrancar archiva la sesión anterior de la misma serie; sin este permiso el modo automático lo frena (Orquesta, 2026-10-09).
@@ -118,7 +119,9 @@ if [ -f "$S" ]; then
       && { plutil -extract permissions json -o /dev/null "$AT" 2>/dev/null || plutil -insert permissions -dictionary "$AT"; } \
       && { plutil -extract permissions.allow json -o /dev/null "$AT" 2>/dev/null || plutil -insert permissions.allow -array "$AT"; } \
       && plutil -insert permissions.allow -string "$AP" -append "$AT" \
-      && plutil -extract permissions.allow json -o - "$AT" 2>/dev/null | grep -qF "\"$AP\""; then mv "$AT" "$S"; else rm -f "$AT"; fi 2>/dev/null; }
+      && plutil -extract permissions.allow json -o - "$AT" 2>/dev/null | grep -qF "\"$AP\""; then
+      mv "$AT" "$S" && avisos+=("agregué a tu settings.json el permiso $AP (para que /arrancar archive la sesión anterior sin preguntar); copia en settings.json.antes-al-dia-permisos")
+    else rm -f "$AT"; fi 2>/dev/null; }
   plutil -extract permissions.allow json -o - "$S" 2>/dev/null | grep -qF "\"$AP\"" || falta+=("permiso para archivar sesiones viejas")
 fi
 # Claude no puede leer ni editar los lugares donde se guardan las llaves (SSH, nube, GitHub, llavero…). Los programas las siguen
@@ -221,8 +224,51 @@ if ! xcode-select -p >/dev/null 2>&1; then
   else xcode-select --install >/dev/null 2>&1; falta+=("⟳ herramientas de Apple: en la ventana que se abrió tocá Instalar y esperá a que termine"); fi
 else
   local QPY='import importlib.metadata as m,sys; q={"pandas":"2.3.3","openpyxl":"3.1.5","requests":"2.32.5","openai":"2.48.0"}; sys.exit(any(m.version(k)!=v for k,v in q.items()))'
-  "$PY" -c "$QPY" 2>/dev/null || "$PY" -m pip install --user --quiet --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
-    pandas==2.3.3 openpyxl==3.1.5 requests==2.32.5 openai==2.48.0 >/dev/null 2>&1
+  if ! "$PY" -c "$QPY" 2>/dev/null; then
+    if "$PY" -c 'import sys; sys.exit(sys.version_info[:2] != (3, 9))' 2>/dev/null; then
+      # Python de Apple (3.9, igual en macOS 12 a 27): las 4 librerías y TODAS sus dependencias con versión y huella fijas
+      # (--require-hashes: si PyPI sirviera otro archivo, pip no instala nada). Huellas de la API de PyPI, 2026-10-12:
+      # ruedas cp39 de Mac arm64 y x86_64 (macOS 10.12 o más). Probado: instala en arm64, resuelve en x86_64, huella mala = falla.
+      local RQ; RQ=$(mktemp)
+      cat > "$RQ" <<'REQ'
+annotated-types==0.7.0 --hash=sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53
+anyio==4.12.1 --hash=sha256:d405828884fc140aa80a3c667b8beed277f1dfedec42ba031bd6ac3db606ab6c
+certifi==2026.7.22 --hash=sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775
+charset-normalizer==3.5.2 --hash=sha256:75a3ceed0724d625d64b86ca20aba182e4df462e04c2414fc941c0f523f06aac --hash=sha256:b6b751274acb69d77b3323d6b7dbaa3c7fdfc1eb829b7eb61d262f32e1af9685
+distro==1.9.0 --hash=sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2
+et-xmlfile==2.0.0 --hash=sha256:7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa
+exceptiongroup==1.3.1 --hash=sha256:a7a39a3bd276781e98394987d3a5701d0c4edffb633bb7a5144577f82c773598
+h11==0.16.0 --hash=sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86
+httpcore==1.0.9 --hash=sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55
+httpx==0.28.1 --hash=sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad
+idna==3.20 --hash=sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
+jiter==0.16.0 --hash=sha256:3b21b412b899fd8bd51a3046934b59a3bb068b79f70a5c6010053ac77cc53f0c --hash=sha256:d8f80521644426d451e70f00c7974240cab8f6ee088aedaa9af2697153ab7805
+numpy==2.0.2 --hash=sha256:2b2955fa6f11907cf7a70dab0d0755159bca87755e831e47932367fc8f2f2d0b --hash=sha256:423e89b23490805d2a5a96fe40ec507407b8ee786d66f7328be214f9679df6dd --hash=sha256:9059e10581ce4093f735ed23f3b9d283b9d517ff46009ddd485f1747eb22653c --hash=sha256:97032a27bd9d8988b9a97a8c4d2c9f2c15a81f61e2f21404d7e8ef00cb5be729
+openai==2.48.0 --hash=sha256:c98df30aaaf93c51979f64d3e7c5b76464f8be0173368266229eb8fe6bd30f2c
+openpyxl==3.1.5 --hash=sha256:5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2
+pandas==2.3.3 --hash=sha256:a637c5cdfa04b6d6e2ecedcb81fc52ffb0fd78ce2ebccc9ea964df9f658de8c8 --hash=sha256:c503ba5216814e295f40711470446bc3fd00f0faea8a086cbc688808e26f92a2
+pydantic==2.13.5 --hash=sha256:346a034f080da3755d8e9cb5e00e8b07de1d39e4f6e2c87d8ab7cafa0b269a73
+pydantic-core==2.46.5 --hash=sha256:c583b927a8838dab890706a6fa7573fbb8b70e24000ef9f7238e2d6f6435a5ed --hash=sha256:cdc8b74ecc48c0cb1e9607a05ec4e9e88db60a19ffcc9a1d5f9088ede40c8dc0
+python-dateutil==2.9.0.post0 --hash=sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427
+pytz==2026.5 --hash=sha256:e658af3757f9e26a9d25dd2aff38335acd92bc9104f890a894b2c1ba28311b03
+requests==2.32.5 --hash=sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6
+six==1.17.0 --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274
+sniffio==1.3.1 --hash=sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2
+tqdm==4.70.1 --hash=sha256:c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73
+typing-extensions==4.16.0 --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
+typing-inspection==0.4.2 --hash=sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7
+tzdata==2026.5 --hash=sha256:b683bd1b6659ddcd810ff02ad09ba821d4bf1065072805063eb35c49617905ac
+urllib3==2.6.3 --hash=sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4
+REQ
+      "$PY" -m pip install --user --quiet --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
+        --require-hashes -r "$RQ" >/dev/null 2>&1
+      rm -f "$RQ"
+    else   # otro Python: solo las 4 con versión fija; sus dependencias quedan sin fijar y se avisa
+      "$PY" -m pip install --user --quiet --disable-pip-version-check --no-warn-script-location --only-binary=:all: \
+        pandas==2.3.3 openpyxl==3.1.5 requests==2.32.5 openai==2.48.0 >/dev/null 2>&1
+      avisos+=("tu Python de Apple no es el 3.9: instalé las librerías de Python sin huellas fijas en sus dependencias (contale a Fernando)")
+    fi
+  fi
   "$PY" -c 'import importlib.metadata as m,sys; q={"pandas":"2.3.3","openpyxl":"3.1.5","requests":"2.32.5","openai":"2.48.0"}; sys.exit(any(m.version(k)!=v for k,v in q.items()))' 2>/dev/null \
     || falta+=("librerías de Python")
   if [ ! -x "$UV" ]; then
@@ -454,7 +500,11 @@ if [ -f "$S" ]; then
   [ "$(plutil -extract env.CLAUDE_SECURITY_SCAN_TIP raw "$S" 2>/dev/null)" = "off" ] || falta+=("apagar el aviso de escaneo de claude-security")
 fi
 
-# 5d. Figma oficial de Anthropic (la conexión con tu cuenta se hace aparte, con /mcp)
+# 5d. Figma oficial de Anthropic
+# SIN FIJAR (F8, security check 0.35.0): figma / frontend-design / skill-creator / claude-security vienen de claude-plugins-official sin sha y fuera de la demora de 48 h.
+# Un catálogo solo se fija por rama o tag (no por sha), así que acá no se puede. Lo que sí funciona (probado 2026-10-12 con claude 2.1.296 en configuración aparte): listarlos
+# en NUESTRO marketplace.json con fuente `git-subdir` (anthropics/claude-plugins-official, plugins/<nombre>) o `url` (figma) + `sha`; cambia su nombre a <nombre>@claude-catalogo
+# y suma 4 paquetes al catálogo: decisión de producto, pendiente. (la conexión con tu cuenta se hace aparte, con /mcp)
 claude plugin marketplace list 2>/dev/null | grep -qF claude-plugins-official || claude plugin marketplace add anthropics/claude-plugins-official >/dev/null 2>&1
 claude plugin list 2>/dev/null | grep -qE "❯ figma@claude-plugins-official[[:space:]]*$" || claude plugin install figma@claude-plugins-official >/dev/null 2>&1
 claude plugin list 2>/dev/null | grep -A3 -E "❯ figma@claude-plugins-official[[:space:]]*$" | grep -q "✔ enabled" || falta+=("figma")
