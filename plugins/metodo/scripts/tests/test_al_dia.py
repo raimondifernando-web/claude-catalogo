@@ -226,11 +226,11 @@ class AlDiaConfiguracionAntigravity(unittest.TestCase):
 
     def test_no_escribe_reglas_y_saca_git_C_una_vez(self):
         self.conf.parent.mkdir(parents=True)
-        original = json.dumps({"model": "x", "permissions": {"allow": ["command(git -C *)", "command(npm test)"]}})
+        original = json.dumps({"model": "x", "permissions": {"allow": ["command(git -C *)", "command(wc -l README.md)"]}})
         self.conf.write_text(original)
         out = self.correr()
         datos = json.loads(self.conf.read_text())
-        self.assertEqual(datos, {"model": "x", "permissions": {"allow": ["command(npm test)"]}})   # nada agregado
+        self.assertEqual(datos, {"model": "x", "permissions": {"allow": ["command(wc -l README.md)"]}})   # nada agregado
         copias = list(self.conf.parent.glob("settings.json.antes-al-dia-*"))
         self.assertEqual(len(copias), 1); self.assertEqual(copias[0].read_text(), original)
         avisos = [l for l in out.splitlines() if l.startswith("AVISO:")]
@@ -251,8 +251,9 @@ class AlDiaConfiguracionAntigravity(unittest.TestCase):
                    "read_file(/Users/x/Proyectos/**)", "read_file(~/notas)", "read_file(/Users/x/a.txt)",
                    "read_url(https://*.example.com)", "write_file(src/)", "command(python3 tarea.py)",
                    "command(node x.js)", "command(/bin/bash -c hola)", "command(regex:npm run .*)"]
-        acotadas = ["command(git log -1 --oneline)", "command(git diff --stat)", "command(npm test)",
-                    "read_url(docs.python.org)", "read_file(src/app.py)"]
+        amplias += ["command", " READ_FILE ", "read_url()", "read_file(*)", "read_file(/*)",   # M-3: sin argumento, mayúsculas
+                    "command(git log -1 --oneline)", "command(npm test)", "command(find . -name x)", "command(make)"]
+        acotadas = ["command(wc -l README.md)", "command(ls -la)", "read_url(docs.python.org)", "read_file(src/app.py)"]
         original = json.dumps({"permissions": {"allow": amplias + acotadas}})
         self.conf.write_text(original)
         out = self.correr()
@@ -261,7 +262,7 @@ class AlDiaConfiguracionAntigravity(unittest.TestCase):
         avisos = [l for l in out.splitlines() if l.startswith("AVISO:")]
         self.assertEqual(len(avisos), 1, out)
         for r in amplias:
-            self.assertIn(r, avisos[0])
+            self.assertIn(r.strip(), avisos[0])
         for r in acotadas:
             self.assertNotIn(r, avisos[0])
         self.assertIn("borralas de ~/.gemini/antigravity-cli/settings.json", avisos[0])

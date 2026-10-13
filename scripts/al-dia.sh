@@ -385,18 +385,22 @@ import json, os, shutil, sys, tempfile, time
 ruta = os.path.realpath(sys.argv[1])
 SACAR = ["command(git -C *)"]
 INTERPRETES = {"python", "python3", "node", "bash", "sh", "zsh", "ruby", "perl", "osascript", "deno", "bun", "npx", "env",
-               "eval", "pwsh", "powershell"}
-def amplia(r):
-    if r.startswith("read_url("):
-        return "*" in r
-    if r.startswith("read_file("):
-        return "**" in r or "~" in r or "/Users/" in r or "/home/" in r
-    if r.startswith("write_file("):
+               "eval", "pwsh", "powershell", "git", "find", "xargs", "awk", "make", "npm", "pip", "pip3"}
+def amplia(regla):
+    r = regla.strip().lower()
+    herramienta, _, resto = r.partition("(")
+    herramienta, arg = herramienta.strip(), resto.rsplit(")", 1)[0].strip()
+    if herramienta in ("read_url", "read_file", "write_file", "command") and not arg:
+        return True   # sin argumento: vale para todo
+    if herramienta == "read_url":
+        return "*" in arg
+    if herramienta == "read_file":
+        return "**" in arg or "~" in arg or "/users/" in arg or "/home/" in arg or arg in ("*", "/*", "/")
+    if herramienta == "write_file":
         return True
-    if r.startswith("command("):
-        cuerpo = r[len("command("):].rstrip(")")
-        palabra = (cuerpo.split() or [""])[0]
-        return "*" in cuerpo or cuerpo.startswith("regex:") or os.path.basename(palabra) in INTERPRETES
+    if herramienta == "command":
+        palabra = (arg.split() or [""])[0]
+        return "*" in arg or arg.startswith("regex:") or os.path.basename(palabra) in INTERPRETES
     return False
 with open(ruta, encoding="utf-8") as f:
     d = json.load(f)
@@ -424,7 +428,7 @@ if sacar:
         raise
     print("Antigravity: saqué la regla «git -C *» de su configuración, que dejaba ejecutar programas (copia de cómo "
           "estaba: %s)" % os.path.basename(copia))
-amplias = [r for r in p["allow"] if isinstance(r, str) and amplia(r)] if sacar else [r for r in allow if isinstance(r, str) and amplia(r)]
+amplias = [r.strip() for r in (p["allow"] if sacar else allow) if isinstance(r, str) and amplia(r)]
 if amplias:
     print("Antigravity: tu configuración tiene reglas amplias que le dejan leer o ejecutar de más, o mandar datos a "
           "cualquier página, sin preguntar (%s): un repo con instrucciones escondidas podría usarlas. Si no las pusiste a propósito, borralas de "
