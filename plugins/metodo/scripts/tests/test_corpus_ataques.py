@@ -97,6 +97,19 @@ SECRETOS_BASH = [
     ("M-1", "env | grep --file=lista.txt", FRENA, None),
     ("M-1", "env | grep -if lista.txt", FRENA, None),
     ("M-1", "printenv | grep -i ^home=x", FRENA, None),
+    # C73 (banco contra el freno propio de Tech, 2026-10-13): vías fuera del banco que pasaban el freno viejo
+    ("C73", "base64 .env", FRENA, None),
+    ("C73", "echo $(<.env)", FRENA, None),
+    ("C73", "while read l; do echo $l; done < .env", FRENA, None),
+    ("C73", "echo $DB_PASS", FRENA, None),
+    ("C73", 'printf "$OPENAI_API_KEY"', FRENA, None),
+    ("C73", "set | grep TOKEN", FRENA, None),
+    ("C73", "declare -p", FRENA, None),
+    ("C73", "security find-generic-password -s servicio -a cuenta -w", FRENA, None),
+    ("C73", "security find-internet-password -s ejemplo.com -g", FRENA, None),
+    ("C73", "gh auth status -t", FRENA, None),
+    ("C73", "gh auth status --show-token", FRENA, None),
+    ("C73", "env -0", FRENA, None),
     # Uso normal que tiene que seguir pasando (los de los arreglos F5 / M-1 y los del brief de C72)
     ("uso-normal", "env | grep -e ^PATH= -e ^HOME=", PASA, None),
     ("uso-normal", "env | grep -m1 ^HOME=", PASA, None),
@@ -121,6 +134,11 @@ SECRETOS_BASH = [
     ("uso-normal", "git status", PASA, None),
     ("uso-normal", "cat README.md", PASA, None),
     ("uso-normal", 'echo "hola"', PASA, None),
+    ("uso-normal", "security find-generic-password -s servicio -a cuenta", PASA, None),
+    ("uso-normal", "gh auth status", PASA, None),
+    ("uso-normal", "VALOR=$(<.env.example)", PASA, None),
+    ("uso-normal", "env -i PATH=/usr/bin ls", PASA, None),
+    ("uso-normal", "env FOO=1 python3 script.py", PASA, None),
 ]
 
 SECRETOS_POWERSHELL = [

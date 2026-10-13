@@ -283,6 +283,9 @@ def programa(toks):
         else:
             break
     if j >= len(toks):
+        k = next((i for i, t in enumerate(toks) if t == "env"), None)  # `env -0`: env con solo opciones también vuelca el entorno
+        if k is not None and toks[k + 1:] and all(t.startswith("-") for t in toks[k + 1:]):
+            return "env", toks[k + 1:]
         return "", []
     return toks[j].split("/")[-1].lower(), toks[j + 1:]
 
@@ -525,6 +528,13 @@ def analizar_pipeline(etapas, razones, profundidad, cuerpos):
             razones.append("`git credential fill` muestra credenciales en claro.")
         elif nom == "gh" and [x for x in args if not x.startswith("-")][:2] == ["auth", "token"]:
             razones.append("`gh auth token` muestra el token de GitHub en claro.")
+        elif nom == "gh" and [x for x in args if not x.startswith("-")][:2] == ["auth", "status"] \
+                and any(x in ("-t", "--show-token") for x in args):
+            razones.append("`gh auth status -t` muestra el token de GitHub en claro. Sin `-t` dice lo mismo sin mostrarlo.")
+        elif nom == "security" and args[:1] in (["find-generic-password"], ["find-internet-password"]) \
+                and any(re.fullmatch(r"-[A-Za-z]*[wg][A-Za-z]*", x) for x in args[1:]):
+            razones.append("`security find-…-password -w` (o `-g`) muestra la contraseña guardada en el llavero. "
+                           "Sin `-w` ni `-g` solo confirma que existe.")
 
 
 def analizar(cmd, profundidad=0):
@@ -538,7 +548,11 @@ def analizar(cmd, profundidad=0):
                          base.rfind("|", 0, m.start()), base.rfind("(", 0, m.start() - 1))
             if SIN_SALIDA.match(base[inicio + 1:m.start()]):
                 continue
-            razones.extend(analizar(m.group(1) or m.group(2) or "", profundidad + 1))
+            adentro = m.group(1) or m.group(2) or ""
+            lee = re.fullmatch(r"\s*<\s*(\S+)\s*", adentro)  # $(<archivo): bash pone el contenido del archivo en el comando
+            if lee and es_archivo_secreto(lee.group(1)):
+                razones.append("`$(<archivo)` pone el contenido de un archivo de secretos en el comando y lo muestra.")
+            razones.extend(analizar(adentro, profundidad + 1))
     out = []
     for r in razones:
         if r not in out:
