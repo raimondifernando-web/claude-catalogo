@@ -110,6 +110,14 @@ SECRETOS_BASH = [
     ("C73", "gh auth status -t", FRENA, None),
     ("C73", "gh auth status --show-token", FRENA, None),
     ("C73", "env -0", FRENA, None),
+    # C74 (revisión de Gemini de los arreglos C73, 2026-10-13): variantes que esquivaban los 4 casos nuevos
+    ("C74", "env FOO=1", FRENA, None),
+    ("C74", "env -u NOEXISTE", FRENA, None),
+    ("C74", "security -q find-generic-password -s servicio -w", FRENA, None),
+    ("C74", "gh auth status -ta", FRENA, None),
+    ("C74", "gh auth status --show-token=true", FRENA, None),
+    ("C74", "echo \"$(<.\"env\")\"", FRENA, None),
+    ("C74", "echo \"$(< \\.env)\"", FRENA, None),
     # Uso normal que tiene que seguir pasando (los de los arreglos F5 / M-1 y los del brief de C72)
     ("uso-normal", "env | grep -e ^PATH= -e ^HOME=", PASA, None),
     ("uso-normal", "env | grep -m1 ^HOME=", PASA, None),
@@ -139,6 +147,9 @@ SECRETOS_BASH = [
     ("uso-normal", "VALOR=$(<.env.example)", PASA, None),
     ("uso-normal", "env -i PATH=/usr/bin ls", PASA, None),
     ("uso-normal", "env FOO=1 python3 script.py", PASA, None),
+    ("uso-normal", "env -i", PASA, None),
+    ("uso-normal", "gh auth status -h github.com", PASA, None),
+    ("uso-normal", "gh auth status --show-token=false", PASA, None),
 ]
 
 SECRETOS_POWERSHELL = [

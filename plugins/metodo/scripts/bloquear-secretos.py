@@ -283,9 +283,14 @@ def programa(toks):
         else:
             break
     if j >= len(toks):
-        k = next((i for i, t in enumerate(toks) if t == "env"), None)  # `env -0`: env con solo opciones también vuelca el entorno
-        if k is not None and toks[k + 1:] and all(t.startswith("-") for t in toks[k + 1:]):
-            return "env", toks[k + 1:]
+        # `env -0`, `env -u NOMBRE`, `env FOO=1`: env sin programa (solo opciones o asignaciones) también vuelca el
+        # entorno; con -i arranca vacío y no muestra nada
+        k = next((i for i, t in enumerate(toks) if t.split("/")[-1] == "env"), None)
+        resto = toks[k + 1:] if k is not None else []
+        sueltos = [t for i, t in enumerate(resto) if t.startswith("-") or re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", t)
+                   or (i and resto[i - 1] in ("-u", "--unset"))]
+        if resto and len(sueltos) == len(resto) and not any(t in ("-i", "--ignore-environment", "-") for t in resto):
+            return "env", [t for t in resto if t.startswith("-")]
         return "", []
     return toks[j].split("/")[-1].lower(), toks[j + 1:]
 
@@ -528,11 +533,11 @@ def analizar_pipeline(etapas, razones, profundidad, cuerpos):
             razones.append("`git credential fill` muestra credenciales en claro.")
         elif nom == "gh" and [x for x in args if not x.startswith("-")][:2] == ["auth", "token"]:
             razones.append("`gh auth token` muestra el token de GitHub en claro.")
-        elif nom == "gh" and [x for x in args if not x.startswith("-")][:2] == ["auth", "status"] \
-                and any(x in ("-t", "--show-token") for x in args):
+        elif nom == "gh" and "auth status" in " ".join(x for x in args if not x.startswith("-")) \
+                and any(re.fullmatch(r"-a*ta*|--show-token(?:=(?!false$).*)?", x) for x in args):
             razones.append("`gh auth status -t` muestra el token de GitHub en claro. Sin `-t` dice lo mismo sin mostrarlo.")
-        elif nom == "security" and args[:1] in (["find-generic-password"], ["find-internet-password"]) \
-                and any(re.fullmatch(r"-[A-Za-z]*[wg][A-Za-z]*", x) for x in args[1:]):
+        elif nom == "security" and [x for x in args if not x.startswith("-")][:1] in (["find-generic-password"], ["find-internet-password"]) \
+                and any(re.fullmatch(r"-[A-Za-z]*[wg][A-Za-z]*", x) for x in args[args.index(next(x for x in args if not x.startswith("-"))) + 1:]):
             razones.append("`security find-…-password -w` (o `-g`) muestra la contraseña guardada en el llavero. "
                            "Sin `-w` ni `-g` solo confirma que existe.")
 
@@ -550,7 +555,7 @@ def analizar(cmd, profundidad=0):
                 continue
             adentro = m.group(1) or m.group(2) or ""
             lee = re.fullmatch(r"\s*<\s*(\S+)\s*", adentro)  # $(<archivo): bash pone el contenido del archivo en el comando
-            if lee and es_archivo_secreto(lee.group(1)):
+            if lee and es_archivo_secreto(re.sub(r"[\"'\\]", "", lee.group(1))):  # bash quita comillas y barras: ."env" = .env
                 razones.append("`$(<archivo)` pone el contenido de un archivo de secretos en el comando y lo muestra.")
             razones.extend(analizar(adentro, profundidad + 1))
     out = []
