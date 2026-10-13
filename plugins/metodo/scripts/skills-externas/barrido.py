@@ -32,6 +32,24 @@ for p in sorted(root.rglob("*")):
         hits.setdefault("caracteres invisibles/bidi", []).append(f"{p.relative_to(root)}: {n}")
     if any(unicodedata.category(c) == "Co" for c in t):
         hits.setdefault("uso privado unicode", []).append(str(p.relative_to(root)))
+# L-5: los nombres y destinos de los enlaces que traía la fuente (borrados antes de copiar) también pasan por el barrido de inyección
+f_enl = os.environ.get("CUARENTENA_ENLACES")
+if f_enl and os.path.isfile(f_enl):
+    import json
+    for linea in open(f_enl, encoding="utf-8", errors="replace"):
+        if not linea.strip():
+            continue
+        try:
+            d = json.loads(linea)
+            textos = [str(d.get("ruta", "")), str(d.get("destino", ""))]
+        except (ValueError, AttributeError):
+            textos = [linea]
+        for t in textos:
+            for k, rg in pats.items():
+                for m in rg.finditer(t):
+                    hits.setdefault(k + " (en el nombre de un enlace)", []).append(repr(m.group(0)[:90]))
+            if inv.search(t) or any(unicodedata.category(c) in ("Co", "Cc") for c in t):
+                hits.setdefault("caracteres invisibles/de control en el nombre de un enlace", []).append(repr(t[:90]))
 print(f"{root}: {tot/1024:.0f} KB recorridos por el barrido")
 for k, v in hits.items():
     print(f"  [{k}] {len(v)}")

@@ -112,11 +112,27 @@ def publicas(source, skill):
 
 
 def enlaces_borrados():
-    """Rutas (relativas al repo) de los enlaces simbólicos que cuarentena-skills.sh borró ANTES de copiar (CUARENTENA_ENLACES = archivo 'ruta -> destino')."""
+    """[(ruta, destino)] de los enlaces simbólicos que cuarentena-skills.sh borró ANTES de copiar (CUARENTENA_ENLACES: una línea JSON por
+    enlace). Una línea que no se entiende cuenta igual como enlace (falla cerrado)."""
     f = os.environ.get("CUARENTENA_ENLACES")
     if not f or not Path(f).is_file():
         return []
-    return [l.split(" -> ", 1)[0].strip() for l in Path(f).read_text(encoding="utf-8", errors="replace").splitlines() if l.strip()]
+    out = []
+    for l in Path(f).read_text(encoding="utf-8", errors="replace").splitlines():
+        if not l.strip():
+            continue
+        try:
+            d = json.loads(l)
+            out.append((str(d.get("ruta", "?")), str(d.get("destino", "?"))))
+        except (ValueError, AttributeError):
+            out.append((l, "?"))
+    return out
+
+
+def escapar(texto):
+    """Un nombre que viene de la fuente, mostrado sin que pueda armar markdown ni órdenes: entre comillas JSON (saltos de línea,
+    caracteres invisibles y no ASCII escapados) y entre backticks, sin backticks adentro."""
+    return "`" + json.dumps(texto, ensure_ascii=True).replace("`", "\\u0060") + "`"
 
 
 def auditar(skill_dir, lock, rep, piezas):
@@ -126,11 +142,12 @@ def auditar(skill_dir, lock, rep, piezas):
     if skill_dir.is_symlink():
         return (f"### {nombre}  ·  fuente `{lock.get(nombre, {}).get('source', '?')}`\n**Decisión del filtro:** NO ENTRA (bloqueo automático)\n"
                 f"- ⛔ la carpeta de la skill es un enlace simbólico -> {os.readlink(skill_dir)} (no se la recorrió)")
-    # F1: enlaces borrados del repo que estaban dentro de la carpeta de esta skill
-    for rel in enlaces_borrados():
-        partes = Path(rel).parts
-        if nombre in partes:
-            bloquea.append(f"enlace simbólico que traía la fuente dentro de esta skill y se borró antes de copiar: {rel}")
+    # F1 / L-5: si la fuente traía CUALQUIER enlace simbólico, se bloquean todas las skills: no se puede saber con certeza a cuál
+    # pertenecía cada uno (la carpeta instalada puede llamarse distinto que en el repo). La lista va escapada al final del informe.
+    enl = enlaces_borrados()
+    if enl:
+        bloquea.append(f"la fuente traía {len(enl)} enlace(s) simbólico(s) (se borraron antes de copiar; ver la lista al final): "
+                       "se bloquea toda la traída")
     archivos = [p for p in skill_dir.rglob("*") if p.is_file() or p.is_symlink()]
     # 1) controles estructurales
     for p in archivos:
@@ -227,6 +244,11 @@ def main():
     print(f"# Informe de cuarentena — {len(dirs)} skill(s) · comparadas contra {len(piezas)} piezas locales" + ("" if rep else " (solo por nombre)") + "\n")
     for d in dirs:
         print(auditar(d, lock, rep, piezas) + "\n")
+    enl = enlaces_borrados()
+    if enl:
+        print("### ⛔ Enlaces simbólicos que traía la fuente (borrados antes de copiar; el CLI los habría desreferenciado)")
+        for ruta, destino in enl:
+            print(f"- {escapar(ruta)} -> {escapar(destino)}")
 
 
 if __name__ == "__main__":

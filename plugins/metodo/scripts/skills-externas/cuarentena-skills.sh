@@ -65,7 +65,8 @@ if [ "$DRY" = 1 ]; then
 fi
 NODO=$(command -v node); GIT=$(command -v git)
 # --- Qué fuente es (mismas formas que acepta el CLI): owner/repo · owner/repo/subcarpeta · owner/repo@skill · github:… · gitlab:… · URL de GitHub (con /tree/<rama>/<subcarpeta>)
-#     · URL https/ssh de git · carpeta local · cualquiera con #rama. REPO_URL/REF/SUB/ATSK se calculan acá; el sha del repo se mide ANTES de traer (el CLI no lo expone).
+#     · URL https/ssh de git · carpeta local · cualquiera con #rama. REPO_URL/REF/SUB/ATSK se calculan acá; el sha del repo se lee del clon auditado
+#     (L-4: `git rev-parse HEAD` antes de borrar .git; ls-remote podía dar otro commit que el que se trajo).
 REPO_URL=""; REF=""; SUB=""; ATSK=""; OWNER_REPO=""; LOCAL=0
 GH_BASE="${CUARENTENA_GITHUB_BASE:-https://github.com}"   # solo las pruebas lo cambian (para clonar de un repo local sin red)
 F="$FUENTE"
@@ -86,8 +87,7 @@ fi
 [ -z "$SUB" ] || case "/$SUB/" in */../*|//*) echo "Subcarpeta no válida ✗ ($SUB)"; exit 2 ;; esac
 [[ "$REF" == -* ]] && { echo "Rama/etiqueta no válida ✗"; exit 2; }
 [ "$SKILL" = '*' ] && [ -n "$ATSK" ] && SKILL="$ATSK"
-sha_remoto() { [ -n "$REPO_URL" ] && env -i PATH="$(dirname "$GIT"):/usr/bin:/bin" GIT_TERMINAL_PROMPT=0 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null "$GIT" ls-remote "$REPO_URL" "${REF:-HEAD}" 2>/dev/null | head -1 | cut -f1 || true; }
-SHA_ANTES=$(sha_remoto)
+SHA_CLON=""
 Q=$(mktemp -d "${TMPDIR:-/tmp}/cuarentena-skills.XXXXXX"); mkdir "$Q/home" "$Q/work" "$Q/tmp"
 t0=$(date +%s)
 # F1 (security check 0.35.0): el CLI copia con --copy DESREFERENCIANDO los enlaces simbólicos (traería archivos de tu máquina). Por eso el repo se baja ACÁ
@@ -105,8 +105,24 @@ elif [ -n "$REPO_URL" ]; then
 else
   echo "Fuente no reconocida ✗ (usar owner/repo, owner/repo@skill, una URL de git o una carpeta local)"; exit 2
 fi
+if [ -n "$REPO_URL" ]; then
+  SHA_CLON=$(env -i PATH="$(dirname "$GIT"):/usr/bin:/bin" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null "$GIT" -C "$Q/src" rev-parse HEAD 2>/dev/null) || SHA_CLON=""
+  [[ "$SHA_CLON" =~ ^[0-9a-f]{40}$ ]] || SHA_CLON=""
+fi
 rm -rf "$Q/src/.git"
-( cd "$Q/src" && find . -type l -print0 | while IFS= read -r -d '' l; do printf '%s -> %s\n' "${l#./}" "$(readlink "$l")"; done > "$ENL" && find . -type l -delete )
+# L-5: una línea JSON por enlace (un nombre con salto de línea no rompe la lista); se borran sin seguirlos.
+python3 -I - "$Q/src" "$ENL" <<'PY' || { echo "No pude revisar los enlaces de la fuente ✗ (cuarentena: $Q)"; exit 2; }
+import json, os, sys
+raiz, salida = sys.argv[1], sys.argv[2]
+with open(salida, "w", encoding="utf-8") as f:
+    for d, dirs, files in os.walk(raiz):            # no entra en carpetas que son enlaces (followlinks=False)
+        for n in sorted(dirs + files):
+            p = os.path.join(d, n)
+            if os.path.islink(p):
+                f.write(json.dumps({"ruta": os.path.relpath(p, raiz), "destino": os.readlink(p)}, ensure_ascii=True) + "\n")
+                os.unlink(p)
+        dirs[:] = [n for n in dirs if os.path.isdir(os.path.join(d, n))]
+PY
 export CUARENTENA_ENLACES="$ENL"
 [ -s "$ENL" ] && echo "Aviso: la fuente traía $(wc -l < "$ENL" | tr -d ' ') enlace(s) simbólico(s); se borraron antes de copiar (lista en el informe)."
 RAIZ="$Q/src${SUB:+/$SUB}"
@@ -118,16 +134,14 @@ env -i PATH="$(dirname "$NODO"):$(dirname "$GIT"):/usr/bin:/bin" HOME="$Q/home" 
     node "$CLI/bin/cli.mjs" add "$RAIZ" -s "$SKILL" -a claude-code --copy -y --json > "$Q/instalacion.json" 2> "$Q/instalacion.err" \
     || { echo "El CLI falló ✗"; tail -5 "$Q/instalacion.err"; echo "(cuarentena: $Q)"; exit 2; }
 [ -d "$Q/work/.claude/skills" ] || { echo "No trajo nada ✗ (cuarentena: $Q)"; exit 2; }
-SHA_DESPUES=$(sha_remoto)
 echo "Traídas a cuarentena en $(( $(date +%s) - t0 )) s: $(ls "$Q/work/.claude/skills" | wc -l | tr -d ' ') skill(s) → $Q"
 {
-  if [ -n "$SHA_ANTES" ] && [ "$SHA_ANTES" = "$SHA_DESPUES" ]; then echo "<!-- sha fijado: $SHA_ANTES (git ls-remote HEAD antes y después coinciden) -->"; printf '**sha del repo (para CATALOGO origen:):** `%s`\n' "$SHA_ANTES"
-  elif [ -n "$REPO_URL" ]; then printf '**sha del repo: NO se pudo fijar** (antes=`%s` · después=`%s`): repetir la traída antes de promover.\n' "${SHA_ANTES:-?}" "${SHA_DESPUES:-?}"
+  if [ -n "$SHA_CLON" ]; then echo "<!-- sha fijado: $SHA_CLON (git rev-parse HEAD del clon auditado) -->"; printf '**sha del repo (para CATALOGO origen:):** `%s`\n' "$SHA_CLON"
+  elif [ -n "$REPO_URL" ]; then echo "**sha del repo: NO se pudo leer del clon**: repetir la traída antes de promover."
   else echo "**sha del repo:** fuente que no es de GitHub; fijar a mano antes de promover."; fi
   echo
   CUARENTENA_FUENTE="$OWNER_REPO" python3 -I "$AQUI/cuarentena_auditar.py" "$Q/work"
   python3 -I "$AQUI/barrido.py" "$Q/work/.claude/skills"
-  if [ -s "$ENL" ]; then echo; echo "### ⛔ Enlaces simbólicos que traía la fuente (borrados antes de copiar; el CLI los habría desreferenciado)"; sed 's/^/- /' "$ENL"; fi
 } > "$Q/informe.md"
 echo "Informe: $Q/informe.md  ·  Nada se instaló en ~/.claude ni ~/.agents."
 echo "Siguiente paso (SOLO con el OK de la persona en el chat): leer lo marcado y promover a mano (ver la skill buscar-skill-externa, paso 7). Borrar cuarentena: rm -r $Q"
