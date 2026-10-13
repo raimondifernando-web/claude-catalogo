@@ -911,11 +911,20 @@ def nombres_de_env(env_file: Path) -> list:
         texto = env_file.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return nombres
+    # Un valor entre comillas puede seguir en varias líneas (por ejemplo una clave privada). Esas líneas se saltean:
+    # si no, un pedazo de la clave que termina en «=» parecería un nombre y llegaría al .env.example, que va a GitHub.
+    comilla_abierta = None
     for linea in texto.splitlines():
         linea = linea.strip()
+        if comilla_abierta:
+            if comilla_abierta in linea:
+                comilla_abierta = None
+            continue
         if not linea or linea.startswith("#") or "=" not in linea:
             continue
-        nombre = linea.split("=", 1)[0].strip()
+        nombre, valor = (x.strip() for x in linea.split("=", 1))
+        if valor[:1] in ("'", '"') and valor.count(valor[0]) == 1:
+            comilla_abierta = valor[0]
         if nombre.startswith("export "):
             nombre = nombre[len("export "):].strip()
         if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", nombre) and nombre not in nombres:

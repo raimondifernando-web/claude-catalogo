@@ -545,5 +545,14 @@ class TestArreglar(unittest.TestCase):
             self.assertEqual(estructura.generar_dibujo_html(texto), estructura.generar_dibujo_html(copia.read_text(encoding="utf-8")))
 
 
+
+class TestEnvMultilinea(unittest.TestCase):
+    def test_clave_en_varias_lineas_no_se_cuela(self):
+        with tempfile.TemporaryDirectory() as td:
+            env = Path(td) / ".env"
+            env.write_text('API_URL=https://x\nPRIVADA="-----BEGIN KEY-----\nQUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo=\nZmFrZWZha2U==\n-----END KEY-----"\nOTRA=1\n',
+                           encoding="utf-8")
+            self.assertEqual(estructura.nombres_de_env(env), ["API_URL", "PRIVADA", "OTRA"])
+
 if __name__ == "__main__":
     unittest.main()
