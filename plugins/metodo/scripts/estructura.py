@@ -13,6 +13,8 @@ Detección automática de nivel:
      (aplica tanto a proyectos dentro de un área como a repositorios personales en la raíz).
 3. Si la carpeta se revisa de forma aislada y no se puede inferir su jerarquía: se asume 'proyecto'.
 
+Disparador: automático (SessionStart del plugin metodo con --aviso; la primera sesión de cada semana recorre todas las carpetas) · encadenado (cerrar-check)
+
 Subcomandos:
 - dibujo [--salida RUTA] [--origen RUTA]
 - revisar [CARPETA] [--todas] [--nivel empresa|area|proyecto] [--aviso] [--raiz RUTA] [--origen RUTA]

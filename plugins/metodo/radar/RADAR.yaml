@@ -1290,6 +1290,38 @@ fuentes_auto:
       titulo: Prompt design strategies
       url: "https://ai.google.dev/gemini-api/docs/prompting-strategies.md.txt"
       hash: 4aaf698c290acb61
+    claude_code_memory:
+      proveedor: Claude Code
+      titulo: "Claude Code — memory (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
+      url: "https://code.claude.com/docs/en/memory.md"
+    claude_code_settings:
+      proveedor: Claude Code
+      titulo: "Claude Code — settings (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
+      url: "https://code.claude.com/docs/en/settings.md"
+    claude_code_skills:
+      proveedor: Claude Code
+      titulo: "Claude Code — skills (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
+      url: "https://code.claude.com/docs/en/skills.md"
+    claude_code_sub_agents:
+      proveedor: Claude Code
+      titulo: "Claude Code — sub-agents (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
+      url: "https://code.claude.com/docs/en/sub-agents.md"
+    claude_code_mcp:
+      proveedor: Claude Code
+      titulo: "Claude Code — mcp (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
+      url: "https://code.claude.com/docs/en/mcp.md"
+    claude_code_plugins_reference:
+      proveedor: Claude Code
+      titulo: "Claude Code — plugins-reference (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
+      url: "https://code.claude.com/docs/en/plugins-reference.md"
+    claude_code_plugin_marketplaces:
+      proveedor: Claude Code
+      titulo: "Claude Code — plugin-marketplaces (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
+      url: "https://code.claude.com/docs/en/plugin-marketplaces.md"
+    claude_code_large_codebases:
+      proveedor: Claude Code
+      titulo: "Claude Code — large-codebases (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
+      url: "https://code.claude.com/docs/en/large-codebases.md"
   familias:
     - id: claude-haiku
       nombre: Claude Haiku

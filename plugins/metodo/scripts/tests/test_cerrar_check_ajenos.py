@@ -70,6 +70,14 @@ class Ajenos(unittest.TestCase):
         self.assertTrue(self.linea_git(out).startswith("✗"), out)
         self.assertNotIn("0x", self.linea_git(out))
 
+    def test_estructura_se_muestra_y_no_frena(self):
+        out = self.correr()
+        self.assertIn("Estructura Claude", out)
+        self.assertTrue(any(l.startswith("  • R") and "settings.json" in l for l in out.splitlines()), out)
+        falta = next((l for l in out.splitlines() if l.startswith("Falta:")), "")
+        self.assertNotIn("settings.json", falta)
+        self.assertNotIn("Estructura", falta)
+
 
 if __name__ == "__main__":
     unittest.main()

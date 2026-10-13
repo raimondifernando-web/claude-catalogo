@@ -243,6 +243,20 @@ try:
 except Exception as e:
     print(f"• Disparadores: no se pudo medir ({type(e).__name__})")
 
+# (estructura Claude) las reglas de ESTRUCTURA.md sobre esta carpeta: solo informa («✗»/«•» de estructura.py se muestran como «•»), no frena el cierre
+try:
+    _r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "estructura.py"), "revisar", cwd],
+                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
+    _est = [l for l in _r.stdout.splitlines() if l[:1] in ("✗", "•")]
+    if _est:
+        print(f"• Estructura Claude ({len(_est)} aviso(s); no frenan el cierre, se arreglan cuando toque):")
+        for _l in _est[:8]:
+            print("  • " + _l[2:])
+    else:
+        print("✓ Estructura Claude al día")
+except Exception as e:
+    print(f"• Estructura Claude: no se pudo correr estructura.py ({type(e).__name__})")
+
 # (verificación propia) ramas ya mergeadas que quedaron vivas + línea de prueba del resultado (regla 1 del método)
 try:
     if git("rev-parse", "--show-toplevel"):
