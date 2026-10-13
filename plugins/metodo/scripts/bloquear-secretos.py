@@ -318,35 +318,74 @@ def grep_solo_cuenta(args):
     return False
 
 
-def patron_grep(args):
-    for a in args:
-        if not a.startswith("-"):
-            return a
-    return ""
-
-
 VARIABLES_INOFENSIVAS = {"path", "home", "user", "logname", "shell", "lang", "language", "pwd", "oldpwd", "term", "editor", "visual",
                          "tmpdir", "hostname", "node_env", "shlvl", "display", "tz", "pythonpath", "node_path", "virtual_env",
                          "claude_config_dir", "claude_plugin_root", "claude_project_dir"}
 
 
 def patron_inofensivo(p):
-    """¿el patrón de un grep sobre el entorno solo puede traer variables que no son secretas? Solo vale (a) el nombre de una variable
-    de la lista cerrada (PATH, HOME…), o (b) un nombre EXACTO anclado (`^NOMBRE=` / `NOMBRE=`) que no parezca secreto.
-    Un pedazo suelto como `AWS` o `tok` también trae AWS_SECRET_ACCESS_KEY=… o GH_TOKEN=… (F5 del security check 0.35.0)."""
-    t = (p or "").lstrip("^").rstrip("=")
-    if t.lower() in VARIABLES_INOFENSIVAS:
-        return True
-    return bool(re.fullmatch(r"\^?[A-Za-z_][A-Za-z0-9_]{2,}=", p or "")) and not re.search(SECRETISH, t, I)
+    """¿el patrón de un grep sobre el entorno solo puede traer una variable que no es secreta? Solo vale un nombre EXACTO anclado y con
+    «=» (`^NOMBRE=`) de la lista cerrada (PATH, HOME…) o que no parezca secreto. Sin ancla o sin «=» trae otras: `HOME` también trae
+    HOMEBREW_GITHUB_API_TOKEN=… y `AWS`, AWS_SECRET_ACCESS_KEY=… (F5 del check 0.35.0 y M-1 de la 2.ª revisión de la rama)."""
+    m = re.fullmatch(r"\^([A-Za-z_][A-Za-z0-9_]*)=", p or "")
+    if not m:
+        return False
+    return m.group(1).lower() in VARIABLES_INOFENSIVAS or not re.search(SECRETISH, m.group(1), I)
+
+
+GREP_CORTAS_CON_VALOR = set("ABCDdm")   # opciones cortas de grep que llevan un valor (-A 3, -m1…)
+GREP_LARGAS_CON_VALOR = {"--after-context", "--before-context", "--context", "--max-count", "--devices", "--directories",
+                         "--label", "--include", "--exclude", "--exclude-dir", "--binary-files", "--color", "--colour"}
+
+
+def patrones_grep(args):
+    """Todos los patrones de un grep: los de cada -e/--regexp (todos, no solo el primero) o, si no hay ninguno, el primer argumento
+    que no es opción. None si alguno viene de un archivo (-f/--file): no se puede saber qué trae (M-1)."""
+    pats, sueltos, k = [], [], 0
+    while k < len(args):
+        a = args[k]
+        if a == "--":
+            sueltos += args[k + 1:]
+            break
+        if a.startswith("--"):
+            nombre = a.split("=", 1)[0]
+            if nombre == "--file":
+                return None
+            if nombre == "--regexp":
+                if "=" in a:
+                    pats.append(a.split("=", 1)[1])
+                else:
+                    pats.append(args[k + 1] if k + 1 < len(args) else "")
+                    k += 1
+            elif nombre in GREP_LARGAS_CON_VALOR and "=" not in a:
+                k += 1
+        elif a.startswith("-") and len(a) > 1:
+            for i, letra in enumerate(a[1:], 1):
+                if letra == "f":
+                    return None
+                if letra == "e" or letra in GREP_CORTAS_CON_VALOR:
+                    valor = a[i + 1:]
+                    if not valor:
+                        k += 1
+                        valor = args[k] if k < len(args) else ""
+                    if letra == "e":
+                        pats.append(valor)
+                    break
+        else:
+            sueltos.append(a)
+        k += 1
+    if pats:
+        return pats
+    return sueltos[:1] or [""]
 
 
 def solo_filtra(despues):
-    """¿la salida pasa por un grep que solo cuenta o que busca una variable que no es secreta?"""
+    """¿la salida pasa por un grep que solo cuenta o cuyos patrones (TODOS) buscan una variable exacta que no es secreta?"""
     for n, a in despues:
         if n in GREPS:
-            p = patron_grep(a)
+            pats = patrones_grep(a)
             invierte = any(re.fullmatch(r"-[A-Za-z]*v[A-Za-z]*|--invert-match", x) for x in a)
-            if grep_solo_cuenta(a) or (patron_inofensivo(p) and not invierte):
+            if grep_solo_cuenta(a) or (pats and all(patron_inofensivo(p) for p in pats) and not invierte):
                 return True
     return False
 

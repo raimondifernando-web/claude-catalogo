@@ -80,7 +80,7 @@ DEBEN_PASAR = [
     "echo $TOKEN_FILE",
     "echo $SECRET_PATH",
     "cat cert.pub",
-    "env | grep PATH",
+    "env | grep ^PATH=",
     "env | grep -c .",
     "echo \"a << B\"",
     "echo $((1<<3))",
@@ -225,6 +225,29 @@ DEBEN_FRENARSE += [
     "git diff -- .env",
     "git log -p -- .env",
     "git blame .env",
+]
+# M-1 de la 2.ª revisión de la rama: un patrón sin ancla o sin «=» trae otras variables; se miran TODOS los -e.
+DEBEN_FRENARSE += [
+    "env | grep HOME",                      # trae HOMEBREW_GITHUB_API_TOKEN=…
+    "env | grep PATH",                      # trae MANPATH, …_PATH=… de cualquier cosa
+    "env | grep -e PATH -e TOKEN",          # antes solo se miraba el primer patrón
+    "env | grep -e ^PATH= -e TOKEN",
+    "env | grep -e^PATH= -eAWS",
+    "env | grep --regexp=^HOME= --regexp=AWS",
+    "env | grep ^LANGCHAIN_API_KEY=",
+    "env | grep ^DB_USER_PASSWORD=",
+    "env | grep ^HOMEBREW_GITHUB_API_TOKEN=",
+    "env | grep -f lista.txt",
+    "env | grep --file=lista.txt",
+    "env | grep -if lista.txt",
+    "printenv | grep -i ^home=x",
+]
+DEBEN_PASAR += [
+    "env | grep -e ^PATH= -e ^HOME=",
+    "env | grep -m1 ^HOME=",
+    "env | grep -A 2 ^SHELL=",
+    "env | grep --regexp=^LANG=",
+    "env | grep ^NODE_OPTIONS=",
 ]
 DEBEN_PASAR += [
     "env | grep ^HOME=",
