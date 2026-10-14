@@ -247,6 +247,7 @@ class TestHuellaCLI(unittest.TestCase):
         self.assertIn("cambió desde que se verificó", r2.stdout)
 
 
+@unittest.skipIf(os.name == "nt", "cuarentena-skills.sh es de bash; en Windows `bash` es el de WSL (sin distribuciones) y no el del script")
 class TestDryRun(unittest.TestCase):
     def test_dry_run_no_toca_nada(self):
         with tempfile.TemporaryDirectory() as cfg:

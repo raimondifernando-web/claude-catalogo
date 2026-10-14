@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.38.1 — 2026-10-14
+Arreglos para que el método ande igual en Windows. Se aplica solo; no hay nada que correr.
+- **Delegar en Windows:** `delegar.py --archivo` rechazaba cualquier pedido en la carpeta temporal («tiene que estar dentro del repo…») porque comparaba rutas con `\` contra rutas con `/`. Ahora compara igual en los tres sistemas.
+- **Salida con acentos en Windows:** el informe de la cuarentena de skills (`⛔`) y el aviso de piezas sin disparador de `/cerrar` salían rotos o caían por la consola de Windows (cp1252); ahora fuerzan UTF-8 como el resto de los scripts.
+- Sin cambios para Mac y Linux. Las pruebas automáticas dejan de depender de la máquina donde corren (un `python` suelto en Linux hacía fallar la de «sin Python»).
+
 ## 0.38.0 — 2026-10-14
 La estructura de Claude incluye los **documentos de los proyectos con desarrollo**. Se aplica solo; no hay nada que correr.
 - **Pocos documentos vivos, no seis:** `docs/PRD.md` (qué se construye, para quién, cuándo está terminado, qué NO se hace; adentro la parte técnica y el flujo de la app), `docs/decisiones.md` (cada decisión con fecha y porqué) y `docs/planes/` (un plan por etapa, se archiva al terminar). Las pantallas van como mockups y el esquema de datos se genera del código.

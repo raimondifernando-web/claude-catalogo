@@ -60,6 +60,7 @@ class AlDiaCopias(unittest.TestCase):
         self.assertEqual((RAIZ / "scripts" / "al-dia.sh").read_bytes(), AL_DIA.read_bytes())
 
 
+@unittest.skipIf(os.name == "nt", "al-dia.sh es un script de bash (en Windows lo reemplaza ajustes-windows.py)")
 class AlDiaPythonFijado(unittest.TestCase):
     def test_lista_con_version_y_huella_en_cada_linea(self):
         lineas = heredoc_req()
@@ -202,6 +203,7 @@ class AlDiaAjustesL5(unittest.TestCase):
         self.assertIsNone(re.search(r'plutil -(replace|insert|remove)[^|\n]*"\$S"', TEXTO))
 
 
+@unittest.skipIf(os.name == "nt", "al-dia.sh es un script de bash (en Windows lo reemplaza ajustes-windows.py)")
 class AlDiaConfiguracionAntigravity(unittest.TestCase):
     """C58 (revisión): al-dia NO escribe reglas en Antigravity; solo saca `git -C *` y avisa de las amplias, sin ejecutar agy."""
     BLOQUE = tramo("# Configuración de Antigravity: NO se le agrega ninguna regla.", "# 5h.")

@@ -24,6 +24,7 @@ import sys
 import tempfile
 import types
 import unittest
+from unittest import mock
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
@@ -520,8 +521,9 @@ if not ES_WINDOWS:
     CARPETAS += [
         ("home-entero", "/", "privada", None),
         ("home-entero", HOME.upper(), "privada", None),                       # Mac: mismas carpetas sin importar mayúsculas
-        ("firmlink", "/System/Volumes/Data" + HOME, "privada", None),        # Mac: la misma carpeta personal por otra ruta
     ]
+if sys.platform == "darwin":   # los firmlinks (/System/Volumes/Data/Users/...) solo existen en macOS; en Linux esa ruta no existe y no es la misma carpeta
+    CARPETAS.append(("firmlink", "/System/Volumes/Data" + HOME, "privada", None))   # Mac: la misma carpeta personal por otra ruta
 
 
 def _probar_carpeta(self, ruta, esperado, hallazgo):
@@ -708,16 +710,13 @@ class CorpusAgyReglas(unittest.TestCase):
 
     def test_agy_reglas_m_3_configuracion_que_no_se_entiende_avisa(self):
         """M-3 · una configuración con comentarios (JSONC) no se calla: devuelve el motivo para el aviso en rojo."""
-        previo = os.environ.get("HOME")
         with tempfile.TemporaryDirectory() as d:
             conf = Path(d) / ".gemini" / "antigravity-cli" / "settings.json"
             conf.parent.mkdir(parents=True)
             conf.write_text('{\n  // comentario\n  "permissions": {"allow": ["command(*)"]}\n}\n', encoding="utf-8")
-            os.environ["HOME"] = d
-            try:
+            # HOME en Mac/Linux y USERPROFILE en Windows: de ahí sale Path.home()
+            with mock.patch.dict(os.environ, {"HOME": d, "USERPROFILE": d}):
                 amplias, error = DG.reglas_amplias_agy()
-            finally:
-                os.environ["HOME"] = previo
         self.assertEqual(amplias, [])
         self.assertIsNotNone(error)
 
@@ -768,7 +767,10 @@ class CorpusAgyTrabajo(unittest.TestCase):
         self.d = Path(tempfile.mkdtemp()).resolve()
         self.casa = self.d / "casa"
         self.casa.mkdir()
-        os.environ["HOME"] = str(self.casa)
+        # Windows: Path.home() sale de USERPROFILE, no de HOME. El parche se arma ANTES de tocar HOME: al terminar restaura el entorno de ese momento
+        parche = mock.patch.dict(os.environ, {"USERPROFILE": str(self.casa), "HOME": str(self.casa)})
+        parche.start()
+        self.addCleanup(parche.stop)
 
     def tearDown(self):
         for k, v in self._previo.items():

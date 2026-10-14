@@ -412,6 +412,7 @@ class ContratoBashTest(_Correr, unittest.TestCase):
             self.assertIn("no está activo", r.stdout)
             self.assertEqual(victima.read_text(), "NO TOCAR")
 
+    @unittest.skipIf(os.name == "nt", "usa /bin/bash; la rama de Windows (sin Python) la cubre test_lanzadores_windows")
     def test_sin_python_avisa_y_deja_pasar(self):
         # PATH vacío: el envoltorio no encuentra python3 en el PATH; en /usr/bin sí puede haber uno (macOS), así que
         # solo se exige que no frene y no rompa
