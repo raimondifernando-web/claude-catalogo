@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+"""Une la rama de esta sesión a `main` SIN pedir OK, si pasan los controles automáticos.
+
+Disparador: encadenado — lo corre la sesión al terminar un tema en su rama (paso de unir a main de /cerrar y de
+/metodo:cerrar). También a mano: unir-a-main --revisado-por "<quién revisó>"
+
+Decisión del dueño (2026-10-14): «reemplazá mi OK para unir a main por controles automáticos». El OK humano queda
+SOLO para lo que corre solo en la computadora (zona sensible: ajustes de Claude, hooks, tareas que arrancan solas,
+instaladores, robots), para borrar o reescribir historia y para cosas de negocio. Este programa nunca fuerza nada.
+
+Controles, en orden (si uno falla, no se une y dice por qué):
+  1. repo permitido: si existe <config de Claude>/unir-a-main.txt, solo los repos que lista (nombre del repo en
+     GitHub, uno por línea); el catálogo público nunca (va por PR con checks en GitHub)
+  2. rama propia (no main, no m4) y sin cambios a medias
+  3. trae lo nuevo de main a la rama (si hay conflicto, frena y no toca nada)
+  4. zona sensible: si el cambio toca lo que corre solo, frena y pide el OK (--ok-fernando, que da solo la persona)
+  5. pruebas del repo: .claude/pruebas.sh si existe; si no, las que encuentre (make test, npm test, swift test,
+     tests/test_*.py). Sin pruebas, solo con --sin-pruebas "<motivo>" (queda escrito en main)
+  6. revisión de alguien distinto del autor: --revisado-por es obligatorio y queda escrito en main
+Después: crea el commit de unión (con pruebas, revisión y zona sensible en el mensaje) y lo sube a main sin forzar.
+Si main cambió mientras tanto, no sube: volvé a correrlo. --probar hace todo menos subir.
+"""
+import argparse
+import fnmatch
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+CONFIG = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
+PERMITIDOS = CONFIG / "unir-a-main.txt"
+NUNCA = {"claude-catalogo"}   # público y con clientes: va por PR + checks en GitHub (controles y zona-sensible)
+
+# Lo que corre solo en la computadora, en cualquier repo (fnmatch: «*» cruza carpetas).
+SENSIBLE = [
+    ("*.plist", "una tarea que arranca sola (launchd)"),
+    ("*LaunchAgents/*", "una tarea que arranca sola (launchd)"),
+    ("instalar*.sh", "un instalador"), ("*/instalar*.sh", "un instalador"),
+    ("desinstalar*.sh", "un desinstalador"), ("*/desinstalar*.sh", "un desinstalador"),
+    (".claude/settings*.json", "ajustes de Claude del proyecto (permisos, hooks)"),
+    (".claude/hooks/*", "un hook"), ("*hooks/hooks.json", "un hook"),
+    (".github/workflows/*", "un robot de GitHub"),
+    (".git-hooks/*", "un hook de git"),
+]
+# Además, en la carpeta de configuración de Claude (el repo de ~/.claude):
+SENSIBLE_CONFIG = [
+    ("settings.json", "los ajustes de Claude (permisos, hooks, modo auto)"),
+    ("settings.local.json", "los ajustes de Claude"),
+    ("hooks/*", "un hook"), ("mods/*", "un agregado a la pantalla de Claude"),
+    ("keybindings.json", "atajos de teclado"),
+]
+
+
+class Frena(Exception):
+    pass
+
+
+def sh(*cmd, cwd=None, ok=(0,), timeout=None):
+    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+    if r.returncode not in ok:
+        raise Frena(f"falló «{' '.join(cmd)}»: {(r.stderr or r.stdout).strip()[:400]}")
+    return r
+
+
+def git(repo, *args, ok=(0,)):
+    return sh("git", "-C", str(repo), *args, ok=ok)
+
+
+def nombre_repo(url):
+    m = re.search(r"[:/]([^/:]+?)/([^/]+?)(?:\.git)?/?$", url or "")
+    return m.group(2) if m else ""
+
+
+def es_config(repo):
+    try:
+        return repo.resolve() == CONFIG.resolve() or ((repo / "settings.json").exists() and (repo / "skills").is_dir())
+    except OSError:
+        return False
+
+
+def zona_sensible(repo, cambiados):
+    reglas = list(SENSIBLE)
+    propia = repo / ".claude" / "zona-sensible.txt"
+    if propia.exists():
+        reglas += [(l.strip(), "lo marca .claude/zona-sensible.txt") for l in propia.read_text().splitlines()
+                   if l.strip() and not l.startswith("#")]
+    if es_config(repo):
+        reglas += SENSIBLE_CONFIG
+        ajustes = repo / "settings.json"
+        if ajustes.exists():  # los scripts que los hooks y la línea de estado ejecutan solos
+            for rel in set(re.findall(r"\.claude/([A-Za-z0-9._/-]+)", ajustes.read_text(errors="replace"))):
+                reglas.append((rel, "lo ejecuta solo un hook o la línea de estado (settings.json)"))
+    out = {}
+    for p in cambiados:
+        for patron, motivo in reglas:
+            if p == patron or fnmatch.fnmatch(p, patron):
+                out[p] = motivo
+                break
+    return out
+
+
+def pruebas(repo):
+    """Devuelve (descripción, comando) o (None, None)."""
+    if (repo / ".claude" / "pruebas.sh").exists():
+        return ".claude/pruebas.sh", ["bash", ".claude/pruebas.sh"]
+    mk = repo / "Makefile"
+    if mk.exists() and re.search(r"^test:", mk.read_text(errors="replace"), re.M):
+        return "make test", ["make", "test"]
+    pk = repo / "package.json"
+    if pk.exists() and '"test"' in pk.read_text(errors="replace") and shutil.which("npm"):
+        return "npm test", ["npm", "test", "--silent"]
+    if (repo / "Package.swift").exists() and shutil.which("swift"):
+        return "swift test", ["swift", "test"]
+    tests = [d for d in ("tests", "test") if (repo / d).is_dir() and list((repo / d).glob("test_*.py"))]
+    if tests:
+        if subprocess.run([sys.executable, "-c", "import pytest"], capture_output=True).returncode == 0:
+            return f"pytest {tests[0]}", [sys.executable, "-m", "pytest", "-q", tests[0]]
+        return f"unittest {tests[0]}", [sys.executable, "-m", "unittest", "discover", "-s", tests[0]]
+    return None, None
+
+
+def principal(a):
+    repo = Path(sh("git", "-C", a.repo, "rev-parse", "--show-toplevel").stdout.strip())
+    nombre = nombre_repo(git(repo, "remote", "get-url", "origin", ok=(0, 2)).stdout.strip())
+    if not nombre:
+        raise Frena("el repo no tiene remoto `origin`: no hay main compartido que unir")
+    if nombre in NUNCA:
+        raise Frena(f"{nombre} no se une desde acá: va por PR (`gh pr create` + `gh pr merge --auto`); GitHub "
+                    "corre los checks `controles` y `zona-sensible` y une solo si pasan")
+    if PERMITIDOS.exists():
+        lista = {l.strip() for l in PERMITIDOS.read_text().splitlines() if l.strip() and not l.startswith("#")}
+        if nombre not in lista:
+            raise Frena(f"{nombre} no está en {PERMITIDOS}: en ese repo se une como siempre (con OK)")
+    rama = git(repo, "branch", "--show-current").stdout.strip()
+    if not rama or rama in ("main", "master"):
+        raise Frena("estás en main (o sin rama): esto une una rama de sesión a main")
+    if rama == "m4":
+        raise Frena("m4 no se une a main (historia duplicada): cherry-pick de lo marcado + en `git cherry main m4`")
+    if git(repo, "status", "--porcelain", "--untracked-files=no").stdout.strip():
+        raise Frena("hay cambios sin guardar en la rama: commitealos (solo lo tuyo, por pathspec) y volvé a correrlo")
+
+    git(repo, "fetch", "-q", "origin", "main")
+    base = git(repo, "rev-parse", "origin/main").stdout.strip()
+    if git(repo, "merge-base", "--is-ancestor", base, "HEAD", ok=(0, 1)).returncode:
+        r = git(repo, "merge", "--no-edit", "-q", "origin/main", ok=(0, 1, 128))
+        if r.returncode:
+            git(repo, "merge", "--abort", ok=(0, 128))
+            raise Frena("traer main a la rama da conflicto: resolvelo en la rama y volvé a correrlo (no se tocó main)")
+    commits = int(git(repo, "rev-list", "--count", f"{base}..HEAD").stdout.strip())
+    if commits == 0:
+        print(f"Nada para unir: {rama} no tiene commits que main no tenga ✓")
+        return 0
+
+    cambiados = [p for p in git(repo, "diff", "--name-only", f"{base}...HEAD").stdout.splitlines() if p]
+    sensibles = zona_sensible(repo, cambiados)
+    if sensibles and not a.ok_fernando:
+        print("FRENO — toca lo que corre solo en la computadora; necesita el OK de la persona:")
+        for p in sorted(sensibles):
+            print(f"  · {p} — {sensibles[p]}")
+        print("Pedile el OK en el chat nombrando estos archivos; con su sí, volvé a correrlo con --ok-fernando.")
+        return 3
+
+    desc, cmd = pruebas(repo)
+    if cmd:
+        try:
+            r = subprocess.run(cmd, cwd=repo, capture_output=True, text=True, timeout=a.tope)
+        except subprocess.TimeoutExpired:
+            raise Frena(f"las pruebas ({desc}) tardaron más de {a.tope} s: no se une")
+        if r.returncode:
+            print((r.stdout + r.stderr)[-1500:])
+            raise Frena(f"las pruebas ({desc}) fallaron: no se une")
+        prueba = f"{desc} OK"
+    elif a.sin_pruebas.strip():
+        prueba = f"sin pruebas en el repo ({a.sin_pruebas.strip()})"
+    else:
+        raise Frena("no encontré pruebas en el repo (.claude/pruebas.sh, make test, npm test, swift test, "
+                    "tests/test_*.py): agregalas o pasá --sin-pruebas \"<motivo>\" (queda escrito en main)")
+
+    revision = a.revisado_por.strip()
+    if len(revision) < 3:
+        raise Frena("--revisado-por: quién revisó el cambio (otra IA o un agente distinto del autor)")
+    zona = ("OK de la persona para: " + ", ".join(sorted(sensibles))) if sensibles else "no"
+    mensaje = (f"Unir {rama} a main\n\nPruebas: {prueba}\nRevisión: {revision}\nZona sensible: {zona}\n"
+               f"Commits: {commits}\nUnido con unir-a-main: sin OK humano si pasan los controles (decisión 2026-10-14)")
+    if a.probar:
+        print(f"Prueba ✓ {nombre} ← {rama}: se uniría ({commits} commit(s) · pruebas: {prueba} · revisión: {revision})")
+        return 0
+    arbol = git(repo, "rev-parse", "HEAD^{tree}").stdout.strip()
+    union = git(repo, "commit-tree", arbol, "-p", base, "-p", "HEAD", "-m", mensaje).stdout.strip()
+    r = git(repo, "push", "-q", "origin", f"{union}:refs/heads/main", ok=(0, 1))
+    if r.returncode:
+        raise Frena("main cambió mientras tanto o el push fue rechazado (nunca se fuerza): volvé a correrlo\n"
+                    + r.stderr.strip()[-600:])
+    git(repo, "fetch", "-q", "origin", "main")
+    git(repo, "merge", "--ff-only", "-q", "origin/main", ok=(0, 1, 128))   # la rama queda igual a main
+    carpeta_main = ""
+    for bloque in git(repo, "worktree", "list", "--porcelain").stdout.split("\n\n"):
+        if "branch refs/heads/main" in bloque:
+            carpeta_main = bloque.split("\n", 1)[0].replace("worktree ", "", 1).strip()
+    nota = ""
+    if carpeta_main:
+        r = git(carpeta_main, "merge", "--ff-only", "-q", "origin/main", ok=(0, 1, 128))
+        nota = "" if r.returncode == 0 else f" · la carpeta {carpeta_main} se pone al día en su próximo pull"
+    comun = Path(git(repo, "rev-parse", "--git-common-dir").stdout.strip())
+    comun = comun if comun.is_absolute() else (repo / comun)
+    with open(comun.resolve() / "uniones-a-main.log", "a") as f:
+        f.write(f"{union} {rama} | {prueba} | {revision} | zona: {zona}\n")
+    print(f"Unido a main ✓ {nombre} ← {rama} ({commits} commit(s) · pruebas: {prueba} · revisión: {revision}"
+          f" · zona sensible: {'con OK' if sensibles else 'no'}){nota}")
+    return 0
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Une la rama de la sesión a main si pasan los controles automáticos.")
+    ap.add_argument("--repo", default=".")
+    ap.add_argument("--revisado-por", required=True, help="quién revisó (otra IA o un agente distinto del autor)")
+    ap.add_argument("--ok-fernando", action="store_true",
+                    help="la persona dio el OK en el chat para la zona sensible (nunca lo pone la sesión sola)")
+    ap.add_argument("--sin-pruebas", default="", help="motivo por el que el repo no tiene pruebas")
+    ap.add_argument("--probar", action="store_true", help="todos los controles, sin subir nada")
+    ap.add_argument("--tope", type=int, default=900, help="segundos máximos para las pruebas")
+    a = ap.parse_args()
+    try:
+        return principal(a)
+    except Frena as e:
+        print(f"No se unió ✗ {e}")
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

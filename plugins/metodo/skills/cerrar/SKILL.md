@@ -119,14 +119,22 @@ archives**. Solo si el usuario decide cerrar igual, el `REANUDAR.md` lista cada 
    - Si `push` falla por otra razón (sin internet, sin remoto), decilo tal cual: el commit quedó local y el prompt
      de reanudación lleva «PENDIENTE: subir cambios».
    - Nunca `--force`, nunca `reset --hard`, nunca borrar ni reescribir historial.
-   - **Juntar la rama a `main` es otra cosa y SÍ se pregunta**, porque afecta a las demás sesiones: si estás en una
-     rama propia, al final ofrecé «¿Junto esta rama a `main`? Se hace de a una sesión por vez» y ejecutalo solo con
-     «sí». Desde una copia, `main` suele estar en uso en la carpeta principal y `git checkout main` falla; por eso
-     el camino es traer `main` a tu rama y empujar el avance rápido:
-     `git fetch origin && git merge origin/main && git push origin HEAD:main`
-     (si `git merge origin/main` da conflicto, mostralo y no fuerces; el push a `main` solo entra si es avance
-     rápido — nunca `--force`). Después ofrecé borrar la copia (`git worktree remove <ruta>`),
-     también con «sí»; nunca borres copias de otra sesión.
+   - **Juntar la rama a `main` ya no se pregunta: lo deciden los controles** (regla 3). Si estás en una rama propia
+     y el tema terminó, primero pedí una revisión a alguien distinto de quien escribió el cambio (el agente
+     `code-reviewer` o `security-reviewer` de `escala-desarrollo`, u otra IA con `scripts/delegar.py ... --revisar`)
+     y después corré:
+     `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/unir-a-main" --revisado-por "<quién revisó>"`
+     Trae `main` a tu rama, corre las pruebas del repo, se frena si el cambio toca lo que corre solo en la
+     computadora, y sube a `main` sin forzar nunca. Leé su última línea y contala tal cual:
+     - «Unido a main ✓ …» → listo.
+     - «FRENO — toca lo que corre solo…» → mostrale al usuario la lista de archivos y pedile el OK en criollo
+       («esto cambia algo que arranca solo en tu computadora: ¿lo sumo?»). Solo con su sí volvé a correrlo con
+       `--ok-fernando` (el nombre es histórico: es el OK de la persona dueña). Nunca lo pongas sin ese sí.
+     - «No se unió ✗ …» → decí el motivo tal cual (pruebas que fallan, conflicto, sin pruebas) y dejalo en la PARTE B
+       como pendiente. Si el repo no tiene pruebas, preguntá si querés unir igual y, con su sí, corré con
+       `--sin-pruebas "<motivo>"`. Nunca lo resuelvas forzando.
+     Si el repo tiene checks obligatorios en GitHub, no uses el programa: `gh pr create` + `gh pr merge --auto`.
+     Después ofrecé borrar la copia (`git worktree remove <ruta>`), con «sí»; nunca borres copias de otra sesión.
 6. **Confirmá al usuario** en 2-3 líneas qué quedó hecho y dónde (incluida la subida al repo, si se hizo).
 7. **Validá el prompt antes de emitirlo:** tiene las dos partes; la PARTE A trae rol, alcance y reglas con
    contenido real (no una línea genérica); la PARTE B trae lo hecho, «De qué veníamos hablando» (de la CONVERSACIÓN, no de git), los pendientes en orden **con su

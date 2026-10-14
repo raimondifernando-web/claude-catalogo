@@ -1066,7 +1066,8 @@ class TestWorkflow(unittest.TestCase):
 
 
 class TestRulesets(unittest.TestCase):
-    ARCHIVOS = ("estable-intocable.json", "proteger-estable.json", "tags-estable.json", "ramas-estable.json")
+    ARCHIVOS = ("estable-intocable.json", "proteger-estable.json", "tags-estable.json", "ramas-estable.json",
+                "proteger-main.json")
     # En un repositorio personal GitHub no deja poner a GitHub Actions como excepción (422): la única excepción posible
     # es una clave de despliegue (deploy key), y su actor_id va en null.
     CLAVE_DE_DESPLIEGUE = {"actor_id": None, "actor_type": "DeployKey", "bypass_mode": "always"}
@@ -1109,6 +1110,20 @@ class TestRulesets(unittest.TestCase):
         self.assertEqual(rs["conditions"]["ref_name"]["exclude"], ["refs/heads/estable"])
         self.assertEqual(self.tipos(rs), ["creation"])
         self.assertEqual(rs["bypass_actors"], [])
+
+    def test_proteger_main_solo_por_pr_con_los_dos_checks_y_sin_excepciones(self):
+        # Decisión del dueño (2026-10-14): a main se entra por PR y lo deciden los checks, no un OK humano.
+        rs = self.cargar("proteger-main.json")
+        self.assertEqual(rs["target"], "branch")
+        self.assertEqual(rs["enforcement"], "active")
+        self.assertEqual(rs["conditions"]["ref_name"]["include"], ["~DEFAULT_BRANCH"])
+        self.assertEqual(self.tipos(rs), ["deletion", "non_fast_forward", "pull_request", "required_status_checks"])
+        self.assertEqual(rs["bypass_actors"], [])    # ni el dueño se saltea los checks
+        checks = next(r for r in rs["rules"] if r["type"] == "required_status_checks")["parameters"]
+        self.assertEqual(sorted((c["context"], c["integration_id"]) for c in checks["required_status_checks"]),
+                         [("controles", 15368), ("zona-sensible", 15368)])   # solo valen si los corre GitHub Actions
+        self.assertNotIn("rebase", next(r for r in rs["rules"] if r["type"] == "pull_request")["parameters"]
+                         ["allowed_merge_methods"])
 
     def test_nombres_distintos_y_solo_uno_con_excepcion(self):
         todos = [self.cargar(n) for n in self.ARCHIVOS]

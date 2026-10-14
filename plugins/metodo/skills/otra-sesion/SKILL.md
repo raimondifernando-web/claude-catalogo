@@ -40,7 +40,8 @@ Sin claves. Nada sale de la computadora: crear la copia es local; subir la rama 
 4. **Entregá el texto de arranque de la segunda sesión**, listo para pegar en la ventana nueva (plantilla abajo).
    Es lo más importante del paso: sin ese texto la sesión nueva no sabe su tema ni su límite.
 5. **Avisale al usuario cómo termina:** cuando el tema esté listo, en esa ventana escribe `/metodo:cerrar`: sube la
-   rama, ofrece juntarla a `main` (con «sí», de a una sesión por vez) y ofrece borrar la copia
+   rama, la junta a `main` sola si pasan las pruebas y la revisión (`scripts/unir-a-main`; pregunta solo si toca lo
+   que corre solo en la computadora) y ofrece borrar la copia
    (`git worktree remove ../<carpeta>-<tema>`, con «sí»). **Nunca se borra la copia de otra sesión.**
 
 ## Plantilla del texto de arranque para la segunda sesión

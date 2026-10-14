@@ -776,7 +776,7 @@ class TestWorkflow(unittest.TestCase):
     def test_permisos_minimos(self):
         bloque = re.search(r"^permissions:\n((?:[ ]+\S.*\n)+)", self.texto, re.M).group(1)
         permisos = dict(re.findall(r"^\s+([\w-]+):\s*(\w+)", bloque, re.M))
-        self.assertEqual(permisos, {"contents": "write", "pull-requests": "write"})
+        self.assertEqual(permisos, {"contents": "write", "pull-requests": "write", "actions": "write"})
 
     def test_sin_claves_ni_secretos_propios_y_publica_solo_con_guardias(self):
         # Decisión del dueño 2026-10-03: se publica solo, pero únicamente si pasan las guardias.

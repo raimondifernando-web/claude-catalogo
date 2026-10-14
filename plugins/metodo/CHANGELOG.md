@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.39.0 — 2026-10-14
+**Unir el trabajo a `main` ya no te pide OK:** lo deciden los controles automáticos. Se aplica solo; no hay nada que correr.
+- **`/metodo:cerrar` junta la rama a `main` solo** cuando el tema terminó: primero pide una revisión a alguien distinto de quien escribió el cambio (un agente revisor u otra IA) y después corre `scripts/unir-a-main`, que trae lo nuevo de `main`, corre las pruebas de tu repo y sube sin forzar nunca. Si algo falla (pruebas, conflicto), no une y te dice por qué.
+- **Te sigue preguntando** solo cuando el cambio toca **lo que corre solo en tu computadora** (ajustes de Claude, hooks, tareas que arrancan solas, instaladores, robots de GitHub), cuando hay que **borrar o reescribir historia** y en las **decisiones del negocio**. Reglas 3 y 13 actualizadas.
+- Cada unión deja escrito en `main` qué pruebas pasaron y quién revisó, para poder mirarlo después.
+
 ## 0.38.0 — 2026-10-14
 La estructura de Claude incluye los **documentos de los proyectos con desarrollo**. Se aplica solo; no hay nada que correr.
 - **Pocos documentos vivos, no seis:** `docs/PRD.md` (qué se construye, para quién, cuándo está terminado, qué NO se hace; adentro la parte técnica y el flujo de la app), `docs/decisiones.md` (cada decisión con fecha y porqué) y `docs/planes/` (un plan por etapa, se archiva al terminar). Las pantallas van como mockups y el esquema de datos se genera del código.

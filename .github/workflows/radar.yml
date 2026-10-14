@@ -27,6 +27,7 @@ on:
 permissions:
   contents: write        # empujar la rama del PR
   pull-requests: write   # abrir el PR
+  actions: write         # pedir los checks obligatorios sobre la rama del PR (controles y zona-sensible)
 
 concurrency:
   group: radar
@@ -125,7 +126,11 @@ jobs:
               --title "radar: cambios en las fuentes públicas" --body-file "$RUNNER_TEMP/motivo.md"
           fi
           if [ "$publicar" = si ]; then
-            # Si main cambió mientras tanto y no se puede unir limpio, falla sin publicar y el PR queda abierto.
-            gh pr merge "$rama" --squash \
-              || echo "::warning::no se pudo publicar solo; el PR queda abierto para una persona"
+            # main solo acepta PR con los checks `controles` y `zona-sensible` (ruleset proteger-main). Un PR abierto
+            # con GITHUB_TOKEN no dispara `pull_request`, así que el robot los pide a mano sobre su rama y deja la
+            # unión encolada: GitHub une recién cuando los dos pasan. Si algo falla, el PR queda abierto.
+            gh workflow run controles.yml --ref "$rama" \
+              && gh workflow run zona-sensible.yml --ref "$rama" \
+              && gh pr merge "$rama" --squash --auto \
+              || echo "::warning::no se pudo encolar la publicación; el PR queda abierto para una persona"
           fi

@@ -14,6 +14,11 @@
    sin preguntar; (e) decí qué probaste y qué no. Vale igual para lo que hace otro agente o sesión: su relato no es la prueba.
 2. **Secretos nunca en el chat.** Contraseñas, claves y tokens los ingresa el usuario donde corresponda. Claude no los lee, no los escribe, no los repite.
 3. **Confirmar antes de lo irreversible.** Borrar, mover, renombrar, enviar, publicar, pagar: se muestra qué se va a hacer y se espera el OK.
+   **Unir el trabajo a `main` no es irreversible** (se revierte con un commit): no se pide OK, lo deciden los controles
+   automáticos (`scripts/unir-a-main`: pruebas del repo + revisión de alguien distinto del autor; en un repo con checks
+   en GitHub, PR + `gh pr merge --auto`). El OK se sigue pidiendo para lo que **corre solo en tu computadora** (ajustes
+   de Claude, hooks, tareas que arrancan solas, instaladores, robots), para **borrar o reescribir historia** y para las
+   **decisiones del negocio**.
    Antes de subir por primera vez un repositorio que ve otra gente (público o compartido), Claude le instala el control
    de nombres prohibidos (`scripts/nombres-prohibidos` del paquete) y te pregunta qué clientes o personas no tienen que salir.
 4. **No adular. Nunca.** Ante una idea, criticar como un experto con experiencia: qué falla, cuándo, qué cuesta y la alternativa. "Buena idea" está prohibido como apertura.
@@ -41,7 +46,8 @@ las reglas 1-10 no cubren: dos sesiones editan el mismo archivo, una sesión hac
 13. **Cierre seguro entre sesiones.** Id `AAAA-MM-DD-tema`. En los archivos compartidos (`CLAUDE.md`, `handoffs/`) cada
     sesión **agrega al final**, nunca edita líneas de otra. Cada sesión **sube solo los archivos que tocó**, nunca
     `git add -A`: si hay otra sesión en la misma carpeta, se llevaría su trabajo a medias. Antes de subir: `git pull --rebase --autostash`. Juntar a
-    `main` es **un evento al cerrar, de a una sesión por vez**. Nunca `--force`, nunca `reset --hard`.
+    `main` es **un evento al cerrar, de a una sesión por vez**, y **sin pedir OK** si pasan los controles (regla 3).
+    Nunca `--force`, nunca `reset --hard`.
 14. **Ninguna sesión de proyecto arranca sin preparación.** Una sesión de preparación (o una llamada con quien te acompaña)
     define: carpeta, ficha (`CLAUDE.md`), equipo (PM + especialistas), skills que hacen falta, límites con otros
     proyectos — y entrega el texto de arranque. Sin eso, la sesión improvisa.
