@@ -16,6 +16,7 @@ def sh(*cmd, cwd=None, env=None):
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, env={**os.environ, **(env or {})})
 
 
+@unittest.skipIf(os.name == "nt", "unir-a-main es una herramienta de Mac/Linux (rutas, git y bash propios); en Windows no se usa")
 class UnirAMain(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

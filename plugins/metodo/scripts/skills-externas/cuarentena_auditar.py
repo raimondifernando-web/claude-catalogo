@@ -6,6 +6,13 @@ Disparador: lo corre cuarentena-skills justo después de traer los candidatos (p
 import glob, importlib.util, json, os, re, subprocess, sys, urllib.parse, urllib.request
 from pathlib import Path
 
+# Windows: la consola usa cp1252 y los acentos / ⛔ rompían o ensuciaban la salida; se fuerza UTF-8 (como en los demás scripts).
+for _flujo in (sys.stdin, sys.stdout, sys.stderr):
+    try:
+        _flujo.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 HOME = Path.home()
 CFG = Path(os.environ.get("CLAUDE_CONFIG_DIR") or HOME / ".claude")
 

@@ -1,4 +1,11 @@
 import os, re, sys, pathlib, unicodedata
+
+# Windows: la consola usa cp1252 y los acentos salían rotos; se fuerza UTF-8 (como en los demás scripts).
+for _flujo in (sys.stdin, sys.stdout, sys.stderr):
+    try:
+        _flujo.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 root = pathlib.Path(sys.argv[1])
 pats = {
     "inyección/orden al agente": re.compile(r"(ignore (all |any )?(previous|prior|above)|disregard (the )?(previous|system)|do not (tell|inform|mention)[^.\n]{0,40}(user|human)|without (telling|asking|informing) the user|you must not reveal|override (the )?system|new instructions:)", re.I),

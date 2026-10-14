@@ -9,7 +9,7 @@ HOOK = next(p for p in (AQUI / "skills-cli-tranca.py", AQUI.parent.parent / "cla
 
 
 def hook(cmd):
-    r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps({"tool_input": {"command": cmd}}), capture_output=True, text=True)
+    r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps({"tool_input": {"command": cmd}}), capture_output=True, encoding="utf-8", errors="replace")
     return r.returncode
 
 
@@ -36,7 +36,7 @@ class TestHook(unittest.TestCase):
             self.assertEqual(hook(c), 0, c)
 
     def test_entrada_rota_no_bloquea(self):
-        r = subprocess.run([sys.executable, str(HOOK)], input="no es json", capture_output=True, text=True)
+        r = subprocess.run([sys.executable, str(HOOK)], input="no es json", capture_output=True, encoding="utf-8", errors="replace")
         self.assertEqual(r.returncode, 0)
 
 
@@ -51,7 +51,7 @@ def informe(skills):
                     p.symlink_to("/etc/hosts")
                 else:
                     p.write_text(txt, encoding="utf-8")
-        r = subprocess.run([sys.executable, "-I", str(AQUI / "cuarentena_auditar.py"), str(work)], capture_output=True, text=True, timeout=120)
+        r = subprocess.run([sys.executable, "-I", str(AQUI / "cuarentena_auditar.py"), str(work)], capture_output=True, encoding="utf-8", errors="replace", timeout=120)
         return r.stdout + r.stderr
 
 
@@ -85,8 +85,8 @@ class TestEnlaces(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             afuera = Path(d) / "afuera"; afuera.mkdir(); (afuera / "SKILL.md").write_text("---\nname: x\ndescription: x\n---\nSECRETO_FALSO\n")
             skills = Path(d) / "work/.claude/skills"; skills.mkdir(parents=True); (skills / "ajena").symlink_to(afuera)
-            r = subprocess.run([sys.executable, "-I", str(AQUI / "cuarentena_auditar.py"), str(Path(d) / "work")], capture_output=True, text=True, timeout=120)
-            b = subprocess.run([sys.executable, str(AQUI / "barrido.py"), str(skills)], capture_output=True, text=True)
+            r = subprocess.run([sys.executable, "-I", str(AQUI / "cuarentena_auditar.py"), str(Path(d) / "work")], capture_output=True, encoding="utf-8", errors="replace", timeout=120)
+            b = subprocess.run([sys.executable, str(AQUI / "barrido.py"), str(skills)], capture_output=True, encoding="utf-8", errors="replace")
         self.assertIn("NO ENTRA", r.stdout, r.stdout + r.stderr)
         self.assertIn("enlace simbólico", r.stdout)
         self.assertNotIn("sin hallazgos", b.stdout)
@@ -112,7 +112,7 @@ class TestEnlaces(unittest.TestCase):
         env = dict(os.environ, TMPDIR=str(tmp))
         if base:
             env["CUARENTENA_GITHUB_BASE"] = base
-        r = subprocess.run(["bash", str(AQUI / "cuarentena-skills.sh"), fuente, *args], capture_output=True, text=True, timeout=180, env=env)
+        r = subprocess.run(["bash", str(AQUI / "cuarentena-skills.sh"), fuente, *args], capture_output=True, encoding="utf-8", errors="replace", timeout=180, env=env)
         q = next(iter(tmp.glob("cuarentena-skills.*")), None)
         return r, q
 
@@ -166,7 +166,7 @@ class TestEnlaces(unittest.TestCase):
                 (src / "skills/mi-skill/relativo.txt").symlink_to("../" * 30 + str(d / "afuera/secreto.txt").lstrip("/"))
                 for c in (["init", "-q", "-b", "main"], ["add", "-A"], ["commit", "-q", "-m", "x"]):
                     subprocess.run(["git", "-C", str(src), *c], check=True, capture_output=True, env=env_git)
-                arbol = subprocess.run(["git", "-C", str(src), "ls-tree", "-r", "HEAD"], capture_output=True, text=True).stdout
+                arbol = subprocess.run(["git", "-C", str(src), "ls-tree", "-r", "HEAD"], capture_output=True, encoding="utf-8", errors="replace").stdout
                 self.assertEqual(arbol.count("120000 blob"), 3, arbol)       # los tres viajan como enlaces de git
                 (d / "gh/pers").mkdir(parents=True)
                 subprocess.run(["git", "clone", "-q", "--bare", str(src), str(d / "gh/pers/repo.git")], check=True, capture_output=True)
@@ -178,7 +178,7 @@ class TestEnlaces(unittest.TestCase):
                 for nombre in ("notas.txt", "refs", "relativo.txt"):
                     self.assertIn('`"skills/mi-skill/%s"` ->' % nombre, informe_md)   # L-5: escapado
                 # L-4: el sha fijado es el del clon auditado (HEAD del repo servido), no el de un ls-remote aparte
-                cabeza = subprocess.run(["git", "-C", str(d / "gh/pers/repo.git"), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+                cabeza = subprocess.run(["git", "-C", str(d / "gh/pers/repo.git"), "rev-parse", "HEAD"], capture_output=True, encoding="utf-8", errors="replace").stdout.strip()
                 self.assertIn("sha fijado: %s (git rev-parse HEAD del clon auditado)" % cabeza, informe_md)
 
     def _auditar_con_enlaces(self, d, lineas):
@@ -190,8 +190,8 @@ class TestEnlaces(unittest.TestCase):
         enl = d / "enlaces.txt"
         enl.write_text("".join(json.dumps(x) + "\n" for x in lineas))
         env = dict(os.environ, CUARENTENA_ENLACES=str(enl))
-        a = subprocess.run([sys.executable, "-I", str(AQUI / "cuarentena_auditar.py"), str(d / "work")], capture_output=True, text=True, timeout=120, env=env)
-        b = subprocess.run([sys.executable, "-I", str(AQUI / "barrido.py"), str(skills)], capture_output=True, text=True, env=env)
+        a = subprocess.run([sys.executable, "-I", str(AQUI / "cuarentena_auditar.py"), str(d / "work")], capture_output=True, encoding="utf-8", errors="replace", timeout=120, env=env)
+        b = subprocess.run([sys.executable, "-I", str(AQUI / "barrido.py"), str(skills)], capture_output=True, encoding="utf-8", errors="replace", env=env)
         return a.stdout, b.stdout
 
     def test_cualquier_enlace_bloquea_todas_las_skills(self):  # L-5: antes solo la carpeta con el mismo nombre
@@ -234,23 +234,24 @@ class TestHuellaCLI(unittest.TestCase):
             shutil.copytree(origen, destino, symlinks=True, ignore=shutil.ignore_patterns(".arbol-sha256"))
             env = dict(os.environ, CLAUDE_CONFIG_DIR=str(cfg), SKILLS_CLI=str(d / "no-existe"))
             cmd = ["bash", str(AQUI / "cuarentena-skills.sh"), "a/b", "x", "--dry-run"]
-            r1 = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
+            r1 = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace", timeout=60, env=env)
             self.assertEqual(r1.returncode, 0, r1.stdout + r1.stderr)       # SKILLS_CLI apuntando a la nada no influye
             fuente = d / "src"; fuente.mkdir(); (fuente / "x").mkdir()
             sin_dry = ["bash", str(AQUI / "cuarentena-skills.sh"), str(fuente), "nada"]
-            subprocess.run(sin_dry, capture_output=True, text=True, timeout=120, env=dict(env, TMPDIR=str(d)))   # primera corrida real: guarda la huella
+            subprocess.run(sin_dry, capture_output=True, encoding="utf-8", errors="replace", timeout=120, env=dict(env, TMPDIR=str(d)))   # primera corrida real: guarda la huella
             self.assertTrue((destino / ".arbol-sha256").is_file())
             with open(destino / "node_modules/skills/package.json", "a", encoding="utf-8") as f:
                 f.write(" ")
-            r2 = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
+            r2 = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace", timeout=60, env=env)
         self.assertEqual(r2.returncode, 1, r2.stdout + r2.stderr)
         self.assertIn("cambió desde que se verificó", r2.stdout)
 
 
+@unittest.skipIf(os.name == "nt", "cuarentena-skills.sh es de bash; en Windows `bash` es el de WSL (sin distribuciones) y no el del script")
 class TestDryRun(unittest.TestCase):
     def test_dry_run_no_toca_nada(self):
         with tempfile.TemporaryDirectory() as cfg:
-            r = subprocess.run(["bash", str(AQUI / "cuarentena-skills.sh"), "a/b", "x", "--dry-run"], capture_output=True, text=True, timeout=30,
+            r = subprocess.run(["bash", str(AQUI / "cuarentena-skills.sh"), "a/b", "x", "--dry-run"], capture_output=True, encoding="utf-8", errors="replace", timeout=30,
                                env=dict(__import__("os").environ, CLAUDE_CONFIG_DIR=cfg))
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("dry-run", r.stdout)
@@ -258,7 +259,7 @@ class TestDryRun(unittest.TestCase):
 
     def test_windows_falla_claro(self):
         with tempfile.TemporaryDirectory() as cfg:
-            r = subprocess.run(["bash", str(AQUI / "cuarentena-skills.sh"), "a/b", "x", "--dry-run"], capture_output=True, text=True, timeout=30,
+            r = subprocess.run(["bash", str(AQUI / "cuarentena-skills.sh"), "a/b", "x", "--dry-run"], capture_output=True, encoding="utf-8", errors="replace", timeout=30,
                                env=dict(__import__("os").environ, CLAUDE_CONFIG_DIR=cfg, CUARENTENA_SO="MINGW64_NT-10.0"))
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn("Windows", r.stdout)

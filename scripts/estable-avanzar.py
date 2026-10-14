@@ -244,8 +244,9 @@ def candidato_mas_viejo(actividad):
 # --------------------------------------------------------------------------- #
 def git(args, cwd):
     env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
+    # UTF-8 explícito: en Windows el texto de git (títulos con «→», «crítico») se leía con cp1252 y los patrones no calzaban
     return subprocess.run(["git"] + list(args), cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          universal_newlines=True)
+                          encoding="utf-8", errors="replace")
 
 
 def git_ok(args, cwd, error):
