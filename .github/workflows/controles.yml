@@ -6,9 +6,9 @@
 #
 # Seguridad:
 #   - corre con `pull_request` (el código del PR, con permisos de solo lectura); NUNCA `pull_request_target` acá;
-#   - el único secreto es la lista de nombres que no pueden salir (NOMBRES_PROHIBIDOS); nunca se imprime;
+#   - sin secretos: la lista de nombres de clientes la revisa zona-sensible.yml con el código de main;
 #   - un PR que cambie este archivo o los scripts de control cae en la zona sensible (zona-sensible.yml, que corre
-#     siempre la versión de `main`) y necesita la etiqueta `ok-fernando`, que pone solo el dueño;
+#     siempre la versión de `main`) y necesita la etiqueta `ok-fernando-<commit>`, que pone solo el dueño;
 #   - `workflow_dispatch` existe para el robot del radar: sus PR los abre GITHUB_TOKEN, que no dispara `pull_request`.
 name: controles
 
@@ -36,18 +36,8 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      # Primero y solo, con el secreto: todavía no corrió ningún código de pruebas del PR (que podría leerlo o cambiar
-      # este script en disco). nombres-en-ci.py es zona sensible: cambiarlo pide el OK del dueño.
-      - name: Nombres de clientes (lista en el secreto, nunca se imprime)
-        env:
-          NOMBRES_PROHIBIDOS: ${{ secrets.NOMBRES_PROHIBIDOS }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          if [ -n "${BASE_SHA:-}" ]; then python3 scripts/nombres-en-ci.py --rango "$BASE_SHA..$HEAD_SHA"
-          else python3 scripts/nombres-en-ci.py; fi
-      - name: Controles (metadatos y pruebas, sin el secreto)
+      # Sin secretos: el control de nombres de clientes corre en zona-sensible.yml con el código de main.
+      - name: Controles (metadatos y pruebas)
         env:
           SIN_NOMBRES: "1"
         run: |

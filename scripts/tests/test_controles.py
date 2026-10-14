@@ -124,6 +124,38 @@ class ZonaSensible(unittest.TestCase):
         self.r.escribir("plugins/metodo/otros/hooks.json", json.dumps({"hooks": {"Stop": []}}))
         self.assertEqual(self.r.zona(base, self.r.commit()).returncode, 10)
 
+    def test_renombre_que_esconde_un_archivo_sensible(self):
+        self.r.escribir("scripts/al-dia.sh", "echo\n")
+        base = self.r.commit("instalador")
+        (self.r.d / "docs").mkdir()
+        correr(["git", "mv", "scripts/al-dia.sh", "docs/al-dia.txt"], self.r.d)
+        out = self.r.zona(base, self.r.commit("lo escondo"))
+        self.assertEqual(out.returncode, 10, out.stdout)
+        self.assertIn("scripts/al-dia.sh", out.stdout)
+
+    def test_nombre_raro_es_sensible(self):
+        self.assertEqual(self.cambio(".github/workflows/\u00e9.yml", "on: push\n").returncode, 10)
+        self.assertEqual(self.cambio("docs/a\tb.md").returncode, 10)
+
+    def test_skill_que_se_da_permisos_o_hooks(self):
+        out = self.cambio("plugins/metodo/skills/cerrar/SKILL.md", "---\nallowed-tools: Bash\n---\ncerrar\n")
+        self.assertEqual(out.returncode, 10, out.stdout)
+        self.assertEqual(self.cambio("plugins/metodo/skills/cerrar/SKILL.md", "corre !`rm -rf x`\n").returncode, 10)
+
+    def test_version_adentro_de_otra_clave_no_se_ignora(self):
+        self.r.escribir("plugins/metodo/.claude-plugin/plugin.json",
+                        json.dumps({"name": "metodo", "version": "1.0.0", "mcpServers": {}}))
+        base = self.r.commit("con servidores")
+        self.r.escribir("plugins/metodo/.claude-plugin/plugin.json",
+                        json.dumps({"name": "metodo", "version": "1.0.0", "mcpServers": {"version": {"command": "x"}}}))
+        self.assertEqual(self.r.zona(base, self.r.commit()).returncode, 10)
+
+    def test_borrar_pruebas_del_metodo_es_sensible(self):
+        self.r.escribir("plugins/metodo/scripts/tests/test_x.py", "x\n")
+        base = self.r.commit()
+        correr(["git", "rm", "-q", "plugins/metodo/scripts/tests/test_x.py"], self.r.d)
+        self.assertEqual(self.r.zona(base, self.r.commit()).returncode, 10)
+
     def test_hook_nuevo_que_llama_un_script_nuevo(self):
         self.r.escribir("plugins/metodo/scripts/nuevo.py", "print('nuevo')\n")
         self.r.escribir("plugins/metodo/hooks/hooks.json", json.dumps({"hooks": {"Stop": [{"hooks": [
@@ -164,6 +196,25 @@ class NombresEnCI(unittest.TestCase):
         self.r.escribir("b.md", "acmecorpx\n")
         self.r.commit()
         self.assertEqual(self.correr("acme corp\n").returncode, 0)
+
+    def test_nombre_de_archivo_binario(self):
+        (self.r.d / "logo-acme-corp.png").write_bytes(b"\x89PNG\0\0")
+        self.r.commit()
+        out = self.correr("acme corp\n")
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("en el nombre del archivo", out.stdout)
+
+    def test_modo_arbol_sin_sacar_a_disco(self):
+        self.r.escribir("b.md", "para Acme Corp\n")
+        head = self.r.commit()
+        correr(["git", "checkout", "-q", self.base], self.r.d)   # en disco no está
+        out = correr([sys.executable, str(NOMBRES), "--arbol", head], self.r.d, {"NOMBRES_PROHIBIDOS": "acme corp"})
+        self.assertEqual(out.returncode, 1, out.stdout)
+
+    def test_titulo_del_pr(self):
+        out = correr([sys.executable, str(NOMBRES)], self.r.d,
+                     {"NOMBRES_PROHIBIDOS": "acme corp", "PR_TEXTO": "arreglo para ACME corp"})
+        self.assertEqual(out.returncode, 1)
 
     def test_mensaje_de_commit(self):
         self.r.escribir("b.md", "nada\n")

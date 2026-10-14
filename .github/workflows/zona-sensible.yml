@@ -1,23 +1,27 @@
-# Check obligatorio `zona-sensible` para unir a `main` (ruleset `proteger-main`).
-# Decisión del dueño (2026-10-14): su OK queda SOLO para lo que corre solo en la Mac del cliente (hooks y lo que
-# llaman, MCP, el instalador, manifiestos que cambian qué se ejecuta) y para los propios controles. Si un PR toca eso,
-# este check falla hasta que el dueño le pone la etiqueta `ok-fernando`. Si después del OK llegan commits nuevos que
-# siguen tocando la zona, la etiqueta se saca sola: el OK vale para lo que vio, no para lo que venga.
+# Check obligatorio `zona-sensible` para unir a `main` (ruleset `proteger-main`). Hace dos controles con el código
+# de `main`, leyendo el PR sin ejecutarlo:
+#   1. nombres de clientes (scripts/nombres-en-ci.py, lista en el secreto NOMBRES_PROHIBIDOS): si aparece uno, falla
+#      siempre, con o sin OK;
+#   2. zona sensible (scripts/zona-sensible.py): decisión del dueño (2026-10-14), su OK queda SOLO para lo que corre
+#      solo en la Mac del cliente (hooks y lo que llaman, MCP, el instalador, manifiestos que cambian qué se ejecuta,
+#      skills que se dan permisos) y para los propios controles. Si el PR toca eso, falla hasta que el dueño pone la
+#      etiqueta `ok-fernando-<7 primeros caracteres del commit>`: el OK queda atado al commit que vio; un commit nuevo
+#      cambia el código y la etiqueta vieja deja de valer sola (sin carreras ni etiquetas que haya que sacar).
 #
 # Seguridad:
-#   - `pull_request_target`: corre SIEMPRE la versión de `main` de este archivo y de scripts/zona-sensible.py, así
-#     que un PR no puede apagar su propio control;
-#   - el código del PR se TRAE para leerlo (git diff / git show), nunca se ejecuta ni se instala nada de él;
-#   - el número de PR y las etiquetas entran por variables de entorno, jamás dentro del código del paso;
-#   - permisos mínimos: leer el repo y, solo para sacar una etiqueta vencida, escribir en el PR;
-#   - `workflow_dispatch` existe para el robot del radar (sus PR no disparan eventos); sin PR no hay etiqueta: si toca
-#     la zona sensible, falla.
+#   - `pull_request_target`: corre SIEMPRE la versión de `main` de este archivo y de los scripts, así que un PR no
+#     puede apagar su propio control, y el secreto nunca está donde corre código del PR;
+#   - el código del PR se TRAE para leerlo (git diff / git show / git cat-file), nunca se ejecuta ni se instala nada;
+#   - número de PR, commits, título, descripción y etiquetas entran por variables de entorno, jamás en el código;
+#   - permisos: solo leer el repositorio;
+#   - `workflow_dispatch` existe para el robot del radar (sus PR no disparan eventos); sin PR no hay etiqueta: si
+#     toca la zona sensible, falla.
 name: zona-sensible
 
 on:
   pull_request_target:
     branches: [main]
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
   workflow_dispatch:
 
 permissions: {}
@@ -32,8 +36,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      pull-requests: write   # sacar la etiqueta ok-fernando cuando llegan commits nuevos después del OK
-      issues: write          # las etiquetas de un PR se manejan con la API de issues
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,40 +45,50 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - name: ¿Toca lo que corre solo en la Mac del cliente?
+      - name: Traer el PR para leerlo (nunca se ejecuta)
+        id: pr
         env:
-          GH_TOKEN: ${{ github.token }}
           EVENTO: ${{ github.event_name }}
-          ACCION: ${{ github.event.action }}
           PR: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          ETIQUETAS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           REF_MANUAL: ${{ github.ref }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
           if [ "$EVENTO" = "pull_request_target" ]; then
             git fetch --no-tags -q origin "+refs/pull/${PR}/head:refs/remotes/pr/head"
             base="$BASE_SHA"; head="$HEAD_SHA"
+            [ "$(git rev-parse refs/remotes/pr/head)" = "$head" ] || { echo "::error::el PR cambió mientras se revisaba"; exit 1; }
           else
             git fetch --no-tags -q origin "+${REF_MANUAL}:refs/remotes/pr/head"
             head=$(git rev-parse refs/remotes/pr/head); base=$(git rev-parse origin/main)
           fi
-          python3 scripts/zona-sensible.py --base "$base" --head "$head"; rc=$?
+          git rev-parse --verify --quiet "${head}^{commit}" >/dev/null && git rev-parse --verify --quiet "${base}^{commit}" >/dev/null \
+            || { echo "::error::no pude leer los commits del PR"; exit 1; }
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+      - name: Nombres de clientes (lista en el secreto, nunca se imprime)
+        env:
+          NOMBRES_PROHIBIDOS: ${{ secrets.NOMBRES_PROHIBIDOS }}
+          PR_TEXTO: "${{ github.event.pull_request.title }}\n${{ github.event.pull_request.body }}"
+          BASE: ${{ steps.pr.outputs.base }}
+          HEAD: ${{ steps.pr.outputs.head }}
+        run: python3 scripts/nombres-en-ci.py --arbol "$HEAD" --rango "$BASE..$HEAD"
+      - name: ¿Toca lo que corre solo en la Mac del cliente?
+        env:
+          BASE: ${{ steps.pr.outputs.base }}
+          HEAD: ${{ steps.pr.outputs.head }}
+          ETIQUETAS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -uo pipefail
+          python3 scripts/zona-sensible.py --base "$BASE" --head "$HEAD"; rc=$?
           [ "$rc" -eq 0 ] && exit 0
           [ "$rc" -ne 10 ] && { echo "::error::zona-sensible no pudo revisar el PR (código $rc): no se une"; exit 1; }
-          tiene_ok=$(printf '%s' "${ETIQUETAS:-[]}" | python3 -c 'import json,sys; print("si" if "ok-fernando" in json.load(sys.stdin) else "no")')
-          # El OK vale para lo que el dueño vio: si llegaron commits (synchronize) o el PR se reabrió (reopened: mientras
-          # estuvo cerrado pudieron entrar commits sin evento), la etiqueta se saca y hace falta un OK nuevo.
-          if [ "$tiene_ok" = si ] && { [ "$ACCION" = synchronize ] || [ "$ACCION" = reopened ]; }; then
-            gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label ok-fernando >/dev/null \
-              || echo "::warning::no pude sacar la etiqueta vencida"
-            echo "::error::llegaron commits nuevos después del OK: la etiqueta ok-fernando se sacó; hace falta un OK nuevo"
-            exit 1
-          fi
-          if [ "$tiene_ok" = si ]; then
-            echo "::notice::zona sensible con OK del dueño (etiqueta ok-fernando)"
+          ok="ok-fernando-${HEAD:0:7}"
+          tiene=$(printf '%s' "${ETIQUETAS:-[]}" | OK="$ok" python3 -c 'import json,os,sys; print("si" if os.environ["OK"] in json.load(sys.stdin) else "no")')
+          if [ "$tiene" = si ]; then
+            echo "::notice::zona sensible con OK del dueño para el commit ${HEAD:0:7} (etiqueta $ok)"
             exit 0
           fi
-          echo "::error::este cambio toca lo que corre solo en la Mac del cliente: necesita el OK del dueño (etiqueta ok-fernando)"
+          echo "::error::este cambio toca lo que corre solo en la Mac del cliente: necesita el OK del dueño para el commit ${HEAD:0:7} (etiqueta $ok)"
           exit 1

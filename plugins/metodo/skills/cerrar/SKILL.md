@@ -133,7 +133,7 @@ archives**. Solo si el usuario decide cerrar igual, el `REANUDAR.md` lista cada 
      - «No se unió ✗ …» → decí el motivo tal cual (pruebas que fallan, conflicto, sin pruebas) y dejalo en la PARTE B
        como pendiente. Si el repo no tiene pruebas, preguntá si querés unir igual y, con su sí, corré con
        `--sin-pruebas "<motivo>"`. Nunca lo resuelvas forzando.
-     Si el repo tiene checks obligatorios en GitHub, no uses el programa: `gh pr create` + `gh pr merge --auto`.
+     Si el repo tiene checks obligatorios en GitHub, no uses el programa: `gh pr create` + `gh pr merge --squash --auto` (GitHub une solo si pasan los checks).
      Después ofrecé borrar la copia (`git worktree remove <ruta>`), con «sí»; nunca borres copias de otra sesión.
 6. **Confirmá al usuario** en 2-3 líneas qué quedó hecho y dónde (incluida la subida al repo, si se hizo).
 7. **Validá el prompt antes de emitirlo:** tiene las dos partes; la PARTE A trae rol, alcance y reglas con

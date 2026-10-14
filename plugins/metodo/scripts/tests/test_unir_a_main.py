@@ -130,6 +130,53 @@ class UnirAMain(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout)
         self.assertIn("sin pruebas en el repo (solo documentación)", self.main_remoto())
 
+    def test_renombrar_un_archivo_sensible_frena(self):
+        self.escribir("instalar.sh", "echo hola\n")
+        self.commit("instalador")
+        sh("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo)
+        (self.repo / "docs").mkdir()
+        sh("git", "mv", "instalar.sh", "docs/instalar.txt", cwd=self.repo)
+        self.commit("lo escondo")
+        self.assertEqual(self.unir().returncode, 3)
+
+    def test_nombre_raro_frena(self):
+        self.escribir("a\tb.txt", "x\n")
+        self.commit("nombre con tabulación")
+        self.assertEqual(self.unir().returncode, 3)
+
+    def test_las_reglas_propias_se_leen_de_main(self):
+        self.escribir(".claude/zona-sensible.txt", "config/*\n")
+        self.commit("reglas propias")
+        sh("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo)
+        sh("git", "rm", "-q", ".claude/zona-sensible.txt", cwd=self.repo)
+        self.escribir("config/x.json", "{}\n")
+        self.commit("apago la regla y toco config")
+        out = self.unir()
+        self.assertEqual(out.returncode, 3, out.stdout)
+        self.assertIn("config/x.json", out.stdout)
+
+    def test_cambiar_las_pruebas_del_repo_frena(self):
+        self.escribir(".claude/pruebas.sh", "exit 0\n")
+        self.commit("pruebas que siempre pasan")
+        self.assertEqual(self.unir().returncode, 3)
+
+    def test_un_archivo_sin_commitear_no_hace_pasar_las_pruebas(self):
+        self.escribir("tests/test_usa.py", "import unittest, ayuda\nclass T(unittest.TestCase):\n"
+                      "    def test_c(self): self.assertEqual(ayuda.X, 1)\n")
+        self.commit("prueba que necesita ayuda.py")
+        self.escribir("ayuda.py", "X = 1\n")   # suelto, sin commitear: en main no existiría
+        r = self.unir()
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("fallaron", r.stdout)
+
+    def test_lista_con_dueno_y_repo(self):
+        (self.config / "unir-a-main.txt").write_text("otra-cuenta/cerebro\n")
+        self.escribir("a.py", "x = 1\n")
+        self.commit()
+        self.assertIn("no está en", self.unir().stdout)
+        (self.config / "unir-a-main.txt").write_text("raimondifernando-web/cerebro\n")
+        self.assertEqual(self.unir().returncode, 0)
+
     def test_probar_no_sube(self):
         self.escribir("a.py", "x = 1\n")
         self.commit()

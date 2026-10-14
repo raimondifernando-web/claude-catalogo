@@ -2,16 +2,18 @@
 """¿Este cambio toca lo que CORRE SOLO en la Mac del cliente (o los controles que lo cuidan)?
 
 Disparador: encadenado — lo corre .github/workflows/zona-sensible.yml en cada PR a `main` (y cuando se le pone o
-saca la etiqueta `ok-fernando`). También a mano: python3 scripts/zona-sensible.py --base origin/main --head HEAD
+saca una etiqueta). También a mano: python3 scripts/zona-sensible.py --base origin/main --head HEAD
 
 Decisión del dueño (2026-10-14): unir a `main` ya no necesita su OK; lo deciden las pruebas (check `controles`).
 Su OK queda SOLO para lo que se ejecuta sin que nadie lo pida en la computadora del cliente: hooks, lo que esos
-hooks llaman, servidores MCP, el instalador, los manifiestos que declaran hooks o fuentes, y los propios controles
-(si un PR pudiera cambiar sus controles sin OK, los controles no servirían).
+hooks llaman, servidores MCP, el instalador, los manifiestos que cambian qué se ejecuta, skills que se dan permisos
+o hooks propios, y los propios controles (si un PR pudiera cambiar sus controles sin OK, no servirían).
 
-Salida: 0 = no toca la zona sensible · 10 = la toca (lista de archivos y motivo) · 2 = error.
+Salida: 0 = no toca la zona sensible · 10 = la toca (lista de archivos y motivo) · 2 = error (nunca pasa en silencio).
 Solo LEE objetos de git (`git show`, `git diff`): nunca ejecuta código del PR. Por eso puede correr con
 `pull_request_target` (la versión de este script que corre es siempre la de `main`).
+Nombres de archivo: siempre con `-z` y sin detección de renombres (un renombre cuenta como borrar + crear, así un
+archivo sensible movido a otra carpeta igual se ve).
 """
 import argparse
 import fnmatch
@@ -20,43 +22,59 @@ import re
 import subprocess
 import sys
 
-# Rutas que siempre son zona sensible (patrones fnmatch sobre la ruta del repo).
+# Rutas que siempre son zona sensible (patrones fnmatch sobre la ruta del repo; «*» cruza carpetas).
 FIJAS = [
     (".github/*", "los controles y robots del repositorio"),
     ("scripts/al-dia.sh", "el instalador del cliente"),
     ("scripts/estable-avanzar.py", "el robot que pasa cambios a `estable`"),
+    ("scripts/radar-fuentes.py", "lo corre un robot con permiso de escritura"),
     ("scripts/verificar-metadatos.sh", "un control obligatorio"),
     ("scripts/controles.sh", "un control obligatorio"),
     ("scripts/zona-sensible.py", "un control obligatorio"),
     ("scripts/nombres-en-ci.py", "un control obligatorio"),
     ("scripts/disparadores-excepciones.txt", "afloja un control obligatorio"),
     ("scripts/tests/*", "las pruebas de los controles"),
+    ("plugins/*/scripts/tests/*", "pruebas que corre el control obligatorio"),
+    ("plugins/*/scripts/*/tests/*", "pruebas que corre el control obligatorio"),
+    ("plugins/*/scripts/unir-a-main", "el control de unión de los repos del cliente"),
+    ("plugins/*/scripts/nombres-prohibidos", "instala un hook de git en la Mac del cliente"),
     ("plugins/*/hooks/*", "un hook: corre solo en la Mac del cliente"),
     ("plugins/*/.mcp.json", "un servidor MCP: corre solo en la Mac del cliente"),
     ("plugins/*/.lsp.json", "un servidor de lenguaje: corre solo en la Mac del cliente"),
     ("plugins/*/settings.json", "ajustes que el plugin aplica solo"),
     ("plugins/*/bin/*", "programas que el plugin pone a mano de Claude"),
 ]
-# Campos de los manifiestos que cambian en cada versión sin cambiar qué se ejecuta.
+# Campos de primer nivel de los manifiestos que cambian en cada versión sin cambiar qué se ejecuta.
 CAMPOS_INOCUOS = {"version", "description"}
 RAIZ_PLUGIN = re.compile(r"\$\{?CLAUDE_PLUGIN_ROOT\}?/([A-Za-z0-9._/-]+)")
 IMPORT = re.compile(r"^\s*(?:from|import)\s+([A-Za-z_]\w*)", re.M)
+# Una skill, comando o agente que se da hooks, servidores, permisos o ejecuta algo al cargarse.
+PODERES = re.compile(r"^\+\s*(hooks|mcpServers|allowed-tools|allowedTools|permissionMode|disallowedTools)\s*:"
+                     r"|^\+.*!`", re.M)
+CARPETAS_CON_PODERES = ("plugins/*/skills/*", "plugins/*/commands/*", "plugins/*/agents/*")
 
 
 def git(*args, ok=(0,)):
-    r = subprocess.run(["git", *args], capture_output=True, text=True)
+    r = subprocess.run(["git", *args], capture_output=True, text=True, errors="surrogateescape")
     if r.returncode not in ok:
-        raise SystemExit(f"zona-sensible: falló git {' '.join(args)}: {r.stderr.strip()}")
+        print(f"zona-sensible: falló git {' '.join(args)}: {r.stderr.strip()}")
+        raise SystemExit(2)
     return r
 
 
+def existe(sha, ruta):
+    return git("cat-file", "-e", f"{sha}:{ruta}", ok=(0, 1, 128)).returncode == 0
+
+
 def mostrar(sha, ruta):
-    r = git("show", f"{sha}:{ruta}", ok=(0, 128))
-    return r.stdout if r.returncode == 0 else None
+    """Contenido de `ruta` en `sha`, o None si la ruta no existe. Cualquier otro error de git frena (exit 2)."""
+    if not existe(sha, ruta):
+        return None
+    return git("show", f"{sha}:{ruta}").stdout
 
 
 def archivos(sha):
-    return set(git("ls-tree", "-r", "--name-only", sha).stdout.split())
+    return {p for p in git("ls-tree", "-r", "-z", "--name-only", sha).stdout.split("\0") if p}
 
 
 def archivos_de_hooks(sha, todos):
@@ -66,7 +84,7 @@ def archivos_de_hooks(sha, todos):
         plugin = "/".join(pj.split("/")[:2])
         try:
             decl = json.loads(mostrar(sha, pj) or "{}").get("hooks")
-        except ValueError:
+        except (ValueError, AttributeError):
             continue
         for d in ([decl] if isinstance(decl, str) else decl if isinstance(decl, list) else []):
             if isinstance(d, str):
@@ -103,12 +121,19 @@ def ejecutados_por_hooks(sha, todos):
     return out
 
 
-def sin_inocuos(obj):
-    if isinstance(obj, dict):
-        return {k: sin_inocuos(v) for k, v in obj.items() if k not in CAMPOS_INOCUOS}
-    if isinstance(obj, list):
-        return [sin_inocuos(x) for x in obj]
-    return obj
+def sin_inocuos(obj, es_marketplace):
+    """Saca versión y descripción SOLO de primer nivel (y de cada plugin del marketplace y de su `metadata`):
+    un servidor MCP o una fuente que se llame `version` adentro de otra clave sigue contando."""
+    if not isinstance(obj, dict):
+        return obj
+    limpio = {k: v for k, v in obj.items() if k not in CAMPOS_INOCUOS}
+    if es_marketplace:
+        if isinstance(limpio.get("plugins"), list):
+            limpio["plugins"] = [{k: v for k, v in p.items() if k not in CAMPOS_INOCUOS} if isinstance(p, dict) else p
+                                 for p in limpio["plugins"]]
+        if isinstance(limpio.get("metadata"), dict):
+            limpio["metadata"] = {k: v for k, v in limpio["metadata"].items() if k not in CAMPOS_INOCUOS}
+    return limpio
 
 
 def manifiesto_cambia_lo_que_corre(base, head, ruta):
@@ -116,19 +141,36 @@ def manifiesto_cambia_lo_que_corre(base, head, ruta):
     if a is None or b is None:
         return True  # nace o desaparece un manifiesto: siempre se mira
     try:
-        return sin_inocuos(json.loads(a)) != sin_inocuos(json.loads(b))
+        mk = ruta.endswith("marketplace.json")
+        return sin_inocuos(json.loads(a), mk) != sin_inocuos(json.loads(b), mk)
     except ValueError:
         return True  # JSON roto: que lo mire una persona
 
 
+def con_poderes(base, head):
+    """Skills, comandos o agentes cuyas líneas AGREGADAS les dan hooks, servidores, permisos o ejecución al cargar."""
+    out = {}
+    diff = git("diff", "-U0", "--no-renames", "--no-color", f"{base}...{head}", "--", *CARPETAS_CON_PODERES).stdout
+    actual = None
+    for linea in diff.splitlines():
+        if linea.startswith("+++ "):
+            actual = linea[6:] if linea.startswith("+++ b/") else None
+        elif actual and PODERES.match(linea):
+            out[actual] = "una skill, comando o agente que se da hooks, servidores, permisos o ejecuta algo al cargarse"
+    return out
+
+
 def revisar(base, head):
-    cambiados = [p for p in git("diff", "--name-only", f"{base}...{head}").stdout.splitlines() if p]
+    cambiados = [p for p in git("diff", "--name-only", "-z", "--no-renames", f"{base}...{head}").stdout.split("\0") if p]
     reglas = list(FIJAS)
     for sha in (base, head):  # lo que los hooks ejecutaban antes Y después
         reglas += list(ejecutados_por_hooks(sha, archivos(sha)).items())
     hallazgos = {}
     for p in cambiados:
-        if p.endswith(".claude-plugin/plugin.json") or p == ".claude-plugin/marketplace.json":
+        if not re.fullmatch(r"[A-Za-z0-9._/@+ -]+", p):
+            hallazgos[p] = "nombre de archivo con caracteres raros: que lo mire una persona"
+            continue
+        if p.endswith(".claude-plugin/plugin.json") or p.endswith(".claude-plugin/marketplace.json"):
             if manifiesto_cambia_lo_que_corre(base, head, p):
                 hallazgos[p] = "el manifiesto cambia algo más que versión o descripción (hooks, fuentes, comandos)"
             continue
@@ -136,6 +178,7 @@ def revisar(base, head):
             if p == patron or fnmatch.fnmatch(p, patron):
                 hallazgos[p] = motivo
                 break
+    hallazgos.update({p: m for p, m in con_poderes(base, head).items() if p not in hallazgos})
     return cambiados, hallazgos
 
 
@@ -144,13 +187,16 @@ def main():
     ap.add_argument("--base", required=True)
     ap.add_argument("--head", required=True)
     a = ap.parse_args()
+    for sha in (a.base, a.head):
+        git("rev-parse", "--verify", "--quiet", f"{sha}^{{commit}}")
     cambiados, hallazgos = revisar(a.base, a.head)
     if not hallazgos:
         print(f"zona-sensible: no ✓ ({len(cambiados)} archivo(s); nada de lo que corre solo en la Mac del cliente)")
         return 0
     print(f"zona-sensible: SÍ — {len(hallazgos)} archivo(s) de lo que corre solo en la Mac del cliente:")
     for p in sorted(hallazgos):
-        print(f"  · {p} — {hallazgos[p]}")
+        print(f"  · {p!r} — {hallazgos[p]}" if not re.fullmatch(r"[A-Za-z0-9._/@+ -]+", p)
+              else f"  · {p} — {hallazgos[p]}")
     return 10
 
 

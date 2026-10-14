@@ -125,12 +125,21 @@ jobs:
             gh pr create --base "$BASE" --head "$rama" \
               --title "radar: cambios en las fuentes públicas" --body-file "$RUNNER_TEMP/motivo.md"
           fi
-          if [ "$publicar" = si ]; then
-            # main solo acepta PR con los checks `controles` y `zona-sensible` (ruleset proteger-main). Un PR abierto
-            # con GITHUB_TOKEN no dispara `pull_request`, así que el robot los pide a mano sobre su rama y deja la
-            # unión encolada: GitHub une recién cuando los dos pasan. Si algo falla, el PR queda abierto.
-            gh workflow run controles.yml --ref "$rama" \
-              && gh workflow run zona-sensible.yml --ref "$rama" \
-              && gh pr merge "$rama" --squash --auto \
+          # main solo acepta PR con los checks `controles` y `zona-sensible` (ruleset proteger-main). Un PR abierto con
+          # GITHUB_TOKEN no dispara `pull_request`, así que el robot los pide SIEMPRE sobre su rama (también cuando el PR
+          # queda para una persona: sin los checks, nadie podría unirlo).
+          gh workflow run controles.yml --ref "$rama" && gh workflow run zona-sensible.yml --ref "$rama" \
+            || echo "::warning::no pude pedir los checks; el PR queda abierto para una persona"
+          # La unión se encola (--auto) solo si pasaron las guardias Y main de verdad exige los checks: sin el ruleset,
+          # --auto uniría al instante. En cualquier otro caso se desarma una unión que haya quedado encolada de otra corrida.
+          exige=$(gh api "repos/${GITHUB_REPOSITORY}/rules/branches/${BASE}" \
+            --jq '[.[] | select(.type=="required_status_checks")] | length' 2>/dev/null || echo 0)
+          if [ "$publicar" = si ] && [ "${exige:-0}" -gt 0 ]; then
+            gh pr merge "$rama" --squash --auto \
               || echo "::warning::no se pudo encolar la publicación; el PR queda abierto para una persona"
+          else
+            gh pr merge "$rama" --disable-auto >/dev/null 2>&1 || true
+            if [ "$publicar" = si ]; then
+              echo "::warning::main no exige los checks: no se publica solo; el PR queda para una persona"
+            fi
           fi

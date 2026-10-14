@@ -1122,8 +1122,9 @@ class TestRulesets(unittest.TestCase):
         checks = next(r for r in rs["rules"] if r["type"] == "required_status_checks")["parameters"]
         self.assertEqual(sorted((c["context"], c["integration_id"]) for c in checks["required_status_checks"]),
                          [("controles", 15368), ("zona-sensible", 15368)])   # solo valen si los corre GitHub Actions
-        self.assertNotIn("rebase", next(r for r in rs["rules"] if r["type"] == "pull_request")["parameters"]
-                         ["allowed_merge_methods"])
+        # solo squash: lo que entra a main es el árbol final + el título del PR (que revisa nombres-en-ci.py)
+        self.assertEqual(next(r for r in rs["rules"] if r["type"] == "pull_request")["parameters"]
+                         ["allowed_merge_methods"], ["squash"])
 
     def test_nombres_distintos_y_solo_uno_con_excepcion(self):
         todos = [self.cargar(n) for n in self.ARCHIVOS]
