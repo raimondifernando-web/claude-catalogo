@@ -954,6 +954,16 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Condiciones (no bloquean) | m3: sin `TMPDIR` la marca va a `/tmp` (riesgo bajo de enlace simbólico). No verificado por nadie: que Claude Code muestre el stderr con código 2 en `Write/Agent/Task/Workflow`, que convivan dos PreToolUse sobre `Agent` (radar + este) y una prueba en una Mac que solo tenga la app. |
 | Veredicto | **PASS con condiciones**, 0 críticos. |
 
+## 2026-10-14 · paneles 0.2.1 → 0.2.2 → 0.3.0 (commit cd43728) — PASS
+| Control | Resultado |
+|---|---|
+| Alcance | Diff `95840c4..cd43728` de `plugins/paneles` (último estado revisado: 0.2.1 con los arreglos F9/F11): `hooks/register.tsx` (+~234), tests, `types/index.d.ts`, `plugin.json`, CHANGELOG. Cubre 0.2.2 (Tareas se actualiza con cada mensaje/turno) y 0.3.0 (los tres paneles se abren con el mensaje de la persona, búsqueda de la lista en carpetas madre, repoblado si la app reinicia el estado, errores al arrancar no tumban el panel). |
+| Superficie | Sin cambios: `claude plugin validate` lista las mismas capacidades que en 0.1.0 (`clock`, `command.register`, `fs.read`, `process.run` solo `git`, `session`, `state`, `ui`). Sin red, sin descargas, sin escritura de archivos, sin `eval`/`Function`. El diff no trae patrones de secretos (0). |
+| Riesgo nuevo revisado | (1) **Lee `.claude/PENDIENTES.md` y `.claude/tareas.json` en hasta 3 carpetas madre** de la sesión (`tDonde`, `buscar`): solo esos nombres fijos, solo lectura, el contenido se muestra únicamente en el panel local; el panel dice «Lista de <carpeta>» cuando no es la de la sesión. (2) Las llamadas a `git` siguen con `GIT_SEGURO` (`core.fsmonitor=false`, `core.untrackedCache=false`, `--no-optional-locks`) también para las carpetas madre (F11 se mantiene). (3) `ui.close` solo marca «cerrado» si `origin.kind === 'person'`. (4) Nuevos `.catch(next)` en los hooks: un error no corta la cadena. |
+| Pruebas | `claude plugin test`: **41 OK, 0 fallan** (eran 25). `claude plugin validate`: pasó. `verificar-metadatos`: TODO COINCIDE. Grep de clientes en el repo: 0. |
+| No revisado | Comportamiento en una sesión nueva real de la app (el CHANGELOG mismo dice «falta confirmarlo abriendo una sesión nueva»; Fernando ya lo ve andando en su app). Windows (rutas con `\`: el recorrido de carpetas madre corta por `/`, así que ahí solo se vería la carpeta de la sesión; falla cerrado, sin riesgo). |
+| Veredicto | **PASS**, 0 críticos. Condición menor (no bloquea): rutas Windows en la búsqueda de carpetas madre. |
+
 ## 2026-10-14 · metodo 0.37.0 → 0.38.0 (commit 9fca2c3) — PASS
 | Control | Resultado |
 |---|---|
