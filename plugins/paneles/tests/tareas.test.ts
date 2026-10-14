@@ -122,3 +122,28 @@ test('lo cerrado hace más de 2 días no se muestra', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: /A1: Cerrar el trato/ })).toBeUndefined()
   await ui.unmount()
 })
+
+test('si el reloj no late, Tareas igual se llena con el primer mensaje y con cada medición', async ($, on) => {
+  mock.clock(on, { now: 0 }) // nunca se avanza: no hay ciclos
+  let tareas = [{ id: 't1', texto: 'Primera', estado: 'pending' }]
+  on('prompt.submit', (_$, e) => ({ text: e.text }) as never)
+  on('session.start', (_$, e) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: { command: 'tareas' } }) as never)
+  on('ui.open', () => ({ value: { isPlaced: true } }) as never)
+  on('session.root', () => ({ value: '/proy' }) as never)
+  on('session.measure', (_$, e) => ({ changed: e.changed }))
+  on('fs.read', (_$, e) => {
+    if (e.path !== '/proy/.claude/tareas.json') throw new Error('ENOENT')
+    return { value: JSON.stringify({ tareas }) } as never
+  })
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }) as never)
+  await $.session.start({ cwd: '/proy' } as never)
+  tareas = [{ id: 't1', texto: 'Segunda', estado: 'in_progress' }]
+  await $.prompt.submit({ text: 'hola' } as never)
+  const ui = await $.ui.mount({ plugin: 'paneles', surface: 'desktop', ...PANEL })
+  expect(await ui.find({ type: 'Text', text: /Segunda/ }), 'segunda').toBeDefined()
+  tareas = [{ id: 't1', texto: 'Tercera', estado: 'in_progress' }]
+  await $.session.measure({ context: { window: 1_000_000 }, rateLimits: [], changed: ['context'] })
+  expect(await ui.find({ type: 'Text', text: /Tercera/ }), 'tercera').toBeDefined()
+  await ui.unmount()
+})

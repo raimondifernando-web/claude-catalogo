@@ -1191,6 +1191,12 @@ const tSessionStart: H = async ($, e, next) => {
   return ran
 }
 
+// Además del reloj (que en la app puede no latir), Tareas se relee con cada mensaje y al terminar cada turno.
+const tRelee: H = async ($, e, next) => {
+  await tRefrescar($)
+  return next(e)
+}
+
 const registrarTareas: Register = on => {
   on('command.run', { command: 'tareas' }, async $ => {
     await $.ui.open({ id: T_PANEL, title: 'Tareas', columns: 38 })
@@ -1259,8 +1265,8 @@ const registrarTareas: Register = on => {
 export const register: Register = on => {
   on('session.start', ($, e, next) => usoSessionStart($, e, e2 => pendSessionStart($, e2, e3 => tSessionStart($, e3, next))))
   on('command.run', ($, e, next) => usoCommandRun($, e, next)).catch(($, e, next) => next(e))
-  on('prompt.submit', ($, e, next) => usoPromptSubmit($, e, e2 => pendPromptSubmit($, e2, next))).catch(($, e, next) => next(e))
-  on('session.measure', ($, e, next) => usoSessionMeasure($, e, e2 => pendSessionMeasure($, e2, next)))
+  on('prompt.submit', ($, e, next) => usoPromptSubmit($, e, e2 => pendPromptSubmit($, e2, e3 => tRelee($, e3, next)))).catch(($, e, next) => next(e))
+  on('session.measure', ($, e, next) => usoSessionMeasure($, e, e2 => pendSessionMeasure($, e2, e3 => tRelee($, e3, next))))
   registrarUso(on)
   registrarPendientes(on)
   registrarTareas(on)

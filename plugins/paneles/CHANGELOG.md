@@ -1,5 +1,8 @@
 # paneles
 
+## 0.2.2 — 2026-10-14
+- **Arreglo: el panel Tareas podía quedar vacío.** Solo se actualizaba con un reloj interno que en la app puede no latir. Ahora también se actualiza con cada mensaje que escribís y al terminar cada turno (como Pendientes). Probado con pruebas automáticas; falta confirmarlo abriendo una sesión nueva.
+
 ## 0.2.1 — 2026-10-11
 - **El panel Tareas se arma solo.** Además de lo que anota la sesión, muestra lo que sale de `.claude/PENDIENTES.md` y de git: lo que está «en curso» (▶), lo urgente (prioridad 1) y lo nuevo de esta semana (○), y lo que se cerró desde la versión anterior del archivo, hasta 2 días atrás (✓ tachado). Si la misma tarea está también en `tareas.json`, manda PENDIENTES. Sin lista de pendientes, el panel funciona como antes. Nadie tiene que acordarse de actualizarlo.
 
