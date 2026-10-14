@@ -42,7 +42,10 @@ class LanzadoresEnWindows(unittest.TestCase):
         self.d = Path(self.tmp.name)
         self.falso = self.d / "bin"
         self.falso.mkdir()
-        ejecutable(self.falso / "python3", "#!/bin/bash\nexit 9\n")   # como el alias de la Microsoft Store: existe y sale con error
+        # como el alias de la Microsoft Store: existe y sale con error. Se tapan los TRES nombres que prueba el sondeo (python3, python, py):
+        # en Ubuntu hay un /usr/bin/python real que se colaba por el PATH y el freno encontraba Python (en Mac no existe, por eso pasaba ahí).
+        for n in ("python3", "python", "py"):
+            ejecutable(self.falso / n, "#!/bin/bash\nexit 9\n")
 
     def con_py_que_anda(self):
         ejecutable(self.falso / "py", f'#!/bin/bash\n[ "$1" = "-3" ] && shift\nexec "{sys.executable}" "$@"\n')

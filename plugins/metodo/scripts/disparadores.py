@@ -20,6 +20,13 @@ Uso:
 Solo lee; Python 3.9+; PyYAML opcional."""
 import argparse, glob, json, os, re, sys
 
+# Windows: la consola usa cp1252 y los acentos / ⛔ rompían o ensuciaban la salida; se fuerza UTF-8 (como en los demás scripts).
+for _flujo in (sys.stdin, sys.stdout, sys.stderr):
+    try:
+        _flujo.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 HOME = os.path.expanduser("~")
 # «Disparador: …» al principio de una línea (en negrita, comentario de script o encabezado); los dos puntos son obligatorios.
 DECLARADO = r"^[#>\s*\"'-]*Disparador\**\s*:\**\s*(\S.*)$"

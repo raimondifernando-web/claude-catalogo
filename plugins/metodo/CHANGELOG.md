@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.39.1 — 2026-10-14
+Arreglos para que el método ande igual en Windows. Se aplica solo; no hay nada que correr.
+- **Delegar en Windows:** `delegar.py --archivo` rechazaba cualquier pedido en la carpeta temporal («tiene que estar dentro del repo…») porque comparaba rutas con `\` contra rutas con `/`. Ahora compara igual en los tres sistemas.
+- **Salida con acentos en Windows:** el informe de la cuarentena de skills (`⛔`) y el aviso de piezas sin disparador de `/cerrar` salían rotos o caían por la consola de Windows (cp1252); ahora fuerzan UTF-8 como el resto de los scripts.
+- Sin cambios para Mac y Linux. Las pruebas automáticas dejan de depender de la máquina donde corren (un `python` suelto en Linux hacía fallar la de «sin Python»).
+
 ## 0.39.0 — 2026-10-14
 **Unir el trabajo a `main` ya no te pide OK:** lo deciden los controles automáticos. Se aplica solo; no hay nada que correr.
 - **`/metodo:cerrar` junta la rama a `main` solo** cuando el tema terminó: primero pide una revisión a alguien distinto de quien escribió el cambio (un agente revisor u otra IA) y después corre `scripts/unir-a-main`, que trae lo nuevo de `main`, corre las pruebas de tu repo y sube sin forzar nunca. Si algo falla (pruebas, conflicto), no une y te dice por qué.

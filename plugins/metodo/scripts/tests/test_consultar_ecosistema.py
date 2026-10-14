@@ -89,6 +89,7 @@ class TestFreno(unittest.TestCase):
             self.assertFalse(mod.marca_vigente(str(marca)))       # vieja
             self.assertFalse(mod.marca_vigente(str(Path(d) / "no-existe")))
 
+    @unittest.skipIf(os.name == "nt", "el freno es un hook de bash (consultar-ecosistema.sh)")
     def test_archivo_nuevo_de_interfaz_frena_y_existente_no(self):
         nuevo = {"tool_name": "Write", "tool_input": {"file_path": str(self.cwd / "index.html"), "content": "<html>dashboard pantalla interfaz"}}
         self.assertEqual(correr(nuevo, self.cfg, self.cwd).returncode, 2)

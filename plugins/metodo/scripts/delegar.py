@@ -714,7 +714,7 @@ def bases_permitidas(repo_path):
     """El archivo del pedido tiene que estar en el repo o en una carpeta temporal (por la ruta real, siguiendo enlaces)."""
     import tempfile
     bases = [Path(repo_path).resolve(), Path(tempfile.gettempdir()).resolve(), Path("/tmp").resolve(), Path("/var/tmp").resolve()]
-    return [str(b).rstrip("/") + "/" for b in bases]
+    return [str(b).replace("\\", "/").rstrip("/") + "/" for b in bases]   # Windows: con «/» como el resto de las comparaciones
 
 
 def leer_pedido(args, repo_path):
@@ -738,7 +738,7 @@ def leer_pedido(args, repo_path):
             if carpeta_de_llaves(ruta):
                 return None, ("«%s» está en %s: parece un archivo de claves, no se manda."
                               % (p.name, carpeta_de_llaves(ruta)))
-        if not any((str(real) + "/").startswith(b) for b in bases_permitidas(repo_path)):
+        if not any((str(real).replace("\\", "/") + "/").startswith(b) for b in bases_permitidas(repo_path)):
             return None, "el archivo del pedido tiene que estar dentro del repo o en una carpeta temporal (no en «%s»)." % real.parent
         # se abre sin seguir un enlace y se mira lo abierto (no la ruta): archivo común, tuyo y de hasta 100 KB
         import stat
