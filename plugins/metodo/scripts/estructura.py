@@ -103,7 +103,7 @@ def parsear_molde(md_texto: str):
 
 
 def parsear_reglas(md_texto: str):
-    """Devuelve las reglas de control R1-R11."""
+    """Devuelve las reglas de control R1-R12."""
     sec = extraer_seccion(md_texto, "Reglas que revisa el control")
     filas = parsear_tabla_md(sec)
     reglas = []
@@ -579,7 +579,7 @@ def comando_dibujo(salida_ruta=None, origen_ruta=None):
 
 
 # ==============================================================================
-# 3. CONTROL Y REGLAS R1 - R11 (REVISAR)
+# 3. CONTROL Y REGLAS R1 - R12 (REVISAR)
 # ==============================================================================
 
 def ejecutar_git(*args, cwd=None):
@@ -639,8 +639,29 @@ def detectar_nivel_carpeta(carpeta: Path, raiz: Path = None, nivel_explicit=None
     return "area" if dentro_de_caja else "empresa"
 
 
+SENALES_CODIGO_ARCHIVOS = ("package.json", "pyproject.toml", "requirements.txt", "Package.swift")
+SENALES_CODIGO_CARPETAS = ("src", "app")
+EXTENSIONES_CODIGO = {".py", ".js", ".ts", ".tsx", ".jsx", ".swift", ".go", ".rs", ".java", ".php", ".rb"}
+
+
+def tiene_codigo(carpeta: Path) -> bool:
+    """Señales baratas de que la caja es desarrollo (ver «Proyectos con desarrollo» en ESTRUCTURA.md)."""
+    if any((carpeta / n).is_file() for n in SENALES_CODIGO_ARCHIVOS):
+        return True
+    for n in SENALES_CODIGO_CARPETAS:
+        d = carpeta / n
+        if d.is_dir() and not d.is_symlink():
+            try:
+                for raiz_d, _dirs, archivos in os.walk(d):
+                    if any(Path(a).suffix.lower() in EXTENSIONES_CODIGO for a in archivos):
+                        return True
+            except OSError:
+                pass
+    return False
+
+
 def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
-    """Aplica las reglas R1-R10 a una caja concreta. Retorna [(tipo, id, mensaje)]."""
+    """Aplica las reglas R1-R10 y R12 a una caja concreta. Retorna [(tipo, id, mensaje)]."""
     hallazgos = []
     nombre = carpeta.name
 
@@ -748,6 +769,10 @@ def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
                     hallazgos.append(("aviso", "R10", "la caja superior tiene paquete pero .claude/settings.json no lo activa"))
             except Exception:
                 pass
+
+    # R12: si la caja (proyecto) tiene código, tiene docs/PRD.md (aviso)
+    if nivel == "proyecto" and tiene_codigo(carpeta) and not (carpeta / "docs" / "PRD.md").is_file():
+        hallazgos.append(("aviso", "R12", "tiene código pero falta docs/PRD.md"))
 
     return hallazgos
 
@@ -932,6 +957,24 @@ def nombres_de_env(env_file: Path) -> list:
     return nombres
 
 
+PLANTILLA_PRD = """# {nombre} — PRD
+
+> Documento vivo. Lo completa el PM del proyecto con Claude a partir del código; no se inventa nada.
+
+## Qué se construye y para quién
+
+## Cuándo está terminado
+
+## Qué NO se hace
+
+## Sección técnica (TRD)
+Cómo está armado: piezas, dependencias, dónde corre. El esquema de datos se genera desde el código, no se escribe a mano.
+
+## Flujo de la app
+Diagrama de cómo se mueve la persona por la app. Las pantallas van como mockups (Figma o HTML), no como texto.
+"""
+
+
 def plan_seguro(carpeta: Path, nivel: str) -> list:
     """Lo seguro y reversible que falta: [(ruta relativa, contenido, regla)]. Nunca incluye lo que ya existe."""
     plan = []
@@ -949,6 +992,8 @@ def plan_seguro(carpeta: Path, nivel: str) -> list:
         cuerpo = "# Claves y variables de entorno requeridas (sin valores)\n"
         cuerpo += "".join(f"{n}=\n" for n in nombres_de_env(carpeta / ".env"))
         plan.append((".env.example", cuerpo, "R7"))
+    if nivel == "proyecto" and tiene_codigo(carpeta) and not (carpeta / "docs" / "PRD.md").exists():
+        plan.append(("docs/PRD.md", PLANTILLA_PRD.format(nombre=carpeta.name), "R12"))
     return plan
 
 
@@ -1068,7 +1113,7 @@ def main():
     p_dibujo.add_argument("--origen", default=None, help="Ruta de ESTRUCTURA.md")
 
     # Subcomando revisar
-    p_revisar = subparsers.add_parser("revisar", help="Revisa el cumplimiento de las reglas R1-R11")
+    p_revisar = subparsers.add_parser("revisar", help="Revisa el cumplimiento de las reglas R1-R12")
     p_revisar.add_argument("carpeta", nargs="?", default=None, help="Carpeta a revisar (por defecto la actual)")
     p_revisar.add_argument("--todas", action="store_true", help="Revisa todas las cajas bajo ~/Proyectos/ o --raiz")
     p_revisar.add_argument("--nivel", choices=["empresa", "area", "proyecto"], help="Nivel forzado para la caja")

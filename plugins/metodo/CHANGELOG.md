@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.38.0 — 2026-10-14
+La estructura de Claude incluye los **documentos de los proyectos con desarrollo**. Se aplica solo; no hay nada que correr.
+- **Pocos documentos vivos, no seis:** `docs/PRD.md` (qué se construye, para quién, cuándo está terminado, qué NO se hace; adentro la parte técnica y el flujo de la app), `docs/decisiones.md` (cada decisión con fecha y porqué) y `docs/planes/` (un plan por etapa, se archiva al terminar). Las pantallas van como mockups y el esquema de datos se genera del código.
+- **Aviso nuevo (R12):** si una carpeta de proyecto tiene código y le falta `docs/PRD.md`, el control lo avisa (nunca frena nada). `estructura.py arreglar` puede dejar la plantilla vacía con sus secciones; el contenido lo arma el PM del proyecto con Claude a partir del código.
+
 ## 0.37.0 — 2026-10-13
 Llega la **estructura de Claude**: cómo se ordenan las carpetas y archivos cuando trabajás con varias empresas, áreas, proyectos y personas con distinto acceso. Se aplica solo; no hay nada que correr.
 - **Una sola fuente:** `estructura/ESTRUCTURA.md` (el molde de cada carpeta, qué se comparte y qué no, y las reglas). El dibujo (`estructura/estructura.html`) se arma desde ahí, así que nunca queda viejo.

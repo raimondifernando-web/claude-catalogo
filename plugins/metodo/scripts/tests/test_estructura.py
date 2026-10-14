@@ -546,6 +546,76 @@ class TestArreglar(unittest.TestCase):
 
 
 
+class TestR12Codigo(unittest.TestCase):
+    """R12: si la caja tiene código, tiene docs/PRD.md (aviso); `arreglar` crea solo la plantilla vacía."""
+
+    def _caja(self, td, nombre="app"):
+        caja = Path(td) / nombre
+        caja.mkdir()
+        (caja / "CLAUDE.md").write_text("# x\n", encoding="utf-8")
+        return caja
+
+    def _r12(self, caja):
+        _, salida = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto")
+        return [l for l in salida.splitlines() if " R12 " in l]
+
+    def test_senales_de_codigo_disparan_r12(self):
+        for senal in ("package.json", "pyproject.toml", "requirements.txt", "Package.swift"):
+            with tempfile.TemporaryDirectory() as td:
+                caja = self._caja(td)
+                (caja / senal).write_text("", encoding="utf-8")
+                lineas = self._r12(caja)
+                self.assertEqual(len(lineas), 1, senal)
+                self.assertTrue(lineas[0].startswith("•"), lineas[0])
+        for carpeta in ("src", "app"):
+            with tempfile.TemporaryDirectory() as td:
+                caja = self._caja(td)
+                (caja / carpeta / "sub").mkdir(parents=True)
+                (caja / carpeta / "sub" / "main.py").write_text("", encoding="utf-8")
+                self.assertEqual(len(self._r12(caja)), 1, carpeta)
+
+    def test_sin_codigo_o_con_prd_no_dispara(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td)
+            (caja / "src").mkdir()
+            (caja / "src" / "notas.txt").write_text("solo texto", encoding="utf-8")  # src/ sin código no cuenta
+            self.assertEqual(self._r12(caja), [])
+            (caja / "package.json").write_text("{}", encoding="utf-8")
+            self.assertEqual(len(self._r12(caja)), 1)
+            (caja / "docs").mkdir()
+            (caja / "docs" / "PRD.md").write_text("# PRD\n", encoding="utf-8")
+            self.assertEqual(self._r12(caja), [])
+
+    def test_r12_solo_en_proyecto(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, "empresa")
+            (caja / "package.json").write_text("{}", encoding="utf-8")
+            _, salida = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="empresa")
+            self.assertNotIn(" R12 ", salida)
+
+    def test_arreglar_crea_plantilla_sin_inventar_ni_pisar(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td)
+            (caja / "pyproject.toml").write_text("", encoding="utf-8")
+            _, plan = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td)
+            self.assertIn("crearía: docs/PRD.md", plan)
+            self.assertFalse((caja / "docs").exists())  # sin --si no crea nada
+            _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
+            prd = (caja / "docs" / "PRD.md").read_text(encoding="utf-8")
+            for seccion in ("## Qué se construye", "## Cuándo está terminado", "## Qué NO se hace", "## Sección técnica", "## Flujo de la app"):
+                self.assertIn(seccion, prd)
+            # la plantilla no trae contenido inventado: solo títulos, aclaraciones y líneas en blanco
+            self.assertEqual(self._r12(caja), [])
+            # un PRD existente no se pisa
+            (caja / "docs" / "PRD.md").write_text("mío\n", encoding="utf-8")
+            _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
+            self.assertEqual((caja / "docs" / "PRD.md").read_text(encoding="utf-8"), "mío\n")
+
+    def test_r12_tiene_su_arreglo_en_el_markdown(self):
+        md = SCRIPTS_DIR.parent / "estructura" / "ESTRUCTURA.md"
+        self.assertIn("R12", estructura.cargar_arreglos(str(md)))
+
+
 class TestEnvMultilinea(unittest.TestCase):
     def test_clave_en_varias_lineas_no_se_cuela(self):
         with tempfile.TemporaryDirectory() as td:
