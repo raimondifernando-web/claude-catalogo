@@ -224,5 +224,40 @@ class NombresEnCI(unittest.TestCase):
         self.assertIn("mensaje de commit", out.stdout)
 
 
+class PasoDelRobot(unittest.TestCase):
+    """Corre el paso «¿Toca lo que corre solo…?» de zona-sensible.yml tal como lo corre GitHub (bash -e), con un
+    zona-sensible.py de mentira. Nace del 2026-10-14: con `; rc=$?` el código 10 cortaba el paso y el OK no se leía."""
+
+    def paso(self):
+        texto = (RAIZ / ".github" / "workflows" / "zona-sensible.yml").read_text(encoding="utf-8")
+        bloque = texto.split("name: ¿Toca lo que corre solo en la Mac del cliente?", 1)[1].split("run: |", 1)[1]
+        return "\n".join(l[10:] for l in bloque.splitlines() if l.startswith("          ") or not l.strip())
+
+    def correr(self, codigo, etiquetas, head="3ffc041aaaa"):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "scripts").mkdir()
+            (Path(d) / "scripts" / "zona-sensible.py").write_text(f"import sys; sys.exit({codigo})\n")
+            return correr(["bash", "-e", "-c", self.paso()], d,
+                          {"BASE": "b", "HEAD": head, "ETIQUETAS": json.dumps(etiquetas)})
+
+    def test_sin_zona_pasa(self):
+        self.assertEqual(self.correr(0, []).returncode, 0)
+
+    def test_zona_sin_ok_falla_con_el_mensaje(self):
+        out = self.correr(10, [])
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("ok-fernando-3ffc041", out.stdout)
+
+    def test_zona_con_ok_del_commit_pasa(self):
+        out = self.correr(10, ["ok-fernando-3ffc041"])
+        self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+
+    def test_ok_de_otro_commit_no_vale(self):
+        self.assertEqual(self.correr(10, ["ok-fernando-1234567"]).returncode, 1)
+
+    def test_error_del_control_falla(self):
+        self.assertEqual(self.correr(2, ["ok-fernando-3ffc041"]).returncode, 1)
+
+
 if __name__ == "__main__":
     unittest.main()

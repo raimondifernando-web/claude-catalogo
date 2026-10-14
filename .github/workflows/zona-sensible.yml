@@ -81,7 +81,9 @@ jobs:
           ETIQUETAS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
         run: |
           set -uo pipefail
-          python3 scripts/zona-sensible.py --base "$BASE" --head "$HEAD"; rc=$?
+          # GitHub corre cada paso con `bash -e`: sin el `|| rc=$?`, el código 10 cortaría el paso antes de mirar el OK.
+          rc=0
+          python3 scripts/zona-sensible.py --base "$BASE" --head "$HEAD" || rc=$?
           [ "$rc" -eq 0 ] && exit 0
           [ "$rc" -ne 10 ] && { echo "::error::zona-sensible no pudo revisar el PR (código $rc): no se une"; exit 1; }
           ok="ok-fernando-${HEAD:0:7}"
