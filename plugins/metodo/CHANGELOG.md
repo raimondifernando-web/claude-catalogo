@@ -1,5 +1,9 @@
 # metodo — qué cambia para vos
 
+## 0.39.2 — 2026-10-14
+Se aplica solo; no hay nada que correr.
+- **La sesión nueva vuelve a su grupo de la barra lateral:** al cerrar, `/metodo:cerrar` abre la sesión siguiente y, si se olvidaba de devolverla al grupo donde estaba la anterior, quedaba suelta y había que arrastrarla a mano. Ahora `/metodo:arrancar` lo detecta y la mueve solo.
+
 ## 0.39.1 — 2026-10-14
 Arreglos para que el método ande igual en Windows. Se aplica solo; no hay nada que correr.
 - **Delegar en Windows:** `delegar.py --archivo` rechazaba cualquier pedido en la carpeta temporal («tiene que estar dentro del repo…») porque comparaba rutas con `\` contra rutas con `/`. Ahora compara igual en los tres sistemas.

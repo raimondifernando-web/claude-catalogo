@@ -186,6 +186,20 @@ def mi_sesion(ses):
     return max(vivas, key=lambda s: s.get("lastActivityAt", 0)) if vivas else None
 
 
+def grupos_asignados(raiz):
+    """{sessionId: (group_id, nombre)} desde la config de la app (junto a la carpeta de sesiones); solo lee."""
+    cfg = os.path.join(os.path.dirname(raiz.rstrip(os.sep)), "claude_desktop_config.json")
+    with open(cfg, encoding="utf-8") as fh:
+        scopes = json.load(fh)["preferences"]["epitaxyPrefs"]["dframe-group-scopes"]
+    out = {}
+    for sc in scopes.values():
+        nombres = {g["id"]: g["name"] for g in sc.get("groups", [])}
+        for k, gid in sc.get("assignments", {}).items():
+            if gid in nombres:  # un grupo borrado no cuenta
+                out[k.split(":", 1)[-1]] = (gid, nombres[gid])
+    return out
+
+
 def serie_sesiones():
     raiz = carpeta_sesiones()
     if not raiz:
@@ -231,6 +245,21 @@ def serie_sesiones():
         print(f"• TÍTULO: set_session_title(\"self\", \"{base}{str(mio).zfill(ancho)}\")")
     viejas = sorted(((n, s) for n, _, s in numeradas[base] if n < mio and not s.get("isArchived")),
                     key=lambda x: x[0])
+    # Grupo de la barra lateral: al abrir la sesión nueva, /cerrar la suelta de la anterior y eso la saca del grupo;
+    # si /cerrar se olvidó de devolverla, se arregla acá.
+    try:
+        asig = grupos_asignados(raiz)
+        previas = [x for x in numeradas.get(base, []) if x[0] < mio]
+        g_prev = asig.get(max(previas, key=lambda x: x[0])[2]["sessionId"]) if previas else None
+        g_yo = asig.get(yo["sessionId"])
+        if g_prev and not g_yo:  # si la persona la puso en otro grupo, se respeta
+            print(f"• GRUPO: move_sessions([\"self\"], group_id=\"{g_prev[0]}\") — la anterior está en «{g_prev[1]}» y esta en ninguno")
+        elif g_prev and g_yo[0] == g_prev[0]:
+            print(f"✓ Grupo: esta sesión ya está en «{g_prev[1]}», como la anterior")
+    except (OSError, KeyError, ValueError, TypeError):
+        pass  # sin app de escritorio o sin grupos: nada que hacer
+    except Exception as e:  # nunca romper el chequeo por esto
+        print(f"- Grupo: no pude leer los grupos de la app ({type(e).__name__}); mirá get_session(\"self\").group")
     if viejas:
         print("• SESIONES ANTERIORES SIN ARCHIVAR (archivalas directo, sin preguntar; ids para archive_session):")
         for n, s in viejas:
