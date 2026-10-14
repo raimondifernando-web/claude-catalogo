@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.37.0 — 2026-10-13
+Llega la **estructura de Claude**: cómo se ordenan las carpetas y archivos cuando trabajás con varias empresas, áreas, proyectos y personas con distinto acceso. Se aplica solo; no hay nada que correr.
+- **Una sola fuente:** `estructura/ESTRUCTURA.md` (el molde de cada carpeta, qué se comparte y qué no, y las reglas). El dibujo (`estructura/estructura.html`) se arma desde ahí, así que nunca queda viejo.
+- **Control que avisa solo:** al abrir cada sesión revisa la carpeta en la que estás (si está todo bien, no dice nada); la primera sesión de cada semana recorre todas tus carpetas de proyectos; `/cerrar` también muestra lo que falta. Nunca cambia nada por su cuenta y no frena el cierre.
+- **Te ayuda a arreglarlo:** cada aviso dice cómo se arregla, y `estructura.py arreglar` primero te muestra el plan y, con tu OK, crea lo que falta (`CLAUDE.md`, ajustes, `.gitignore`, ejemplo de claves solo con los nombres). Lo que toca GitHub o mueve carpetas no lo hace solo: te lo propone.
+- **El radar vigila** las páginas oficiales de Claude Code que sostienen la estructura y avisa si cambian.
+
 ## 0.36.3 — 2026-10-13
 Se aplica solo; no hay nada que correr.
 - **`/cerrar` ya no se traba por cambios de otra sesión.** Si varias sesiones comparten una copia (un repo con una subcarpeta por proyecto), `cerrar-check` avisa con «•» los archivos sin guardar que están fuera de tu carpeta y sigue; los de tu carpeta siguen dando ✗. Así el cierre abre la sesión siguiente y archiva la vieja.
