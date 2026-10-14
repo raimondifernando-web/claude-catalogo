@@ -26,7 +26,8 @@ concurrency:
 
 jobs:
   controles:
-    runs-on: ubuntu-latest
+    # En Mac, como las computadoras de los clientes: varias pruebas del método son de macOS (firmlinks, lanzadores).
+    runs-on: macos-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,6 +38,8 @@ jobs:
         with:
           python-version: "3.12"
       # Sin secretos: el control de nombres de clientes corre en zona-sensible.yml con el código de main.
+      - name: Librería que usan las pruebas (versión fija)
+        run: python -m pip install --disable-pip-version-check -q "pyyaml==6.0.2"
       - name: Controles (metadatos y pruebas)
         env:
           SIN_NOMBRES: "1"
