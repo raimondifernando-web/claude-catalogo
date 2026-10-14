@@ -954,6 +954,14 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Condiciones (no bloquean) | m3: sin `TMPDIR` la marca va a `/tmp` (riesgo bajo de enlace simbólico). No verificado por nadie: que Claude Code muestre el stderr con código 2 en `Write/Agent/Task/Workflow`, que convivan dos PreToolUse sobre `Agent` (radar + este) y una prueba en una Mac que solo tenga la app. |
 | Veredicto | **PASS con condiciones**, 0 críticos. |
 
+## 2026-10-14 · metodo 0.37.0 → 0.38.0 (commit 9fca2c3) — PASS
+| Control | Resultado |
+|---|---|
+| Alcance | `estructura.py`: regla R12 (aviso si un proyecto con código no tiene `docs/PRD.md`) y plantilla del PRD en `arreglar`; molde de `ESTRUCTURA.md` con `docs/PRD.md`, `docs/decisiones.md`, `docs/planes/`; dibujo regenerado. |
+| Riesgo | Bajo: la detección de código solo lee nombres de archivos (no abre contenidos) en `src/`/`app/`, sin seguir enlaces simbólicos y corta en el primer archivo de código; `arreglar` solo crea la plantilla vacía si no existe (mismo modo «x», nunca pisa). Sin red, sin git nuevo, sin secretos. |
+| Pruebas | Suite de metodo: **1062 OK**, 5 salteadas (corrida por Tech, no por quien implementó). Pruebas nuevas de R12 (con/sin código, con PRD, plantilla no pisa). `verificar-metadatos`: TODO COINCIDE. Grep de clientes: 0. No probado en Windows. |
+| Veredicto | **PASS**, 0 críticos. Implementó Sonnet; revisó Tech (diff completo de `estructura.py`). |
+
 ## 2026-10-13 · metodo 0.36.3 → 0.37.0 (commit bcf8d74) — PASS
 | Control | Resultado |
 |---|---|
