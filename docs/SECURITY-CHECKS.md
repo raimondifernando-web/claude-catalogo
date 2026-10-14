@@ -954,6 +954,14 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Condiciones (no bloquean) | m3: sin `TMPDIR` la marca va a `/tmp` (riesgo bajo de enlace simbólico). No verificado por nadie: que Claude Code muestre el stderr con código 2 en `Write/Agent/Task/Workflow`, que convivan dos PreToolUse sobre `Agent` (radar + este) y una prueba en una Mac que solo tenga la app. |
 | Veredicto | **PASS con condiciones**, 0 críticos. |
 
+## 2026-10-13 · metodo 0.36.3 → 0.37.0 (commit bcf8d74) — PASS
+| Control | Resultado |
+|---|---|
+| Alcance | Nuevo `scripts/estructura.py` (dibujo desde `estructura/ESTRUCTURA.md`, `revisar`, `arreglar`, `completar`), enganche en el SessionStart del plugin (`revisar --aviso`, timeout 5 s, siempre sale 0), sección en `cerrar-check.py` (solo informa), 8 páginas oficiales nuevas en el radar. |
+| Riesgo | Medio-bajo: el control solo lee (git con lista de argumentos, `-c core.fsmonitor=`, sin hooks); `arreglar --si` solo CREA archivos que no existen (modo «x»), nunca git init, remotos, `git rm`, mover ni borrar. Del archivo de claves solo lee NOMBRES (salta valores entre comillas en varias líneas; prueba con clave falsa) y nunca imprime un valor. Escribe una marca semanal en la carpeta de datos del plugin. Sin red. |
+| Pruebas | Suite de metodo: **956 OK**, 5 salteadas; vigía 101 OK. 18 pruebas propias de estructura (sincronía con el dibujo aprobado, fallas plantadas R1-R11, `arreglar` no pisa, nombres sin valores, aviso de 10 líneas). Disparo probado en sesión limpia con `--plugin-dir` (aviso apareció solo). Pasada real de solo lectura en la máquina de Tech: 32 hallazgos reales, 2,7 s. `verificar-metadatos`: TODO COINCIDE. Grep de clientes: 0. No probado en Windows. |
+| Veredicto | **PASS**, 0 críticos. Implementaron Gemini (2 vueltas) y Sonnet; revisó Tech (rediseño de detección de cajas, 1 arreglo de seguridad en la lectura de nombres). |
+
 ## 2026-10-13 · metodo 0.36.2 → 0.36.3 (commit 2aa9cea) — PASS
 | Control | Resultado |
 |---|---|
