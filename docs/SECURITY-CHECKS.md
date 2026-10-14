@@ -964,7 +964,7 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | No revisado | Comportamiento en una sesión nueva real de la app (el CHANGELOG mismo dice «falta confirmarlo abriendo una sesión nueva»; Fernando ya lo ve andando en su app). Windows (rutas con `\`: el recorrido de carpetas madre corta por `/`, así que ahí solo se vería la carpeta de la sesión; falla cerrado, sin riesgo). |
 | Veredicto | **PASS**, 0 críticos. Condición menor (no bloquea): rutas Windows en la búsqueda de carpetas madre. |
 
-## 2026-10-14 · metodo 0.38.0 → 0.38.1 (commit f9bd917) — PASS
+## 2026-10-14 · metodo 0.39.0 → 0.39.1 (commit 0a4b461) — PASS
 | Control | Resultado |
 |---|---|
 | Alcance | `delegar.py` (`bases_permitidas` y su uso: rutas con `\\` normalizadas a `/`, solo afecta a Windows), `disparadores.py` y `cuarentena_auditar.py` (fuerzan UTF-8 en la salida, como los demás scripts), `scripts/estable-avanzar.py` (lee el texto de git en UTF-8; fuera del plugin). El resto son pruebas: la de «sin Python» tapa también `python` y `py` (en Linux había un `/usr/bin/python` real), el firmlink solo se prueba en Mac, y las pruebas que lanzan `bash` se saltan en Windows. |
