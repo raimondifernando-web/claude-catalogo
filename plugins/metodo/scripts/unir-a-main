@@ -41,7 +41,7 @@ SENSIBLE = [
     ("desinstalar*.sh", "un desinstalador"), ("*/desinstalar*.sh", "un desinstalador"),
     (".claude/settings*.json", "ajustes de Claude del proyecto (permisos, hooks)"),
     (".claude/hooks/*", "un hook"), ("*hooks/hooks.json", "un hook"),
-    (".github/workflows/*", "un robot de GitHub"),
+    (".github/*", "los robots y reglas de GitHub"),
     (".git-hooks/*", "un hook de git"),
 ]
 # Además, en la carpeta de configuración de Claude (el repo de ~/.claude):
@@ -203,10 +203,12 @@ def principal(a):
     if carpeta_main:
         r = git(carpeta_main, "merge", "--ff-only", "-q", "origin/main", ok=(0, 1, 128))
         nota = "" if r.returncode == 0 else f" · la carpeta {carpeta_main} se pone al día en su próximo pull"
-    comun = Path(git(repo, "rev-parse", "--git-common-dir").stdout.strip())
-    comun = comun if comun.is_absolute() else (repo / comun)
-    with open(comun.resolve() / "uniones-a-main.log", "a") as f:
-        f.write(f"{union} {rama} | {prueba} | {revision} | zona: {zona}\n")
+    try:  # el rastro local es un extra: si falla, la unión ya quedó hecha y escrita en main
+        comun = Path(git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip())
+        with open(comun / "uniones-a-main.log", "a") as f:
+            f.write(f"{union} {rama} | {prueba} | {revision} | zona: {zona}\n")
+    except (Frena, OSError):
+        pass
     print(f"Unido a main ✓ {nombre} ← {rama} ({commits} commit(s) · pruebas: {prueba} · revisión: {revision}"
           f" · zona sensible: {'con OK' if sensibles else 'no'}){nota}")
     return 0

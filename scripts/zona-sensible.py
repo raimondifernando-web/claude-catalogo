@@ -41,7 +41,6 @@ FIJAS = [
 CAMPOS_INOCUOS = {"version", "description"}
 RAIZ_PLUGIN = re.compile(r"\$\{?CLAUDE_PLUGIN_ROOT\}?/([A-Za-z0-9._/-]+)")
 IMPORT = re.compile(r"^\s*(?:from|import)\s+([A-Za-z_]\w*)", re.M)
-ARCHIVO_HERMANO = re.compile(r"[\"'/\s$]([A-Za-z0-9_.-]+\.(?:sh|py))\b")
 
 
 def git(*args, ok=(0,)):
@@ -60,11 +59,31 @@ def archivos(sha):
     return set(git("ls-tree", "-r", "--name-only", sha).stdout.split())
 
 
+def archivos_de_hooks(sha, todos):
+    """hooks/hooks.json de cada plugin y los archivos de hooks que declare su plugin.json (campo `hooks`)."""
+    out = {p for p in todos if fnmatch.fnmatch(p, "plugins/*/hooks/hooks.json")}
+    for pj in (p for p in todos if fnmatch.fnmatch(p, "plugins/*/.claude-plugin/plugin.json")):
+        plugin = "/".join(pj.split("/")[:2])
+        try:
+            decl = json.loads(mostrar(sha, pj) or "{}").get("hooks")
+        except ValueError:
+            continue
+        for d in ([decl] if isinstance(decl, str) else decl if isinstance(decl, list) else []):
+            if isinstance(d, str):
+                cand = f"{plugin}/{d.lstrip('./')}"
+                if cand in todos:
+                    out.add(cand)
+    return sorted(out)
+
+
 def ejecutados_por_hooks(sha, todos):
-    """Archivos que los hooks.json de `sha` ejecutan, más lo que esos archivos llaman de su misma carpeta (un nivel)."""
+    """Archivos que los hooks de `sha` ejecutan, más lo que esos archivos llaman de su misma carpeta (un nivel):
+    cualquier archivo hermano cuyo nombre aparezca en el código (con o sin extensión, p. ej. `codex-cupo`) y los
+    módulos que importa."""
     out = {}
-    for hj in sorted(p for p in todos if fnmatch.fnmatch(p, "plugins/*/hooks/hooks.json")):
+    for hj in archivos_de_hooks(sha, todos):
         plugin = "/".join(hj.split("/")[:2])
+        out[hj] = "declara hooks: corre solo en la Mac del cliente"
         texto = mostrar(sha, hj) or ""
         for rel in RAIZ_PLUGIN.findall(texto):
             ruta = f"{plugin}/{rel.rstrip('/')}"
@@ -73,12 +92,13 @@ def ejecutados_por_hooks(sha, todos):
                 out[carpeta + "/*"] = f"lo ejecuta un hook ({hj})"
             out[ruta] = f"lo ejecuta un hook ({hj})"
             fuente = mostrar(sha, ruta) or ""
-            hermanos = set(ARCHIVO_HERMANO.findall(" " + fuente))
-            if ruta.endswith(".py"):
-                hermanos |= {m + ".py" for m in IMPORT.findall(fuente)}
-            for h in hermanos:
-                cand = f"{carpeta}/{h}"
-                if cand in todos and cand != ruta:
+            palabras = set(re.findall(r"[A-Za-z0-9_.-]+", fuente))
+            mods = {m + ".py" for m in IMPORT.findall(fuente)} if ruta.endswith(".py") else set()
+            for cand in todos:
+                if cand == ruta or cand.rsplit("/", 1)[0] != carpeta:
+                    continue
+                nombre = cand.rsplit("/", 1)[1]
+                if nombre in palabras or nombre in mods:
                     out[cand] = f"lo usa {ruta}, que corre en un hook"
     return out
 
@@ -108,7 +128,7 @@ def revisar(base, head):
         reglas += list(ejecutados_por_hooks(sha, archivos(sha)).items())
     hallazgos = {}
     for p in cambiados:
-        if p.endswith("/.claude-plugin/plugin.json") or p == ".claude-plugin/marketplace.json":
+        if p.endswith(".claude-plugin/plugin.json") or p == ".claude-plugin/marketplace.json":
             if manifiesto_cambia_lo_que_corre(base, head, p):
                 hallazgos[p] = "el manifiesto cambia algo más que versión o descripción (hooks, fuentes, comandos)"
             continue

@@ -36,14 +36,22 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - name: Controles (metadatos, pruebas, nombres de clientes)
+      # Primero y solo, con el secreto: todavía no corrió ningún código de pruebas del PR (que podría leerlo o cambiar
+      # este script en disco). nombres-en-ci.py es zona sensible: cambiarlo pide el OK del dueño.
+      - name: Nombres de clientes (lista en el secreto, nunca se imprime)
         env:
           NOMBRES_PROHIBIDOS: ${{ secrets.NOMBRES_PROHIBIDOS }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          if [ -n "${BASE_SHA:-}" ]; then python3 scripts/nombres-en-ci.py --rango "$BASE_SHA..$HEAD_SHA"
+          else python3 scripts/nombres-en-ci.py; fi
+      - name: Controles (metadatos y pruebas, sin el secreto)
+        env:
+          SIN_NOMBRES: "1"
+        run: |
+          set -euo pipefail
           git config --global user.email "controles@localhost"   # algunas pruebas crean repos de juguete
           git config --global user.name "controles"
-          if [ -n "${BASE_SHA:-}" ]; then export RANGO="$BASE_SHA..$HEAD_SHA"; fi
           bash scripts/controles.sh

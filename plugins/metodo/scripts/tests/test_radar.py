@@ -781,7 +781,12 @@ class TestWorkflow(unittest.TestCase):
     def test_sin_claves_ni_secretos_propios_y_publica_solo_con_guardias(self):
         # Decisión del dueño 2026-10-03: se publica solo, pero únicamente si pasan las guardias.
         self.assertNotRegex(self.texto, r"secrets\.(?!GITHUB_TOKEN)")
-        self.assertNotIn("--auto", self.texto)
+        # Desde 2026-10-14 main exige los checks `controles` y `zona-sensible`: la unión queda encolada (--auto) y solo
+        # después de pedir los dos checks sobre la rama del robot (sus PR no disparan `pull_request`).
+        auto = self.texto.index("--auto")
+        self.assertLess(self.texto.index("gh workflow run controles.yml"), auto)
+        self.assertLess(self.texto.index("gh workflow run zona-sensible.yml"), auto)
+        self.assertNotIn("--admin", self.texto)
         self.assertIn("persist-credentials: false", self.texto)  # la credencial no está mientras se leen terceros
         self.assertIn("RADAR\\.(yaml|md)", self.texto)  # guardia: solo datos del radar
         self.assertIn("antes / 2", self.texto)  # guardia: no borra más de la mitad

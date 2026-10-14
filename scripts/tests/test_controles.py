@@ -106,6 +106,24 @@ class ZonaSensible(unittest.TestCase):
                           json.dumps({"name": "metodo", "version": "1.1.0", "hooks": "./otros.json"}))
         self.assertEqual(out.returncode, 10)
 
+    def test_programa_sin_extension_que_llama_el_script_del_hook(self):
+        # Hallazgo de la revisión (2026-10-14): radar.py ejecuta codex-cupo, que no tiene extensión.
+        self.r.escribir("plugins/metodo/scripts/radar.py", "CUPO = AQUI / 'codex-cupo'\n")
+        self.r.escribir("plugins/metodo/scripts/codex-cupo", "#!/bin/sh\necho 1\n")
+        base = self.r.commit("radar llama codex-cupo")
+        self.r.escribir("plugins/metodo/scripts/codex-cupo", "#!/bin/sh\necho 2\n")
+        out = self.r.zona(base, self.r.commit())
+        self.assertEqual(out.returncode, 10, out.stdout)
+        self.assertIn("codex-cupo", out.stdout)
+
+    def test_hooks_declarados_en_el_manifiesto(self):
+        self.r.escribir("plugins/metodo/.claude-plugin/plugin.json",
+                        json.dumps({"name": "metodo", "version": "1.0.0", "hooks": "./otros/hooks.json"}))
+        self.r.escribir("plugins/metodo/otros/hooks.json", json.dumps({"hooks": {}}))
+        base = self.r.commit("hooks en otro archivo")
+        self.r.escribir("plugins/metodo/otros/hooks.json", json.dumps({"hooks": {"Stop": []}}))
+        self.assertEqual(self.r.zona(base, self.r.commit()).returncode, 10)
+
     def test_hook_nuevo_que_llama_un_script_nuevo(self):
         self.r.escribir("plugins/metodo/scripts/nuevo.py", "print('nuevo')\n")
         self.r.escribir("plugins/metodo/hooks/hooks.json", json.dumps({"hooks": {"Stop": [{"hooks": [

@@ -16,7 +16,10 @@ paso "metadatos (lo que el catálogo dice = lo que contiene)" bash scripts/verif
 paso "pruebas del vigía" python3 -m unittest discover -s plugins/metodo/scripts/vigia/tests
 paso "pruebas del método (buzón, radar, estable, checks)" python3 -m unittest discover -s plugins/metodo/scripts/tests
 paso "pruebas de los controles" python3 -m unittest discover -s scripts/tests
-paso "nombres de clientes (lista en el secreto NOMBRES_PROHIBIDOS)" python3 scripts/nombres-en-ci.py ${RANGO:+--rango "$RANGO"}
+# En GitHub este control va en un paso aparte y ANTES (controles.yml): así las pruebas del PR nunca ven el secreto.
+if [ -z "${SIN_NOMBRES:-}" ]; then
+  paso "nombres de clientes (lista en el secreto NOMBRES_PROHIBIDOS)" python3 scripts/nombres-en-ci.py ${RANGO:+--rango "$RANGO"}
+fi
 if [ "$fallos" -eq 0 ]; then
   echo "CONTROLES OK ✓"
 else
