@@ -221,7 +221,7 @@ class Catalogo(unittest.TestCase):
 
 class LineaDeComandos(Base):
     def correr(self, *args):
-        return subprocess.run([sys.executable, os.path.join(AQUI, "disparadores.py"), *args], capture_output=True, text=True)
+        return subprocess.run([sys.executable, os.path.join(AQUI, "disparadores.py"), *args], capture_output=True, encoding="utf-8", errors="replace")
 
     def test_check_sale_1_con_rojo_y_0_con_excepcion(self):
         skill(self.h, "misteriosa", "Herramienta.")
