@@ -184,12 +184,34 @@ function ranking(g: Gasto): { origen: string; pct: number }[] {
     .slice(0, 4)
 }
 
+// Un panel que se abre «solo» (sin que la persona lo pida) no se dibuja por debajo de 144 columnas, ni si todavía no hay
+// ventana (sesiones que abre /cerrar). Un open que responde al mensaje de la persona se dibuja con cualquier ancho, pero
+// solo cuenta como «pedido» si se hace DENTRO del hook de prompt.submit, esperado (await) antes de devolver. Por eso el
+// open va primero y sin consultar nada antes. Abrir un id ya abierto solo lo retitula, así que se hace con cada mensaje.
+// Si la persona lo cierra a mano, no se vuelve a abrir solo.
+let uCerrado = false
+
+async function uAsegurar($: EngineInterface): Promise<void> {
+  if (uCerrado) return
+  try {
+    await $.ui.open({ id: PANEL, title: TITULO, columns: 36 })
+  } catch {
+    // se reintenta con el próximo mensaje
+  }
+}
+
 const usoSessionStart: H = async ($, e, next) => {
   const ran = await next(e)
+  uCerrado = false
   await $.command.register({ name: 'uso', description: 'Abre el panel de uso (contexto y límites del plan)' })
-  void $.ui.open({ id: PANEL, title: TITULO, columns: 36 })
-  const u = await $.session.usage()
-  await update($, medida, previa => armar(u.context, u.rateLimits, previa))
+  void uAsegurar($)
+  // La primera medición llega sola con session.measure si esta falla.
+  try {
+    const u = await $.session.usage()
+    await update($, medida, previa => armar(u.context, u.rateLimits, previa))
+  } catch {
+    // se mide con el primer turno
+  }
   return ran
 }
 
@@ -202,6 +224,7 @@ const usoCommandRun: H = async ($, e, next) => {
 }
 
 const usoPromptSubmit: H = async ($, e, next) => {
+  await uAsegurar($)
   const ahora = await $.clock.now()
   await update($, gasto, g => {
     const base = g ?? GASTO_INICIAL
@@ -242,7 +265,13 @@ const usoSessionMeasure: H = async ($, e, next) => {
 
 const registrarUso: Register = on => {
 
+  on('ui.close', { id: PANEL }, async ($, e, next) => {
+    if (e.origin.kind === 'person') uCerrado = true
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
   on('command.run', { command: 'uso' }, async $ => {
+    uCerrado = false
     await $.ui.open({ id: PANEL, title: TITULO, columns: 36 })
     return { text: 'Panel de uso abierto.' }
   })
@@ -686,17 +715,32 @@ function modeloSinLista(): Modelo {
 
 let ultimaClave = ''
 let ultimosCambios: Cambios = VACIO
-let ultimoJson = ''
 
 // Busca .claude/PENDIENTES.md en la carpeta de la sesión y, si no está, en la raíz de su repo git.
 async function buscar($: EngineInterface, carpeta: string): Promise<{ repo: string; texto: string } | null> {
-  const candidatas = [carpeta]
+  const candidatas: string[] = []
+  const agregar = (c: string) => {
+    if (c !== '' && c !== '/' && !candidatas.includes(c)) candidatas.push(c)
+  }
+  let cwd = ''
+  try {
+    cwd = await $.session.cwd()
+  } catch {
+    // queda solo la raíz
+  }
+  for (const inicio of [carpeta, cwd]) {
+    let c = inicio
+    for (let nivel = 0; nivel < 4 && c !== '' && c !== '/'; nivel++) {
+      agregar(c)
+      c = c.slice(0, c.lastIndexOf('/'))
+    }
+  }
   try {
     const top = await $.process.run(['git', ...GIT_SEGURO, '-C', carpeta, 'rev-parse', '--show-toplevel'])
     const raiz = top.exitCode === 0 ? top.stdout.trim() : ''
-    if (raiz !== '' && raiz !== carpeta) candidatas.push(raiz)
+    if (raiz !== '') agregar(raiz)
   } catch {
-    // sin git: se usa solo la carpeta
+    // sin git: se usan solo las carpetas
   }
   for (const repo of candidatas) {
     try {
@@ -741,16 +785,22 @@ async function refrescar($: EngineInterface): Promise<void> {
           proxima: l.fechas ? proximaFecha(l.fechas, ahora) : undefined,
           hayFechas: l.fechas !== null,
           dias: diasDesde(l.ultima, ahora),
+          // Si la lista salió de una carpeta de arriba (la sesión entró a una subcarpeta), el panel dice de cuál.
+          desde: repo !== carpeta ? repo : undefined,
         }
       }
     }
-    const json = JSON.stringify(modelo)
-    if (json !== ultimoJson) {
-      ultimoJson = json
-      await update($, datos, () => modelo)
+    // Se compara con lo que tiene la app guardado, no con una copia de este módulo: si la app reinicia sus valores
+    // y el módulo sigue con su copia, comparar contra la copia dejaba el panel vacío hasta que cambiara el archivo.
+    const enApp = await $.state.get({ plugin: 'paneles', key: 'datos' } as const)
+    if (JSON.stringify(enApp.value ?? null) !== JSON.stringify(modelo)) await update($, datos, () => modelo)
+  } catch {
+    // Este refresco se llama sin esperar (void): si hasta avisar el error falla, no puede quedar un rechazo suelto.
+    try {
+      await update($, datos, () => modeloConError('El panel no pudo actualizarse esta vez. Se reintenta solo en 30 segundos.'))
+    } catch {
+      // se reintenta en el próximo ciclo
     }
-  } catch (err) {
-    await update($, datos, () => modeloConError('El panel no pudo actualizarse esta vez. Se reintenta solo en 30 segundos.'))
   }
 }
 
@@ -768,19 +818,33 @@ const VERBO: Record<Cambio['tipo'], string> = {
   sacado: 'Salió de la lista',
 }
 
+// Ver uCerrado / uAsegurar (Uso): mismo motivo.
+let pCerrado = false
+
+async function pAsegurar($: EngineInterface): Promise<void> {
+  if (pCerrado) return
+  try {
+    await $.ui.open({ id: P_PANEL, title: P_TITULO, columns: 38 })
+  } catch {
+    // se reintenta con el próximo mensaje
+  }
+}
+
 const pendSessionStart: H = async ($, e, next) => {
   const ran = await next(e)
-  // Cada sesión tiene sus propios átomos: sin esto, el panel nace vacío si el archivo no cambió desde la sesión anterior.
-  ultimoJson = ''
+  pCerrado = false
+  ultimaClave = ''
   await $.command.register({ name: 'pendientes', description: 'Abre el panel de pendientes (PENDIENTES.md)' })
-  void $.ui.open({ id: P_PANEL, title: P_TITULO, columns: 38 })
-  await refrescar($)
+  // El reloj va ANTES de leer nada: si una lectura (git) se cuelga, el panel igual se refresca después.
   $.clock.every(CADA, () => refrescar($))
+  void pAsegurar($)
+  void refrescar($)
   return ran
 }
 
 const pendPromptSubmit: H = async ($, e, next) => {
-  await refrescar($)
+  await pAsegurar($)
+  void refrescar($)
   return next(e)
 }
 
@@ -791,7 +855,13 @@ const pendSessionMeasure: H = async ($, e, next) => {
 
 const registrarPendientes: Register = on => {
 
+  on('ui.close', { id: P_PANEL }, async ($, e, next) => {
+    if (e.origin.kind === 'person') pCerrado = true
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
   on('command.run', { command: 'pendientes' }, async $ => {
+    pCerrado = false
     await $.ui.open({ id: P_PANEL, title: P_TITULO, columns: 38 })
     await refrescar($)
     return { text: 'Panel de pendientes abierto.' }
@@ -907,6 +977,8 @@ const registrarPendientes: Register = on => {
           </Text>
         )}
 
+        {m.desde !== undefined ? <Text dimColor>Lista de {m.desde}</Text> : null}
+
         <Text dimColor>Tocá un título para ver el detalle.</Text>
 
         <Box flexDirection="column">
@@ -1020,8 +1092,9 @@ const tArchivo = atom({ plugin: 'paneles', key: 'tareasArchivo' } as const, null
 const T_ARCHIVO = '.claude/tareas.json'
 const T_CADA = 3_000
 const T_ESTADOS = ['pending', 'in_progress', 'completed']
-let tUltimo = ''
 // Tareas que salen de PENDIENTES.md + git (ver abajo). null = la carpeta no tiene lista.
+// Carpeta de la que salió la lista cuando no es la de la sesión (una de arriba). null = la de la sesión.
+const tOrigen = atom({ plugin: 'paneles', key: 'tareasOrigen' } as const, null)
 const derivadas = atom({ plugin: 'paneles', key: 'tareasDerivadas' } as const, null)
 
 // ---------- Tareas derivadas de PENDIENTES.md + git ----------
@@ -1099,18 +1172,12 @@ function tpMezclar(manual: Tarea[], derivadas: Tarea[]): Tarea[] {
 
 let tpUltimoTexto: string | null = null
 let tpCache: Tarea[] | null = null
-let tpUltimoJson = ''
 
 // Lee PENDIENTES.md de la carpeta y la versión anterior en git. null = la carpeta no tiene lista.
-async function tpLeer($: EngineInterface, carpeta: string): Promise<Tarea[] | null> {
-  let texto: string
-  try {
-    texto = await $.fs.read(`${carpeta}/${TP_ARCHIVO}`)
-  } catch {
-    return null
-  }
-  // Sin cambios en el archivo no se vuelve a llamar a git (esto corre cada pocos segundos).
-  if (texto === tpUltimoTexto) return tpCache
+async function tpLeer($: EngineInterface, carpeta: string, texto: string): Promise<Tarea[] | null> {
+  // Sin cambios en el archivo (ni de carpeta) no se vuelve a llamar a git (esto corre cada pocos segundos).
+  const clave = `${carpeta}\0${texto}`
+  if (clave === tpUltimoTexto) return tpCache
   let viejo: string | null = null
   let reciente = false
   try {
@@ -1131,7 +1198,7 @@ async function tpLeer($: EngineInterface, carpeta: string): Promise<Tarea[] | nu
   } catch {
     // sin git: se muestran en curso y prioridad 1, sin lo cerrado
   }
-  tpUltimoTexto = texto
+  tpUltimoTexto = clave
   tpCache = tpDerivar(texto, viejo, reciente)
   return tpCache
 }
@@ -1152,53 +1219,109 @@ function tLeer(texto: string): Tarea[] | null {
   }
 }
 
+// La carpeta de la sesión puede no ser la que tiene el archivo (la sesión entra a un subrepo, o la app la deja en otra).
+// Se prueba la raíz, la carpeta de trabajo y sus carpetas madre (hasta 3 niveles); gana la primera que lo tiene.
+async function tDonde($: EngineInterface, relativo: string): Promise<{ carpeta: string; texto: string } | null> {
+  const vistas = new Set<string>()
+  const inicios: string[] = []
+  for (const pedir of [() => $.session.root(), () => $.session.cwd()]) {
+    try {
+      inicios.push(await pedir())
+    } catch {
+      // esa forma de saber la carpeta no respondió; queda la otra
+    }
+  }
+  for (const inicio of inicios) {
+    let c = inicio
+    for (let nivel = 0; nivel < 4 && c !== '' && c !== '/'; nivel++) {
+      if (!vistas.has(c)) {
+        vistas.add(c)
+        try {
+          return { carpeta: c, texto: await $.fs.read(`${c}/${relativo}`) }
+        } catch {
+          // no está acá; se prueba la carpeta madre
+        }
+      }
+      c = c.slice(0, c.lastIndexOf('/'))
+    }
+  }
+  return null
+}
+
 async function tRefrescar($: EngineInterface): Promise<void> {
   try {
-    const carpeta = await $.session.root()
     let nuevo: Tarea[] | null = null
+    const dTareas = await tDonde($, T_ARCHIVO)
+    if (dTareas !== null) nuevo = tLeer(dTareas.texto)
+    // Se compara con lo que tiene la app guardado, no con una copia de este módulo: si la app reinicia sus valores
+    // (otra sesión, /clear) y el módulo sigue con su copia, comparar contra la copia dejaba el panel vacío para siempre.
+    const enApp = await $.state.get({ plugin: 'paneles', key: 'tareasArchivo' } as const)
+    if (JSON.stringify(enApp.value ?? null) !== JSON.stringify(nuevo)) await update($, tArchivo, () => nuevo)
+
+    const dPend = await tDonde($, TP_ARCHIVO)
+    const der = dPend === null ? null : await tpLeer($, dPend.carpeta, dPend.texto)
+    // Si alguna de las dos fuentes salió de una carpeta de arriba, el panel lo dice.
+    let raiz = ''
     try {
-      nuevo = tLeer(await $.fs.read(`${carpeta}/${T_ARCHIVO}`))
+      raiz = await $.session.root()
     } catch {
-      nuevo = null
+      // sin raíz no se puede decir de dónde salió
     }
-    const json = JSON.stringify(nuevo)
-    if (json !== tUltimo) {
-      tUltimo = json
-      await update($, tArchivo, () => nuevo)
-    }
-    const der = await tpLeer($, carpeta)
-    const jd = JSON.stringify(der)
-    if (jd !== tpUltimoJson) {
-      tpUltimoJson = jd
-      await update($, derivadas, () => der)
-    }
+    const de = [dTareas, dPend].find(d => d !== null && raiz !== '' && d.carpeta !== raiz)?.carpeta ?? null
+    const oApp = await $.state.get({ plugin: 'paneles', key: 'tareasOrigen' } as const)
+    if ((oApp.value ?? null) !== de) await update($, tOrigen, () => de)
+    const derApp = await $.state.get({ plugin: 'paneles', key: 'tareasDerivadas' } as const)
+    if (JSON.stringify(derApp.value ?? null) !== JSON.stringify(der)) await update($, derivadas, () => der)
   } catch {
     // se reintenta en el próximo ciclo
   }
 }
 
+// Ver uCerrado / uAsegurar (Uso): mismo motivo.
+let tCerrado = false
+
+async function tAsegurar($: EngineInterface): Promise<void> {
+  if (tCerrado) return
+  try {
+    await $.ui.open({ id: T_PANEL, title: 'Tareas', columns: 38 })
+  } catch {
+    // se reintenta con el próximo mensaje
+  }
+}
+
 const tSessionStart: H = async ($, e, next) => {
   const ran = await next(e)
-  // Cada sesión tiene sus propios átomos: sin esto, el panel nace vacío si el archivo no cambió desde la sesión anterior.
-  tUltimo = ''
+  tCerrado = false
   tpUltimoTexto = null
   tpCache = null
-  tpUltimoJson = ''
   await $.command.register({ name: 'tareas', description: 'Abre el panel de tareas de la sesión' })
-  void $.ui.open({ id: T_PANEL, title: 'Tareas', columns: 38 })
-  await tRefrescar($)
+  // El reloj va ANTES de leer nada: si una lectura se cuelga, el panel igual se refresca después.
   $.clock.every(T_CADA, () => tRefrescar($))
+  void tAsegurar($)
+  void tRefrescar($)
   return ran
 }
 
 // Además del reloj (que en la app puede no latir), Tareas se relee con cada mensaje y al terminar cada turno.
+const tPromptSubmit: H = async ($, e, next) => {
+  await tAsegurar($)
+  await tRefrescar($)
+  return next(e)
+}
+
 const tRelee: H = async ($, e, next) => {
   await tRefrescar($)
   return next(e)
 }
 
 const registrarTareas: Register = on => {
+  on('ui.close', { id: T_PANEL }, async ($, e, next) => {
+    if (e.origin.kind === 'person') tCerrado = true
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
   on('command.run', { command: 'tareas' }, async $ => {
+    tCerrado = false
     await $.ui.open({ id: T_PANEL, title: 'Tareas', columns: 38 })
     await tRefrescar($)
     return { text: 'Panel de tareas abierto.' }
@@ -1249,6 +1372,7 @@ const registrarTareas: Register = on => {
     const hechas = tareas.filter(t => t.estado === 'completed').length
     return (
       <Box flexDirection="column" paddingX={1} gap={1}>
+        {(await read($, tOrigen)) != null ? <Text dimColor>Lista de {await read($, tOrigen)}</Text> : null}
         <Text dimColor>
           {tareas.length === 0 ? 'Sin tareas todavía.' : `${hechas} de ${tareas.length} hechas`}
         </Text>
@@ -1263,9 +1387,9 @@ const registrarTareas: Register = on => {
 }
 
 export const register: Register = on => {
-  on('session.start', ($, e, next) => usoSessionStart($, e, e2 => pendSessionStart($, e2, e3 => tSessionStart($, e3, next))))
+  on('session.start', ($, e, next) => usoSessionStart($, e, e2 => pendSessionStart($, e2, e3 => tSessionStart($, e3, next)))).catch(($, e, next) => next(e))
   on('command.run', ($, e, next) => usoCommandRun($, e, next)).catch(($, e, next) => next(e))
-  on('prompt.submit', ($, e, next) => usoPromptSubmit($, e, e2 => pendPromptSubmit($, e2, e3 => tRelee($, e3, next)))).catch(($, e, next) => next(e))
+  on('prompt.submit', ($, e, next) => usoPromptSubmit($, e, e2 => pendPromptSubmit($, e2, e3 => tPromptSubmit($, e3, next)))).catch(($, e, next) => next(e))
   on('session.measure', ($, e, next) => usoSessionMeasure($, e, e2 => pendSessionMeasure($, e2, e3 => tRelee($, e3, next))))
   registrarUso(on)
   registrarPendientes(on)

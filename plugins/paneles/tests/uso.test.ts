@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 // El mundo de abajo: reloj fijo, panel vacío, mediciones y desglose de mentira.
-function fondo(on: On) {
+function fondo(on: On, opciones: { usageFalla?: boolean } = {}) {
   mock.clock(on, { now: Date.parse('2026-10-10T13:00:00Z') })
   on('ui.render', ($, e) => {
     const { Box } = $.ui.resolve(e)
@@ -10,8 +10,9 @@ function fondo(on: On) {
   })
   on('session.measure', (_$, e) => ({ changed: e.changed }))
   on('prompt.submit', (_$, e) => ({ text: e.text }))
-  on('session.usage', () =>
-    ({
+  on('session.usage', () => {
+    if (opciones.usageFalla) throw new Error('sin medición todavía')
+    return ({
       value: {
       startedAt: 0,
       rateLimits: [],
@@ -28,8 +29,8 @@ function fondo(on: On) {
         },
       },
       },
-    }) as never,
-  )
+    }) as never
+  })
 }
 
 const PANEL = {
@@ -90,4 +91,35 @@ test('sin medición todavía avisa que espera', async ($, on) => {
   const ui = await $.ui.mount({ plugin: 'paneles', surface: 'desktop', ...PANEL })
   expect(await ui.find({ type: 'Text', text: /Esperando/ })).toBeDefined()
   await ui.unmount()
+})
+
+// ---------- Arreglos de 2026-10-14 ----------
+test('cada mensaje abre el panel DENTRO del hook (así cuenta como pedido de la persona y se dibuja con cualquier ancho)', async ($, on) => {
+  fondo(on)
+  on('session.start', (_$, e) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: { command: 'uso' } }) as never)
+  let aperturas = 0
+  on('ui.open', (_$, e) => {
+    if (e.id === 'medidor-uso') aperturas++
+    return { value: { isPlaced: false } } as never
+  })
+  await $.session.start({ cwd: '/proy' } as never)
+  const alArrancar = aperturas
+  await $.prompt.submit({ text: 'hola' } as never)
+  expect(aperturas).toBe(alArrancar + 1)
+  await $.prompt.submit({ text: 'otro' } as never)
+  expect(aperturas).toBe(alArrancar + 2)
+})
+
+test('si una lectura falla al arrancar, el arranque no se cae y el panel igual se abre', async ($, on) => {
+  fondo(on, { usageFalla: true })
+  on('session.start', (_$, e) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: { command: 'uso' } }) as never)
+  let aperturas = 0
+  on('ui.open', () => {
+    aperturas++
+    return { value: { isPlaced: true } } as never
+  })
+  await $.session.start({ cwd: '/proy' } as never)
+  expect(aperturas).toBeGreaterThan(0)
 })

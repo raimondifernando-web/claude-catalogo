@@ -1,7 +1,13 @@
 # paneles
 
-## 0.2.2 — 2026-10-14
-- **Arreglo: el panel Tareas podía quedar vacío.** Solo se actualizaba con un reloj interno que en la app puede no latir. Ahora también se actualiza con cada mensaje que escribís y al terminar cada turno (como Pendientes). Probado con pruebas automáticas; falta confirmarlo abriendo una sesión nueva.
+## 0.3.0 — 2026-10-14
+Los tres paneles quedan iguales a los de Fernando.
+- **Tareas ya no queda vacío.** Solo se actualizaba con un reloj interno que en la app puede no latir; ahora también se actualiza con cada mensaje y al terminar cada turno.
+- **Los tres paneles se abren con tu mensaje.** Un panel que se abre solo no se dibuja en ventanas angostas; el que se abre como respuesta a tu mensaje, sí. Si cerrás un panel a mano, no se vuelve a abrir solo hasta que lo pidas con su comando (`/uso`, `/pendientes`, `/tareas`).
+- **Carpeta que cambia.** Si la sesión quedó en una subcarpeta, Pendientes y Tareas buscan la lista en las carpetas de arriba (hasta 3 niveles) y el panel dice «Lista de <carpeta>».
+- **Panel que no se vacía.** Si la app reinicia sus valores (otra sesión, /clear), los paneles se vuelven a llenar solos.
+- **Uso y errores.** Si una lectura falla al arrancar, el panel igual se abre; un error al actualizar Pendientes ya no deja avisos sueltos.
+- Probado con pruebas automáticas (41); falta confirmarlo abriendo una sesión nueva.
 
 ## 0.2.1 — 2026-10-11
 - **El panel Tareas se arma solo.** Además de lo que anota la sesión, muestra lo que sale de `.claude/PENDIENTES.md` y de git: lo que está «en curso» (▶), lo urgente (prioridad 1) y lo nuevo de esta semana (○), y lo que se cerró desde la versión anterior del archivo, hasta 2 días atrás (✓ tachado). Si la misma tarea está también en `tareas.json`, manda PENDIENTES. Sin lista de pendientes, el panel funciona como antes. Nadie tiene que acordarse de actualizarlo.

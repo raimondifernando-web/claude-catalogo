@@ -79,6 +79,8 @@ export type Modelo = {
   hayFechas: boolean
   // Días desde la última línea fechada de «Cambios» (undefined si no hay).
   dias?: number
+  // Carpeta de la que salió la lista cuando no es la de la sesión (una de arriba).
+  desde?: string
 }
 
 declare module 'claude-code' {
@@ -93,6 +95,7 @@ declare module 'claude-code' {
       tareasLista: Tarea[]
       tareasArchivo: Tarea[] | null
       tareasDerivadas: Tarea[] | null
+      tareasOrigen: string | null
     }
   }
 }

@@ -123,6 +123,91 @@ test('lo cerrado hace más de 2 días no se muestra', async ($, on) => {
   await ui.unmount()
 })
 
+// ---------- Arreglos de 2026-10-14: carpeta que cambia y panel que no se dibuja ----------
+test('si la sesión quedó en una subcarpeta sin .claude/, el panel busca en las carpetas madre', async ($, on) => {
+  const reloj = mock.clock(on, { now: 0 })
+  on('session.start', (_$, e) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: { command: 'tareas' } }) as never)
+  on('ui.open', () => ({ value: { isPlaced: true } }) as never)
+  on('ui.panes', () => ({ value: [{ id: 'tareas-sesion', title: 'Tareas', isShown: true, isFocused: false, isPlaced: true }] }) as never)
+  on('session.root', () => ({ value: '/proy/plataforma' }) as never)
+  on('session.cwd', () => ({ value: '/proy/plataforma/app' }) as never)
+  on('fs.read', (_$, e) => {
+    if (e.path !== '/proy/.claude/tareas.json') throw new Error('ENOENT')
+    return { value: JSON.stringify({ tareas: [{ id: '1', texto: 'Tarea real', estado: 'pending' }] }) } as never
+  })
+  await $.session.start({ cwd: '/proy/plataforma' } as never)
+  await reloj.advance(10)
+  const ui = await $.ui.mount({ plugin: 'paneles', surface: 'desktop', ...PANEL })
+  expect(await ui.find({ type: 'Text', text: /Tarea real/ })).toBeDefined()
+  await ui.unmount()
+})
+
+function mundoSinArchivos(on: On) {
+  mock.clock(on, { now: 0 })
+  on('prompt.submit', (_$, e) => ({ text: e.text }) as never)
+  on('session.start', (_$, e) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: { command: 'tareas' } }) as never)
+  on('session.root', () => ({ value: '/proy' }) as never)
+  on('fs.read', () => { throw new Error('ENOENT') })
+}
+
+test('cada mensaje abre el panel DENTRO del hook (así cuenta como pedido de la persona y se dibuja con cualquier ancho)', async ($, on) => {
+  mundoSinArchivos(on)
+  let aperturas = 0
+  on('ui.open', (_$, e) => { if (e.id === 'tareas-sesion') aperturas++; return { value: { isPlaced: false } } as never })
+  await $.session.start({ cwd: '/proy' } as never)
+  const alArrancar = aperturas
+  await $.prompt.submit({ text: 'hola' } as never)
+  expect(aperturas).toBe(alArrancar + 1)
+  await $.prompt.submit({ text: 'otro' } as never)
+  expect(aperturas).toBe(alArrancar + 2)
+})
+
+test('la app reinicia su estado y el módulo se queda con su copia vieja: el panel se vuelve a llenar', async ($, on) => {
+  const reloj = mock.clock(on, { now: 0 })
+  on('session.start', (_$, e) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: { command: 'tareas' } }) as never)
+  on('ui.open', () => ({ value: { isPlaced: true } }) as never)
+  on('session.root', () => ({ value: '/proy' }) as never)
+  on('fs.read', (_$, e) => {
+    if (e.path !== '/proy/.claude/tareas.json') throw new Error('ENOENT')
+    return { value: JSON.stringify({ tareas: [{ id: '1', texto: 'Sigue acá', estado: 'pending' }] }) } as never
+  })
+  // La app «olvida» el valor guardado cada vez (como tras un /clear o al cambiar de sesión): el archivo no cambia.
+  let escrituras = 0
+  on('state.get', (_$, e, next) => (e.key === 'tareasArchivo' ? ({ value: { value: undefined, version: 0 } } as never) : next(e)))
+  on('state.set', (_$, e, next) => {
+    if (e.key === 'tareasArchivo') escrituras++
+    return next(e)
+  })
+  await $.session.start({ cwd: '/proy' } as never)
+  await reloj.advance(10)
+  const primera = escrituras
+  expect(primera).toBeGreaterThan(0)
+  // Antes el módulo comparaba contra su propia copia y no volvía a escribir: el panel quedaba vacío hasta que cambiara el archivo.
+  await reloj.advance(7000)
+  expect(escrituras).toBeGreaterThan(primera)
+})
+
+test('si la lista salió de una carpeta de arriba, el panel dice de cuál', async ($, on) => {
+  const reloj = mock.clock(on, { now: 0 })
+  on('session.start', (_$, e) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: { command: 'tareas' } }) as never)
+  on('ui.open', () => ({ value: { isPlaced: true } }) as never)
+  on('session.root', () => ({ value: '/proy/plataforma' }) as never)
+  on('fs.read', (_$, e) => {
+    if (e.path !== '/proy/.claude/tareas.json') throw new Error('ENOENT')
+    return { value: JSON.stringify({ tareas: [{ id: '1', texto: 'Tarea real', estado: 'pending' }] }) } as never
+  })
+  await $.session.start({ cwd: '/proy/plataforma' } as never)
+  await reloj.advance(10)
+  const ui = await $.ui.mount({ plugin: 'paneles', surface: 'desktop', ...PANEL })
+  expect(await ui.find({ type: 'Text', text: /Lista de \/proy/ })).toBeDefined()
+  await ui.unmount()
+})
+
+
 test('si el reloj no late, Tareas igual se llena con el primer mensaje y con cada medición', async ($, on) => {
   mock.clock(on, { now: 0 }) // nunca se avanza: no hay ciclos
   let tareas = [{ id: 't1', texto: 'Primera', estado: 'pending' }]

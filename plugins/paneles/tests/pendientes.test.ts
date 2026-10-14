@@ -22,7 +22,7 @@ function salida(stdout: string, exitCode = 0, stderr = '') {
 
 // El mundo de abajo: reloj fijo, archivo y git de mentira, un panel vacío de base.
 function fondo(on: On, mundo: Mundo) {
-  mock.clock(on, { now: AHORA })
+  const reloj = mock.clock(on, { now: AHORA })
   mock.env(on, { HOME: '/casa' })
   on('session.root', () => ({ value: mundo.carpeta ?? CARPETA }) as never)
   on('ui.render', ($, e) => {
@@ -45,6 +45,7 @@ function fondo(on: On, mundo: Mundo) {
     if (cmd === 'show') return salida(mundo.antes ?? ANTERIOR)
     return salida('', 1, 'comando inesperado')
   })
+  return reloj
 }
 
 const PANEL = {
@@ -289,4 +290,58 @@ test('todas las llamadas a git apagan fsmonitor y untrackedCache (repo ajeno)', 
     expect(argv.join(' ')).toContain('-c core.fsmonitor=false')
     expect(argv.join(' ')).toContain('-c core.untrackedCache=false')
   }
+})
+
+// ---------- Arreglos de 2026-10-14 ----------
+function arranque(on: On) {
+  on('session.start', (_$, e) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: { command: 'pendientes' } }) as never)
+}
+
+test('cada mensaje abre el panel DENTRO del hook (así cuenta como pedido de la persona y se dibuja con cualquier ancho)', async ($, on) => {
+  fondo(on, { texto: EJEMPLO })
+  arranque(on)
+  let aperturas = 0
+  on('ui.open', (_$, e) => {
+    if (e.id === 'pendientes') aperturas++
+    return { value: { isPlaced: false } } as never
+  })
+  await $.session.start({ cwd: CARPETA } as never)
+  const alArrancar = aperturas
+  await $.prompt.submit({ text: 'hola' } as never)
+  expect(aperturas).toBe(alArrancar + 1)
+  await $.prompt.submit({ text: 'otro' } as never)
+  expect(aperturas).toBe(alArrancar + 2)
+})
+
+test('la app reinicia su estado y el módulo se queda con su copia vieja: el panel se vuelve a llenar', async ($, on) => {
+  const reloj = fondo(on, { texto: EJEMPLO })
+  arranque(on)
+  on('ui.open', () => ({ value: { isPlaced: true } }) as never)
+  let escrituras = 0
+  on('state.get', (_$, e, next) => (e.key === 'datos' ? ({ value: { value: undefined, version: 0 } } as never) : next(e)))
+  on('state.set', (_$, e, next) => {
+    if (e.key === 'datos') escrituras++
+    return next(e)
+  })
+  await $.session.start({ cwd: CARPETA } as never)
+  await reloj.advance(10)
+  const primera = escrituras
+  expect(primera).toBeGreaterThan(0)
+  await reloj.advance(40_000)
+  expect(escrituras).toBeGreaterThan(primera)
+})
+
+test('si la lista salió de una carpeta de arriba, el panel dice de cuál', async ($, on) => {
+  fondo(on, { texto: EJEMPLO, carpeta: `${CARPETA}/plataforma` })
+  const ui = await abrir($)
+  expect(await ui.find({ type: 'Text', text: new RegExp(`Lista de ${CARPETA}`) })).toBeDefined()
+  await ui.unmount()
+})
+
+test('si la lista está en la carpeta de la sesión, no avisa de otra carpeta', async ($, on) => {
+  fondo(on, { texto: EJEMPLO })
+  const ui = await abrir($)
+  expect(await ui.find({ type: 'Text', text: /^Lista de \// })).toBeUndefined()
+  await ui.unmount()
 })
