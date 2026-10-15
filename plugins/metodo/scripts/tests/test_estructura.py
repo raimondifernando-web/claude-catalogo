@@ -578,7 +578,7 @@ class TestExcepciones(unittest.TestCase):
                 code = estructura.comando_revisar(carpeta_arg=str(carpeta), nivel_arg="area", raiz_arg=str(raiz))
             else:
                 code = estructura.comando_revisar(todas=True, raiz_arg=str(raiz))
-        return code, buf.getvalue()
+        return code, buf.getvalue().replace("\\", "/")  # en Windows las rutas salen con «\»
 
     @staticmethod
     def _faltan(salida):
