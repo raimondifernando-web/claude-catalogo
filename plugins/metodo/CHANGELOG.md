@@ -1,5 +1,16 @@
 # metodo — qué cambia para vos
 
+## 0.42.0 — 2026-10-15
+**Unir a `main` ya no depende de que alguien afirme que está todo bien: el programa lo comprueba.** Se aplica solo; no hay nada que correr. Explicación en una página: `docs/SELLO-UNIR-A-MAIN.md`.
+- **Se acabaron las opciones que se afirmaban a mano.** `--revisado-por`, `--ok-fernando` y `--sin-pruebas` ya no existen: una sesión engañada podía escribirlas sin que fueran ciertas. Ahora `unir-a-main` se corre sin opciones y hace todo por su cuenta.
+- **Revisor independiente lanzado por el programa:** otro Claude, sin herramientas, lee el cambio real. Rojo no une nunca; amarillo te pregunta; verde no alcanza si el cambio toca algo que corre solo.
+- **Tu OK, solo cuando hace falta, con Touch ID o tu contraseña y atado al commit:** con una frase en criollo (qué toca y qué dijo el revisor). Cancelar es «no». Una pantalla segura que otro programa no puede apretar por vos.
+- **El programa se protege de la sesión:** se corre con `python3 -I`, limpia el entorno, no usa variables que la sesión pueda cambiar, apaga los hooks de git del repo y no distingue mayúsculas al buscar archivos sensibles.
+- **También te consulta** si la rama borra pruebas, trae binarios, enlaces o cambios de permisos, o cambia instrucciones de `~/.claude` (`CLAUDE.md`, skills, agentes, comandos).
+- **Las pruebas corren aisladas:** copia limpia, entorno vacío, sin internet y (Mac) sin escribir fuera de la copia. Lo que decide cómo se corren las pruebas (`Makefile`, `package.json`, `conftest.py`…) pasó a ser zona sensible.
+- **Más cosas que corren solas ahora te las consultan:** `.mcp.json`, `.husky`, `.githooks`, `.envrc`, tareas del editor, `package.json`, los ajustes de Claude en cualquier carpeta y los programas a los que apuntan los hooks (leídos de `main`, no de la rama).
+- **Cada unión deja un sello** (commit exacto, huella del cambio revisado, pruebas, veredicto, tu OK) guardado en el repo y referenciado en `main`.
+
 ## 0.41.1 — 2026-10-15
 **Toda carpeta lleva los mismos tres documentos**, tenga código o no. Se aplica solo; no hay nada que correr.
 - **Por qué:** antes el molde pedía `docs/PRD.md`, `docs/decisiones.md` y `docs/planes/` solo a los proyectos con código, y alguien que no programa no tiene cómo saber si lo suyo «es desarrollo». Ahora los tres están siempre, en toda carpeta (empresa, área y proyecto): la sesión sabe en cualquier lugar **dónde guardar cada cosa y con qué nombre**. `PRD.md` = qué es la carpeta, para quién, cuándo está terminada y qué NO se hace (si hay código, suma la parte técnica y el flujo de la app); `decisiones.md` = cada decisión con su fecha y el porqué; `planes/` = un plan por etapa, `AAAA-MM-DD-tema.md`, que se archiva al terminar.

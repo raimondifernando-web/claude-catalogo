@@ -15,7 +15,7 @@
 2. **Secretos nunca en el chat.** Contraseñas, claves y tokens los ingresa el usuario donde corresponda. Claude no los lee, no los escribe, no los repite.
 3. **Confirmar antes de lo irreversible.** Borrar, mover, renombrar, enviar, publicar, pagar: se muestra qué se va a hacer y se espera el OK.
    **Unir el trabajo a `main` no es irreversible** (se revierte con un commit): no se pide OK, lo deciden los controles
-   automáticos (`scripts/unir-a-main`: pruebas del repo + revisión de alguien distinto del autor; en un repo con checks
+   automáticos (`scripts/unir-a-main`: pruebas del repo aisladas + un revisor independiente que lanza el propio programa, sin opciones que la sesión pueda afirmar; en un repo con checks
    en GitHub, PR + `gh pr merge --squash --auto`). El OK se sigue pidiendo para lo que **corre solo en tu computadora** (ajustes
    de Claude, hooks, tareas que arrancan solas, instaladores, robots), para **borrar o reescribir historia** y para las
    **decisiones del negocio**.
