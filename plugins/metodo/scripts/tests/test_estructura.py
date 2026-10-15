@@ -546,6 +546,114 @@ class TestArreglar(unittest.TestCase):
 
 
 
+class TestExcepciones(unittest.TestCase):
+    """Excepciones escritas (.estructura-excepciones.json): lo decidido dejar así sale como «excepción», no como ✗."""
+
+    VALIDA = {"regla": "R8", "ruta": "hija", "motivo": "separarla cuesta mucho y no aporta", "fecha": "2026-10-15"}
+    VALIDA_R1 = {"regla": "R1", "ruta": "hija", "motivo": "vive dentro del repo de arriba", "fecha": "2026-10-15"}
+
+    def _armar(self, td, excepciones=None):
+        """Repo `area` (con remoto y archivos) que guarda adentro la caja `hija` (sin .git propio)."""
+        raiz = Path(td) / "proyectos"
+        area = raiz / "area"
+        (area / "hija").mkdir(parents=True)
+        _configurar_repo_git(area, Path(td))
+        subprocess.run(["git", "remote", "add", "origin", "https://github.com/org/repo.git"], cwd=area, capture_output=True, check=True)
+        (area / "CLAUDE.md").write_text("# Area\n", encoding="utf-8")
+        (area / ".claude").mkdir()
+        (area / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
+        (area / ".gitignore").write_text("*.log\n", encoding="utf-8")
+        (area / "hija" / "CLAUDE.md").write_text("# Hija\n", encoding="utf-8")
+        (area / "hija" / "codigo.txt").write_text("x\n", encoding="utf-8")
+        if excepciones is not None:
+            (area / ".estructura-excepciones.json").write_text(json.dumps(excepciones), encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=area, capture_output=True, check=True)
+        subprocess.run(["git", "commit", "-m", "base"], cwd=area, capture_output=True, check=True)
+        return raiz, area
+
+    def _revisar(self, raiz, carpeta=None):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            if carpeta:
+                code = estructura.comando_revisar(carpeta_arg=str(carpeta), nivel_arg="area", raiz_arg=str(raiz))
+            else:
+                code = estructura.comando_revisar(todas=True, raiz_arg=str(raiz))
+        return code, buf.getvalue().replace("\\", "/")  # en Windows las rutas salen con «\»
+
+    @staticmethod
+    def _faltan(salida):
+        return int(re.search(r"Falta: (\d+)", salida).group(1))
+
+    def test_sin_excepcion_marca_error(self):
+        with tempfile.TemporaryDirectory() as td:
+            raiz, _ = self._armar(td)
+            code, salida = self._revisar(raiz)
+            self.assertEqual(code, 1)
+            self.assertIn("✗ R8 area:", salida)
+            self.assertIn("✗ R1 area/hija:", salida)
+
+    def test_con_excepcion_valida_no_cuenta(self):
+        with tempfile.TemporaryDirectory() as td:
+            raiz, _ = self._armar(td, [self.VALIDA, self.VALIDA_R1])
+            _, salida = self._revisar(raiz)
+            self.assertIn("• excepción R8 area:", salida)
+            self.assertIn("separarla cuesta mucho", salida)
+            self.assertIn("• excepción R1 area/hija:", salida)
+            self.assertNotIn("✗ R8", salida)
+            self.assertNotIn("✗ R1", salida)
+            con = self._faltan(salida)
+        with tempfile.TemporaryDirectory() as td2:
+            raiz2, _ = self._armar(td2)
+            _, salida2 = self._revisar(raiz2)
+            self.assertEqual(self._faltan(salida2) - con, 2)
+
+    def test_sin_motivo_o_sin_fecha_se_ignora_y_avisa(self):
+        for malo in ({**self.VALIDA, "motivo": ""}, {k: v for k, v in self.VALIDA.items() if k != "fecha"}):
+            with tempfile.TemporaryDirectory() as td:
+                raiz, _ = self._armar(td, [malo])
+                _, salida = self._revisar(raiz)
+                self.assertIn("✗ R8 area:", salida)
+                self.assertIn("• EXC area:", salida)
+                self.assertIn("necesita motivo y fecha", salida)
+
+    def test_la_excepcion_vale_para_su_ruta_y_su_regla(self):
+        with tempfile.TemporaryDirectory() as td:
+            raiz, _ = self._armar(td, [{**self.VALIDA, "ruta": "otra"}, {**self.VALIDA_R1, "regla": "R2"}])
+            _, salida = self._revisar(raiz)
+            self.assertIn("✗ R8 area:", salida)
+            self.assertIn("✗ R1 area/hija:", salida)
+
+    def test_en_una_copia_de_trabajo_worktree(self):
+        with tempfile.TemporaryDirectory() as td:
+            raiz, area = self._armar(td, [self.VALIDA, self.VALIDA_R1])
+            copia = Path(td) / "copias" / "area"
+            res = subprocess.run(["git", "worktree", "add", str(copia), "-b", "tema/x"], cwd=area, capture_output=True)
+            self.assertEqual(res.returncode, 0, res.stderr)
+            # la copia trae su propio archivo (está versionado)
+            _, salida = self._revisar(raiz, copia)
+            self.assertIn("• excepción R8", salida)
+            self.assertNotIn("✗ R8", salida)
+            # si el archivo no está en la copia, se usa el de la copia principal
+            (copia / ".estructura-excepciones.json").unlink()
+            _, salida = self._revisar(raiz, copia)
+            self.assertIn("• excepción R8", salida)
+            self.assertNotIn("✗ R8", salida)
+
+    def test_r11_y_r6_no_se_exceptuan(self):
+        with tempfile.TemporaryDirectory() as td:
+            raiz, area = self._armar(td)
+            nota = {"motivo": "x", "fecha": "2026-10-15", "ruta": "."}
+            (area / ".estructura-excepciones.json").write_text(json.dumps([{**nota, "regla": "R6"}]), encoding="utf-8")
+            _configurar_repo_git(raiz, Path(td))  # la raíz de proyectos pasa a ser un repo (R11)
+            (raiz / ".estructura-excepciones.json").write_text(json.dumps([{**nota, "regla": "R11"}]), encoding="utf-8")
+            (area / ".env").write_text("A=1\n", encoding="utf-8")
+            subprocess.run(["git", "add", "-f", ".env"], cwd=area, capture_output=True, check=True)
+            _, salida = self._revisar(raiz)
+            self.assertIn("✗ R11", salida)
+            self.assertIn("✗ R6 area", salida)
+            self.assertIn("no se puede exceptuar", salida)
+
+
 class TestR12Codigo(unittest.TestCase):
     """R12: si la caja tiene código, tiene docs/PRD.md (aviso); `arreglar` crea solo la plantilla vacía."""
 

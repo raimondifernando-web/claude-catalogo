@@ -81,6 +81,12 @@ Fuera de las cajas:
 | R11 | `~/Proyectos/` no es un repositorio | raíz | ✗ | sacar el `.git` de la carpeta de proyectos, con respaldo: lo hace Claude con tu OK |
 | R12 | Si la caja tiene código (ver «Proyectos con desarrollo»), tiene `docs/PRD.md` | proyecto | aviso | lo arma el PM del proyecto con Claude a partir del código; `estructura.py arreglar` puede crear la plantilla vacía con sus secciones, nunca inventa el contenido |
 
+**Excepciones:** lo que se decidió dejar así, con su motivo, no queda como ✗ para siempre: se anota en
+`.estructura-excepciones.json` en la raíz del repositorio, una lista de
+`{"regla": "R8", "ruta": "mi-caja", "motivo": "por qué se deja", "fecha": "AAAA-MM-DD"}` (`ruta` es la carpeta de la que
+habla el aviso, relativa a esa raíz; `.` es la raíz misma). El control la muestra como `• excepción …` y no la cuenta como
+falla. Sin motivo o sin fecha no vale (se ignora y se avisa). R6 y R11 no se pueden exceptuar.
+
 El control **solo avisa**: nunca cambia nada solo. Para completar lo que falta: `estructura.py completar <carpeta>`, que
 agrega lo que no está y nunca pisa un archivo existente.
 

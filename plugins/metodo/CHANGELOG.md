@@ -1,5 +1,9 @@
 # metodo — qué cambia para vos
 
+## 0.40.0 — 2026-10-15
+El control de estructura acepta **excepciones escritas**. Se aplica solo; no hay nada que correr.
+- **Lo que se decidió dejar así ya no marca ✗ para siempre:** se anota en `.estructura-excepciones.json` (en la raíz del repositorio) con la regla, la carpeta, el motivo y la fecha. El control lo muestra como `• excepción …` y no lo cuenta en el «Falta: N cosas ✗». Una excepción sin motivo o sin fecha no vale (se ignora y avisa). R6 (claves en GitHub) y R11 (la raíz de proyectos no es un repositorio) no se pueden exceptuar. Funciona también en copias de trabajo (git worktree).
+
 ## 0.39.2 — 2026-10-14
 Se aplica solo; no hay nada que correr.
 - **La sesión nueva vuelve a su grupo de la barra lateral:** al cerrar, `/metodo:cerrar` abre la sesión siguiente y, si se olvidaba de devolverla al grupo donde estaba la anterior, quedaba suelta y había que arrastrarla a mano. Ahora `/metodo:arrancar` lo detecta y la mueve solo.
