@@ -313,6 +313,21 @@ except Exception as e:  # nunca romper el chequeo por esto
     print(f"• MANUAL (numeración): no pude leer los datos de la app ({type(e).__name__}); si tenés `list_sessions`, "
           "pedí `limit: 15` y filtrá por tu carpeta")
 
+# Sesiones que cita el REANUDAR: el estado se mide acá; lo ya archivado no se menciona y nada se le pregunta a la persona
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import sesiones_hijas as sh
+    _tod = sh.cargar()
+    _yo = sh.mi_sesion(_tod) if _tod else None
+    _lib, _ret = sh.clasificar(sh.citadas_en(texto, _tod, excluir=(_yo["sessionId"],) if _yo else ()), _tod)
+    if _lib:
+        print("• ARCHIVAR (sesiones que cita el REANUDAR; archivalas vos con archive_session, sin preguntarle a nadie): "
+              + ", ".join(f"{h['sessionId']} «{h.get('title', '')}»" for h, _b in _lib))
+    for h, b in _ret:
+        print(f"• NO ARCHIVAR «{h.get('title', '')}» ({h['sessionId']}), la cita el REANUDAR: {'; '.join(b)} (la resuelve su dueña, no es una pregunta para vos)")
+except Exception as e:
+    print(f"• Sesiones citadas por el REANUDAR: no se pudo medir ({type(e).__name__})")
+
 print("• MANUAL (modelo): mirá el próximo paso, compará con el ruteo que mostró el radar al abrir y decile a quien te "
       "acompaña en UNA línea: «este paso pide X, estás en Y». Si no coinciden, proponé cambiar ANTES de empezar "
       "(después se pierde la caché)")

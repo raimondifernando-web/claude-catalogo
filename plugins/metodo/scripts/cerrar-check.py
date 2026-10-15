@@ -123,6 +123,16 @@ else:
     linea(n <= 60, f"REANUDAR mide {n} líneas (apuntá a 30-50, techo 60)",
           f"REANUDAR de {n} líneas: lo durable va al CLAUDE.md, no al prompt")
 
+    # (b2) el REANUDAR no pregunta ni afirma el archivado de sesiones: eso lo mide /arrancar y lo hace la sesión sola
+    try:
+        import sesiones_hijas as _sh
+        _fr = _sh.reanudar_afirma_archivado(texto)
+    except Exception:
+        _fr = []
+    linea(not _fr, "REANUDAR no pregunta ni afirma estados de archivado de sesiones" if not _fr else
+          f"REANUDAR ofrece/afirma archivar sesiones ({'; '.join(_fr[:2])}): sacalo; las hijas se archivan solas y /arrancar mide el estado real",
+          "REANUDAR con archivado de sesiones ofrecido o afirmado")
+
     # (c) conteos hardcodeados y pinta de secreto: solo número de línea
     contador = re.compile(r"(?<![\d.])\b\d+\s+(skills?|agentes?|PMs?|reglas|archivos|tests?|hooks?|plugins?|MCPs?|proyectos|pendientes|clientes)\b", re.I)
     secreto = re.compile(
@@ -312,6 +322,22 @@ print("• MANUAL (verificación propia): ¿qué PROBASTE del resultado de lo qu
 print("• MANUAL (Paso 0, PRIMERO): si esta sesión abrió otras (barra lateral de la app), ¿alguna sigue trabajando o entregó algo que "
       "nadie revisó? → NO se cierra: archivar esta sesión corta a las hijas y pierden el canal por el que te entregan. "
       "Mirá `list_sessions` con `linked: true` y leé la entrega de cada una antes de seguir")
+# Hijas que figuran en disco: sin trabajo pendiente se archivan sin preguntar (la app las archiva sola cuando te archivás en el paso 10)
+try:
+    import sesiones_hijas as _sh
+    _todas = _sh.cargar()
+    _yo = _sh.mi_sesion(_todas) if _todas else None
+    if _yo:
+        _libres, _ret = _sh.clasificar(_sh.hijas_de(_yo["sessionId"], _todas), _todas)
+        for _h, _b in _ret:
+            linea(False, f"hija «{_h.get('title', '')}» ({_h['sessionId']}): {'; '.join(_b)}",
+                  f"hija «{_h.get('title', '')}» con trabajo o informe pendiente (archivarte la arrastra)")
+        if _libres and not _ret:
+            print("• HIJAS A ARCHIVAR (sin preguntarle a nadie): " + ", ".join(f"{_h['sessionId']} «{_h.get('title', '')}»" for _h, _b in _libres)
+                  + " → comprobá con list_sessions {linked:true} que figuren «idle»; la app las archiva sola con vos (paso 10). "
+                  "Si no hay paso 10, archive_session(id) a cada una. No las ofrezcas ni las anotes en el REANUDAR")
+except Exception:
+    pass
 try:
     if git("rev-parse", "--show-toplevel"):
         _base0 = next((b for b in ("main", "master") if git("rev-parse", "--verify", "--quiet", b)), None)
