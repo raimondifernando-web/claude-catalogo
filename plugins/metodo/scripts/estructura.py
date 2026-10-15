@@ -645,7 +645,7 @@ EXTENSIONES_CODIGO = {".py", ".js", ".ts", ".tsx", ".jsx", ".swift", ".go", ".rs
 
 
 def tiene_codigo(carpeta: Path) -> bool:
-    """Señales baratas de que la caja es desarrollo (ver «Proyectos con desarrollo» en ESTRUCTURA.md)."""
+    """Señales baratas de que la caja es desarrollo (ver «Tres documentos vivos en toda caja» en ESTRUCTURA.md); decide el contenido del PRD."""
     if any((carpeta / n).is_file() for n in SENALES_CODIGO_ARCHIVOS):
         return True
     for n in SENALES_CODIGO_CARPETAS:
@@ -726,6 +726,19 @@ def ruta_en_repo(raiz: Path, carpeta: Path) -> str:
     return rel or "."
 
 
+DOCUMENTOS_VIVOS = ("docs/PRD.md", "docs/decisiones.md", "docs/planes/")
+
+
+def faltan_documentos_vivos(carpeta: Path) -> list:
+    """Cuáles de los tres documentos vivos (PRD, decisiones, planes/) no están en la caja."""
+    faltan = []
+    for rel in DOCUMENTOS_VIVOS:
+        ruta = carpeta / rel.rstrip("/")
+        if not (ruta.is_dir() if rel.endswith("/") else ruta.is_file()):
+            faltan.append(rel)
+    return faltan
+
+
 def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
     """Aplica las reglas R1-R10 y R12 a una caja concreta, descontando las excepciones escritas.
     Retorna [(tipo, id, mensaje)]; tipo «excepcion» = lo decidido dejar así (no cuenta como falla)."""
@@ -736,7 +749,8 @@ def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
     mia = ruta_en_repo(raiz, carpeta)
     salida = []
     for tipo, r_id, msg in hallazgos:
-        if tipo == "error" and r_id not in NO_EXCEPTUABLES and r_id != "R8" and (r_id, mia) in excepciones:
+        exceptuable = tipo == "error" or r_id == "R12"  # R12 es aviso, pero también se puede dejar así por escrito
+        if exceptuable and r_id not in NO_EXCEPTUABLES and r_id != "R8" and (r_id, mia) in excepciones:
             salida.append(("excepcion", r_id, f"{msg} (motivo: {excepciones[(r_id, mia)]})"))
         else:
             salida.append((tipo, r_id, msg))
@@ -860,9 +874,10 @@ def _revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
             except Exception:
                 pass
 
-    # R12: si la caja (proyecto) tiene código, tiene docs/PRD.md (aviso)
-    if nivel == "proyecto" and tiene_codigo(carpeta) and not (carpeta / "docs" / "PRD.md").is_file():
-        hallazgos.append(("aviso", "R12", "tiene código pero falta docs/PRD.md"))
+    # R12: toda caja (con o sin código) tiene los tres documentos vivos (aviso)
+    faltan = faltan_documentos_vivos(carpeta)
+    if faltan:
+        hallazgos.append(("aviso", "R12", "faltan los documentos vivos: " + ", ".join(faltan)))
 
     return hallazgos
 
@@ -1054,14 +1069,18 @@ def nombres_de_env(env_file: Path) -> list:
 
 PLANTILLA_PRD = """# {nombre} — PRD
 
-> Documento vivo. Lo completa el PM del proyecto con Claude a partir del código; no se inventa nada.
+> Documento vivo: qué es esta caja. Lo completa quien la lleva con Claude; no se inventa nada.
+> Acá se guarda: qué es, para quién, cuándo está terminada y qué NO se hace. Una decisión va en docs/decisiones.md;
+> un plan de etapa, en docs/planes/.
 
-## Qué se construye y para quién
+## Qué es y para quién
 
 ## Cuándo está terminado
 
 ## Qué NO se hace
+"""
 
+PLANTILLA_PRD_TECNICO = """
 ## Sección técnica (TRD)
 Cómo está armado: piezas, dependencias, dónde corre. El esquema de datos se genera desde el código, no se escribe a mano.
 
@@ -1069,12 +1088,67 @@ Cómo está armado: piezas, dependencias, dónde corre. El esquema de datos se g
 Diagrama de cómo se mueve la persona por la app. Las pantallas van como mockups (Figma o HTML), no como texto.
 """
 
+PLANTILLA_DECISIONES = """# {nombre} — Decisiones
+
+> Registro de decisiones: cada una con su fecha y el porqué, para no volver a discutirla.
+> Se agrega al final, una por bloque, la más nueva abajo. Nunca se borra una vieja: si cambia, se anota la nueva.
+> Ejemplo mínimo:
+>
+> ## 2026-10-15 — Usamos una sola planilla de precios
+> Porque tener dos se desfasaba. Reemplaza lo decidido el 2026-08-02.
+"""
+
+README_PLANES = """# Planes
+
+Acá va un plan por etapa de trabajo. Nombre del archivo: `AAAA-MM-DD-tema.md` (la fecha en que se empieza).
+Ejemplo: `2026-10-15-catalogo-nuevo.md`.
+Cada plan dice: qué se hace, en qué orden, cómo se sabe que terminó. Cuando la etapa termina, el plan se mueve
+a `docs/planes/archivo/` (no se borra). Lo que se decidió en el camino va en `docs/decisiones.md`.
+"""
+
+CLAUDE_BASE = """# {nombre}
+
+Reglas de trabajo.
+
+## Dónde se guarda cada cosa
+- Qué es esta caja, para quién, cuándo está terminada y qué NO se hace → `docs/PRD.md`
+- Una decisión (con fecha y el porqué) → `docs/decisiones.md`
+- El plan de una etapa → `docs/planes/AAAA-MM-DD-tema.md` (al terminar la etapa, se archiva)
+- Las claves nunca van en los documentos: van en `.env` (que no se sube a GitHub).
+"""
+
+
+def nombre_limpio(carpeta: Path) -> str:
+    """Nombre de la carpeta para escribirlo en un documento: sin saltos de línea ni tabulaciones, y corto."""
+    return re.sub(r"[\r\n\t]", " ", carpeta.name)[:100]
+
+
+def crear_nuevo(carpeta: Path, rel: str, contenido: str):
+    """Crea `rel` dentro de la caja, solo si no existe. Devuelve None si lo creó, o el motivo si no pudo.
+    Nunca pisa ni escribe fuera de la caja (se niega si una carpeta del camino es un enlace) ni corta el recorrido."""
+    destino = carpeta / rel
+    try:
+        padre = carpeta
+        for parte in Path(rel).parent.parts:
+            padre = padre / parte
+            if padre.is_symlink():
+                return f"{padre.relative_to(carpeta).as_posix()} es un enlace; se deja a mano"
+        base = carpeta.resolve()
+        if base not in destino.parent.resolve().parents and destino.parent.resolve() != base:
+            return "saldría de la caja"
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        with open(destino, "x", encoding="utf-8") as fh:  # "x": jamás pisa un archivo existente
+            fh.write(contenido)
+    except OSError as e:
+        return f"{e.__class__.__name__}; se deja a mano"
+    return None
+
 
 def plan_seguro(carpeta: Path, nivel: str) -> list:
     """Lo seguro y reversible que falta: [(ruta relativa, contenido, regla)]. Nunca incluye lo que ya existe."""
     plan = []
     if not (carpeta / "CLAUDE.md").exists():
-        plan.append(("CLAUDE.md", f"# {carpeta.name}\n\nReglas de trabajo.\n", "R2"))
+        plan.append(("CLAUDE.md", CLAUDE_BASE.format(nombre=nombre_limpio(carpeta)), "R2"))
     if not (carpeta / ".claude" / "settings.json").exists():
         plan.append((".claude/settings.json", "{}\n", "R4"))
     if not (carpeta / ".gitignore").exists():
@@ -1087,8 +1161,19 @@ def plan_seguro(carpeta: Path, nivel: str) -> list:
         cuerpo = "# Claves y variables de entorno requeridas (sin valores)\n"
         cuerpo += "".join(f"{n}=\n" for n in nombres_de_env(carpeta / ".env"))
         plan.append((".env.example", cuerpo, "R7"))
-    if nivel == "proyecto" and tiene_codigo(carpeta) and not (carpeta / "docs" / "PRD.md").exists():
-        plan.append(("docs/PRD.md", PLANTILLA_PRD.format(nombre=carpeta.name), "R12"))
+    exceptuado = False  # una excepción escrita para R12 también frena que se creen los documentos
+    excepciones, _avisos, raiz_repo = cargar_excepciones(carpeta)
+    if raiz_repo is not None:
+        exceptuado = ("R12", ruta_en_repo(raiz_repo, carpeta)) in excepciones
+    if not exceptuado and not (carpeta / "docs" / "PRD.md").exists():
+        prd = PLANTILLA_PRD.format(nombre=nombre_limpio(carpeta))
+        if tiene_codigo(carpeta):
+            prd += PLANTILLA_PRD_TECNICO
+        plan.append(("docs/PRD.md", prd, "R12"))
+    if not exceptuado and not (carpeta / "docs" / "decisiones.md").exists():
+        plan.append(("docs/decisiones.md", PLANTILLA_DECISIONES.format(nombre=nombre_limpio(carpeta)), "R12"))
+    if not exceptuado and not (carpeta / "docs" / "planes").exists():
+        plan.append(("docs/planes/README.md", README_PLANES, "R12"))
     return plan
 
 
@@ -1106,6 +1191,13 @@ def comando_completar(carpeta_arg: str, nivel: str, origen_arg=None) -> int:
             print(f"+ Creado: {rel}")
         else:
             print(f"= Ya existe: {rel}")
+
+    for rel in ("docs/PRD.md", "docs/decisiones.md", "docs/planes/README.md"):
+        if rel in plan:
+            motivo = crear_nuevo(carpeta, rel, plan[rel])
+            print(f"+ Creado: {rel}" if motivo is None else f"! No se creó {rel}: {motivo}")
+        else:
+            print(f"= Ya existe: {rel.replace('/README.md', '/')}")
 
     if (carpeta / ".env").exists():
         if ".env.example" in plan:
@@ -1168,6 +1260,9 @@ def comando_arreglar(carpeta_arg=None, todas=False, raiz_arg=None, origen_arg=No
             rel = c_path.name
         plan = plan_seguro(c_path, c_nivel)
         cubiertas = {r for _, _, r in plan}
+        planeados = {rel.replace("/README.md", "/") for rel, _, _ in plan}
+        if not set(faltan_documentos_vivos(c_path)) <= planeados:
+            cubiertas.discard("R12")  # algo falta y el plan no lo crea (ruta ocupada): queda para hacer a mano
         # lo que queda se mide ANTES de aplicar y sin lo que el plan va a resolver
         resto = [h for h in revisar_caja(c_path, c_nivel, parent_caja=parent)
                  if h[1] not in cubiertas and h[0] != "excepcion"]
@@ -1176,10 +1271,11 @@ def comando_arreglar(carpeta_arg=None, todas=False, raiz_arg=None, origen_arg=No
         print(f"== {rel} ==")
         for ruta, contenido, _r in plan:
             if aplicar:
-                destino = c_path / ruta
-                destino.parent.mkdir(parents=True, exist_ok=True)
-                with open(destino, "x", encoding="utf-8") as fh:  # "x": jamás pisa un archivo existente
-                    fh.write(contenido)
+                motivo = crear_nuevo(c_path, ruta, contenido)
+                if motivo is not None:
+                    pendientes += 1
+                    print(f"  ! no se creó {ruta}: {motivo}")
+                    continue
                 print(f"  + creado: {ruta}")
             else:
                 print(f"  + crearía: {ruta}")

@@ -37,6 +37,11 @@ Las reglas generales están en `~/.claude/CLAUDE.md`. Acá solo lo específico d
 - **Documentos:** [membrete · tipografía · estructura · moneda y unidades]
 - **Cosas que NUNCA hay que decir/hacer:** [prometer plazos sin confirmar · dar precios cerrados sin relevar · …]
 
+## Dónde se guarda cada cosa
+- Qué es esta carpeta, para quién, cuándo está terminada y qué NO se hace → `docs/PRD.md`
+- Una decisión (con fecha y el porqué) → `docs/decisiones.md`
+- El plan de una etapa → `docs/planes/AAAA-MM-DD-tema.md` (al terminar la etapa, se archiva)
+
 ## Carpetas
 ```
 ~/Documents/[Empresa]-Claude/

@@ -299,6 +299,7 @@ class TestAviso(unittest.TestCase):
             (caja / ".claude").mkdir()
             (caja / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
             (caja / ".gitignore").write_text(".env\n", encoding="utf-8")
+            _docs_vivos(caja)
 
             # Evitar que dispare --todas por semana ISO
             os.environ["CLAUDE_PLUGIN_DATA"] = td
@@ -346,6 +347,7 @@ class TestAviso(unittest.TestCase):
             (caja_ok / ".claude").mkdir()
             (caja_ok / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
             (caja_ok / ".gitignore").write_text(".env\n", encoding="utf-8")
+            _docs_vivos(caja_ok)
 
             # Otra caja con falla en la raíz
             caja_rota = raiz / "caja_rota"
@@ -426,6 +428,13 @@ def _correr(**kw):
     return code, buf.getvalue()
 
 
+def _docs_vivos(caja):
+    """Deja en la caja los tres documentos vivos (R12) para las pruebas que miran otra cosa."""
+    (caja / "docs" / "planes").mkdir(parents=True, exist_ok=True)
+    (caja / "docs" / "PRD.md").write_text("# PRD\n", encoding="utf-8")
+    (caja / "docs" / "decisiones.md").write_text("# Decisiones\n", encoding="utf-8")
+
+
 def _marcar_semana(td):
     os.environ["CLAUDE_PLUGIN_DATA"] = str(td)
     iso_year, iso_week, _ = date.today().isocalendar()
@@ -461,7 +470,7 @@ class TestArreglar(unittest.TestCase):
             code, salida = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td)
             self.assertEqual(code, 0)
             self.assertEqual(list(caja.iterdir()), [])
-            self.assertIn("Plan: 3 archivos para crear · 1 para hacer con Claude", salida)
+            self.assertIn("Plan: 6 archivos para crear · 1 para hacer con Claude", salida)
             self.assertIn("corré con --si para aplicarlo", salida)
 
     def test_arreglar_con_si_crea_lo_seguro_y_deja_lo_demas(self):
@@ -476,8 +485,8 @@ class TestArreglar(unittest.TestCase):
             code, salida = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
             self.assertEqual(code, 0)
             self.assertEqual(claude_md.read_bytes(), antes)
-            self.assertIn("Arreglado ✓ (3 archivos creados) · quedan 1 para hacer con Claude", salida)
-            for rel in (".claude/settings.json", ".gitignore", ".env.example"):
+            self.assertIn("Arreglado ✓ (6 archivos creados) · quedan 1 para hacer con Claude", salida)
+            for rel in (".claude/settings.json", ".gitignore", ".env.example", "docs/PRD.md", "docs/decisiones.md", "docs/planes/README.md"):
                 self.assertTrue((caja / rel).is_file(), rel)
             _, rev = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto")
             marcadas = [l.split()[1] for l in rev.splitlines() if l[:1] in ("✗", "•")]
@@ -521,8 +530,8 @@ class TestArreglar(unittest.TestCase):
             lineas = salida.splitlines()
             hallazgos = [l for l in lineas if l[:1] in ("✗", "•")]
             self.assertEqual(len(hallazgos), 10)
-            total = 13 + 4  # 13 de R9 + R1, R2, R4, R5
-            self.assertIn(f"… y {total - 10} más (estructura.py revisar --todas)", lineas)
+            total = 13 + 4  # errores: 13 de R9 + R1, R2, R4, R5 (el aviso R12 se muestra pero no cuenta como falla)
+            self.assertIn(f"… y {total + 1 - 10} más (estructura.py revisar --todas)", lineas)
             self.assertIn(f"Falta: {total} cosas ✗", lineas)
             self.assertEqual(lineas[-1], "Claude: ofrecé arreglarlo con `estructura.py arreglar` (primero el plan; pedí OK antes de `--si`).")
 
@@ -654,8 +663,9 @@ class TestExcepciones(unittest.TestCase):
             self.assertIn("no se puede exceptuar", salida)
 
 
-class TestR12Codigo(unittest.TestCase):
-    """R12: si la caja tiene código, tiene docs/PRD.md (aviso); `arreglar` crea solo la plantilla vacía."""
+class TestR12DocumentosVivos(unittest.TestCase):
+    """R12: toda caja, con o sin código, tiene docs/PRD.md, docs/decisiones.md y docs/planes/ (aviso).
+    `arreglar` y `completar` crean el esqueleto con instrucciones, sin pisar nada."""
 
     def _caja(self, td, nombre="app"):
         caja = Path(td) / nombre
@@ -663,65 +673,179 @@ class TestR12Codigo(unittest.TestCase):
         (caja / "CLAUDE.md").write_text("# x\n", encoding="utf-8")
         return caja
 
-    def _r12(self, caja):
-        _, salida = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto")
+    def _r12(self, caja, nivel="proyecto"):
+        _, salida = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg=nivel)
         return [l for l in salida.splitlines() if " R12 " in l]
 
-    def test_senales_de_codigo_disparan_r12(self):
-        for senal in ("package.json", "pyproject.toml", "requirements.txt", "Package.swift"):
+    def test_caja_sin_codigo_tambien_dispara_r12_en_todos_los_niveles(self):
+        for nivel in ("proyecto", "area", "empresa"):
             with tempfile.TemporaryDirectory() as td:
-                caja = self._caja(td)
-                (caja / senal).write_text("", encoding="utf-8")
-                lineas = self._r12(caja)
-                self.assertEqual(len(lineas), 1, senal)
+                caja = self._caja(td, nivel)
+                lineas = self._r12(caja, nivel)
+                self.assertEqual(len(lineas), 1, nivel)
                 self.assertTrue(lineas[0].startswith("•"), lineas[0])
-        for carpeta in ("src", "app"):
-            with tempfile.TemporaryDirectory() as td:
-                caja = self._caja(td)
-                (caja / carpeta / "sub").mkdir(parents=True)
-                (caja / carpeta / "sub" / "main.py").write_text("", encoding="utf-8")
-                self.assertEqual(len(self._r12(caja)), 1, carpeta)
+                for doc in ("docs/PRD.md", "docs/decisiones.md", "docs/planes/"):
+                    self.assertIn(doc, lineas[0])
 
-    def test_sin_codigo_o_con_prd_no_dispara(self):
+    def test_avisa_solo_lo_que_falta(self):
         with tempfile.TemporaryDirectory() as td:
             caja = self._caja(td)
-            (caja / "src").mkdir()
-            (caja / "src" / "notas.txt").write_text("solo texto", encoding="utf-8")  # src/ sin código no cuenta
+            _docs_vivos(caja)
             self.assertEqual(self._r12(caja), [])
-            (caja / "package.json").write_text("{}", encoding="utf-8")
-            self.assertEqual(len(self._r12(caja)), 1)
+            (caja / "docs" / "decisiones.md").unlink()
+            (linea,) = self._r12(caja)
+            self.assertIn("docs/decisiones.md", linea)
+            self.assertNotIn("docs/PRD.md", linea)
+            self.assertNotIn("docs/planes/", linea)
+            (caja / "docs" / "decisiones.md").write_text("# d\n", encoding="utf-8")
+            (caja / "docs" / "planes").rmdir()
+            (linea,) = self._r12(caja)
+            self.assertIn("docs/planes/", linea)
+
+    def test_planes_tiene_que_ser_carpeta_y_los_otros_archivos(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td)
             (caja / "docs").mkdir()
-            (caja / "docs" / "PRD.md").write_text("# PRD\n", encoding="utf-8")
-            self.assertEqual(self._r12(caja), [])
+            (caja / "docs" / "PRD.md").mkdir()  # carpeta donde va un archivo: no cuenta
+            (caja / "docs" / "decisiones.md").write_text("# d\n", encoding="utf-8")
+            (caja / "docs" / "planes").write_text("", encoding="utf-8")  # archivo donde va una carpeta: no cuenta
+            (linea,) = self._r12(caja)
+            self.assertIn("docs/PRD.md", linea)
+            self.assertIn("docs/planes/", linea)
 
-    def test_r12_solo_en_proyecto(self):
-        with tempfile.TemporaryDirectory() as td:
-            caja = self._caja(td, "empresa")
-            (caja / "package.json").write_text("{}", encoding="utf-8")
-            _, salida = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="empresa")
-            self.assertNotIn(" R12 ", salida)
-
-    def test_arreglar_crea_plantilla_sin_inventar_ni_pisar(self):
+    def test_arreglar_crea_los_tres_con_instrucciones_sin_pisar(self):
         with tempfile.TemporaryDirectory() as td:
             caja = self._caja(td)
-            (caja / "pyproject.toml").write_text("", encoding="utf-8")
             _, plan = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td)
-            self.assertIn("crearía: docs/PRD.md", plan)
+            for rel in ("docs/PRD.md", "docs/decisiones.md", "docs/planes/README.md"):
+                self.assertIn(f"crearía: {rel}", plan)
             self.assertFalse((caja / "docs").exists())  # sin --si no crea nada
             _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
             prd = (caja / "docs" / "PRD.md").read_text(encoding="utf-8")
-            for seccion in ("## Qué se construye", "## Cuándo está terminado", "## Qué NO se hace", "## Sección técnica", "## Flujo de la app"):
+            for seccion in ("## Qué es y para quién", "## Cuándo está terminado", "## Qué NO se hace"):
                 self.assertIn(seccion, prd)
-            # la plantilla no trae contenido inventado: solo títulos, aclaraciones y líneas en blanco
+            # sin código, el PRD no trae la parte técnica
+            self.assertNotIn("Sección técnica", prd)
+            dec = (caja / "docs" / "decisiones.md").read_text(encoding="utf-8")
+            self.assertIn("fecha", dec)
+            self.assertIn("Ejemplo", dec)
+            leame = (caja / "docs" / "planes" / "README.md").read_text(encoding="utf-8")
+            self.assertIn("AAAA-MM-DD-tema.md", leame)
             self.assertEqual(self._r12(caja), [])
-            # un PRD existente no se pisa
+            # nada de lo creado está vacío: cada archivo trae instrucciones
+            for rel in ("docs/PRD.md", "docs/decisiones.md", "docs/planes/README.md"):
+                self.assertGreaterEqual(len((caja / rel).read_text(encoding="utf-8").splitlines()), 3, rel)
+            # lo existente no se pisa, ni en una segunda pasada ni con archivos propios
             (caja / "docs" / "PRD.md").write_text("mío\n", encoding="utf-8")
+            (caja / "docs" / "decisiones.md").write_text("mías\n", encoding="utf-8")
             _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
             self.assertEqual((caja / "docs" / "PRD.md").read_text(encoding="utf-8"), "mío\n")
+            self.assertEqual((caja / "docs" / "decisiones.md").read_text(encoding="utf-8"), "mías\n")
+
+    def test_prd_con_codigo_suma_la_parte_tecnica(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td)
+            (caja / "pyproject.toml").write_text("", encoding="utf-8")
+            _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
+            prd = (caja / "docs" / "PRD.md").read_text(encoding="utf-8")
+            self.assertIn("## Sección técnica (TRD)", prd)
+            self.assertIn("## Flujo de la app", prd)
+
+    def test_arreglar_crea_planes_aunque_ya_haya_otros_documentos(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td)
+            (caja / "docs").mkdir()
+            (caja / "docs" / "PRD.md").write_text("mío\n", encoding="utf-8")
+            (caja / "docs" / "planes").mkdir()  # carpeta propia vacía: ya cuenta, no se le agrega nada
+            _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
+            self.assertFalse((caja / "docs" / "planes" / "README.md").exists())
+            self.assertTrue((caja / "docs" / "decisiones.md").is_file())
+
+    def test_completar_tambien_crea_los_tres(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = Path(td) / "nueva"
+            _correr(fn=estructura.comando_completar, carpeta_arg=str(caja), nivel="proyecto")
+            self.assertEqual(estructura.faltan_documentos_vivos(caja), [])
+            antes = (caja / "docs" / "PRD.md").read_text(encoding="utf-8")
+            (caja / "docs" / "PRD.md").write_text("mío\n", encoding="utf-8")
+            _correr(fn=estructura.comando_completar, carpeta_arg=str(caja), nivel="proyecto")
+            self.assertEqual((caja / "docs" / "PRD.md").read_text(encoding="utf-8"), "mío\n")
+            self.assertNotEqual(antes, "mío\n")
+
+    def test_el_claude_md_base_dice_donde_se_guarda_cada_cosa(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = Path(td) / "nueva"
+            caja.mkdir()
+            _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
+            md = (caja / "CLAUDE.md").read_text(encoding="utf-8")
+            for ruta in ("docs/PRD.md", "docs/decisiones.md", "docs/planes/AAAA-MM-DD-tema.md"):
+                self.assertIn(ruta, md)
+
+    def test_las_excepciones_escritas_valen_para_r12(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td)
+            _configurar_repo_git(caja, Path(td))
+            self.assertEqual(len(self._r12(caja)), 1)
+            exc = [{"regla": "R12", "ruta": ".", "motivo": "caja de prueba sin documentos", "fecha": "2026-10-15"}]
+            (caja / ".estructura-excepciones.json").write_text(json.dumps(exc), encoding="utf-8")
+            (linea,) = self._r12(caja)
+            self.assertIn("excepción", linea)
+            self.assertIn("caja de prueba sin documentos", linea)
+            _, salida = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto")
+            self.assertNotIn("• R12", salida)
+
+    def test_excepcion_r12_tambien_frena_arreglar_y_completar(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td)
+            _configurar_repo_git(caja, Path(td))
+            exc = [{"regla": "R12", "ruta": ".", "motivo": "sin documentos a propósito", "fecha": "2026-10-15"}]
+            (caja / ".estructura-excepciones.json").write_text(json.dumps(exc), encoding="utf-8")
+            _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
+            _correr(fn=estructura.comando_completar, carpeta_arg=str(caja), nivel="proyecto")
+            self.assertFalse((caja / "docs").exists())
+
+    def test_no_escribe_fuera_de_la_caja_si_docs_es_un_enlace(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td)
+            afuera = Path(td) / "afuera"
+            afuera.mkdir()
+            try:
+                (caja / "docs").symlink_to(afuera, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("sin permiso para enlaces simbólicos")
+            for fn, kw in ((estructura.comando_arreglar, {"raiz_arg": td, "aplicar": True}),
+                           (estructura.comando_completar, {"nivel": "proyecto"})):
+                _, salida = _correr(fn=fn, carpeta_arg=str(caja), **kw)
+                self.assertEqual(list(afuera.iterdir()), [], salida)
+
+    def test_ruta_ocupada_no_corta_el_recorrido_y_queda_pendiente(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td)
+            (caja / "docs").write_text("soy un archivo\n", encoding="utf-8")  # donde va una carpeta
+            code, salida = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
+            self.assertEqual(code, 0)
+            self.assertIn("no se creó docs/PRD.md", salida)
+            self.assertIn("Arreglado ✓", salida)
+            self.assertEqual((caja / "docs").read_text(encoding="utf-8"), "soy un archivo\n")
+            caja2 = self._caja(td, "otra")
+            (caja2 / "docs").mkdir()
+            (caja2 / "docs" / "PRD.md").mkdir()  # carpeta donde va un archivo: el plan no lo pisa y R12 sigue pendiente
+            _, salida2 = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja2), raiz_arg=td)
+            self.assertIn("R12", salida2.split("crearía")[-1])
+
+    def test_nombre_con_saltos_de_linea_no_mete_texto_en_el_claude_md(self):
+        self.assertEqual(estructura.nombre_limpio(Path("/x/a\nb\tc")), "a b c")
 
     def test_r12_tiene_su_arreglo_en_el_markdown(self):
         md = SCRIPTS_DIR.parent / "estructura" / "ESTRUCTURA.md"
         self.assertIn("R12", estructura.cargar_arreglos(str(md)))
+
+    def test_el_molde_marca_los_tres_como_obligatorios_en_todos_los_niveles(self):
+        md = (SCRIPTS_DIR.parent / "estructura" / "ESTRUCTURA.md").read_text(encoding="utf-8")
+        molde = {f["archivo"]: f for f in estructura.parsear_molde(md)}
+        for doc in ("docs/PRD.md", "docs/decisiones.md", "docs/planes/"):
+            self.assertEqual(molde[doc]["obligatorio"], "sí", doc)
+            self.assertEqual(molde[doc]["niveles"], ["E", "A", "P"], doc)
 
 
 class TestEnvMultilinea(unittest.TestCase):

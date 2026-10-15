@@ -36,9 +36,9 @@ persona) · **Obligatorio** (sí · no · condición) · **Baja** (llega a las c
 | `.claude/rules/` | reglas por tema, que se leen cuando hacen falta | E A P | sí | no | no | memory |
 | `.mcp.json` | conectores para trabajar en esa caja | E A P | sí | no | no | mcp |
 | `docs/` | documentos | E A P | sí | no | no | — |
-| `docs/PRD.md` | el documento vivo del proyecto con desarrollo: qué se construye, para quién, cuándo está terminado y qué NO se hace. Adentro lleva una sección técnica (cómo está armado: es el TRD) y un diagrama de flujo (cómo se mueve la persona por la app) | P | sí | si es desarrollo | no | — |
-| `docs/decisiones.md` | el registro de decisiones: cada una con fecha y el porqué, para no volver a discutirla | P | sí | si es desarrollo | no | — |
-| `docs/planes/` | un plan por etapa de trabajo; cuando la etapa termina, el plan se archiva | P | sí | si es desarrollo | no | — |
+| `docs/PRD.md` | el documento vivo de la caja: qué es, para quién, cuándo está terminada y qué NO se hace. Si la caja tiene código, lleva además una sección técnica (cómo está armado: es el TRD) y un diagrama de flujo (cómo se mueve la persona por la app) | E A P | sí | sí | no | — |
+| `docs/decisiones.md` | el registro de decisiones: cada una con fecha y el porqué, para no volver a discutirla | E A P | sí | sí | no | — |
+| `docs/planes/` | un plan por etapa de trabajo, nombrado `AAAA-MM-DD-tema.md`; cuando la etapa termina, el plan se archiva | E A P | sí | sí | no | — |
 | `.env.example` | qué claves hacen falta, sin los valores | E A P | sí | si hay .env | no | — |
 | `.gitignore` | lo que no se sube a GitHub; en empresa y área, además, las carpetas de adentro | E A P | sí | sí | no | git |
 | `plugins/<paquete>/` | el paquete: skills, agentes, avisos automáticos y conectores comunes (en el área, opcional) | E A | sí | no | sí | plugins-reference |
@@ -47,15 +47,15 @@ persona) · **Obligatorio** (sí · no · condición) · **Baja** (llega a las c
 | `.claude/settings.local.json` | mis ajustes | E A P | no | no | no | settings |
 | `.env` | las claves | E A P | no | no | no | — |
 
-### Proyectos con desarrollo: pocos documentos vivos
-Un proyecto «es desarrollo» cuando tiene código. En vez de seis documentos fijos (PRD, TRD, flujo de la app, UI/UX, esquema de datos, plan), lleva tres, que se mantienen al día:
-- `docs/PRD.md`: qué se construye, para quién, cuándo está terminado y qué NO se hace. Incluye la sección técnica (el TRD) y el diagrama de flujo de la app.
+### Tres documentos vivos en toda caja
+Toda caja (empresa, área y proyecto), tenga código o no, lleva los mismos tres documentos. Así, quien abre Claude en cualquier caja, aunque no sepa de desarrollo, sabe siempre **dónde guarda cada cosa y con qué nombre**; la sesión no tiene que adivinar ni decidir si algo «es desarrollo». En vez de seis documentos fijos (PRD, TRD, flujo de la app, UI/UX, esquema de datos, plan), son tres, que se mantienen al día:
+- `docs/PRD.md`: qué es la caja, para quién, cuándo está terminada y qué NO se hace. Si hay código, suma la sección técnica (el TRD) y el diagrama de flujo de la app.
 - `docs/decisiones.md`: el registro de decisiones, cada una con fecha y el porqué.
-- `docs/planes/`: un plan por etapa; al terminar la etapa, el plan se archiva.
+- `docs/planes/`: un plan por etapa, nombrado `AAAA-MM-DD-tema.md`; al terminar la etapa, el plan se archiva.
 
 Lo demás no es un documento de texto: **el diseño de pantallas (UI/UX) son mockups** (Figma o HTML), no texto, y **el esquema de datos se genera desde el código, nunca a mano**.
 
-**«Tiene código»** se decide con señales baratas, sin leer el código: la caja tiene `package.json`, `pyproject.toml`, `requirements.txt` o `Package.swift` en su raíz, o una carpeta `src/` o `app/` que contenga al menos un archivo de código (`.py`, `.js`, `.ts`, `.tsx`, `.jsx`, `.swift`, `.go`, `.rs`, `.java`, `.php`, `.rb`). Con una sola señal alcanza. Se aplica solo a cajas de nivel proyecto: en empresa y área el código vive en los proyectos de adentro.
+**«Tiene código»** ya no decide si la caja lleva los tres documentos (los lleva siempre). Solo decide el contenido del PRD: con código, la plantilla incluye la sección técnica y el flujo de la app. Se decide con señales baratas, sin leer el código: la caja tiene `package.json`, `pyproject.toml`, `requirements.txt` o `Package.swift` en su raíz, o una carpeta `src/` o `app/` que contenga al menos un archivo de código (`.py`, `.js`, `.ts`, `.tsx`, `.jsx`, `.swift`, `.go`, `.rs`, `.java`, `.php`, `.rb`). Con una sola señal alcanza.
 
 Fuera de las cajas:
 
@@ -79,7 +79,7 @@ Fuera de las cajas:
 | R9 | Cada skill (`.claude/skills/<nombre>/SKILL.md`) y cada agente (`.claude/agents/*.md`) tiene encabezado con `name` y `description` | toda caja | ✗ | agregar `name:` y `description:` al encabezado del archivo |
 | R10 | Si la empresa o el área de arriba tiene paquete, `settings.json` lo activa | toda caja de adentro | aviso | activar el paquete en `.claude/settings.json` |
 | R11 | `~/Proyectos/` no es un repositorio | raíz | ✗ | sacar el `.git` de la carpeta de proyectos, con respaldo: lo hace Claude con tu OK |
-| R12 | Si la caja tiene código (ver «Proyectos con desarrollo»), tiene `docs/PRD.md` | proyecto | aviso | lo arma el PM del proyecto con Claude a partir del código; `estructura.py arreglar` puede crear la plantilla vacía con sus secciones, nunca inventa el contenido |
+| R12 | Tiene los tres documentos vivos: `docs/PRD.md`, `docs/decisiones.md` y la carpeta `docs/planes/` (ver «Tres documentos vivos en toda caja») | toda caja | aviso | `estructura.py arreglar` los crea con instrucciones adentro (qué va, cómo se nombra, un ejemplo mínimo); el contenido lo completa el PM o la sesión con Claude, nunca se inventa |
 
 **Excepciones:** lo que se decidió dejar así, con su motivo, no queda como ✗ para siempre: se anota en
 `.estructura-excepciones.json` en la raíz del repositorio, una lista de
@@ -164,9 +164,15 @@ Textos que muestra el dibujo para cada nivel. El molde define qué archivos exis
 | .env.example | empresa | .env.example | qué claves hacen falta, sin los valores |
 | .env.example | area | .env.example | qué claves hacen falta, sin los valores |
 | .env.example | proyecto | .env.example | qué claves hacen falta, sin los valores |
-| docs/PRD.md | proyecto | docs/PRD.md <span class="q">(si hay desarrollo)</span> | qué se construye, para quién, cuándo está terminado y qué NO se hace; incluye la sección técnica y el diagrama de flujo de la app |
-| docs/decisiones.md | proyecto | docs/decisiones.md <span class="q">(si hay desarrollo)</span> | cada decisión con su fecha y el porqué |
-| docs/planes/ | proyecto | docs/planes/ <span class="q">(si hay desarrollo)</span> | un plan por etapa; al terminar, se archiva. Las pantallas van como mockups y el esquema de datos sale del código |
+| docs/PRD.md | empresa | docs/PRD.md | qué es la empresa, para quién, cuándo está terminada y qué NO se hace |
+| docs/PRD.md | area | docs/PRD.md | qué es el área, para quién, cuándo está terminada y qué NO se hace |
+| docs/PRD.md | proyecto | docs/PRD.md | qué es, para quién, cuándo está terminado y qué NO se hace; con código, suma la sección técnica y el diagrama de flujo de la app |
+| docs/decisiones.md | empresa | docs/decisiones.md | cada decisión con su fecha y el porqué |
+| docs/decisiones.md | area | docs/decisiones.md | cada decisión con su fecha y el porqué |
+| docs/decisiones.md | proyecto | docs/decisiones.md | cada decisión con su fecha y el porqué |
+| docs/planes/ | empresa | docs/planes/ | un plan por etapa (AAAA-MM-DD-tema.md); al terminar, se archiva |
+| docs/planes/ | area | docs/planes/ | un plan por etapa (AAAA-MM-DD-tema.md); al terminar, se archiva |
+| docs/planes/ | proyecto | docs/planes/ | un plan por etapa (AAAA-MM-DD-tema.md); al terminar, se archiva. Las pantallas van como mockups y el esquema de datos sale del código |
 | .gitignore | empresa | .gitignore | no guarda las carpetas de adentro (cada una tiene su repositorio) |
 | .gitignore | area | .gitignore | no guarda las carpetas de los proyectos |
 | .gitignore | proyecto | .gitignore | lo que no se sube a GitHub |
