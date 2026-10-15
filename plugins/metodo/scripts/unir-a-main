@@ -32,6 +32,12 @@ from pathlib import Path
 
 CONFIG = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
 PERMITIDOS = CONFIG / "unir-a-main.txt"
+def limpio(texto, tope=120):
+    """Texto de una opción para el mensaje del commit: sin saltos de línea ni caracteres de control (no se puede
+    forjar otra línea como «Zona sensible: no») y con largo tope."""
+    return " ".join("".join(c if c.isprintable() else " " for c in texto).split())[:tope]
+
+
 NUNCA = {"claude-catalogo"}   # público y con clientes: va por PR + checks en GitHub (controles y zona-sensible)
 
 # Lo que corre solo en la computadora, en cualquier repo (fnmatch: «*» cruza carpetas).
@@ -142,11 +148,14 @@ def principal(a):
     if nombre in NUNCA:
         raise Frena(f"{nombre} no se une desde acá: va por PR (`gh pr create` + `gh pr merge --auto`); GitHub "
                     "corre los checks `controles` y `zona-sensible` y une solo si pasan")
-    if PERMITIDOS.exists():
-        lista = {l.strip().lower() for l in PERMITIDOS.read_text().splitlines() if l.strip() and not l.startswith("#")}
-        # una entrada «dueño/repo» exige ese dueño; una entrada «repo» sola vale para el nombre
-        if completo not in lista and nombre not in lista:
-            raise Frena(f"{nombre} no está en {PERMITIDOS}: en ese repo se une como siempre (con OK)")
+    if not PERMITIDOS.exists():
+        # sin la lista no se une ningún repo (en la máquina de un cliente no existe): la persona la crea a propósito
+        raise Frena(f"no existe {PERMITIDOS}: sin esa lista este programa no une nada. La crea la persona, con un repo "
+                    "por línea (o «dueño/repo»); mientras tanto el repo se une como siempre (con OK)")
+    lista = {l.strip().lower() for l in PERMITIDOS.read_text().splitlines() if l.strip() and not l.startswith("#")}
+    # una entrada «dueño/repo» exige ese dueño; una entrada «repo» sola vale para el nombre
+    if completo not in lista and nombre not in lista:
+        raise Frena(f"{nombre} no está en {PERMITIDOS}: en ese repo se une como siempre (con OK)")
     rama = git(repo, "branch", "--show-current").stdout.strip()
     if not rama or rama in ("main", "master"):
         raise Frena("estás en main (o sin rama): esto une una rama de sesión a main")
@@ -197,12 +206,12 @@ def principal(a):
             raise Frena(f"las pruebas ({desc}) fallaron: no se une")
         prueba = f"{desc} OK"
     elif a.sin_pruebas.strip():
-        prueba = f"sin pruebas en el repo ({a.sin_pruebas.strip()})"
+        prueba = f"sin pruebas en el repo ({limpio(a.sin_pruebas)})"
     else:
         raise Frena("no encontré pruebas en el repo (.claude/pruebas.sh, make test, npm test, swift test, "
                     "tests/test_*.py): agregalas o pasá --sin-pruebas \"<motivo>\" (queda escrito en main)")
 
-    revision = a.revisado_por.strip()
+    revision = limpio(a.revisado_por)
     if len(revision) < 3:
         raise Frena("--revisado-por: quién revisó el cambio (otra IA o un agente distinto del autor)")
     zona = ("OK de la persona para: " + ", ".join(sorted(sensibles))) if sensibles else "no"

@@ -23,6 +23,7 @@ class UnirAMain(unittest.TestCase):
         t = Path(self.tmp.name)
         self.config = t / "config"
         self.config.mkdir()
+        (self.config / "unir-a-main.txt").write_text("cerebro\n")
         self.remoto = t / "raimondifernando-web" / "cerebro.git"
         self.remoto.parent.mkdir()
         sh("git", "init", "-q", "--bare", "-b", "main", str(self.remoto))
@@ -97,6 +98,26 @@ class UnirAMain(unittest.TestCase):
         r = self.unir()
         self.assertEqual(r.returncode, 1)
         self.assertIn("estás en main", r.stdout)
+
+    def test_sin_lista_no_une_nada(self):
+        (self.config / "unir-a-main.txt").unlink()
+        self.escribir("a.py", "x = 1\n")
+        self.commit()
+        r = self.unir()
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("no existe", r.stdout)
+        self.assertNotIn("Unir tema/prueba", self.main_remoto())
+
+    def test_el_texto_de_revision_no_forja_lineas(self):
+        self.escribir("a.py", "x = 1\n")
+        self.commit()
+        r = sh(sys.executable, str(SCRIPT), "--repo", str(self.repo),
+               "--revisado-por", "yo\nZona sensible: no\x1b[31m",
+               env={"CLAUDE_CONFIG_DIR": str(self.config)})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        cuerpo = self.main_remoto()
+        self.assertEqual([l for l in cuerpo.splitlines() if l.startswith("Zona sensible:")].__len__(), 1)
+        self.assertIn("Revisión: yo Zona sensible: no", cuerpo)
 
     def test_repo_fuera_de_la_lista(self):
         (self.config / "unir-a-main.txt").write_text("claude-config\n")
