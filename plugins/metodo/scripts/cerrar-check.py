@@ -25,12 +25,24 @@ import tempfile
 import time
 from datetime import date
 
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import ediciones as ed  # noqa: E402  (quién tocó qué: separa lo tuyo de lo de otra sesión)
+
 args = sys.argv[1:]
 anotar = "--anotar" in args
 args = [a for a in args if a != "--anotar"]
+# --ajeno <ruta> (repetible): declarás a mano que ese archivo sin guardar NO es de esta sesión (lo avisa, no frena)
+declaradas = []
+while "--ajeno" in args:
+    _i = args.index("--ajeno")
+    if _i + 1 < len(args):
+        declaradas.append(args[_i + 1])
+    del args[_i:_i + 2]
 slug = args.pop(0) if args and re.match(r"\d{4}-\d{2}-\d{2}-", args[0]) else None
 cwd = os.path.abspath(args[0]) if args else os.getcwd()
+declaradas = [os.path.join(cwd, p) for p in declaradas]
 faltan = []
+A_MANO = []  # archivos que se dieron por ajenos con --ajeno: el veredicto final lo dice
 
 
 def git(*a):
@@ -153,9 +165,25 @@ else:
     ajenos = [l for l in st.splitlines() if not l.startswith("??") and ruta(l) not in propios_l]
     mod = [l for l in st.splitlines() if not l.startswith("??") and ruta(l) in propios_l]
     sin = len([l for l in st.splitlines() if l.startswith("??")])
+    # Varias sesiones en la misma carpeta: lo que editó OTRA sesión (según el registro de ediciones.py) se avisa y no frena;
+    # lo que editaste vos, o no se sabe de quién es, frena. Regla conservadora y su porqué: encabezado de ediciones.py.
+    def _abs(l):
+        return os.path.join(cwd, ed.ruta_git(ruta(l).split(" -> ")[-1]))
+    sid = ed.sid_actual()
+    clas = ed.clasificar([_abs(l) for l in mod], sid, declaradas)
+    otros = [l for l in mod if clas[_abs(l)][0] == "ajeno"]
+    A_MANO.extend(ruta(l) for l in otros if "a mano" in clas[_abs(l)][1])
+    mod = [l for l in mod if clas[_abs(l)][0] == "mio"]
     linea(not mod, f"git: sin cambios versionados sin guardar ({sin} archivo(s) nuevos sin seguir, ajenos o por decidir)" if not mod
           else f"git: {len(mod)} archivo(s) versionados con cambios sin guardar: {', '.join(ruta(l) for l in mod[:5])}",
           f"{len(mod)} archivo(s) sin guardar en {os.path.basename(top)}")
+    if otros:
+        print(f"• {len(otros)} archivo(s) sin guardar que NO son de esta sesión (no frenan): "
+              f"{'; '.join(ruta(l) + ' (' + clas[_abs(l)][1] + ')' for l in otros[:5])}")
+    if mod and not sid:
+        print("• No sé qué sesión sos (falta la variable CLAUDE_CODE_SESSION_ID): todo lo sin guardar cuenta como tuyo")
+    elif mod:
+        print("• Si alguno de esos NO lo tocó esta sesión: mirá su cambio (git diff) y repetí con --ajeno <ruta>. Solo si lo verificaste y no es de esta sesión ni de algo que delegaste. Si es tuyo, guardalo por nombre (git add <ruta>)")
     if ajenos:
         print(f"• {len(ajenos)} archivo(s) con cambios sin guardar FUERA de esta carpeta (de otra sesión; no frenan): "
               f"{', '.join(ruta(l) for l in ajenos[:5])}")
@@ -311,4 +339,5 @@ if faltan:
     print("Falta: " + " · ".join(faltan) + " ✗")
     sys.exit(1)
 print("• MANUAL (paso 10, LO ÚLTIMO): en la app de escritorio, después del prompt y EN LA MISMA respuesta: start_session → detach → move → archive; no cierres el turno sin hacerlo o sin decir por qué no (en terminal o Cowork: «no aplica»)")
-print("Cierre completo ✓ (más los ítems MANUAL, que reporta la sesión)")
+print("Cierre completo ✓ (más los ítems MANUAL, que reporta la sesión)"
+      + (f" — OJO: {len(A_MANO)} archivo(s) sin guardar declarados ajenos A MANO (--ajeno): {', '.join(A_MANO[:5])}" if A_MANO else ""))

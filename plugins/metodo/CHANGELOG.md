@@ -1,5 +1,15 @@
 # metodo — qué cambia para vos
 
+## 0.43.0 — 2026-10-15
+**Si trabajás con varias sesiones de Claude a la vez, el cierre de una ya no se frena por el trabajo de otra.** Se aplica solo; no hay nada que correr.
+- **Antes:** `/cerrar` marcaba ✗ cualquier archivo sin guardar de la carpeta, aunque lo estuviera editando OTRA sesión que sigue abierta. Una sesión ajena frenaba el cierre de todas.
+- **Ahora** cada sesión anota (en `state/ediciones/`, dentro de tu carpeta de configuración de Claude, fuera de cualquier repositorio y sin salir de tu computadora) qué archivos tocó ella. Al cerrar, lo que dejaste vos sin guardar **sigue frenando** (✗); lo que dejó otra sesión sale como aviso (`• … NO son de esta sesión`, con cuál y hace cuánto) y no frena. También cuenta como ajeno lo que ya estaba sin guardar antes de que abrieras esta sesión.
+- **Ante la duda, es tuyo y frena.** Cuenta como de otra sesión solo lo que esa otra sesión editó con las herramientas de edición de Claude y que nadie tocó después. Lo que otra sesión cambió con un comando (`sed`, un script, `codex`…) **no** alcanza para darlo por ajeno, porque un comando que nombra un archivo no prueba que lo haya cambiado: sale como tuyo y frena. Lo mismo si el archivo cambió después de la última anotación, si se copió con `cp -p`/`mv` conservando una fecha vieja, o si no se sabe de quién es.
+- **`--ajeno <ruta>`** (en `cerrar-check.py`) sirve para lo que estás seguro de que no es de esta sesión y el registro no vio: mirá su cambio (`git diff`) y repetí el chequeo con esa opción; queda como aviso, a la vista. **No vale para un archivo que el registro dice que editaste vos.**
+- **Si usaste `--ajeno`, el veredicto final lo dice** (`Cierre completo ✓ — OJO: N archivo(s) … declarados ajenos A MANO`), para que lo veas vos y no quede escondido.
+- Si el registro todavía no conoce esta sesión (por ejemplo, recién se instaló el hook) o el programa no puede saber qué sesión sos (falta `CLAUDE_CODE_SESSION_ID`), todo lo sin guardar cuenta como tuyo, igual que antes.
+- El registro se borra solo a los 14 días y queda legible solo para tu usuario. El anotador (`ediciones.py`) no muestra nada, no frena nada, no manda nada afuera y consulta git sin tomar su candado, así que no molesta a un commit de otra sesión.
+
 ## 0.42.0 — 2026-10-15
 **Unir a `main` ya no depende de que alguien afirme que está todo bien: el programa lo comprueba.** Se aplica solo; no hay nada que correr. Explicación en una página: `docs/SELLO-UNIR-A-MAIN.md`.
 - **Se acabaron las opciones que se afirmaban a mano.** `--revisado-por`, `--ok-fernando` y `--sin-pruebas` ya no existen: una sesión engañada podía escribirlas sin que fueran ciertas. Ahora `unir-a-main` se corre sin opciones y hace todo por su cuenta.
