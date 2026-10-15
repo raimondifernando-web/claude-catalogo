@@ -39,6 +39,12 @@ def sh(*cmd, cwd=None):
 class UnirAMain(unittest.TestCase):
     def setUp(self):
         self.m = cargar()
+        if sys.platform != "darwin":
+            # Fuera de Mac no hay sandbox completo y el programa (a propósito) le pregunta a la persona antes de correr las
+            # pruebas. Estas pruebas miden el resto del flujo, así que acá se finge un entorno «completo»; que sin
+            # aislamiento SÍ pregunta lo mide test_h2_sin_aislamiento_pregunta_antes_de_correr, y el sandbox real, las
+            # pruebas exclusivas de Mac.
+            self.m.detectar_aislamiento = lambda: (None, "completo")
         self.tmp = tempfile.TemporaryDirectory()
         t = Path(self.tmp.name)
         self.config = t / "config"
