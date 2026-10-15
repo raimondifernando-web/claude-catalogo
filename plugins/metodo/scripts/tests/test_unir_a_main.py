@@ -465,7 +465,7 @@ class UnirAMain(unittest.TestCase):
         self.escribir("a.py", "x = 1\n")
         self.commit()
         self.assertEqual(self.unir(), 1)
-        self.assertIn("dirección de subida", self.salida)
+        self.assertIn("pushurl", self.salida)   # ahora lo frena primero la revisión de la configuración del repo
 
     def test_borrar_pruebas_pide_a_la_persona(self):
         sh("git", "rm", "-q", "tests/test_ok.py", cwd=self.repo)
@@ -519,6 +519,207 @@ class UnirAMain(unittest.TestCase):
         # en pruebas no hay terminal: pedir el OK de la persona nunca devuelve «sí» solo
         if sys.platform != "darwin":
             self.assertFalse(self.m.aprobador_persona("¿unir?", "abc1234"))
+
+    # ---- segunda revisión independiente (0.42.0): H1-H4 y medios ----
+    def git_local(self, *args):
+        return sh("git", *args, cwd=self.repo)
+
+    def test_h2_las_pruebas_no_corren_antes_de_preguntar(self):
+        orden = []
+        original = self.m.correr_pruebas_aisladas
+        self.m.correr_pruebas_aisladas = lambda *a, **k: (orden.append("pruebas"), original(*a, **k))[1]
+        self.escribir("conftest.py", "x = 1\n")   # decide cómo corren las pruebas: zona sensible
+        self.commit("conftest")
+        rc = self.unir(persona=False)
+        self.assertEqual(rc, 3, self.salida)
+        self.assertEqual(orden, [], "no se corrió ni una línea de la rama sin el OK")
+        self.assertIn("conftest.py", self.preguntas[0])
+
+    def test_h2_con_ok_primero_pregunta_y_despues_corre(self):
+        orden = []
+        original = self.m.correr_pruebas_aisladas
+
+        def aprobador(resumen, sha7):
+            orden.append("pregunta")
+            return True
+        self.m.correr_pruebas_aisladas = lambda *a, **k: (orden.append("pruebas"), original(*a, **k))[1]
+        self.escribir("conftest.py", "x = 1\n")
+        self.commit("conftest")
+        args = SimpleNamespace(repo=str(self.repo), probar=False, tope=120)
+        with redirect_stdout(io.StringIO()):
+            rc = self.m.principal(args, revisor=lambda d, c: VERDE, aprobador=aprobador)
+        self.assertEqual(rc, 0)
+        self.assertEqual(orden, ["pregunta", "pruebas"])
+
+    def test_h2_sin_aislamiento_pregunta_antes_de_correr(self):
+        orden = []
+        self.m.detectar_aislamiento = lambda: (None, "no se pudo cerrar la red")
+        self.m.correr_pruebas_aisladas = lambda *a, **k: orden.append("pruebas")
+        self.escribir("a.py", "x = 1\n")
+        self.commit()
+        self.assertEqual(self.unir(persona=False), 3, self.salida)
+        self.assertEqual(orden, [])
+        self.assertIn("aislar", self.preguntas[0])
+
+    def test_h3_un_origin_main_falsificado_no_cambia_la_base(self):
+        real = sh("git", "rev-parse", "origin/main", cwd=self.repo).stdout.strip()
+        # la sesión fabrica un commit «M» y lo pone como origin/main local
+        sh("git", "checkout", "-q", "--detach", "main", cwd=self.repo)
+        self.escribir("malicioso.py", "import os\n")
+        self.commit("M malicioso")
+        falso = sh("git", "rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        sh("git", "checkout", "-q", "tema/prueba", cwd=self.repo)
+        sh("git", "update-ref", "refs/remotes/origin/main", falso, cwd=self.repo)
+        self.escribir("a.py", "x = 1\n")
+        self.commit("cambio inocente")
+        self.assertEqual(self.unir(), 0, self.salida)
+        padres = sh("git", "--git-dir", str(self.remoto), "log", "-1", "--format=%P", "main").stdout.split()
+        self.assertEqual(padres[0], real)
+        self.assertNotEqual(padres[0], falso)
+        archivos = sh("git", "--git-dir", str(self.remoto), "ls-tree", "-r", "--name-only", "main").stdout
+        self.assertNotIn("malicioso.py", archivos)
+
+    def test_h3_la_base_se_compara_con_lo_que_dice_el_remoto(self):
+        real = sh("git", "rev-parse", "main", cwd=self.repo).stdout.strip()
+        original = self.m.git
+
+        def git_con_remoto_movido(repo, *args, ok=(0,)):
+            r = original(repo, *args, ok=ok)
+            if args[:1] == ("ls-remote",):
+                r.stdout = "0" * 40 + "\trefs/heads/main\n"
+            return r
+        self.m.git = git_con_remoto_movido
+        self.escribir("a.py", "x = 1\n")
+        self.commit()
+        self.assertEqual(self.unir(), 1)
+        self.assertIn("main cambió", self.salida)
+        self.assertNotEqual(sh("git", "--git-dir", str(self.remoto), "rev-parse", "main").stdout.strip(), "0" * 40)
+        self.assertEqual(sh("git", "--git-dir", str(self.remoto), "rev-parse", "main").stdout.strip(), real)
+
+    def test_h4_la_configuracion_del_repo_que_ejecuta_cosas_frena(self):
+        marca = Path(self.tmp.name) / "ejecuto.txt"
+        for clave, valor in (("core.sshCommand", f"touch {marca}"), ("credential.helper", f"!touch {marca}"),
+                             ("gpg.program", f"touch {marca}"), ("merge.x.driver", f"touch {marca}"),
+                             ("filter.x.smudge", f"touch {marca}"), ("remote.origin.uploadpack", f"touch {marca}"),
+                             ("include.path", "/dev/null"), ("remote.origin.fetch", "+refs/heads/*:refs/remotes/otro/*")):
+            self.git_local("config", "--local", clave, valor)
+            self.escribir("a.py", f"x = {len(clave)}\n")
+            self.commit()
+            self.assertEqual(self.unir(), 1, clave)
+            self.assertIn("configuración del repo", self.salida, clave)
+            self.assertFalse(marca.exists(), clave)
+            self.git_local("config", "--local", "--unset", clave)
+
+    def test_h4_la_configuracion_normal_pasa(self):
+        self.git_local("config", "--local", "branch.tema/v1.2.remote", "origin")
+        self.git_local("config", "--local", "pull.rebase", "true")
+        self.escribir("a.py", "x = 1\n")
+        self.commit()
+        self.assertEqual(self.unir(), 0, self.salida)
+
+    def test_h4_la_copia_limpia_no_aplica_filtros_ni_atributos(self):
+        marca = Path(self.tmp.name) / "filtro.txt"
+        self.git_local("config", "--local", "filter.x.smudge", f"sh -c 'touch {marca}; cat'")
+        self.git_local("config", "--local", "filter.x.clean", "cat")
+        self.escribir(".gitattributes", "*.txt filter=x\n")
+        self.escribir("dato.txt", "contenido crudo\n")
+        self.escribir("run.sh", "#!/bin/sh\n")
+        (self.repo / "run.sh").chmod(0o755)
+        os.symlink("dato.txt", self.repo / "enlace.txt")
+        self.commit("con filtro")
+        head = self.git_local("rev-parse", "HEAD").stdout.strip()
+        destino = Path(self.tmp.name) / "copia-prueba"
+        self.m.copia_limpia(self.repo, head, destino)
+        self.assertFalse(marca.exists())
+        self.assertEqual((destino / "dato.txt").read_text(), "contenido crudo\n")
+        self.assertTrue(os.access(destino / "run.sh", os.X_OK))
+        self.assertTrue((destino / "enlace.txt").is_symlink())
+        self.assertFalse((destino / ".git").exists())
+
+    def test_h4_la_copia_limpia_rechaza_rutas_raras(self):
+        r = subprocess.run(["git", "hash-object", "-w", "--stdin"], cwd=self.repo, input="x", capture_output=True, text=True)
+        blob = r.stdout.strip()
+        tree = subprocess.run(["git", "mktree"], cwd=self.repo, input=f"100644 blob {blob}\t.git\n", capture_output=True,
+                              text=True).stdout.strip()
+        commit = subprocess.run(["git", "commit-tree", tree, "-m", "x"], cwd=self.repo, capture_output=True,
+                                text=True).stdout.strip()
+        with self.assertRaises(self.m.Frena):
+            self.m.copia_limpia(self.repo, commit, Path(self.tmp.name) / "c2")
+
+    def test_ejecutable_nuevo_pide_a_la_persona(self):
+        self.escribir("herramienta.sh", "#!/bin/sh\n")
+        (self.repo / "herramienta.sh").chmod(0o755)
+        self.commit("ejecutable nuevo")
+        self.assertEqual(self.unir(persona=False), 3)
+        self.assertIn("ejecutable nuevo", self.preguntas[0])
+
+    def test_git_sin_ruta_fija_frena(self):
+        self.m.GIT = "git"
+        self.assertEqual(self.unir(), 1)
+        self.assertIn("lugar fijo", self.salida)
+
+    def test_el_programa_se_corre_con_python_aislado(self):
+        self.assertIn("python3 -I", SCRIPT.read_text().splitlines()[0])
+
+    def test_pruebas_ignora_makefile_que_es_enlace_o_cola(self):
+        copia = Path(self.tmp.name) / "c3"
+        copia.mkdir()
+        os.symlink("/dev/zero", copia / "Makefile")
+        os.symlink("/dev/zero", copia / "package.json")
+        self.assertEqual(self.m.pruebas(copia), (None, None))
+
+    def test_zona_sensible_mas_nombres(self):
+        for ruta in (".claude/settings.json", "app/.claude/settings.local.json", "a/b/.claude/settings.json",
+                     ".mcp.json", "web/.mcp.json", ".husky/pre-commit", "x/.githooks/pre-push", ".envrc",
+                     ".vscode/tasks.json", "package.json", "web/package.json", "pytest.py", "sub/unittest.py",
+                     "usercustomize.py"):
+            self.assertTrue(self.m.zona_sensible(self.repo, [ruta], "HEAD"), ruta)
+
+    def test_rutas_de_comandos_de_mcp_y_scripts_sin_extension(self):
+        r = self.m.rutas_de_comandos(json.dumps({"mcpServers": {"a": {"command": "node", "args": ["servidor/index.js"]},
+                                                                "b": {"command": "./run"}},
+                                                 "hooks": [{"command": "/Users/x/proyecto/scripts/guardar.sh"}]}))
+        self.assertIn("servidor/index.js", r)
+        self.assertIn("run", r)
+        self.assertIn("*/guardar.sh", r)
+
+    def test_los_scripts_que_apunta_un_mcp_son_sensibles(self):
+        self.escribir(".mcp.json", json.dumps({"mcpServers": {"a": {"command": "node", "args": ["servidor/index.js"]}}}))
+        self.escribir("servidor/index.js", "console.log(1)\n")
+        self.commit("mcp")
+        sh("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo)
+        self.assertTrue(self.m.zona_sensible(self.repo, ["servidor/index.js"], "HEAD"))
+        self.assertTrue(self.m.zona_sensible(self.repo, ["servidor/otro.js"], "HEAD"))
+
+    @unittest.skipUnless(sys.platform == "darwin" and Path("/usr/bin/sandbox-exec").exists(), "el aislamiento completo es de Mac")
+    def test_h1_el_perfil_cierra_launchd_preferencias_y_programas_copiados(self):
+        perfil = self.m.perfil_sandbox_mac("/tmp/x", "/Users/nadie", ())
+        for texto in ("(deny job-creation)", "(deny user-preference-write)", "com.apple.cfprefsd.daemon",
+                      "com.apple.cfprefsd.agent", '(subpath "/tmp/x"))'):
+            self.assertIn(texto, perfil)
+        # el sandbox acepta el perfil entero y no rompe un programa común
+        r = subprocess.run(["/usr/bin/sandbox-exec", "-p", perfil, "/usr/bin/true"], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    @unittest.skipUnless(sys.platform == "darwin" and Path("/usr/bin/sandbox-exec").exists(), "el aislamiento completo es de Mac")
+    def test_h1_un_programa_copiado_a_la_copia_no_se_puede_ejecutar(self):
+        # el ataque: copiar /bin/launchctl a la carpeta donde SÍ se escribe y ejecutarla desde ahí. Solo lectura:
+        # nunca crea tareas ni toca preferencias, y si el sandbox fallara solo listaría las tareas deshabilitadas.
+        self.escribir("tests/test_copia.py", (
+            "import os, shutil, subprocess, unittest\nclass T(unittest.TestCase):\n"
+            "    def test_binario_copiado(self):\n"
+            "        shutil.copy('/bin/launchctl', 'launchctl_copia')\n"
+            "        os.chmod('launchctl_copia', 0o755)\n"
+            "        with self.assertRaises(OSError):\n"
+            "            subprocess.run(['./launchctl_copia', 'print-disabled', 'user/%d' % os.getuid()], check=False)\n"
+            "    def test_ejecutable_del_repo(self):\n"
+            "        with open('mio.sh', 'w') as f: f.write('#!/bin/sh\\ntrue\\n')\n"
+            "        os.chmod('mio.sh', 0o755)\n"
+            "        with self.assertRaises(OSError):\n"
+            "            subprocess.run(['./mio.sh'], check=False)\n"))
+        self.commit("intento de escape copiando el binario")
+        self.assertEqual(self.unir(), 0, self.salida)
+
 
 
 if __name__ == "__main__":
