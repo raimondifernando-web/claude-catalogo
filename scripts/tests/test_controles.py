@@ -156,6 +156,45 @@ class ZonaSensible(unittest.TestCase):
         correr(["git", "rm", "-q", "plugins/metodo/scripts/tests/test_x.py"], self.r.d)
         self.assertEqual(self.r.zona(base, self.r.commit()).returncode, 10)
 
+    def test_lo_que_corre_solo_en_la_raiz_o_en_subcarpetas(self):
+        # Medios 3 y 4 de la revisión de metodo 0.40.1: cada uno en la raíz y con prefijo de carpeta.
+        for ruta in (".mcp.json", "app/.mcp.json", ".husky/pre-commit", "app/.husky/pre-push", ".githooks/pre-commit",
+                     "x/.githooks/post-merge", ".envrc", "web/.envrc", ".vscode/tasks.json", "web/.vscode/tasks.json",
+                     "package.json", "web/package.json", ".claude/settings.json", ".claude/settings.local.json",
+                     "app/.claude/settings.json", "app/.claude/settings.local.json", ".claude/hooks/x.sh",
+                     "app/.claude/hooks/x.sh", ".pre-commit-config.yaml", ".devcontainer/devcontainer.json",
+                     ".gitattributes", ".gitmodules"):
+            antes = correr(["git", "rev-parse", "HEAD"], self.r.d).stdout.strip()
+            self.r.escribir(ruta, "{}\n")
+            correr(["git", "add", "-f", ruta], self.r.d)   # algunas máquinas ignoran estos archivos en global
+            despues = self.r.commit(ruta)
+            self.assertNotEqual(antes, despues, f"{ruta}: no se llegó a commitear")
+            out = self.r.zona(antes, despues)
+            self.assertEqual(out.returncode, 10, f"{ruta}: {out.stdout}")
+
+    def test_script_al_que_apunta_un_hook_de_ajustes_del_repo(self):
+        self.r.escribir(".claude/settings.json", json.dumps({"hooks": {"Stop": [{"hooks": [
+            {"type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/tools/avisar.sh\""}]}]}}))
+        self.r.escribir("tools/avisar.sh", "echo a\n")
+        self.r.escribir("tools/vecino.sh", "echo b\n")
+        correr(["git", "add", "-f", ".claude/settings.json"], self.r.d)   # algunas máquinas lo ignoran en global
+        base = self.r.commit("hook de proyecto")
+        self.r.escribir("tools/avisar.sh", "echo otra cosa\n")
+        out = self.r.zona(base, self.r.commit())
+        self.assertEqual(out.returncode, 10, out.stdout)
+        self.assertIn("tools/avisar.sh", out.stdout)
+        self.r.escribir("tools/vecino.sh", "echo c\n")
+        self.assertEqual(self.r.zona(base, self.r.commit()).returncode, 10)   # el script puede cargar a sus vecinos
+
+    def test_script_al_que_apunta_un_servidor_mcp_de_una_subcarpeta(self):
+        self.r.escribir("app/.mcp.json", json.dumps({"mcpServers": {"a": {"command": "node", "args": ["server/index.js"]}}}))
+        self.r.escribir("app/server/index.js", "console.log(1)\n")
+        base = self.r.commit("mcp de app")
+        self.r.escribir("app/server/index.js", "console.log(2)\n")
+        out = self.r.zona(base, self.r.commit())
+        self.assertEqual(out.returncode, 10, out.stdout)
+        self.assertIn("app/server/index.js", out.stdout)
+
     def test_hook_nuevo_que_llama_un_script_nuevo(self):
         self.r.escribir("plugins/metodo/scripts/nuevo.py", "print('nuevo')\n")
         self.r.escribir("plugins/metodo/hooks/hooks.json", json.dumps({"hooks": {"Stop": [{"hooks": [

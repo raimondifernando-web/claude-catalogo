@@ -43,7 +43,36 @@ FIJAS = [
     ("plugins/*/.lsp.json", "un servidor de lenguaje: corre solo en la Mac del cliente"),
     ("plugins/*/settings.json", "ajustes que el plugin aplica solo"),
     ("plugins/*/bin/*", "programas que el plugin pone a mano de Claude"),
+    # Lo que corre solo al abrir una carpeta, al instalar o al commitear, en la raíz o en cualquier subcarpeta
+    # (2026-10-15, medios 3 y 4 de la revisión de metodo 0.40.1). Cada patrón va en las dos formas: en la raíz y con `*/`.
+    (".mcp.json", "un servidor MCP: corre solo"), ("*/.mcp.json", "un servidor MCP: corre solo"),
+    (".claude/settings*.json", "ajustes de Claude (permisos, hooks)"),
+    ("*/.claude/settings*.json", "ajustes de Claude (permisos, hooks)"),
+    (".claude/hooks/*", "un hook"), ("*/.claude/hooks/*", "un hook"),
+    (".claude/commands/*", "un comando de Claude (puede ejecutar programas)"),
+    ("*/.claude/commands/*", "un comando de Claude (puede ejecutar programas)"),
+    (".claude/agents/*", "un agente de Claude"), ("*/.claude/agents/*", "un agente de Claude"),
+    (".claude/rules/*", "reglas que Claude sigue"), ("*/.claude/rules/*", "reglas que Claude sigue"),
+    (".husky/*", "un hook de git"), ("*/.husky/*", "un hook de git"),
+    (".githooks/*", "un hook de git"), ("*/.githooks/*", "un hook de git"),
+    (".git-hooks/*", "un hook de git"), ("*/.git-hooks/*", "un hook de git"),
+    (".pre-commit-config.yaml", "un hook de git"), ("*/.pre-commit-config.yaml", "un hook de git"),
+    (".envrc", "se ejecuta solo al entrar a la carpeta (direnv)"),
+    ("*/.envrc", "se ejecuta solo al entrar a la carpeta (direnv)"),
+    (".vscode/tasks.json", "una tarea del editor que puede correr al abrir la carpeta"),
+    ("*/.vscode/tasks.json", "una tarea del editor que puede correr al abrir la carpeta"),
+    (".vscode/settings.json", "ajustes del editor (pueden correr programas)"),
+    ("*/.vscode/settings.json", "ajustes del editor (pueden correr programas)"),
+    (".devcontainer/*", "se ejecuta al abrir la carpeta en un contenedor"),
+    ("*/.devcontainer/*", "se ejecuta al abrir la carpeta en un contenedor"),
+    ("package.json", "scripts de npm (postinstall, prepare) que corren al instalar"),
+    ("*/package.json", "scripts de npm (postinstall, prepare) que corren al instalar"),
+    (".gitmodules", "trae código de otro repositorio"), (".gitattributes", "cambia cómo git trata los archivos"),
+    ("*/.gitattributes", "cambia cómo git trata los archivos"),
 ]
+# Archivos que declaran qué comandos corren solos fuera de un plugin: se leen en base y en head para ver a qué scripts
+# del repo apuntan (esos scripts también son zona sensible).
+DECLARAN_FUERA_DE_PLUGINS = ("settings.json", "settings.local.json", ".mcp.json")
 # Campos de primer nivel de los manifiestos que cambian en cada versión sin cambiar qué se ejecuta.
 CAMPOS_INOCUOS = {"version", "description"}
 RAIZ_PLUGIN = re.compile(r"\$\{?CLAUDE_PLUGIN_ROOT\}?/([A-Za-z0-9._/-]+)")
@@ -121,6 +150,49 @@ def ejecutados_por_hooks(sha, todos):
     return out
 
 
+def ejecutados_por_ajustes(sha, todos):
+    """Scripts del repo a los que apuntan los comandos (`command`, y `args` de los servidores MCP) de
+    `.claude/settings*.json` y `.mcp.json` fuera de los plugins: corren solos en la Mac de quien abre la carpeta."""
+    out = {}
+    for decl in sorted(todos):
+        nombre = decl.rsplit("/", 1)[-1]
+        if nombre not in DECLARAN_FUERA_DE_PLUGINS or decl.startswith("plugins/"):
+            continue
+        if nombre != ".mcp.json" and not (decl.startswith(".claude/") or "/.claude/" in decl):
+            continue
+        try:
+            datos = json.loads(mostrar(sha, decl) or "{}")
+        except ValueError:
+            continue
+        comandos = []
+
+        def recorrer(x):
+            if isinstance(x, dict):
+                for k, v in x.items():
+                    if k == "command" and isinstance(v, str):
+                        comandos.append(v)
+                    elif k == "args" and isinstance(v, list):
+                        comandos.extend(a for a in v if isinstance(a, str))
+                    else:
+                        recorrer(v)
+            elif isinstance(x, list):
+                for v in x:
+                    recorrer(v)
+        recorrer(datos)
+        # carpeta del proyecto a la que son relativos los comandos: la que contiene a `.claude/` o al `.mcp.json`
+        base = decl[:-len(".mcp.json")] if nombre == ".mcp.json" else decl.rsplit(".claude/", 1)[0]
+        for c in comandos:
+            for tok in re.findall(r"[A-Za-z0-9._/${}~-]+", c.replace('"', "").replace("'", "")):
+                t = re.sub(r"^(\$\{?CLAUDE_PROJECT_DIR\}?|\.)/", "", tok)
+                for cand in (t, base + t):
+                    if cand in todos:
+                        out[cand] = f"lo ejecuta solo un comando declarado en {decl}"
+                        carpeta = cand.rsplit("/", 1)[0] if "/" in cand else ""
+                        if carpeta and carpeta not in ("plugins",):
+                            out[carpeta + "/*"] = f"lo ejecuta solo un comando declarado en {decl}"
+    return out
+
+
 def sin_inocuos(obj, es_marketplace):
     """Saca versión y descripción SOLO de primer nivel (y de cada plugin del marketplace y de su `metadata`):
     un servidor MCP o una fuente que se llame `version` adentro de otra clave sigue contando."""
@@ -165,6 +237,7 @@ def revisar(base, head):
     reglas = list(FIJAS)
     for sha in (base, head):  # lo que los hooks ejecutaban antes Y después
         reglas += list(ejecutados_por_hooks(sha, archivos(sha)).items())
+        reglas += list(ejecutados_por_ajustes(sha, archivos(sha)).items())
     hallazgos = {}
     for p in cambiados:
         if not re.fullmatch(r"[A-Za-z0-9._/@+ -]+", p):
