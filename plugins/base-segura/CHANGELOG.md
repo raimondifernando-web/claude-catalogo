@@ -1,5 +1,8 @@
 # base-segura
 
+## 0.14.3 — 2026-10-15
+- La plantilla `CLAUDE-empresa.md` suma una sección «Dónde se guarda cada cosa»: qué es la carpeta → `docs/PRD.md`; decisiones con fecha y porqué → `docs/decisiones.md`; plan de cada etapa → `docs/planes/AAAA-MM-DD-tema.md`. Es solo una plantilla que copiás vos; no cambia nada en lo que ya tenés.
+
 ## 0.14.2 — 2026-10-11
 - `markitdown`: la terminal ya no está aprobada de antemano para todo, solo `markitdown`. Convertir archivos de tu compu sigue sin preguntar; mandar imágenes a OpenRouter o instalar algo pregunta antes.
 - `planning-with-files`: ya no tiene terminal ni internet aprobados de antemano (pregunta si los necesita). Conserva sus automatismos.

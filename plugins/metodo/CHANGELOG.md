@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.41.1 — 2026-10-15
+**Toda carpeta lleva los mismos tres documentos**, tenga código o no. Se aplica solo; no hay nada que correr.
+- **Por qué:** antes el molde pedía `docs/PRD.md`, `docs/decisiones.md` y `docs/planes/` solo a los proyectos con código, y alguien que no programa no tiene cómo saber si lo suyo «es desarrollo». Ahora los tres están siempre, en toda carpeta (empresa, área y proyecto): la sesión sabe en cualquier lugar **dónde guardar cada cosa y con qué nombre**. `PRD.md` = qué es la carpeta, para quién, cuándo está terminada y qué NO se hace (si hay código, suma la parte técnica y el flujo de la app); `decisiones.md` = cada decisión con su fecha y el porqué; `planes/` = un plan por etapa, `AAAA-MM-DD-tema.md`, que se archiva al terminar.
+- **El control avisa (R12):** si a una carpeta le falta alguno de los tres, lo dice (es un aviso, nunca frena nada). Se puede dejar así a propósito con una excepción escrita en `.estructura-excepciones.json`.
+- **`estructura.py arreglar` los crea:** cada archivo nace con unas líneas de instrucciones (qué va ahí, cómo se nombra y un ejemplo mínimo), sin inventar contenido. Nunca pisa un archivo que ya existe.
+- **El `CLAUDE.md` que arma `arreglar` ahora dice dónde va cada cosa** (decisión, plan de etapa, qué es la carpeta). La plantilla de `base-segura` suma la misma sección.
+
 ## 0.40.2 — 2026-10-15
 Cierra los hallazgos de la revisión de seguridad de 0.40.1. Se aplica solo; no hay nada que correr.
 - **El programa que une ramas a `main` (`unir-a-main`) ya no une nada si no existe la lista de repos permitidos.** Antes, sin esa lista, valía cualquier repo; en tu computadora esa lista no existe, así que no se une nada hasta que la crees a propósito.
