@@ -32,6 +32,8 @@ Si algo de 1, 2 o 3 está abierto: frená, decile al usuario en una línea qué 
 archives**. Solo si el usuario decide cerrar igual, el `REANUDAR.md` lista cada sesión o rama abierta con su dueño.
 `cerrar-check` (paso 8 bis) imprime las ramas y copias abiertas y repite este punto como ítem MANUAL.
 
+**Archivar hijas NO es una pregunta (C123, 2026-10-15).** Una hija que `cerrar-check` lista en «HIJAS A ARCHIVAR» (idle, trabajo unido, informe leído) se archiva sola: la app la archiva junto con vos en el paso 10 (abrir la sesión siguiente) (idle y sin PR abierto); si ese paso no corre, `archive_session(id)` a cada una. Si la app pide su aprobación por llamada, esa tarjeta es de la app: no se la trasladás a la persona en el chat. **El REANUDAR no afirma ni ofrece estados de sesiones** (ni «siguen en la barra lateral» ni «ofrecer archivarlas»): el estado cambia y lo mide `/arrancar` desde el disco; si una hija quedó con trabajo, va a PENDIENTES con dueño. `cerrar-check` marca ✗ el REANUDAR que lo diga.
+
 ## Secuencia
 1. **Fecha + tema.** Fecha de hoy (`date +%F`) y tema en minúsculas con guiones. El archivo del handoff se
    llama `handoffs/YYYY-MM-DD-tema.md` dentro de la carpeta de trabajo (crear `handoffs/` si no existe).

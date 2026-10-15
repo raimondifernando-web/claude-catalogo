@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.44.0 — 2026-10-15
+**Claude ya no te pregunta si archiva sesiones que terminaron.** Se aplica solo; no hay nada que correr.
+- **Antes:** el texto de reanudación podía decir «ofrecer archivar estas sesiones» y la sesión nueva te lo preguntaba, aunque ya estuvieran archivadas: afirmaba un estado sin mirarlo.
+- **Ahora** el estado se mide en el disco. `/arrancar` archiva solo las sesiones que cita el texto de reanudación y siguen abiertas sin trabajo pendiente, y no menciona las que ya estaban archivadas. Si una tiene un informe sin leer o cambios sin guardar queda sin archivar y se avisa como `NO ARCHIVAR` (la resuelve su dueña; no es una pregunta para vos).
+- **Al cerrar,** `cerrar-check` lista las sesiones hijas que se archivan solas junto con la tuya y marca ✗ un texto de reanudación que ofrezca o afirme el archivado.
+- Archivar es reversible desde la barra lateral; nada se elimina.
+
 ## 0.43.0 — 2026-10-15
 **Si trabajás con varias sesiones de Claude a la vez, el cierre de una ya no se frena por el trabajo de otra.** Se aplica solo; no hay nada que correr.
 - **Antes:** `/cerrar` marcaba ✗ cualquier archivo sin guardar de la carpeta, aunque lo estuviera editando OTRA sesión que sigue abierta. Una sesión ajena frenaba el cierre de todas.
