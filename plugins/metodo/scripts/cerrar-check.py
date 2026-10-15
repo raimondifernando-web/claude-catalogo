@@ -42,6 +42,7 @@ slug = args.pop(0) if args and re.match(r"\d{4}-\d{2}-\d{2}-", args[0]) else Non
 cwd = os.path.abspath(args[0]) if args else os.getcwd()
 declaradas = [os.path.join(cwd, p) for p in declaradas]
 faltan = []
+A_MANO = []  # archivos que se dieron por ajenos con --ajeno: el veredicto final lo dice
 
 
 def git(*a):
@@ -171,6 +172,7 @@ else:
     sid = ed.sid_actual()
     clas = ed.clasificar([_abs(l) for l in mod], sid, declaradas)
     otros = [l for l in mod if clas[_abs(l)][0] == "ajeno"]
+    A_MANO.extend(ruta(l) for l in otros if "a mano" in clas[_abs(l)][1])
     mod = [l for l in mod if clas[_abs(l)][0] == "mio"]
     linea(not mod, f"git: sin cambios versionados sin guardar ({sin} archivo(s) nuevos sin seguir, ajenos o por decidir)" if not mod
           else f"git: {len(mod)} archivo(s) versionados con cambios sin guardar: {', '.join(ruta(l) for l in mod[:5])}",
@@ -181,7 +183,7 @@ else:
     if mod and not sid:
         print("• No sé qué sesión sos (falta la variable CLAUDE_CODE_SESSION_ID): todo lo sin guardar cuenta como tuyo")
     elif mod:
-        print("• Si alguno de esos NO lo tocó esta sesión: mirá su cambio (git diff) y repetí con --ajeno <ruta>. Si es tuyo, guardalo por nombre (git add <ruta>)")
+        print("• Si alguno de esos NO lo tocó esta sesión: mirá su cambio (git diff) y repetí con --ajeno <ruta>. Solo si lo verificaste y no es de esta sesión ni de algo que delegaste. Si es tuyo, guardalo por nombre (git add <ruta>)")
     if ajenos:
         print(f"• {len(ajenos)} archivo(s) con cambios sin guardar FUERA de esta carpeta (de otra sesión; no frenan): "
               f"{', '.join(ruta(l) for l in ajenos[:5])}")
@@ -337,4 +339,5 @@ if faltan:
     print("Falta: " + " · ".join(faltan) + " ✗")
     sys.exit(1)
 print("• MANUAL (paso 10, LO ÚLTIMO): en la app de escritorio, después del prompt y EN LA MISMA respuesta: start_session → detach → move → archive; no cierres el turno sin hacerlo o sin decir por qué no (en terminal o Cowork: «no aplica»)")
-print("Cierre completo ✓ (más los ítems MANUAL, que reporta la sesión)")
+print("Cierre completo ✓ (más los ítems MANUAL, que reporta la sesión)"
+      + (f" — OJO: {len(A_MANO)} archivo(s) sin guardar declarados ajenos A MANO (--ajeno): {', '.join(A_MANO[:5])}" if A_MANO else ""))

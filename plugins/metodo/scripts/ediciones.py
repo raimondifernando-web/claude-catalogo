@@ -20,8 +20,11 @@ Cómo se clasifica un archivo versionado con cambios sin guardar (CONSERVADOR: a
   Lo que sabés que no es tuyo y el registro no vio se declara a mano: cerrar-check --ajeno <ruta>.
 Lo anotado por Bash solo cuenta a favor de la sesión que lo corrió (para frenarla), nunca para dar un archivo por ajeno: un comando
 puede nombrar un archivo (cat, git diff) sin haberlo cambiado, y atribuirle a otra sesión lo que hizo esta abriría el hueco.
-La fecha de un archivo es la mayor entre su modificación y el cambio de su ficha (ctime; en Windows solo la modificación):
-`mv`, `cp -p` o `rsync -a` conservan la modificación vieja pero no el ctime.
+La fecha de un archivo es la mayor entre su modificación y el cambio de su ficha (ctime): `mv`, `cp -p` o `rsync -a`
+conservan la modificación vieja pero no el ctime.
+Límites conocidos (la dirección insegura que queda): (a) si otra sesión editó un archivo con Edit y DESPUÉS esta lo cambió con un
+comando que el registro no vio (un script, `codex`…), la regla 3 lo da por ajeno; (b) tras `/clear` o reanudar con id nuevo, lo que
+se editó con el id viejo no se reconoce como tuyo. Por eso cerrar-check avisa al final cuántos archivos se dieron por ajenos.
 
 Uso (lo llama el hook, no una persona):  ediciones.py registrar   (lee el JSON del hook por la entrada estándar; nunca imprime ni frena)
 Python 3.9+, sin dependencias."""
@@ -81,9 +84,9 @@ def ruta_git(r):
 
 
 def _cambio(ruta):
-    """Última vez que cambió el archivo: la mayor entre modificación y cambio de ficha (ctime; en Windows es la creación, no se usa)."""
+    """Última vez que cambió el archivo: la mayor entre modificación y cambio de ficha (ctime)."""
     st = os.stat(ruta)
-    return st.st_mtime if sys.platform == "win32" else max(st.st_mtime, st.st_ctime)
+    return max(st.st_mtime, st.st_ctime)  # en Windows ctime es la creación: copiar el archivo la pone en «ahora» (más frenos, nunca menos)
 
 
 def _git(repo, *a):
@@ -164,6 +167,10 @@ def registrar(entrada):
     ahora = time.time()
     d = dir_registro()
     os.makedirs(d, mode=0o700, exist_ok=True)
+    try:
+        os.chmod(d, 0o700)
+    except OSError:
+        pass
     marca = os.path.join(d, sid + ".t")
     try:
         previo = float(open(marca).read())
@@ -276,7 +283,7 @@ def clasificar(rutas, sid, declaradas=(), nombres=None, ahora=None, tambien_mias
             res[ruta] = ("ajeno", "ya estaba sin guardar antes de abrir esta sesión")
         elif otras and (m is None or m <= max(otras.values()) + TOLERANCIA):
             otra, t = max(otras.items(), key=lambda kv: kv[1])
-            titulo = re.sub(r"[\x00-\x1f\x7f]", " ", str(nombres.get(otra) or ""))[:60].strip()
+            titulo = re.sub("[\x00-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069]", " ", str(nombres.get(otra) or ""))[:60].strip()
             res[ruta] = ("ajeno", f"editado por {'«' + titulo + '»' if titulo else 'otra sesión ' + otra[:8]} {_hace(ahora - t)}")
         else:
             res[ruta] = ("mio", "sin dueño conocido")
