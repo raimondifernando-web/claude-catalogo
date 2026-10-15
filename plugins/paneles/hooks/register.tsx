@@ -728,19 +728,17 @@ async function buscar($: EngineInterface, carpeta: string): Promise<{ repo: stri
   } catch {
     // queda solo la raíz
   }
+  // Solo la carpeta de la sesión y la raíz de SU repo: nunca las carpetas madre (podrían ser de otro proyecto).
   for (const inicio of [carpeta, cwd]) {
-    let c = inicio
-    for (let nivel = 0; nivel < 4 && c !== '' && c !== '/'; nivel++) {
-      agregar(c)
-      c = c.slice(0, c.lastIndexOf('/'))
+    if (inicio === '') continue
+    agregar(inicio)
+    try {
+      const top = await $.process.run(['git', ...GIT_SEGURO, '-C', inicio, 'rev-parse', '--show-toplevel'])
+      const raiz = top.exitCode === 0 ? top.stdout.trim() : ''
+      if (raiz !== '') agregar(raiz)
+    } catch {
+      // sin git: se usa solo la carpeta
     }
-  }
-  try {
-    const top = await $.process.run(['git', ...GIT_SEGURO, '-C', carpeta, 'rev-parse', '--show-toplevel'])
-    const raiz = top.exitCode === 0 ? top.stdout.trim() : ''
-    if (raiz !== '') agregar(raiz)
-  } catch {
-    // sin git: se usan solo las carpetas
   }
   for (const repo of candidatas) {
     try {
@@ -1219,30 +1217,40 @@ function tLeer(texto: string): Tarea[] | null {
   }
 }
 
-// La carpeta de la sesión puede no ser la que tiene el archivo (la sesión entra a un subrepo, o la app la deja en otra).
-// Se prueba la raíz, la carpeta de trabajo y sus carpetas madre (hasta 3 niveles); gana la primera que lo tiene.
+// La carpeta de la sesión puede no ser la que tiene el archivo (la sesión entra a un subdirectorio de su repo).
+// Se prueba la raíz de la sesión, su carpeta de trabajo y la raíz del repo de cada una; nunca las carpetas madre de
+// afuera del repo: podrían tener la lista de OTRO proyecto. Gana la primera que lo tiene.
 async function tDonde($: EngineInterface, relativo: string): Promise<{ carpeta: string; texto: string } | null> {
   const vistas = new Set<string>()
-  const inicios: string[] = []
+  const candidatas: string[] = []
+  const agregar = (c: string) => {
+    if (c !== '' && c !== '/' && !vistas.has(c)) {
+      vistas.add(c)
+      candidatas.push(c)
+    }
+  }
   for (const pedir of [() => $.session.root(), () => $.session.cwd()]) {
+    let inicio = ''
     try {
-      inicios.push(await pedir())
+      inicio = await pedir()
     } catch {
       // esa forma de saber la carpeta no respondió; queda la otra
     }
+    if (inicio === '') continue
+    agregar(inicio)
+    try {
+      const top = await $.process.run(['git', ...GIT_SEGURO, '-C', inicio, 'rev-parse', '--show-toplevel'])
+      const raiz = top.exitCode === 0 ? top.stdout.trim() : ''
+      if (raiz !== '') agregar(raiz)
+    } catch {
+      // sin git: se usa solo la carpeta
+    }
   }
-  for (const inicio of inicios) {
-    let c = inicio
-    for (let nivel = 0; nivel < 4 && c !== '' && c !== '/'; nivel++) {
-      if (!vistas.has(c)) {
-        vistas.add(c)
-        try {
-          return { carpeta: c, texto: await $.fs.read(`${c}/${relativo}`) }
-        } catch {
-          // no está acá; se prueba la carpeta madre
-        }
-      }
-      c = c.slice(0, c.lastIndexOf('/'))
+  for (const c of candidatas) {
+    try {
+      return { carpeta: c, texto: await $.fs.read(`${c}/${relativo}`) }
+    } catch {
+      // no está acá; se prueba la siguiente
     }
   }
   return null

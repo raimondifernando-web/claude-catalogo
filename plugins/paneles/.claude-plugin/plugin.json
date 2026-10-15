@@ -1,6 +1,6 @@
 {
   "name": "paneles",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Tres paneles a la derecha de la app: «Uso» (cuánto contexto y cuánto cupo del plan llevás gastado), «Pendientes» (la lista de .claude/PENDIENTES.md de la carpeta) y «Tareas» (las tareas de la sesión, en vivo, y las que salen solas de PENDIENTES.md). Solo leen, no escriben nada.",
   "author": { "name": "Fernando Raimondi" },
   "license": "MIT",

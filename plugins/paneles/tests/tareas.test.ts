@@ -124,7 +124,7 @@ test('lo cerrado hace más de 2 días no se muestra', async ($, on) => {
 })
 
 // ---------- Arreglos de 2026-10-14: carpeta que cambia y panel que no se dibuja ----------
-test('si la sesión quedó en una subcarpeta sin .claude/, el panel busca en las carpetas madre', async ($, on) => {
+test('si la sesión quedó en una subcarpeta del repo, el panel busca en la raíz de ese repo', async ($, on) => {
   const reloj = mock.clock(on, { now: 0 })
   on('session.start', (_$, e) => ({ cwd: e.cwd }) as never)
   on('command.register', () => ({ value: { command: 'tareas' } }) as never)
@@ -132,14 +132,35 @@ test('si la sesión quedó en una subcarpeta sin .claude/, el panel busca en las
   on('ui.panes', () => ({ value: [{ id: 'tareas-sesion', title: 'Tareas', isShown: true, isFocused: false, isPlaced: true }] }) as never)
   on('session.root', () => ({ value: '/proy/plataforma' }) as never)
   on('session.cwd', () => ({ value: '/proy/plataforma/app' }) as never)
+  on('process.run', (_$, e) => ({ value: { exitCode: 0, stdout: e.argv.includes('rev-parse') ? '/proy/plataforma\n' : '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }) as never)
   on('fs.read', (_$, e) => {
-    if (e.path !== '/proy/.claude/tareas.json') throw new Error('ENOENT')
+    if (e.path !== '/proy/plataforma/.claude/tareas.json') throw new Error('ENOENT')
     return { value: JSON.stringify({ tareas: [{ id: '1', texto: 'Tarea real', estado: 'pending' }] }) } as never
   })
   await $.session.start({ cwd: '/proy/plataforma' } as never)
   await reloj.advance(10)
   const ui = await $.ui.mount({ plugin: 'paneles', surface: 'desktop', ...PANEL })
   expect(await ui.find({ type: 'Text', text: /Tarea real/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('NO sube a carpetas madre fuera del repo: la lista de otro proyecto no se muestra', async ($, on) => {
+  const reloj = mock.clock(on, { now: 0 })
+  on('session.start', (_$, e) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: { command: 'tareas' } }) as never)
+  on('ui.open', () => ({ value: { isPlaced: true } }) as never)
+  on('ui.panes', () => ({ value: [{ id: 'tareas-sesion', title: 'Tareas', isShown: true, isFocused: false, isPlaced: true }] }) as never)
+  on('session.root', () => ({ value: '/proy/plataforma' }) as never)
+  on('session.cwd', () => ({ value: '/proy/plataforma/app' }) as never)
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }) as never)
+  on('fs.read', (_$, e) => {
+    if (e.path !== '/proy/.claude/tareas.json') throw new Error('ENOENT')
+    return { value: JSON.stringify({ tareas: [{ id: '1', texto: 'Tarea de OTRO proyecto', estado: 'pending' }] }) } as never
+  })
+  await $.session.start({ cwd: '/proy/plataforma' } as never)
+  await reloj.advance(10)
+  const ui = await $.ui.mount({ plugin: 'paneles', surface: 'desktop', ...PANEL })
+  expect(await ui.find({ type: 'Text', text: /Tarea de OTRO proyecto/ })).toBeUndefined()
   await ui.unmount()
 })
 

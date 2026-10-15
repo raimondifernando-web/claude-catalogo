@@ -1,5 +1,8 @@
 # paneles
 
+## 0.3.1 — 2026-10-15
+- **Pendientes y Tareas ya no suben a carpetas de afuera de tu repositorio.** Buscaban la lista hasta 3 carpetas más arriba y podían mostrar la de otro proyecto. Ahora miran solo la carpeta de la sesión y la raíz de su repo.
+
 ## 0.3.0 — 2026-10-14
 Los tres paneles quedan iguales a los de Fernando.
 - **Tareas ya no queda vacío.** Solo se actualizaba con un reloj interno que en la app puede no latir; ahora también se actualiza con cada mensaje y al terminar cada turno.
