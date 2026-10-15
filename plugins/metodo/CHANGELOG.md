@@ -1,5 +1,13 @@
 # metodo — qué cambia para vos
 
+## 0.43.0 — 2026-10-15
+**Si trabajás con varias sesiones de Claude a la vez, el cierre de una ya no se frena por el trabajo de otra.** Se aplica solo; no hay nada que correr.
+- **Antes:** `/cerrar` marcaba ✗ cualquier archivo sin guardar de la carpeta, aunque lo estuviera editando OTRA sesión que sigue abierta. Una sesión ajena frenaba el cierre de todas.
+- **Ahora** cada sesión anota (en `state/ediciones/`, dentro de tu carpeta de configuración de Claude, fuera de cualquier repositorio y sin salir de tu computadora) qué archivos tocó ella. Al cerrar, lo que dejaste vos sin guardar **sigue frenando** (✗); lo que dejó otra sesión sale como aviso (`• … NO son de esta sesión`, con cuál y hace cuánto) y no frena. También cuenta como ajeno lo que ya estaba sin guardar antes de que abrieras esta sesión.
+- **Ante la duda, es tuyo y frena:** un archivo cambiado por un comando que el registro no vio (por ejemplo un script que arma la ruta por dentro), o que alguien tocó después de que lo anotara otra sesión, cuenta como tuyo. Si estás seguro de que uno no es de esta sesión, mirá su cambio (`git diff`) y volvé a correr `cerrar-check.py` con `--ajeno <ruta>`: queda como aviso, a la vista.
+- Si el programa no puede saber qué sesión sos (falta la variable `CLAUDE_CODE_SESSION_ID`), todo lo sin guardar cuenta como tuyo, igual que antes.
+- El registro se borra solo a los 14 días. El anotador (`ediciones.py`) no muestra nada, no frena nada y no manda nada afuera.
+
 ## 0.42.0 — 2026-10-15
 **Unir a `main` ya no depende de que alguien afirme que está todo bien: el programa lo comprueba.** Se aplica solo; no hay nada que correr. Explicación en una página: `docs/SELLO-UNIR-A-MAIN.md`.
 - **Se acabaron las opciones que se afirmaban a mano.** `--revisado-por`, `--ok-fernando` y `--sin-pruebas` ya no existen: una sesión engañada podía escribirlas sin que fueran ciertas. Ahora `unir-a-main` se corre sin opciones y hace todo por su cuenta.

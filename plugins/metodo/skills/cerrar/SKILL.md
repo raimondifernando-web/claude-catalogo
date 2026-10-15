@@ -150,7 +150,7 @@ archives**. Solo si el usuario decide cerrar igual, el `REANUDAR.md` lista cada 
    carpeta). Solo lee (salvo la anotación de `--anotar`) y nunca muestra valores: una línea ✓/✗ por chequeo (REANUDAR con id y largo razonable, sin
    números de memoria ni pinta de clave, avance subido, handoff si tocaste 3 o más archivos). **Prohibido dar el cierre
    por terminado sin haberlo corrido.** Pegale al usuario su salida tal cual y, debajo, **una línea por cada ítem MANUAL
-   con su resultado real**. Si dice «Falta: … ✗», resolvelo y volvé a correrlo. Después sigue el paso 9: el prompt
+   con su resultado real**. Si dice «Falta: … ✗», resolvelo y volvé a correrlo. Si el ✗ es por un archivo sin guardar que NO tocó esta sesión (lo dejó otra que trabaja a la vez), el chequeo lo avisa solo cuando sabe que es ajeno; si no lo sabe, mirá su `git diff` y, solo si de verdad no es tuyo, repetí con `--ajeno <ruta>`. Nunca lo uses para tapar algo que editaste vos. Después sigue el paso 9: el prompt
    de reanudación sigue siendo el último mensaje.
 9. **⛔ EMITÍ EL PROMPT DE REANUDACIÓN COPIABLE.** Es el último mensaje de la sesión. **La única fuente es el
    archivo del paso 8: el chat NO se redacta de nuevo, se COPIA de él** (vista en la práctica: la sesión emitió en el chat
