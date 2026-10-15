@@ -1,5 +1,14 @@
 # metodo — qué cambia para vos
 
+## 0.45.0 — 2026-10-15
+**Claude te llama como VOS pedís que te llamen, y sabe qué hacer si en la misma computadora trabajan varias personas.** Se aplica solo; no hay nada que correr.
+- **Regla 24 (nueva):** en TU ficha personal (`~/.claude/CLAUDE.md`, la de tu computadora) va una línea `Llamame: …` con cómo querés que te llamen (un apodo, si querés). Claude nunca usa en su lugar tu nombre formal, el del correo ni el de git. Las fichas de las carpetas (que comparte el equipo) no llevan nombres de personas.
+- **Al abrir cada sesión** aparece una línea: «Quién habla: …» con ese nombre, o «Falta cómo querés que te llame…» si no hay línea. Si falta, Claude te pregunta UNA vez «¿cómo querés que te llame?» y lo anota; no vuelve a preguntar.
+- **Varias personas en la misma computadora:** anotá `Personas en esta computadora: Ana, Luis`. Claude pregunta quién es antes de saludar. Si cada persona tiene su propia computadora (o su propio usuario de la Mac), no hace falta nada: cada una tiene su ficha.
+- **Lo que no puede hacer:** adivinar quién está del otro lado. Si dos personas comparten computadora **y** usuario, solo lo sabe si se lo decís.
+- **Subagentes:** Claude pone tu nombre en el pedido que les arma, porque no lo heredan.
+- Las reglas del método pasan de 23 a 24 (se ponen al día solas, como siempre).
+
 ## 0.44.0 — 2026-10-15
 **Claude ya no te pregunta si archiva sesiones que terminaron.** Se aplica solo; no hay nada que correr.
 - **Antes:** el texto de reanudación podía decir «ofrecer archivar estas sesiones» y la sesión nueva te lo preguntaba, aunque ya estuvieran archivadas: afirmaba un estado sin mirarlo.
