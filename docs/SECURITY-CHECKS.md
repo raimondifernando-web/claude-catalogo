@@ -1061,3 +1061,14 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Pruebas | Suite completa de metodo sobre `f93a872`: **1002 OK**, 5 salteadas, 0 fallas. `verificar-metadatos`: TODO COINCIDE. Grep de clientes: 0. Dibujo `estructura.html` regenerado con el generador del script. |
 | Límites (lo NO comprobado) | H4 (`completar` escribe `CLAUDE.md`, ajustes y `.gitignore` con `write_text`, que sigue un enlace roto) ya existía y no se tocó. Ruido del aviso de arranque («Falta: 0 cosas ✗» cuando solo hay avisos): sin cambiar. Un `.gitignore` viejo de empresa/área sin `!/docs/` no sube los documentos nuevos. No se corrieron escáneres de librerías (el script usa solo la biblioteca estándar). No probado en Windows. |
 | Veredicto | **PASS con condiciones**, 0 críticos y 0 altos abiertos. Lo escribe la sesión que hizo el cambio (no un revisor externo): que quien publique lo confirme. |
+
+
+## 2026-10-15 · paneles 0.3.0 (commit 3f9cafe) — PASS con condiciones
+| Control | Resultado |
+|---|---|
+| Alcance | `plugins/paneles` de 0.2.0 a 0.3.0: `hooks/register.tsx` (+234 líneas), `types/index.d.ts` y pruebas. Los tres paneles (Uso, Pendientes, Tareas) solo leen archivos de la carpeta y ejecutan `git` de solo lectura; no escriben ni mandan nada afuera. |
+| Revisión independiente | La misma revisión de solo lectura de metodo 0.40.1 (informe del 2026-10-15; ver la entrada de `metodo 0.40.1 → 0.40.2`). Sobre `register.tsx`: sin `shell=True` ni `eval`, `process.run` con argumentos separados, `git` sin fsmonitor, sin llamadas de red, sin hooks que se auto-registren más allá de los del propio plugin. 0 críticos y 0 altos en paneles. |
+| Abierto: medio 5 | El panel sube hasta 3 carpetas madre para buscar `PENDIENTES.md` y `tareas.json`: puede mostrar la lista de otro proyecto (confidencialidad entre proyectos). Va a la lista de pendientes de Tech (C117). |
+| Límites (lo NO comprobado) | `register.tsx` se leyó solo por el diff y por tramos (no entero); no se probó en vivo; no corrieron `npm audit` ni la búsqueda de claves en el historial. |
+| Veredicto | **PASS con condiciones**: 0 críticos y 0 altos abiertos; el medio 5 queda pendiente. Lo escribe Tech con la revisión de arriba (no la hizo quien programó los paneles). |
+
