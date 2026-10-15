@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.40.2 — 2026-10-15
+Cierra los hallazgos de la revisión de seguridad de 0.40.1. Se aplica solo; no hay nada que correr.
+- **El programa que une ramas a `main` (`unir-a-main`) ya no une nada si no existe la lista de repos permitidos.** Antes, sin esa lista, valía cualquier repo; en tu computadora esa lista no existe, así que no se une nada hasta que la crees a propósito.
+- **Los textos que escribís al unir (quién revisó, motivo de «sin pruebas») se limpian:** sin saltos de línea ni caracteres de control, y con largo tope. Así no se puede forjar otra línea en el mensaje del commit.
+
 ## 0.40.1 — 2026-10-15
 `/metodo:arrancar` sigue numerando la serie de sesiones aunque hayas **movido la carpeta del proyecto**. Se aplica solo; no hay nada que correr.
 - **Antes:** al mover o renombrar una carpeta, las sesiones anteriores quedaban guardadas con la ruta vieja: la sesión nueva no las veía, quedaba sin número y la anterior sin archivar. **Ahora:** cuenta como de la misma serie una sesión cuya carpeta vieja ya no existe y se llamaba igual que la actual. Nunca une dos carpetas que existen. Si además cambiaste el nombre, podés anotar la mudanza en `mudanzas.json` (en la carpeta de configuración de Claude, formato `{"mudanzas":[{"de":"…","a":"…"}]}`) y también se encuentra.
