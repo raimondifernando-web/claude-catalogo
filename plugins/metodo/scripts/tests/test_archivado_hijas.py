@@ -29,7 +29,7 @@ class Archivado(unittest.TestCase):
         (self.raiz / "a" / "b").mkdir(parents=True)
         (self.repo / ".claude" / "prompts").mkdir(parents=True)
         self.cfg.mkdir()
-        (self.repo / "README.md").write_text("x\n")
+        (self.repo / "README.md").write_text("x\n", encoding="utf-8")
         for c in (("init", "-q", "-b", "main"), ("add", "-A"), ("commit", "-q", "-m", "base")):
             subprocess.run(["git", "-C", str(self.repo), *c], check=True, capture_output=True, env=GENV)
         os.environ["CLAUDE_SESIONES_DIR"] = str(self.raiz)
@@ -41,15 +41,15 @@ class Archivado(unittest.TestCase):
     def sesion(self, sid, titulo, **kw):
         d = {"sessionId": sid, "cliSessionId": "cli-" + sid, "title": titulo, "cwd": str(self.repo),
              "lastActivityAt": int(time.time() * 1000), **kw}
-        (self.raiz / "a" / "b" / f"local_{sid}.json").write_text(json.dumps(d))
+        (self.raiz / "a" / "b" / f"local_{sid}.json").write_text(json.dumps(d), encoding="utf-8")
 
     def reanudar(self, cuerpo):
-        (self.repo / ".claude" / "prompts" / "REANUDAR.md").write_text("<!-- cierre 2026-10-15-x -->\n" + cuerpo)
+        (self.repo / ".claude" / "prompts" / "REANUDAR.md").write_text("<!-- cierre 2026-10-15-x -->\n" + cuerpo, encoding="utf-8")
 
     def correr(self, script, yo="yo"):
         env = dict(GENV, HOME=str(self.tmp.name), CLAUDE_SESIONES_DIR=str(self.raiz), CLAUDE_CONFIG_DIR=str(self.cfg),
                    CLAUDE_CODE_SESSION_ID="cli-" + yo)
-        r = subprocess.run([sys.executable, str(SCRIPTS / script)], cwd=self.repo, capture_output=True, text=True, env=env)
+        r = subprocess.run([sys.executable, str(SCRIPTS / script)], cwd=self.repo, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
         return r.stdout + r.stderr
 
     def test_libreria_clasifica_y_calla_lo_archivado(self):
