@@ -431,6 +431,8 @@ def copia_limpia(repo, commit, destino):
         cab = proc.stdout.readline().split()
         if len(cab) != 3 or cab[1] != b"blob":
             raise Frena(f"no pude leer el archivo {sha} del commit")
+        if int(cab[2]) > TOPE_COPIA - total:   # el tamaño declarado se mira ANTES de traerlo a memoria
+            raise Frena("el repo pesa demasiado para probarlo en una copia limpia: va por PR (con checks)")
         datos = proc.stdout.read(int(cab[2]))
         proc.stdout.read(1)
         return datos
@@ -543,8 +545,9 @@ def interpretar_informe(salida, quien):
 
 def aprobador_persona(resumen, sha7):
     """Muestra el resumen a la persona y devuelve True solo si ella autentica. Mac: pide la contraseña o Touch ID del
-    sistema (una pantalla segura que ni una sesión ni un programa de fondo pueden «clickear»). Sin eso, solo con
-    terminal real: hay que escribir ok-<commit>. Cualquier otra cosa = no."""
+    sistema (una pantalla segura que ni una sesión ni un programa de fondo pueden «clickear»). Fuera de Mac no hay una
+    autenticación que la sesión no pueda imitar (un token tecleado lo conoce ella: es el propio commit): la respuesta
+    es siempre «no» y el cambio va por PR."""
     osascript = "/usr/bin/osascript"
     if sys.platform == "darwin" and os.access(osascript, os.X_OK):
         texto = limpio(resumen, 700).replace("\\", " ").replace('"', "'")
@@ -555,9 +558,6 @@ def aprobador_persona(resumen, sha7):
         except subprocess.TimeoutExpired:
             return False
         return r.returncode == 0
-    if sys.stdin.isatty() and sys.stdout.isatty():
-        print(resumen)
-        return input(f"Para aceptar escribí exactamente ok-{sha7}: ").strip() == f"ok-{sha7}"
     return False
 
 
@@ -669,7 +669,8 @@ def principal(a, revisor=None, aprobador=None):
             resumen = (f"Unir a main el commit {sha7} de {ascii_(nombre)} (rama {ascii_(rama)}). Te pregunto por: " +
                        " / ".join(limpio(h, 90) for h in humano[:4]) +
                        (f" / y {len(humano) - 4} motivos más" if len(humano) > 4 else "") +
-                       f". Revisor ({informe['veredicto']}): {limpio(informe['frase'], 140)}. "
+                       f". Lo que dice el revisor (texto libre, puede estar equivocado; mandan los motivos de arriba): "
+                       f"{informe['veredicto']}, {limpio(informe['frase'], 140)}. "
                        "Si no entendés algo, cancelá.")
             if not aprobador(resumen, sha7):
                 print("No se unió ✗ la persona no dio el OK (o no hubo cómo preguntarle). Motivos:")

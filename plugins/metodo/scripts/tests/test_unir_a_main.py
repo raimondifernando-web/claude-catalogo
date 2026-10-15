@@ -515,6 +515,23 @@ class UnirAMain(unittest.TestCase):
         import inspect
         self.assertIn("with administrator privileges", inspect.getsource(self.m.aprobador_persona))
 
+    def test_fuera_de_mac_nunca_hay_ok_tecleado(self):
+        # el token «ok-<commit>» lo conoce la sesión: fuera de Mac la respuesta es siempre no, aunque haya terminal
+        original = sys.platform
+        sys.platform = "linux"
+        try:
+            self.assertFalse(self.m.aprobador_persona("¿unir?", "abc1234"))
+        finally:
+            sys.platform = original
+
+    def test_un_blob_gigante_se_rechaza_por_su_tamano_declarado(self):
+        self.escribir("grande.bin", "x" * 5000)
+        self.commit("grande")
+        head = self.git_local("rev-parse", "HEAD").stdout.strip()
+        self.m.TOPE_COPIA = 1000
+        with self.assertRaises(self.m.Frena):
+            self.m.copia_limpia(self.repo, head, Path(self.tmp.name) / "c4")
+
     def test_sin_ventana_ni_terminal_la_respuesta_es_no(self):
         # en pruebas no hay terminal: pedir el OK de la persona nunca devuelve «sí» solo
         if sys.platform != "darwin":
