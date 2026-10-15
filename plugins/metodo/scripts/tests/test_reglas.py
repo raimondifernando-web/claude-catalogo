@@ -37,9 +37,9 @@ class ReglasTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_plantilla_tiene_23_reglas(self):
+    def test_plantilla_tiene_24_reglas(self):
         primera = PLANTILLA.read_text(encoding="utf-8").splitlines()[0]
-        self.assertEqual(primera, "# Las 23 reglas del método")
+        self.assertEqual(primera, "# Las 24 reglas del método")
         self.assertIn("\n19. **Una pieza por función; buscar antes de crear.**", PLANTILLA.read_text(encoding="utf-8"))
 
     def test_bloque_viejo_entre_marcas_se_actualiza_sin_tocar_lo_propio(self):
@@ -50,26 +50,26 @@ class ReglasTest(unittest.TestCase):
 
         r = correr(self.cfg)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("Reglas del método actualizadas a 23 ✓", r.stdout)
+        self.assertIn("Reglas del método actualizadas a 24 ✓", r.stdout)
 
         texto = self.ficha.read_text(encoding="utf-8").splitlines()
         self.assertEqual(texto[:3], propio_arriba)
         self.assertEqual(texto[-3:], propio_abajo)
         a, b = texto.index(reglas.INI), texto.index(reglas.FIN)
         self.assertEqual(texto[a:b + 1], reglas.bloque_nuevo(PLANTILLA))
-        self.assertIn("# Las 23 reglas del método", texto)
+        self.assertIn("# Las 24 reglas del método", texto)
         self.assertTrue(any(l.startswith("19. **Una pieza por función") for l in texto))
         self.assertEqual(len(list(self.cfg.glob("CLAUDE.md.antes-reglas-*"))), 1)
 
         # segunda vez: no cambia nada y no dice nada
         r2 = correr(self.cfg)
-        self.assertEqual(r2.stdout, "")
+        self.assertNotIn("Reglas del método", r2.stdout)   # ya al día: no repite el aviso (la línea del nombre sí sale en cada arranque)
         self.assertEqual(len(list(self.cfg.glob("CLAUDE.md.antes-reglas-*"))), 1)
 
     def test_ficha_sin_reglas_las_agrega_al_final(self):
         self.ficha.write_text("Lo mío.\n", encoding="utf-8")
         r = correr(self.cfg)
-        self.assertIn("Reglas del método agregadas (23) ✓", r.stdout)
+        self.assertIn("Reglas del método agregadas (24) ✓", r.stdout)
         texto = self.ficha.read_text(encoding="utf-8")
         self.assertTrue(texto.startswith("Lo mío.\n"))
         self.assertIn(reglas.INI, texto)
@@ -80,6 +80,46 @@ class ReglasTest(unittest.TestCase):
         r = correr(self.cfg)
         self.assertIn("✗", r.stdout)
         self.assertEqual(self.ficha.read_text(encoding="utf-8"), original)
+
+
+@unittest.skipIf(ES_WINDOWS, "reglas.py es para Mac")
+class NombreTest(unittest.TestCase):
+    def ficha(self, texto):
+        d = tempfile.TemporaryDirectory(); self.addCleanup(d.cleanup)
+        f = Path(d.name) / "CLAUDE.md"
+        if texto is not None:
+            f.write_text(texto, encoding="utf-8")
+        return f
+
+    def test_un_nombre(self):
+        self.assertIn("Quién habla: Ana.", reglas.aviso_nombre(self.ficha("# Yo\nMe llamo: Ana\n")))
+
+    def test_nombre_con_negritas_y_vineta(self):
+        self.assertIn("Quién habla: Fernando Raimondi.", reglas.aviso_nombre(self.ficha("- **Nombre:** Fernando Raimondi\n")))
+
+    def test_varias_personas_pregunta_quien_es(self):
+        s = reglas.aviso_nombre(self.ficha("Personas en esta computadora: Ana, Luis y Marta\n"))
+        self.assertIn("trabajan 3 (Ana, Luis, Marta)", s)
+        self.assertIn("Preguntá quién es ANTES", s)
+
+    def test_sin_nombre_avisa_que_falta(self):
+        self.assertIn("Falta tu nombre", reglas.aviso_nombre(self.ficha("# Reglas sin nombre\n")))
+        self.assertIn("Falta tu nombre", reglas.aviso_nombre(self.ficha(None)))
+
+    def test_el_ejemplo_dentro_del_bloque_no_cuenta(self):
+        s = reglas.aviso_nombre(self.ficha("\n".join([reglas.INI, "# Las 24 reglas del método", "Me llamo: Ejemplo", reglas.FIN]) + "\n"))
+        self.assertIn("Falta tu nombre", s)
+
+    def test_nombre_fuera_del_bloque_sobrevive_a_la_sincronizacion(self):
+        f = self.ficha("Me llamo: Ana\n")
+        reglas.sincronizar(PLANTILLA, f)
+        self.assertIn("Quién habla: Ana.", reglas.aviso_nombre(f))
+
+    def test_arranque_completo_imprime_la_linea(self):
+        d = tempfile.TemporaryDirectory(); self.addCleanup(d.cleanup)
+        (Path(d.name) / "CLAUDE.md").write_text("Me llamo: Ana\n", encoding="utf-8")
+        r = correr(d.name)
+        self.assertIn("Quién habla: Ana.", r.stdout)
 
 
 if __name__ == "__main__":

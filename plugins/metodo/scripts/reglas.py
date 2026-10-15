@@ -93,6 +93,37 @@ def sincronizar(plantilla: Path, ficha: Path) -> str:
     return "Reglas del método agregadas ({}) ✓".format(numero(nuevo))
 
 
+NOMBRE = re.compile(r"^\s*(?:[-*]\s*)?(Me llamo|Mi nombre|Nombre)\s*:\s*(.+?)\s*$")
+VARIOS = re.compile(r"^\s*(?:[-*]\s*)?Personas en esta computadora\s*:\s*(.+?)\s*$")
+
+
+def aviso_nombre(ficha: Path) -> str:
+    """Regla 24: una línea para el arranque con el nombre de quien trabaja, o con lo que falta. Solo lee."""
+    try:
+        lineas = ficha.read_text(encoding="utf-8").splitlines() if ficha.exists() else []
+    except (OSError, UnicodeDecodeError):
+        return ""
+    if INI in lineas and FIN in lineas and lineas.index(INI) < lineas.index(FIN):
+        a, b = lineas.index(INI), lineas.index(FIN)
+        lineas = lineas[:a] + lineas[b + 1:]     # el ejemplo que trae el bloque de reglas no cuenta
+    limpias = [l.replace("*", "") for l in lineas]
+    for l in limpias:
+        m = VARIOS.match(l)
+        if m:
+            nombres = [n.strip() for n in re.split(r"[,;/]| y ", m.group(1)) if n.strip()]
+            if len(nombres) > 1:
+                return ("Quién habla: en esta computadora trabajan {} ({}). Preguntá quién es ANTES de saludar y "
+                        "llamalo por su nombre en toda la sesión (regla 24).").format(len(nombres), ", ".join(nombres))
+            if nombres:
+                return "Quién habla: {}. Llamalo por ese nombre en toda la sesión, también al delegar (regla 24).".format(nombres[0])
+    for l in limpias:
+        m = NOMBRE.match(l)
+        if m and m.group(2) not in ("…", "..."):
+            return "Quién habla: {}. Llamalo por ese nombre en toda la sesión, también al delegar (regla 24).".format(m.group(2))
+    return ("Falta tu nombre en la ficha personal: preguntá UNA vez «¿cómo te llamo?» y escribilo en {} (fuera del "
+            "bloque de reglas) en una línea «Me llamo: …». No lo vuelvas a preguntar (regla 24).").format(ficha)
+
+
 def main(argv):
     if not argv or argv[0] != "sincronizar":
         print(__doc__); return 2
@@ -110,6 +141,9 @@ def main(argv):
         linea = sincronizar(plantilla, ficha)
     if linea:
         print(linea)
+    nombre = aviso_nombre(ficha)
+    if nombre:
+        print(nombre)
     return 0
 
 

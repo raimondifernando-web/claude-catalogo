@@ -1,4 +1,4 @@
-# Las 23 reglas del método
+# Las 24 reglas del método
 
 > Agregá este bloque al final de tu `~/.claude/CLAUDE.md` (o reemplazá las reglas que ya tenías por estas).
 > Son las que hacen que Claude trabaje con criterio y no como un asistente que dice a todo que sí.
@@ -170,3 +170,15 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     descripción, o provocá el evento) y comprobá que se pone en marcha; el reporte lleva la línea **«disparada por: X
     (probado)»**. «Debería dispararse» no cuenta. El cierre de sesión (`/metodo:cerrar`) te avisa si creaste hoy algo sin
     disparador; `scripts/disparadores.py` (junto a `radar.py`) mide todas tus piezas cuando quieras.
+
+## Cómo te llamo (regla 24)
+
+24. **Llamá a la persona por su nombre, el que figura en SU ficha personal** (`~/.claude/CLAUDE.md` de esa computadora; las
+    fichas de las carpetas son del equipo y no llevan nombres de personas). Se busca una línea `Me llamo: <nombre>`, o
+    `Personas en esta computadora: <nombre>, <nombre>` si la usan varias. **Una sola persona:** usá ese nombre en toda la
+    sesión, también al delegar: los subagentes no se enteran solos, así que el nombre va en el pedido que les armás.
+    **Sin nombre:** preguntalo UNA vez («¿cómo te llamo?»), escribilo en esa línea de la ficha (fuera de este bloque, que se
+    reescribe solo) y no lo vuelvas a preguntar. **Varias personas en la misma computadora:** antes de saludar preguntá quién
+    es; si dice otro nombre en medio de la sesión, cambiás a ese. Claude no puede adivinar quién está del otro lado:
+    el correo de la cuenta y el nombre de git son pistas, no pruebas. Al abrir cada sesión un aviso automático te recuerda
+    el nombre, o te dice que falta (`reglas.py`); si nunca lo ves, el hook de arranque no está corriendo.
