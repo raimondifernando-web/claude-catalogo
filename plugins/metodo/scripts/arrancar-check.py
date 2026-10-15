@@ -200,20 +200,59 @@ def grupos_asignados(raiz):
     return out
 
 
+def mudanzas():
+    """[(vieja, nueva)] de mudanzas.json en la carpeta de configuración de Claude (opcional; formato {"mudanzas":[{"de","a"}]})."""
+    base = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
+    try:
+        d = json.load(open(os.environ.get("CLAUDE_MUDANZAS") or os.path.join(base, "mudanzas.json"), encoding="utf-8"))
+        return [(os.path.abspath(m["de"]), os.path.abspath(m["a"])) for m in d.get("mudanzas", []) if m.get("de") and m.get("a")]
+    except (OSError, ValueError, AttributeError, KeyError, TypeError):
+        return []
+
+
+def misma_carpeta(cwd_sesion, real, mapa):
+    """None | 'directa' | 'mapa' | 'alias': la sesión guardada con ese cwd, ¿es de esta carpeta aunque se haya mudado?
+    alias = su carpeta ya no existe en el disco y la actual se llama igual (nunca une dos carpetas que existen)."""
+    if not cwd_sesion:
+        return None
+    if os.path.realpath(cwd_sesion) == real:
+        return "directa"
+    ruta = os.path.abspath(cwd_sesion)
+    for _ in range(8):
+        for de, a in mapa:
+            if ruta == de or ruta.startswith(de + os.sep):
+                ruta = a + ruta[len(de):]
+                break
+        else:
+            break
+    if ruta != os.path.abspath(cwd_sesion) and os.path.realpath(ruta) == real:
+        return "mapa"
+    if not os.path.exists(cwd_sesion) and os.path.basename(os.path.abspath(cwd_sesion)) == os.path.basename(real):
+        return "alias"
+    return None
+
+
 def serie_sesiones():
     raiz = carpeta_sesiones()
     if not raiz:
         print("- Numeración: no encontré los datos de sesiones de la app (terminal, Cowork u otra máquina): no aplica")
         return
     real = os.path.realpath(cwd)
+    mapa = mudanzas()
     ses = []
+    por_mudanza = 0
     for f in glob.glob(os.path.join(raiz, "*", "*", "local_*.json")):
         try:
             d = json.load(open(f, encoding="utf-8"))
-            if d.get("sessionId") and os.path.realpath(d.get("cwd", "")) == real:
-                ses.append(d)
+            if d.get("sessionId"):
+                como = misma_carpeta(d.get("cwd", ""), real, mapa)
+                if como:
+                    ses.append(d)
+                    por_mudanza += como != "directa"
         except (OSError, ValueError):
             continue
+    if por_mudanza:
+        print(f"- Serie: {por_mudanza} sesión(es) vienen de esta carpeta antes de mudarla; cuentan en la serie")
     yo = mi_sesion(ses)
     if yo is None:
         print("• MANUAL (numeración): no pude identificar esta sesión en el disco; si tenés `list_sessions`, pedí "

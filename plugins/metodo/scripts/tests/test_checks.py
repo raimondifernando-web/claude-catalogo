@@ -131,7 +131,7 @@ class ChecksTest(unittest.TestCase):
         self.assertIn("metodo 0.9.0 instalado · última regla numerada: 21", out)
 
     # ---- arrancar: serie de sesiones (título nuevo y anteriores sin archivar, calculado desde el disco) ----
-    def con_sesiones(self, sesiones, titulo_propio="Hola"):
+    def con_sesiones(self, sesiones, titulo_propio="Hola", cwd_anteriores=None):
         """Arma la carpeta de sesiones de la app en un HOME temporal; la última es «esta» sesión."""
         home = self.dir / f"home{time.time_ns()}"
         d = home / "Library" / "Application Support" / "Claude" / "claude-code-sessions" / "a" / "b"
@@ -140,7 +140,7 @@ class ChecksTest(unittest.TestCase):
         todas = [(t, arch, minutos) for t, arch, minutos in sesiones] + [(titulo_propio, False, 0)]
         for i, (titulo, archivada, minutos) in enumerate(todas):
             (d / f"local_{i}.json").write_text(json.dumps({
-                "sessionId": f"local_{i}", "cliSessionId": f"cli{i}", "cwd": str(self.proyecto), "title": titulo,
+                "sessionId": f"local_{i}", "cliSessionId": f"cli{i}", "cwd": str(cwd_anteriores if cwd_anteriores and i < len(todas) - 1 else self.proyecto), "title": titulo,
                 "isArchived": archivada, "lastActivityAt": ahora - minutos * 60000}), encoding="utf-8")
         env = dict(os.environ, HOME=str(home), USERPROFILE=str(home), APPDATA=str(self.dir / "sin-appdata"), CLAUDE_CONFIG_DIR=str(self.config),
                    CLAUDE_SESSION_ID=f"cli{len(todas) - 1}")
@@ -185,6 +185,29 @@ class ChecksTest(unittest.TestCase):
         out = self.con_sesiones([("Viejo 39", True, 5000), ("Viejo 38", True, 6000), ("PM - 5", True, 10),
                                  ("PM - 4", True, 20)])
         self.assertIn('"PM - 6"', out)
+
+    # ---- arrancar: la serie sobrevive a una mudanza de carpeta (C109) ----
+    def test_arrancar_serie_tras_mudanza_mismo_nombre(self):
+        viejo = self.dir / "otro-lado" / self.proyecto.name  # ya no existe, se llama igual
+        out = self.con_sesiones([("PM - 5", True, 10), ("PM - 4", True, 20)], cwd_anteriores=viejo)
+        self.assertIn('"PM - 6"', out)
+        self.assertIn("antes de mudarla", out)
+
+    def test_arrancar_serie_tras_mudanza_renombrada_con_mapa(self):
+        viejo = self.dir / "perf-tibp"
+        (self.config / "mudanzas.json").write_text(json.dumps({"mudanzas": [{"de": str(viejo), "a": str(self.proyecto)}]}), encoding="utf-8")
+        out = self.con_sesiones([("PM - 5", True, 10), ("PM - 4", True, 20)], cwd_anteriores=viejo)
+        self.assertIn('"PM - 6"', out)
+
+    def test_arrancar_serie_renombrada_sin_mapa_no_inventa(self):
+        out = self.con_sesiones([("PM - 5", True, 10), ("PM - 4", True, 20)], cwd_anteriores=self.dir / "perf-tibp")
+        self.assertIn("sin serie numerada", out)
+
+    def test_arrancar_serie_no_une_carpetas_que_existen(self):
+        otra = self.dir / "otra" / self.proyecto.name
+        otra.mkdir(parents=True)
+        out = self.con_sesiones([("PM - 5", True, 10), ("PM - 4", True, 20)], cwd_anteriores=otra)
+        self.assertIn("sin serie numerada", out)
 
     def test_arrancar_serie_sin_datos_de_la_app_no_falla(self):
         rc, out = self.correr(ARRANCAR, str(self.proyecto))

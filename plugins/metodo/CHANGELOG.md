@@ -1,5 +1,9 @@
 # metodo — qué cambia para vos
 
+## 0.40.1 — 2026-10-15
+`/metodo:arrancar` sigue numerando la serie de sesiones aunque hayas **movido la carpeta del proyecto**. Se aplica solo; no hay nada que correr.
+- **Antes:** al mover o renombrar una carpeta, las sesiones anteriores quedaban guardadas con la ruta vieja: la sesión nueva no las veía, quedaba sin número y la anterior sin archivar. **Ahora:** cuenta como de la misma serie una sesión cuya carpeta vieja ya no existe y se llamaba igual que la actual. Nunca une dos carpetas que existen. Si además cambiaste el nombre, podés anotar la mudanza en `mudanzas.json` (en la carpeta de configuración de Claude, formato `{"mudanzas":[{"de":"…","a":"…"}]}`) y también se encuentra.
+
 ## 0.40.0 — 2026-10-15
 El control de estructura acepta **excepciones escritas**. Se aplica solo; no hay nada que correr.
 - **Lo que se decidió dejar así ya no marca ✗ para siempre:** se anota en `.estructura-excepciones.json` (en la raíz del repositorio) con la regla, la carpeta, el motivo y la fecha. El control lo muestra como `• excepción …` y no lo cuenta en el «Falta: N cosas ✗». Una excepción sin motivo o sin fecha no vale (se ignora y avisa). R6 (claves en GitHub) y R11 (la raíz de proyectos no es un repositorio) no se pueden exceptuar. Funciona también en copias de trabajo (git worktree).
