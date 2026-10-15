@@ -91,35 +91,49 @@ class NombreTest(unittest.TestCase):
             f.write_text(texto, encoding="utf-8")
         return f
 
-    def test_un_nombre(self):
-        self.assertIn("Quién habla: Ana.", reglas.aviso_nombre(self.ficha("# Yo\nMe llamo: Ana\n")))
+    def test_campo_presente(self):
+        self.assertIn("Quién habla: Ana.", reglas.aviso_nombre(self.ficha("# Yo\nLlamame: Ana\n")))
 
-    def test_nombre_con_negritas_y_vineta(self):
-        self.assertIn("Quién habla: Fernando Raimondi.", reglas.aviso_nombre(self.ficha("- **Nombre:** Fernando Raimondi\n")))
+    def test_campo_con_negritas_y_vineta(self):
+        self.assertIn("Quién habla: Fer.", reglas.aviso_nombre(self.ficha("- **Llamame:** Fer\n")))
+
+    def test_nombre_formal_distinto_usa_el_preferido(self):
+        s = reglas.aviso_nombre(self.ficha("- **Nombre:** Fernando Raimondi\n- **Llamame:** Fer\n"))
+        self.assertIn("Quién habla: Fer.", s)
+        self.assertNotIn("Fernando", s)
+
+    def test_solo_nombre_formal_no_alcanza_pregunta(self):
+        s = reglas.aviso_nombre(self.ficha("- **Nombre:** Fernando Raimondi\nMe llamo: Fernando\n"))
+        self.assertIn("Falta cómo querés que te llame", s)
+        self.assertIn("¿cómo querés que te llame?", s)
+
+    def test_campo_ausente_pregunta_una_vez_y_guarda(self):
+        f = self.ficha("# Mi ficha\n")
+        self.assertIn("Falta cómo querés que te llame", reglas.aviso_nombre(f))
+        with open(f, "a", encoding="utf-8") as fh:      # lo que hace Claude después de preguntar
+            fh.write("Llamame: Lu\n")
+        reglas.sincronizar(PLANTILLA, f)                # el bloque de reglas se reescribe: la línea sobrevive
+        self.assertIn("Quién habla: Lu.", reglas.aviso_nombre(f))
+        self.assertNotIn("Falta", reglas.aviso_nombre(f))
 
     def test_varias_personas_pregunta_quien_es(self):
         s = reglas.aviso_nombre(self.ficha("Personas en esta computadora: Ana, Luis y Marta\n"))
         self.assertIn("trabajan 3 (Ana, Luis, Marta)", s)
         self.assertIn("Preguntá quién es ANTES", s)
 
-    def test_sin_nombre_avisa_que_falta(self):
-        self.assertIn("Falta tu nombre", reglas.aviso_nombre(self.ficha("# Reglas sin nombre\n")))
-        self.assertIn("Falta tu nombre", reglas.aviso_nombre(self.ficha(None)))
+    def test_sin_ficha_avisa_que_falta(self):
+        self.assertIn("Falta cómo querés que te llame", reglas.aviso_nombre(self.ficha(None)))
 
     def test_el_ejemplo_dentro_del_bloque_no_cuenta(self):
-        s = reglas.aviso_nombre(self.ficha("\n".join([reglas.INI, "# Las 24 reglas del método", "Me llamo: Ejemplo", reglas.FIN]) + "\n"))
-        self.assertIn("Falta tu nombre", s)
-
-    def test_nombre_fuera_del_bloque_sobrevive_a_la_sincronizacion(self):
-        f = self.ficha("Me llamo: Ana\n")
-        reglas.sincronizar(PLANTILLA, f)
-        self.assertIn("Quién habla: Ana.", reglas.aviso_nombre(f))
+        s = reglas.aviso_nombre(self.ficha("\n".join([reglas.INI, "# Las 24 reglas del método", "Llamame: Ejemplo", reglas.FIN]) + "\n"))
+        self.assertIn("Falta cómo querés que te llame", s)
 
     def test_arranque_completo_imprime_la_linea(self):
         d = tempfile.TemporaryDirectory(); self.addCleanup(d.cleanup)
-        (Path(d.name) / "CLAUDE.md").write_text("Me llamo: Ana\n", encoding="utf-8")
+        (Path(d.name) / "CLAUDE.md").write_text("Llamame: Ana\n", encoding="utf-8")
         r = correr(d.name)
         self.assertIn("Quién habla: Ana.", r.stdout)
+
 
 
 if __name__ == "__main__":

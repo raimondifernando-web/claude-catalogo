@@ -93,7 +93,7 @@ def sincronizar(plantilla: Path, ficha: Path) -> str:
     return "Reglas del método agregadas ({}) ✓".format(numero(nuevo))
 
 
-NOMBRE = re.compile(r"^\s*(?:[-*]\s*)?(Me llamo|Mi nombre|Nombre)\s*:\s*(.+?)\s*$")
+NOMBRE = re.compile(r"^\s*(?:[-*]\s*)?(Llamame)\s*:\s*(.+?)\s*$")
 VARIOS = re.compile(r"^\s*(?:[-*]\s*)?Personas en esta computadora\s*:\s*(.+?)\s*$")
 
 
@@ -120,8 +120,9 @@ def aviso_nombre(ficha: Path) -> str:
         m = NOMBRE.match(l)
         if m and m.group(2) not in ("…", "..."):
             return "Quién habla: {}. Llamalo por ese nombre en toda la sesión, también al delegar (regla 24).".format(m.group(2))
-    return ("Falta tu nombre en la ficha personal: preguntá UNA vez «¿cómo te llamo?» y escribilo en {} (fuera del "
-            "bloque de reglas) en una línea «Me llamo: …». No lo vuelvas a preguntar (regla 24).").format(ficha)
+    return ("Falta cómo querés que te llame (línea «Llamame:») en la ficha personal: preguntá UNA vez «¿cómo querés que "
+            "te llame?» y escribí la respuesta en {} (fuera del bloque de reglas) en una línea «Llamame: …». No asumas el "
+            "nombre formal ni el del correo, y no lo vuelvas a preguntar (regla 24).").format(ficha)
 
 
 def main(argv):

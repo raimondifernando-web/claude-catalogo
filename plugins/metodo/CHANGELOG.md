@@ -1,11 +1,11 @@
 # metodo — qué cambia para vos
 
 ## 0.45.0 — 2026-10-15
-**Claude te llama por tu nombre, y sabe qué hacer si en la misma computadora trabajan varias personas.** Se aplica solo; no hay nada que correr.
-- **Regla 24 (nueva):** Claude usa el nombre que figura en TU ficha personal (`~/.claude/CLAUDE.md`, la de tu computadora), en una línea `Me llamo: …`. Las fichas de las carpetas (`CLAUDE.md` del proyecto, que comparte el equipo) no llevan nombres de personas.
-- **Al abrir cada sesión** aparece una línea: «Quién habla: …» con tu nombre, o «Falta tu nombre…» si no hay ninguno. Si falta, Claude te pregunta UNA vez cómo te llama y lo anota en esa línea; no vuelve a preguntar.
+**Claude te llama como VOS pedís que te llamen, y sabe qué hacer si en la misma computadora trabajan varias personas.** Se aplica solo; no hay nada que correr.
+- **Regla 24 (nueva):** en TU ficha personal (`~/.claude/CLAUDE.md`, la de tu computadora) va una línea `Llamame: …` con cómo querés que te llamen (un apodo, si querés). Claude nunca usa en su lugar tu nombre formal, el del correo ni el de git. Las fichas de las carpetas (que comparte el equipo) no llevan nombres de personas.
+- **Al abrir cada sesión** aparece una línea: «Quién habla: …» con ese nombre, o «Falta cómo querés que te llame…» si no hay línea. Si falta, Claude te pregunta UNA vez «¿cómo querés que te llame?» y lo anota; no vuelve a preguntar.
 - **Varias personas en la misma computadora:** anotá `Personas en esta computadora: Ana, Luis`. Claude pregunta quién es antes de saludar. Si cada persona tiene su propia computadora (o su propio usuario de la Mac), no hace falta nada: cada una tiene su ficha.
-- **Lo que no puede hacer:** adivinar quién está del otro lado. El correo de la cuenta y el nombre de git son pistas, no pruebas. Si dos personas comparten computadora **y** usuario, solo lo sabe si se lo decís.
+- **Lo que no puede hacer:** adivinar quién está del otro lado. Si dos personas comparten computadora **y** usuario, solo lo sabe si se lo decís.
 - **Subagentes:** Claude pone tu nombre en el pedido que les arma, porque no lo heredan.
 - Las reglas del método pasan de 23 a 24 (se ponen al día solas, como siempre).
 
