@@ -1052,7 +1052,7 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Abiertos: bajos | 6, 7, 8, 9, 10, 12 del informe: texto de excepciones sin tope, `.env.example` con rellenos, `.gitignore` propuesto, `write_text` y `html.escape`, normalización en `delegar.py`, alias de series. Mismo pendiente. |
 | Límites (lo NO comprobado) | No corrieron `npm audit`, `pip-audit` ni la búsqueda de claves en el historial (el catálogo no tiene lock ni `requirements`). Revisión parcial de `register.tsx`, `estructura.py`, `arrancar-check.py`, `cerrar-check.py` y `delegar.py` (solo por el diff). Nada se ejecutó en vivo contra los bypass descritos. Gemini no pudo hacer la revisión (modo sin pantalla); la hizo `security-reviewer`. |
 | Veredicto | **PASS con condiciones** para lo que corre en las máquinas de clientes: 0 críticos y 0 altos abiertos para ellos. El alto 1 sigue abierto para la Mac de Fernando. Lo escribe Tech con la revisión de arriba (no la hizo quien arregló). |
-## 2026-10-15 · metodo 0.40.1 → 0.41.1 y base-segura 0.14.2 → 0.14.3 (commit f93a872) — PASS con condiciones
+## 2026-10-15 · metodo 0.40.2 → 0.41.1 y base-segura 0.14.2 → 0.14.3 (commit f93a872) — PASS con condiciones
 | Control | Resultado |
 |---|---|
 | Alcance | `metodo` 0.41.1: R12 pasa a pedir `docs/PRD.md`, `docs/decisiones.md` y `docs/planes/` en toda caja (con o sin código); `estructura.py arreglar` y `completar` crean el esqueleto con instrucciones, sin pisar nada; las excepciones escritas valen también para R12; el `CLAUDE.md` base dice dónde va cada cosa. `base-segura` 0.14.3: una sección en la plantilla `CLAUDE-empresa.md`. |
