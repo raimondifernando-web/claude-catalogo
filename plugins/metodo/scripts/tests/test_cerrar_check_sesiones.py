@@ -33,13 +33,14 @@ class Sesiones(unittest.TestCase):
         self.carpeta = self.repo / "a"
         self.carpeta.mkdir(parents=True)
         self.cfg.mkdir()
-        for n in ("uno.md", "dos.md"):
+        for n in ("uno.md", "dos.md", "decisión final.md"):
             (self.carpeta / n).write_text("x\n", encoding="utf-8")
         git(self.repo, "init", "-q", "-b", "main")
         git(self.repo, "add", "-A")
         git(self.repo, "commit", "-q", "-m", "base")
         self.inicio_a = time.time() - 3600  # A abrió hace una hora
         self.transcripcion(A, self.inicio_a)
+        self.hook(A, "Bash", command="ls")  # A ya trabajó: el hook la conoce (deja su marca)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -127,30 +128,30 @@ class Sesiones(unittest.TestCase):
         os.utime(self.carpeta / "uno.md", (futuro, futuro))
         self.assertTrue(self.linea_git(self.cierra()).startswith("✗"))
 
-    def test_bash_que_nombra_el_archivo_y_lo_cambia_queda_anotado(self):
+    def test_lo_que_otra_sesion_cambio_por_bash_no_alcanza_para_darlo_por_ajeno(self):
+        # B lo anotó con Bash, pero un comando que nombra un archivo no prueba que lo haya cambiado B (podría haber sido A
+        # con un script que el hook no vio): sin Edit/Write de otra sesión, es tuyo y frena
         (self.carpeta / "uno.md").write_text("sed -i de B\n", encoding="utf-8")
         self.hook(B, "Bash", command="sed -i '' 's/x/y/' uno.md")
-        out = self.cierra()
-        self.assertTrue(self.linea_git(out).startswith("✓"), out)
-        self.assertIn("uno.md", self.avisos(out)[0])
+        self.assertTrue((self.cfg / "state" / "ediciones" / f"{B}.jsonl").exists())
+        self.assertTrue(self.linea_git(self.cierra()).startswith("✗"))
 
     def test_bash_de_mi_sesion_tambien_se_anota_y_frena(self):
         (self.carpeta / "uno.md").write_text("sed -i mío\n", encoding="utf-8")
         self.hook(A, "Bash", command="sed -i '' 's/x/y/' uno.md")
         self.assertTrue(self.linea_git(self.cierra()).startswith("✗"))
 
-    def test_bash_que_solo_lee_un_archivo_viejo_no_lo_adopta(self):
-        (self.carpeta / "uno.md").write_text("de otro, de hace rato\n", encoding="utf-8")
-        viejo = time.time() - 1800
-        os.utime(self.carpeta / "uno.md", (viejo, viejo))
+    def test_bash_que_solo_lee_un_archivo_que_cambio_antes_no_lo_adopta(self):
+        (self.carpeta / "uno.md").write_text("cambió antes de que B corriera nada\n", encoding="utf-8")
+        time.sleep(2.5)
+        self.hook(B, "Bash", command="ls")
         self.hook(B, "Bash", command="cat uno.md")  # lo nombra pero no cambió mientras corría
         self.assertFalse((self.cfg / "state" / "ediciones" / f"{B}.jsonl").exists())
 
     # --- lo que ya estaba sucio antes de abrir esta sesión ---
     def test_sucio_de_antes_de_abrir_la_sesion_avisa(self):
         (self.carpeta / "uno.md").write_text("ya estaba así\n", encoding="utf-8")
-        antes = self.inicio_a - 600
-        os.utime(self.carpeta / "uno.md", (antes, antes))
+        self.transcripcion(A, time.time() + 10)  # la sesión de A abrió DESPUÉS de que el archivo quedara así
         out = self.cierra()
         self.assertTrue(self.linea_git(out).startswith("✓"), out)
         self.assertIn("antes de abrir esta sesión", self.avisos(out)[0])
@@ -161,12 +162,34 @@ class Sesiones(unittest.TestCase):
         os.utime(self.carpeta / "uno.md", (antes, antes))
         self.assertTrue(self.linea_git(self.cierra()).startswith("✗"))
 
+    def test_fecha_vieja_conservada_no_engana(self):
+        # `cp -p`, `mv` o `rsync -a` dejan la fecha de modificación vieja, pero el cambio de ficha (ctime) es de ahora
+        (self.carpeta / "uno.md").write_text("lo pisé yo con cp -p\n", encoding="utf-8")
+        antes = self.inicio_a - 600
+        os.utime(self.carpeta / "uno.md", (antes, antes))
+        self.assertTrue(self.linea_git(self.cierra()).startswith("✗"))
+
+    def test_nombre_con_acento_y_espacio(self):
+        self.edita(B, "decisión final.md", "de B\n")
+        out = self.cierra()
+        self.assertTrue(self.linea_git(out).startswith("✓"), out)
+        self.assertIn("NO son de esta sesión", out)
+        self.edita(A, "decisión final.md", "ahora mío\n")
+        self.assertTrue(self.linea_git(self.cierra()).startswith("✗"))
+
     # --- declarar a mano ---
     def test_ajeno_declarado_a_mano_avisa(self):
         (self.carpeta / "uno.md").write_text("no sé de quién\n", encoding="utf-8")
         out = self.cierra(A, "--ajeno", "uno.md")
         self.assertTrue(self.linea_git(out).startswith("✓"), out)
         self.assertIn("lo declaraste ajeno a mano", self.avisos(out)[0])
+
+    def test_ajeno_declarado_no_le_gana_al_registro(self):
+        # el registro dice que lo editó esta sesión: --ajeno no puede tapar algo propio
+        self.edita(A, "uno.md", "mío\n")
+        out = self.cierra(A, "--ajeno", "uno.md")
+        self.assertTrue(self.linea_git(out).startswith("✗"), out)
+        self.assertIn("uno.md", self.linea_git(out))
 
     def test_ajeno_declarado_solo_cubre_ese_archivo(self):
         (self.carpeta / "uno.md").write_text("a\n", encoding="utf-8")
@@ -183,6 +206,12 @@ class Sesiones(unittest.TestCase):
         self.assertTrue(self.linea_git(out).startswith("✗"), out)
         self.assertIn("No sé qué sesión sos", out)
 
+    def test_si_el_registro_no_conoce_la_sesion_todo_es_mio(self):
+        # p. ej. el hook no está instalado, o el id de la sesión cambió (/clear) y el hook anotó bajo otro: no se adivina
+        self.edita(B, "uno.md", "de B\n")
+        out = self.cierra("cccccccc-0000-4000-8000-000000000003")
+        self.assertTrue(self.linea_git(out).startswith("✗"), out)
+
     # --- el hook ---
     def test_hook_aguanta_basura_y_ids_raros(self):
         for entrada in ("no es json", "{}", json.dumps({"session_id": "../../etc/x", "tool_name": "Edit", "tool_input": {"file_path": "/tmp/x"}})):
@@ -192,11 +221,12 @@ class Sesiones(unittest.TestCase):
 
     def test_hook_borra_registros_de_mas_de_14_dias(self):
         d = self.cfg / "state" / "ediciones"
-        d.mkdir(parents=True)
+        d.mkdir(parents=True, exist_ok=True)
         viejo = d / "cccccccc.jsonl"
         viejo.write_text("{}\n", encoding="utf-8")
         hace = time.time() - 15 * 86400
         os.utime(viejo, (hace, hace))
+        os.utime(d / ".limpieza", (hace, hace))  # la limpieza corre una vez por día: que toque otra vez
         self.edita(B, "uno.md", "x\n")
         self.assertFalse(viejo.exists())
         self.assertTrue((d / f"{B}.jsonl").exists())

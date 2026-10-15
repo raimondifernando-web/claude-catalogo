@@ -167,8 +167,7 @@ else:
     # Varias sesiones en la misma carpeta: lo que editó OTRA sesión (según el registro de ediciones.py) se avisa y no frena;
     # lo que editaste vos, o no se sabe de quién es, frena. Regla conservadora y su porqué: encabezado de ediciones.py.
     def _abs(l):
-        r = ruta(l).strip('"')
-        return os.path.join(cwd, r.split(" -> ")[-1].strip('"'))
+        return os.path.join(cwd, ed.ruta_git(ruta(l).split(" -> ")[-1]))
     sid = ed.sid_actual()
     clas = ed.clasificar([_abs(l) for l in mod], sid, declaradas)
     otros = [l for l in mod if clas[_abs(l)][0] == "ajeno"]

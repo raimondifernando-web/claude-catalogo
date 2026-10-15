@@ -12,21 +12,27 @@ Qué anota: Edit/Write/MultiEdit/NotebookEdit (la ruta exacta) y Bash (los archi
 cambiaron mientras corría). No anota lo que un comando cambia sin nombrarlo (p. ej. un script que arma la ruta por dentro).
 
 Cómo se clasifica un archivo versionado con cambios sin guardar (CONSERVADOR: ante la duda es TUYO y frena):
-  1. lo anotó esta sesión                                                → tuyo
+  0. el registro no conoce a esta sesión (no hay <id>.t: el hook no está instalado o el id no coincide) → todo tuyo, como antes de existir esto
+  1. lo anotó esta sesión (con cualquier herramienta, Bash incluido)     → tuyo, aunque lo declares --ajeno: el registro gana
   2. cambió por última vez ANTES de abrirse esta sesión                  → ajeno (no pudiste ser vos)
-  3. lo anotó otra sesión y nadie lo tocó después de esa anotación       → ajeno
-  4. cualquier otro caso (sin dueño conocido; p. ej. un comando que el registro no vio) → tuyo
+  3. lo anotó otra sesión CON Edit/Write y nadie lo tocó después         → ajeno
+  4. cualquier otro caso (sin dueño conocido; lo que otra sesión cambió por Bash; un comando que el registro no vio) → tuyo
   Lo que sabés que no es tuyo y el registro no vio se declara a mano: cerrar-check --ajeno <ruta>.
-Si no se sabe cuál es esta sesión (falta CLAUDE_CODE_SESSION_ID), todo cuenta como tuyo: igual que antes de existir esto.
+Lo anotado por Bash solo cuenta a favor de la sesión que lo corrió (para frenarla), nunca para dar un archivo por ajeno: un comando
+puede nombrar un archivo (cat, git diff) sin haberlo cambiado, y atribuirle a otra sesión lo que hizo esta abriría el hueco.
+La fecha de un archivo es la mayor entre su modificación y el cambio de su ficha (ctime; en Windows solo la modificación):
+`mv`, `cp -p` o `rsync -a` conservan la modificación vieja pero no el ctime.
 
 Uso (lo llama el hook, no una persona):  ediciones.py registrar   (lee el JSON del hook por la entrada estándar; nunca imprime ni frena)
 Python 3.9+, sin dependencias."""
+import codecs
 import json
 import os
 import re
 import subprocess
 import sys
 import time
+import unicodedata
 from datetime import datetime
 
 DIAS = 14            # cuánto se guarda el registro de una sesión
@@ -56,12 +62,35 @@ def sid_actual():
 
 
 def _norm(p):
-    return os.path.normcase(os.path.realpath(p))
+    """Ruta comparable: sin enlaces, y sin diferencias de mayúsculas ni de acentos compuestos (macOS y Windows no las distinguen)."""
+    n = unicodedata.normalize("NFC", os.path.realpath(p))
+    return n.lower() if sys.platform in ("darwin", "win32") else os.path.normcase(n)
+
+
+def ruta_git(r):
+    """Ruta tal como la imprime `git status --short` (con comillas y \\303\\263 si tiene espacios o acentos) → ruta real."""
+    r = r.strip()
+    if len(r) >= 2 and r[0] == '"' and r[-1] == '"':
+        r = r[1:-1]
+    if "\\" in r:
+        try:
+            return codecs.escape_decode(r.encode("utf-8"))[0].decode("utf-8", "replace")
+        except Exception:
+            pass
+    return r
+
+
+def _cambio(ruta):
+    """Última vez que cambió el archivo: la mayor entre modificación y cambio de ficha (ctime; en Windows es la creación, no se usa)."""
+    st = os.stat(ruta)
+    return st.st_mtime if sys.platform == "win32" else max(st.st_mtime, st.st_ctime)
 
 
 def _git(repo, *a):
+    """Sin tomar el candado del índice (no molesta a un commit de otra sesión) ni correr un fsmonitor del repo; 2 s de tope."""
     try:
-        r = subprocess.run(["git", "-C", repo, *a], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10)
+        r = subprocess.run(["git", "--no-optional-locks", "-c", "core.fsmonitor=false", "-C", repo, *a], capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=2)
         return r.stdout if r.returncode == 0 else None
     except Exception:
         return None
@@ -116,7 +145,7 @@ def _tocados_por_bash(cmd, cwd, desde, hasta):
                 continue
             vistos.add(n)
             try:
-                m = os.path.getmtime(f)
+                m = _cambio(f)
             except OSError:
                 m = None  # borrado: si el comando lo nombra, se anota
             if m is None or desde - TOLERANCIA <= m <= hasta + TOLERANCIA:
@@ -134,7 +163,7 @@ def registrar(entrada):
     herr = entrada.get("tool_name") or ""
     ahora = time.time()
     d = dir_registro()
-    os.makedirs(d, exist_ok=True)
+    os.makedirs(d, mode=0o700, exist_ok=True)
     marca = os.path.join(d, sid + ".t")
     try:
         previo = float(open(marca).read())
@@ -149,12 +178,17 @@ def registrar(entrada):
         desde = previo if previo else max(inicio_sesion(sid) or 0, ahora - 600)
         rutas += _tocados_por_bash(ti["command"], cwd, desde, ahora)
     if rutas:
-        with open(os.path.join(d, sid + ".jsonl"), "a", encoding="utf-8") as fh:
+        with _abrir(os.path.join(d, sid + ".jsonl"), os.O_APPEND) as fh:
             for p in rutas:
                 fh.write(json.dumps({"t": round(ahora, 3), "p": _norm(p), "h": herr}, ensure_ascii=False) + "\n")
-    with open(marca, "w") as fh:
+    with _abrir(marca, os.O_TRUNC) as fh:
         fh.write(str(ahora))
     _limpiar(d, ahora)
+
+
+def _abrir(ruta, modo):
+    """Archivo de texto solo legible por quien lo creó (el registro tiene rutas de tus proyectos)."""
+    return os.fdopen(os.open(ruta, os.O_WRONLY | os.O_CREAT | modo, 0o600), "w", encoding="utf-8")
 
 
 def _limpiar(d, ahora):
@@ -179,7 +213,7 @@ def _limpiar(d, ahora):
 # ---------- leer (lo llama cerrar-check) ----------
 
 def _registro(ahora):
-    """{ruta: {id de sesión: última vez que la anotó}} de todas las sesiones, solo de los últimos DIAS días."""
+    """{ruta: {id de sesión: (última vez que la anotó, herramienta)}} de todas las sesiones, solo de los últimos DIAS días."""
     res = {}
     d = dir_registro()
     try:
@@ -195,11 +229,11 @@ def _registro(ahora):
                 for linea in fh:
                     try:
                         e = json.loads(linea)
-                        t, p = float(e["t"]), str(e["p"])
+                        t, p, h = float(e["t"]), str(e["p"]), str(e.get("h", ""))
                     except (ValueError, KeyError, TypeError):
                         continue
-                    if ahora - t <= DIAS * 86400:
-                        res.setdefault(p, {})[sid] = max(t, res.get(p, {}).get(sid, 0))
+                    if ahora - t <= DIAS * 86400 and t >= res.get(p, {}).get(sid, (0, ""))[0]:
+                        res.setdefault(p, {})[sid] = (t, h)
         except OSError:
             continue
     return res
@@ -210,34 +244,40 @@ def _hace(seg):
     return "hace menos de 1 min" if m < 1 else f"hace {m} min" if m < 120 else f"hace {m // 60} h"
 
 
-def clasificar(rutas, sid, declaradas=(), nombres=None, ahora=None):
+def clasificar(rutas, sid, declaradas=(), nombres=None, ahora=None, tambien_mias=()):
     """{ruta: ("mio" | "ajeno", motivo)}. `rutas` = absolutas; `declaradas` = las que la persona dijo a mano que no son suyas;
-    `nombres` = {id de sesión: título} si se sabe (solo para mostrar). Ver la regla en el encabezado."""
+    `nombres` = {id de sesión: título} si se sabe (solo para mostrar); `tambien_mias` = ids de otras sesiones que cuentan como
+    tuyas (p. ej. las hijas que abriste). Ver la regla en el encabezado."""
     ahora = ahora or time.time()
     nombres = nombres or {}
     decl = {_norm(p) for p in declaradas}
-    reg = _registro(ahora) if sid else {}
-    inicio = inicio_sesion(sid) if sid else None
+    mias = {sid, *tambien_mias} - {None}
+    conocida = bool(sid) and os.path.isfile(os.path.join(dir_registro(), sid + ".t"))
+    reg = _registro(ahora) if conocida else {}
+    inicio = inicio_sesion(sid) if conocida else None
     res = {}
     for ruta in rutas:
         n = _norm(ruta)
         due = reg.get(n, {})
         try:
-            m = os.path.getmtime(ruta)
+            m = _cambio(ruta)
         except OSError:
             m = None
-        if n in decl:
-            res[ruta] = ("ajeno", "lo declaraste ajeno a mano")
-        elif not sid:
+        otras = {o: t for o, (t, h) in due.items() if o not in mias and h in HERRAMIENTAS_ARCHIVO}
+        if not sid:
             res[ruta] = ("mio", "no sé qué sesión sos")
-        elif sid in due:
-            res[ruta] = ("mio", "lo editaste en esta sesión")
+        elif not conocida:
+            res[ruta] = ("mio", "el registro no conoce esta sesión (¿falta el hook?)")
+        elif mias & set(due):
+            res[ruta] = ("mio", "lo editaste en esta sesión" + (" (el --ajeno no vale: el registro dice que es tuyo)" if n in decl else ""))
+        elif n in decl:
+            res[ruta] = ("ajeno", "lo declaraste ajeno a mano")
         elif inicio and m is not None and m < inicio - TOLERANCIA:
             res[ruta] = ("ajeno", "ya estaba sin guardar antes de abrir esta sesión")
-        elif due and (m is None or m <= max(due.values()) + TOLERANCIA):
-            otra, t = max(due.items(), key=lambda kv: kv[1])
-            quien = f"«{nombres[otra]}»" if nombres.get(otra) else "otra sesión " + otra[:8]
-            res[ruta] = ("ajeno", f"editado por {quien} {_hace(ahora - t)}")
+        elif otras and (m is None or m <= max(otras.values()) + TOLERANCIA):
+            otra, t = max(otras.items(), key=lambda kv: kv[1])
+            titulo = re.sub(r"[\x00-\x1f\x7f]", " ", str(nombres.get(otra) or ""))[:60].strip()
+            res[ruta] = ("ajeno", f"editado por {'«' + titulo + '»' if titulo else 'otra sesión ' + otra[:8]} {_hace(ahora - t)}")
         else:
             res[ruta] = ("mio", "sin dueño conocido")
     return res
