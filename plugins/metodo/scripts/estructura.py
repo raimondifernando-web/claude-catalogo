@@ -660,8 +660,93 @@ def tiene_codigo(carpeta: Path) -> bool:
     return False
 
 
+# Excepciones escritas: algo que se decidió dejar así, con su motivo, en vez de un ✗ para siempre.
+# Archivo `.estructura-excepciones.json` en la raíz del repositorio de la caja (en una copia de trabajo, git worktree,
+# se busca primero en la copia y después en la principal). Lista de {"regla", "ruta", "motivo", "fecha"}; «ruta» es
+# la carpeta de la que habla el hallazgo, relativa a esa raíz («.» = la raíz misma). Sin motivo o sin fecha no vale.
+ARCHIVO_EXCEPCIONES = ".estructura-excepciones.json"
+# R11 (la raíz de proyectos no es un repo) y R6 (secretos en GitHub) no se pueden exceptuar nunca.
+NO_EXCEPTUABLES = ("R6", "R11")
+
+
+def raiz_del_repo(carpeta: Path):
+    """(raíz del repositorio, raíz de la copia principal si esta es una copia de trabajo, o None)."""
+    raiz = carpeta
+    while not (raiz / ".git").exists():
+        if raiz.parent == raiz:
+            return None, None
+        raiz = raiz.parent
+    principal = None
+    if (raiz / ".git").is_file():
+        code, out = ejecutar_git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=raiz)
+        if code == 0 and out:
+            principal = Path(out).parent
+    return raiz, principal
+
+
+def cargar_excepciones(carpeta: Path):
+    """Lee las excepciones del repositorio de esta caja. Devuelve (validas, avisos, raiz):
+    validas = {(regla, ruta): motivo}; avisos = [texto] de las que no valen (se ignoran)."""
+    raiz, principal = raiz_del_repo(carpeta)
+    if raiz is None:
+        return {}, [], None
+    archivo = next((c / ARCHIVO_EXCEPCIONES for c in (raiz, principal)
+                    if c is not None and (c / ARCHIVO_EXCEPCIONES).is_file()), None)
+    if archivo is None:
+        return {}, [], raiz
+    try:
+        datos = json.loads(archivo.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return {}, [f"{ARCHIVO_EXCEPCIONES} no es un JSON válido: se ignoran sus excepciones"], raiz
+    if not isinstance(datos, list):
+        return {}, [f"{ARCHIVO_EXCEPCIONES} tiene que ser una lista: se ignoran sus excepciones"], raiz
+    validas, avisos = {}, []
+    for i, e in enumerate(datos, 1):
+        if not isinstance(e, dict):
+            avisos.append(f"excepción {i} ignorada: no es un objeto")
+            continue
+        regla, ruta = str(e.get("regla", "")).strip().upper(), str(e.get("ruta", "")).strip().strip("/") or "."
+        motivo, fecha = str(e.get("motivo", "")).strip(), str(e.get("fecha", "")).strip()
+        if not re.fullmatch(r"R\d+", regla):
+            avisos.append(f"excepción {i} ignorada: falta la regla (R1, R8…)")
+        elif regla in NO_EXCEPTUABLES:
+            avisos.append(f"excepción {i} ({regla}) ignorada: esa regla no se puede exceptuar")
+        elif not motivo or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", fecha):
+            avisos.append(f"excepción {i} ({regla} {ruta}) ignorada: necesita motivo y fecha AAAA-MM-DD")
+        else:
+            validas[(regla, ruta)] = motivo
+    return validas, avisos, raiz
+
+
+def ruta_en_repo(raiz: Path, carpeta: Path) -> str:
+    try:
+        rel = carpeta.resolve().relative_to(raiz.resolve()).as_posix()
+    except ValueError:
+        return carpeta.name
+    return rel or "."
+
+
 def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
-    """Aplica las reglas R1-R10 y R12 a una caja concreta. Retorna [(tipo, id, mensaje)]."""
+    """Aplica las reglas R1-R10 y R12 a una caja concreta, descontando las excepciones escritas.
+    Retorna [(tipo, id, mensaje)]; tipo «excepcion» = lo decidido dejar así (no cuenta como falla)."""
+    hallazgos = _revisar_caja(carpeta, nivel, parent_caja)
+    excepciones, avisos, raiz = cargar_excepciones(carpeta)
+    if raiz is None:
+        return hallazgos
+    mia = ruta_en_repo(raiz, carpeta)
+    salida = []
+    for tipo, r_id, msg in hallazgos:
+        if tipo == "error" and r_id not in NO_EXCEPTUABLES and r_id != "R8" and (r_id, mia) in excepciones:
+            salida.append(("excepcion", r_id, f"{msg} (motivo: {excepciones[(r_id, mia)]})"))
+        else:
+            salida.append((tipo, r_id, msg))
+    if mia == ".":
+        salida.extend(("aviso", "EXC", a) for a in avisos)
+    return salida
+
+
+def _revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
+    """Las reglas R1-R10 y R12 de una caja, sin excepciones. Retorna [(tipo, id, mensaje)]."""
     hallazgos = []
     nombre = carpeta.name
 
@@ -726,11 +811,16 @@ def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
     # ls-files) en vez de buscar un asterisco en el texto: «*.pyc» no ignora ninguna caja.
     if nivel in ("empresa", "area") and git_dir.exists() and shutil.which("git"):
         problemas = []
+        excepciones, _avisos, raiz_repo = cargar_excepciones(carpeta)
         for hija in cajas_hijas(carpeta):
             code_ls, out_ls = ejecutar_git("ls-files", "--", hija.name, cwd=carpeta)
             code_ci, _ = ejecutar_git("check-ignore", "-q", "--no-index", hija.name + "/", cwd=carpeta)
             if (code_ls == 0 and out_ls) or code_ci == 1:
-                problemas.append(hija.name)
+                motivo = excepciones.get(("R8", ruta_en_repo(raiz_repo, hija))) if raiz_repo else None
+                if motivo:
+                    hallazgos.append(("excepcion", "R8", f"guarda en su repositorio la caja de adentro {hija.name} (motivo: {motivo})"))
+                else:
+                    problemas.append(hija.name)
         if problemas:
             hallazgos.append(("error", "R8", "guarda en su repositorio las cajas de adentro ("
                               + ", ".join(problemas) + "): cada una va en su propio repositorio y el .gitignore las ignora"))
@@ -854,6 +944,7 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
         return f"{linea} → {arreglos[r_id]}" if arreglos.get(r_id) else linea
 
     lineas_salida = []
+    lineas_excepcion = []  # lo decidido dejar así: se muestra, pero no cuenta como falla
     total_errores = 0
 
     if todas:
@@ -871,6 +962,8 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
                 if tipo == "error":
                     total_errores += 1
                     lineas_salida.append(con_arreglo(r_id, f"✗ {r_id} {rel_display}: {msg}"))
+                elif tipo == "excepcion":
+                    lineas_excepcion.append(f"• excepción {r_id} {rel_display}: {msg}")
                 else:
                     lineas_salida.append(con_arreglo(r_id, f"• {r_id} {rel_display}: {msg}"))
     else:
@@ -889,6 +982,8 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
                 if tipo == "error":
                     total_errores += 1
                     lineas_salida.append(con_arreglo(r_id, f"✗ {r_id} {display_name}: {msg}"))
+                elif tipo == "excepcion":
+                    lineas_excepcion.append(f"• excepción {r_id} {display_name}: {msg}")
                 else:
                     lineas_salida.append(con_arreglo(r_id, f"• {r_id} {display_name}: {msg}"))
 
@@ -913,7 +1008,7 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
         return 0
 
     # Modo normal
-    for l in lineas_salida:
+    for l in lineas_salida + lineas_excepcion:
         print(l)
 
     if total_errores == 0:
@@ -1074,7 +1169,8 @@ def comando_arreglar(carpeta_arg=None, todas=False, raiz_arg=None, origen_arg=No
         plan = plan_seguro(c_path, c_nivel)
         cubiertas = {r for _, _, r in plan}
         # lo que queda se mide ANTES de aplicar y sin lo que el plan va a resolver
-        resto = [h for h in revisar_caja(c_path, c_nivel, parent_caja=parent) if h[1] not in cubiertas]
+        resto = [h for h in revisar_caja(c_path, c_nivel, parent_caja=parent)
+                 if h[1] not in cubiertas and h[0] != "excepcion"]
         if not plan and not resto:
             continue
         print(f"== {rel} ==")
