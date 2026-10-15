@@ -1041,10 +1041,10 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Condiciones (no bloquean el Mac de hoy) | (1) los avisos de pip-audit: pasar estas librerías a un Python ≥ 3.10 manejado por `uv`; (2) Windows real sin probar (C67); (3) las 4 oficiales de Anthropic de `al-dia.sh` sin fijar (decisión de producto); (4) los hallazgos de la 2.ª revisión registrados aparte; (5) que el revisor confirme los arreglos de esta tanda; (6) subir la versión de `paneles` o confirmar que su cambio puede esperar. |
 | Veredicto | **PASS con condiciones**, 0 críticos y 0 altos abiertos para Mac. Lo escribe la sesión que hizo los arreglos (no un revisor externo): que quien publique lo confirme. |
 
-## 2026-10-15 · metodo 0.40.1 → 0.40.2 (commit b67a15d) — PASS con condiciones
+## 2026-10-15 · metodo 0.40.1 → 0.40.2 (commit 3f9cafe) — PASS con condiciones
 | Control | Resultado |
 |---|---|
-| Alcance | Lo que entra a `estable` después de `2d52ac7` (metodo 0.36.3): metodo 0.37.0 a 0.40.1 y `paneles` 0.3.0 (39 archivos, 3.790 líneas; el diff sin pruebas, 2.488 líneas) más el arreglo 0.40.2 (`b67a15d`). |
+| Alcance | Lo que entra a `estable` después de `2d52ac7` (metodo 0.36.3): metodo 0.37.0 a 0.40.1 y `paneles` 0.3.0 (39 archivos, 3.790 líneas; el diff sin pruebas, 2.488 líneas) más el arreglo 0.40.2 (`3f9cafe`, unión del PR 12). |
 | Revisión independiente | Revisor de seguridad de solo lectura sobre el diff completo y `unir-a-main` entero (otros archivos solo por el diff): 0 críticos · 1 alto · 4 medios · 7 bajos. Sin `shell=True`, `eval`/`exec`, llamadas de red nuevas, secretos impresos ni hooks que se modifiquen solos. |
 | Corregido en 0.40.2 | Medio 2: `unir-a-main` no une nada si no existe la lista de repos permitidos (en la máquina de un cliente no existe). Bajo 11: los textos de `--revisado-por` y `--sin-pruebas` se limpian (sin saltos de línea ni caracteres de control, largo tope). Probado: 17 pruebas de `unir-a-main` (2 nuevas) y suite completa 994 OK, 5 salteadas. |
 | Abierto: alto 1 | Las opciones `--ok-fernando`, `--revisado-por` y `--sin-pruebas` de `unir-a-main` las puede pasar cualquier proceso; la única barrera es el permiso de la app. **Solo aplica donde existe la lista de repos permitidos (la Mac de Fernando); en una máquina de cliente el programa no une nada.** No se acepta como riesgo: queda como trabajo de rediseño (el sello atado al commit por controles que se comprueban solos y un informe de revisor independiente) en `Tech/.claude/PENDIENTES.md`. |
