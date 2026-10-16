@@ -407,6 +407,13 @@ const COLUMNAS = ['ID', 'Pendiente', 'Prio', 'Estado', 'Depende de', 'Esf.', 'Qu
 const ESTADOS = ['pendiente', 'en curso', 'espera dato de F', 'espera OK de F', 'hecho']
 const ESTADOS_TAREA = ['pending', 'in_progress', 'completed']
 const MAX_CAMBIOS = 8
+// Topes: un archivo enorme o con miles de filas no tiene que colgar el panel (se corta, no se rechaza).
+const MAX_TEXTO = 300_000
+const MAX_FILAS = 500
+const MAX_TAREAS = 200
+// git corre en la carpeta de la sesión, que puede ser un repo ajeno: un `.git/config` con `core.fsmonitor=<comando>` ejecutaría ese comando al hacer `git status`.
+// Se apagan las dos opciones que lanzan programas o escriben caché (F11 del security check 0.35.0). Todas las llamadas a git de este archivo pasan por acá.
+const GIT_SEGURO = ['--no-optional-locks', '-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false']
 
 // Colores del sistema de Apple, sin flúor: lo que depende de Fernando se destaca.
 // Naranja = te toca a vos. Rojo suave = algo falló. Todo lo demás, en gris.
@@ -677,7 +684,7 @@ function diaCorto(iso: string | undefined): string | undefined {
 // La versión de comparación: si el archivo tiene cambios sin guardar, la última guardada;
 // si no, la anterior a la última. Todo sale de `git log` del archivo.
 async function cambiosDeGit($: EngineInterface, repo: string, nueva: Fila[]): Promise<Cambios> {
-  const git = (args: string[]) => $.process.run(['git', '-C', repo, ...args])
+  const git = (args: string[]) => $.process.run(['git', ...GIT_SEGURO, '-C', repo, ...args])
   try {
     const estado = await git(['status', '--porcelain', '--', ARCHIVO])
     // Carpeta que no es repo git (código 128): no hay historial, no es un error.
@@ -719,8 +726,8 @@ function modeloSinLista(): Modelo {
 let ultimaClave = ''
 let ultimosCambios: Cambios = VACIO
 
-// Busca .claude/PENDIENTES.md en la raíz de la sesión, en su carpeta de trabajo, en las carpetas madre (hasta 3 niveles)
-// y en la raíz de su repo git. La sesión puede haber entrado a un subrepo o la app puede haberla dejado en otra carpeta.
+// Busca el archivo en la carpeta de la sesión, en su carpeta de trabajo y en la raíz de SU repo git.
+// Nunca en las carpetas madre: podrían ser de otro proyecto o de otro cliente (0.3.1).
 async function buscar($: EngineInterface, carpeta: string, archivo: string = ARCHIVO): Promise<{ repo: string; texto: string } | null> {
   const candidatas: string[] = []
   const agregar = (c: string) => {
@@ -733,22 +740,20 @@ async function buscar($: EngineInterface, carpeta: string, archivo: string = ARC
     // queda solo la raíz
   }
   for (const inicio of [carpeta, cwd]) {
-    let c = inicio
-    for (let nivel = 0; nivel < 4 && c !== '' && c !== '/'; nivel++) {
-      agregar(c)
-      c = c.slice(0, c.lastIndexOf('/'))
+    if (inicio === '') continue
+    agregar(inicio)
+    try {
+      const top = await $.process.run(['git', ...GIT_SEGURO, '-C', inicio, 'rev-parse', '--show-toplevel'])
+      const raiz = top.exitCode === 0 ? top.stdout.trim() : ''
+      if (raiz !== '') agregar(raiz)
+    } catch {
+      // sin git: se usa solo la carpeta
     }
-  }
-  try {
-    const top = await $.process.run(['git', '-C', carpeta, 'rev-parse', '--show-toplevel'])
-    const raiz = top.exitCode === 0 ? top.stdout.trim() : ''
-    if (raiz !== '') agregar(raiz)
-  } catch {
-    // sin git: se usan solo las carpetas
   }
   for (const repo of candidatas) {
     try {
-      return { repo, texto: await $.fs.read(`${repo}/${archivo}`) }
+      const crudo = await $.fs.read(`${repo}/${archivo}`)
+      return { repo, texto: crudo.length > MAX_TEXTO ? crudo.slice(0, crudo.lastIndexOf('\n', MAX_TEXTO)) : crudo }
     } catch {
       // no está acá; se prueba la siguiente
     }
@@ -761,7 +766,7 @@ function leerTareas(texto: string): Tarea[] | null {
   try {
     const d = JSON.parse(texto) as { tareas?: unknown }
     if (!Array.isArray(d.tareas)) return null
-    return d.tareas.flatMap((t, i) => {
+    return d.tareas.slice(0, MAX_TAREAS).flatMap((t, i) => {
       const o = t as { id?: unknown; texto?: unknown; estado?: unknown }
       if (typeof o?.texto !== 'string') return []
       const estado = ESTADOS_TAREA.includes(String(o.estado)) ? (o.estado as Tarea['estado']) : 'pending'
@@ -785,6 +790,7 @@ async function refrescar($: EngineInterface): Promise<void> {
     } else {
       const { repo, texto } = hallada
       const l = analizar(texto)
+      l.filas = l.filas.slice(0, MAX_FILAS)
       if (l.filas.length === 0) {
         const detalle = l.problemas.length > 0 ? ` ${l.problemas[0]}` : ' No encontré ninguna fila de pendientes.'
         modelo = modeloConError(`No pude leer PENDIENTES.md:${detalle}`)

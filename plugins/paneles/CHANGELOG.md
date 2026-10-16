@@ -1,5 +1,12 @@
 # paneles
 
+## 0.5.1 — 2026-10-16
+Arreglo de seguridad: el panel único de 0.5.0 había perdido tres protecciones de 0.3.1/0.4.0.
+- **git no ejecuta nada de la carpeta ajena.** Todas las llamadas a `git` vuelven a apagar `core.fsmonitor` y `core.untrackedCache` y a no tomar bloqueos opcionales. Sin esto, un repositorio ajeno con `core.fsmonitor=<comando>` ejecutaba ese comando en tu Mac al abrir el panel.
+- **No sube a carpetas madre.** Busca la lista solo en la carpeta de la sesión y en la raíz de su repo, no en 3 niveles más arriba (podía mostrar la de otro proyecto o cliente).
+- **Topes de tamaño.** Un `PENDIENTES.md` de más de 300.000 caracteres se corta, se leen como máximo 500 filas y 200 tareas: un archivo enorme ya no cuelga el panel.
+- Pruebas nuevas para cada una (47 en total).
+
 ## 0.5.0 — 2026-10-16
 - **Un solo panel, «Tareas y pendientes», en lugar de «Pendientes» y «Tareas».** Arriba, «ESTA SESIÓN» (las tareas de la sesión, con `.claude/tareas.json` o lo que la sesión anota); abajo, «PENDIENTES QUE ARRASTRAMOS» (`.claude/PENDIENTES.md`: prioridad 1 abierta, 2 y 3 plegadas). Lo que está en las dos listas se marca «en sesión» abajo; no se esconde. Se abre con `/tareas` (y `/pendientes`).
 - Símbolos: ○ por hacer · ◐ en curso · ✋ espera algo tuyo · ✅ hecho · › / ⌄ detalle · ↳ espera a la de arriba.
