@@ -431,8 +431,8 @@ def _correr(**kw):
 def _docs_vivos(caja):
     """Deja en la caja los tres documentos vivos (R12) para las pruebas que miran otra cosa."""
     (caja / "docs" / "planes").mkdir(parents=True, exist_ok=True)
-    (caja / "docs" / "PRD.md").write_text("# PRD\n", encoding="utf-8")
-    (caja / "docs" / "decisiones.md").write_text("# Decisiones\n", encoding="utf-8")
+    (caja / "docs" / "PRD.md").write_text("# PRD\n\nEs una caja de prueba para el control, con su texto completo.\n", encoding="utf-8")
+    (caja / "docs" / "decisiones.md").write_text("# Decisiones\n\n## 2026-10-16 — Prueba\nDecisión de prueba, con su porqué escrito y su fecha.\n", encoding="utf-8")
 
 
 def _marcar_semana(td):
@@ -490,7 +490,7 @@ class TestArreglar(unittest.TestCase):
                 self.assertTrue((caja / rel).is_file(), rel)
             _, rev = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto")
             marcadas = [l.split()[1] for l in rev.splitlines() if l[:1] in ("✗", "•")]
-            self.assertEqual(marcadas, ["R1"])
+            self.assertEqual(marcadas, ["R1", "R16"])  # R16: las plantillas recién creadas todavía hay que completarlas
             # una segunda pasada no crea nada ni pisa nada
             _, otra = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
             self.assertIn("Arreglado ✓ (0 archivos creados)", otra)
@@ -846,6 +846,117 @@ class TestR12DocumentosVivos(unittest.TestCase):
         for doc in ("docs/PRD.md", "docs/decisiones.md", "docs/planes/"):
             self.assertEqual(molde[doc]["obligatorio"], "sí", doc)
             self.assertEqual(molde[doc]["niveles"], ["E", "A", "P"], doc)
+
+
+class TestContenido(unittest.TestCase):
+    """R13-R18: el contenido de los archivos de la caja, no solo que existan."""
+
+    def _caja(self, td, claude_md="# Caja\n", **archivos):
+        caja = Path(td) / "caja"
+        (caja / ".claude" / "prompts").mkdir(parents=True)
+        (caja / "CLAUDE.md").write_text(claude_md, encoding="utf-8")
+        _docs_vivos(caja)
+        for rel, txt in archivos.items():
+            f = caja / rel.replace("__", "/")
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(txt, encoding="utf-8")
+        return caja
+
+    def _ids(self, caja):
+        return {r for _t, r, _m in estructura.revisar_contenido(caja)}
+
+    def test_caja_sana_no_marca_nada(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, "# Caja\nVer `docs/PRD.md` y `docs/planes/`.\n")
+            self.assertEqual(estructura.revisar_contenido(caja), [])
+
+    def test_r13_ruta_inexistente(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, "Mirar `docs/no-existe.md` y `scripts/*.sh` y `<ruta>/x.md`.\n")
+            h = [m for _t, r, m in estructura.revisar_contenido(caja) if r == "R13"]
+            self.assertEqual(len(h), 1)
+            self.assertIn("docs/no-existe.md", h[0])
+            self.assertNotIn("*", h[0])  # los patrones con comodín no se miden
+
+    def test_r13_no_marca_lo_personal_ni_lo_historico(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, "Las claves van en `.env`. La carpeta `docs/vieja/` ya no existe.\n")
+            self.assertNotIn("R13", self._ids(caja))
+
+    def test_r14_conteo_escrito_a_mano(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, "Hay 40 skills instaladas.\n| fila | 25 agentes |\n")
+            h = [m for _t, r, m in estructura.revisar_contenido(caja) if r == "R14"]
+            self.assertEqual(len(h), 1)
+            self.assertIn("40 skills", h[0])
+            self.assertNotIn("25 agentes", h[0])  # las tablas históricas no cuentan
+
+    def test_r15_agente_pm_inexistente(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, "Lo lleva `pm-fantasma`.\n", **{".claude__agents__pm-real.md": "---\nname: pm-real\ndescription: x\n---\n"})
+            (caja / "CLAUDE.md").write_text("Lo llevan pm-real y pm-fantasma.\n", encoding="utf-8")
+            h = [m for _t, r, m in estructura.revisar_contenido(caja) if r == "R15"]
+            self.assertEqual(len(h), 1)
+            self.assertIn("pm-fantasma", h[0])
+            self.assertNotIn("pm-real", h[0])
+
+    def test_r16_plantilla_sin_completar(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, docs__PRD_md="")
+            (caja / "docs" / "PRD.md").write_text(estructura.PLANTILLA_PRD.format(nombre="Caja"), encoding="utf-8")
+            h = [m for _t, r, m in estructura.revisar_contenido(caja) if r == "R16"]
+            self.assertEqual(len(h), 1)
+            self.assertIn("docs/PRD.md", h[0])
+            self.assertNotIn("decisiones", h[0])
+
+    def test_r17_pendientes_mal_formado_avisa(self):
+        with tempfile.TemporaryDirectory() as td:
+            mal = "## A · Cosas\n| ID | Pendiente | Prioridad | Estado | x | y | z | w |\n|---|---|---|---|---|---|---|---|\n| A1 | algo | 9 | cualquiera | a | b | c | d |\n"
+            caja = self._caja(td, **{".claude__PENDIENTES.md": mal})
+            h = [(t, r) for t, r, _m in estructura.revisar_contenido(caja)]
+            self.assertIn(("aviso", "R17"), h)
+
+    def test_r18_reanudar_incoherente(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td)
+            _configurar_repo_git(caja, Path(td))
+            ant = (date.today().replace(year=date.today().year - 1)).isoformat()
+            (caja / ".claude" / "prompts" / "REANUDAR.md").write_text(
+                f"<!-- cierre {ant}-tema · generado por /cerrar -->\nWorktree: {caja} · Rama: otra/rama\nMirar `docs/falta.md`\n", encoding="utf-8")
+            h = [m for _t, r, m in estructura.revisar_contenido(caja) if r == "R18"]
+            self.assertEqual(len(h), 1)
+            self.assertIn("Rama otra/rama", h[0])
+            self.assertIn("hace", h[0])
+            self.assertIn("docs/falta.md", h[0])
+
+    def test_carpeta_ilegible_no_rompe(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, "Ver `scripts/secreta/x.md`.\n")
+            (caja / "scripts").mkdir()
+            os.chmod(caja / "scripts", 0)
+            try:
+                estructura.revisar_caja(caja, "proyecto")   # no debe lanzar
+            finally:
+                os.chmod(caja / "scripts", 0o755)
+
+    def test_anclas_y_columnas_no_son_rutas_faltantes(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, "Ver `docs/PRD.md#arquitectura` y `docs/PRD.md:10:5` y `./CLAUDE.md`.\n")
+            self.assertNotIn("R13", self._ids(caja))
+
+    def test_las_reglas_nuevas_tienen_arreglo_en_el_molde(self):
+        md = SCRIPTS_DIR.parent / "estructura" / "ESTRUCTURA.md"
+        arreglos = estructura.cargar_arreglos(str(md))
+        for r in ("R13", "R14", "R15", "R16", "R17", "R18"):
+            self.assertTrue(arreglos.get(r), f"{r} no tiene «Cómo se arregla» en ESTRUCTURA.md")
+
+    def test_arreglar_nunca_toca_el_contenido(self):
+        """`arreglar` crea lo que falta; los avisos de contenido los resuelve una persona o una sesión."""
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, "Ver `docs/no-existe.md`.\n")
+            antes = (caja / "CLAUDE.md").read_text(encoding="utf-8")
+            _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), aplicar=True)
+            self.assertEqual((caja / "CLAUDE.md").read_text(encoding="utf-8"), antes)
 
 
 class TestEnvMultilinea(unittest.TestCase):

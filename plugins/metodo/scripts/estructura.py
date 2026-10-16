@@ -739,6 +739,188 @@ def faltan_documentos_vivos(carpeta: Path) -> list:
     return faltan
 
 
+# ==============================================================================
+# 3b. CONTENIDO (R13-R18): que lo escrito en los archivos sea correcto, no solo que el archivo exista
+# ==============================================================================
+# Todo mecánico (sin IA). Lo que pide juicio (¿el CLAUDE.md dice algo contradictorio?) no se mide acá.
+_RUTA_PREFIJOS = ("~/", "./", "docs/", ".claude/", "scripts/", "plugins/", "src/")
+_RUTA_PERSONAL = {".env", "CLAUDE.local.md", "settings.local.json"}   # personales: pueden no existir
+_RUTA_GENERADA = ("graphify-out", "node_modules", ".omc", "__pycache__", ".venv", "dist/", "out/", ".git/")
+_CONTEO = re.compile(r"\b(\d{2,})\s+(agentes|skills|plugins|PMs|proyectos|cajas|workflows|scripts|hooks|MCPs|repos)\b", re.I)
+_BACKTICK = re.compile(r"`([^`\n]+)`")
+_HISTORICA = re.compile(r"ya no existe|retirad|archivad|borrad|obsolet|desinstalad|apagad|antes:|\bera\b|\beran\b|viej", re.I)
+MAX_EJEMPLOS = 3
+
+
+def _misma_carpeta(a: Path, b: Path) -> bool:
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
+def _lee(ruta: Path) -> str:
+    try:
+        return ruta.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def rutas_citadas_que_faltan(texto: str, carpeta: Path) -> list:
+    """Rutas entre `comillas` que el texto cita y no existen (relativas a la caja o a la raíz de su repo)."""
+    code, top = ejecutar_git("rev-parse", "--show-toplevel", cwd=carpeta)
+    bases = [carpeta] + ([Path(top)] if code == 0 and top and Path(top) != carpeta else [])
+    faltan = []
+    for linea in texto.splitlines():
+        if _HISTORICA.search(linea):
+            continue
+        for tok in _BACKTICK.findall(linea):
+            tok = tok.strip().rstrip(".,;:)")
+            tok = re.sub(r"(:\d+)+$", "", tok.split("#", 1)[0])   # sin ancla (#) ni archivo:línea[:columna]
+            if not tok.startswith(_RUTA_PREFIJOS) or " " in tok or any(c in tok for c in "<>*{}$…|()[]"):
+                continue
+            if ".." in tok.split("/") or tok.rstrip("/").rsplit("/", 1)[-1] in _RUTA_PERSONAL:
+                continue
+            if any(g.rstrip("/") in tok.split("/") or g in ("graphify-out", "node_modules") and g in tok for g in _RUTA_GENERADA):
+                continue
+            if tok in ("~/", "./") or ("/" not in tok.lstrip("~./") and not tok.startswith("./")):
+                continue
+            try:
+                if tok.startswith("~/"):
+                    existe = Path(os.path.expanduser(tok)).exists()
+                else:
+                    existe = any((b / tok).exists() for b in bases)
+            except OSError:   # sin permiso o nombre demasiado largo: no se puede afirmar que falte
+                existe = True
+            if not existe and tok not in faltan:
+                faltan.append(tok)
+    return faltan
+
+
+def _agentes_conocidos(carpeta: Path) -> set:
+    nombres = set()
+    dirs = [Path.home() / ".claude" / "agents"]
+    p = carpeta
+    for _ in range(4):
+        dirs.append(p / ".claude" / "agents")
+        p = p.parent
+    for d in dirs:
+        if d.is_dir():
+            nombres.update(f.stem for f in d.glob("*.md"))
+    cache = Path.home() / ".claude" / "plugins" / "cache"
+    if cache.is_dir():
+        for f in cache.glob("*/*/*/agents/*.md"):
+            nombres.add(f.stem)
+    return nombres
+
+
+def _sin_instrucciones(texto: str) -> str:
+    """El texto de un documento sin títulos ni citas (la plantilla sin completar queda vacía)."""
+    return "\n".join(l for l in texto.splitlines() if l.strip() and not l.lstrip().startswith(("#", ">", "<!--")))
+
+
+def revisar_contenido(carpeta: Path) -> list:
+    """R13-R18, cada grupo aislado: si una regla falla por algo imprevisto, las demás igual corren."""
+    h = []
+    for grupo in (_contenido_claude_md, _contenido_documentos, _contenido_pendientes, _contenido_reanudar):
+        try:
+            h.extend(grupo(carpeta))
+        except Exception as e:   # el control nunca rompe un arranque
+            h.append(("aviso", "R12", f"no se pudo revisar {grupo.__name__[11:]} ({type(e).__name__})"))
+    return h
+
+
+def _contenido_claude_md(carpeta: Path) -> list:
+    h = []
+    claude_md = carpeta / "CLAUDE.md"
+    if claude_md.is_file():
+        texto = _lee(claude_md)
+        # R13: rutas citadas que no existen
+        falta = rutas_citadas_que_faltan(texto, carpeta)
+        if falta:
+            h.append(("aviso", "R13", f"CLAUDE.md cita {len(falta)} ruta(s) que no existen: " + ", ".join(falta[:MAX_EJEMPLOS])
+                      + (" …" if len(falta) > MAX_EJEMPLOS else "")))
+        # R14: conteos escritos a mano (se desactualizan)
+        conteos = []
+        for linea in texto.splitlines():
+            if linea.lstrip().startswith(("|", "#")) or _HISTORICA.search(linea) or re.search(r"\d{4}-\d{2}-\d{2}", linea):
+                continue
+            conteos += [f"{n} {w}" for n, w in _CONTEO.findall(linea)]
+        if conteos:
+            h.append(("aviso", "R14", f"CLAUDE.md tiene {len(conteos)} conteo(s) escrito(s) a mano que se desactualizan: "
+                      + ", ".join(dict.fromkeys(conteos))[:120]))
+        # R15: agentes PM que nombra y no existen
+        pms = sorted(set(re.findall(r"\bpm-[a-z0-9]+(?:-[a-z0-9]+)*\b", "\n".join(l for l in texto.splitlines() if not _HISTORICA.search(l)))))
+        conocidos = _agentes_conocidos(carpeta)
+        if pms and conocidos:
+            sueltos = [x for x in pms if x not in conocidos]
+            if sueltos:
+                h.append(("aviso", "R15", "CLAUDE.md nombra agente(s) que no existen: " + ", ".join(sueltos[:MAX_EJEMPLOS])))
+    return h
+
+
+def _contenido_documentos(carpeta: Path) -> list:
+    h = []
+    # R16: documentos vivos que siguen siendo la plantilla
+    vacios = [rel for rel in ("docs/PRD.md", "docs/decisiones.md")
+              if (carpeta / rel).is_file() and len(_sin_instrucciones(_lee(carpeta / rel))) < 40]
+    if vacios:
+        h.append(("aviso", "R16", "siguen sin completar (solo la plantilla): " + ", ".join(vacios)))
+    return h
+
+
+def _contenido_pendientes(carpeta: Path) -> list:
+    h = []
+    # R17: PENDIENTES.md en el formato que lee el panel
+    pend = carpeta / ".claude" / "PENDIENTES.md"
+    if pend.is_file():
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("pendientes_check", Path(__file__).with_name("pendientes-check.py"))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            prob, _ids, _ult = mod.analizar(_lee(pend))
+            if prob:
+                h.append(("aviso", "R17", f".claude/PENDIENTES.md tiene {len(prob)} problema(s) de formato: " + " | ".join(prob[:2])))
+        except Exception:
+            h.append(("aviso", "R17", "no se pudo revisar .claude/PENDIENTES.md"))
+    return h
+
+
+def _contenido_reanudar(carpeta: Path) -> list:
+    h = []
+    # R18: el texto de reanudación (REANUDAR.md) coherente con la caja
+    rea = carpeta / ".claude" / "prompts" / "REANUDAR.md"
+    if rea.is_file():
+        t = _lee(rea)
+        problemas = []
+        if len(t.splitlines()) > 120:
+            problemas.append(f"tiene {len(t.splitlines())} líneas (conviene ≤ 120: contrato + estado, no un informe)")
+        m = re.search(r"Worktree:\s*`?(\S+?)`?\s*·\s*Rama:\s*`?([^\s`]+)", t)
+        if m and (m.group(1).startswith(("~", "/")) or re.match(r"[A-Za-z]:[\\/]", m.group(1))):
+            wt = Path(os.path.expanduser(m.group(1))).resolve()
+            if not wt.exists():
+                problemas.append(f"dice Worktree {m.group(1)} y esa carpeta no existe")
+            elif _misma_carpeta(wt, carpeta):
+                code, rama = ejecutar_git("branch", "--show-current", cwd=carpeta)
+                if code == 0 and rama and rama != m.group(2).rstrip(".,;"):
+                    problemas.append(f"dice Rama {m.group(2)} y la caja está en {rama}")
+        c = re.search(r"cierre (\d{4})-(\d{2})-(\d{2})", t[:800])
+        if c:
+            try:
+                dias = (date.today() - date(int(c.group(1)), int(c.group(2)), int(c.group(3)))).days
+                if dias > 30:
+                    problemas.append(f"el último cierre es de hace {dias} días (más de 30)")
+            except ValueError:
+                pass
+        falta = rutas_citadas_que_faltan(t, carpeta)
+        if falta:
+            problemas.append(f"cita {len(falta)} ruta(s) que no existen: " + ", ".join(falta[:MAX_EJEMPLOS]))
+        if problemas:
+            h.append(("aviso", "R18", "REANUDAR.md " + "; ".join(problemas)))
+    return h
+
+
 def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
     """Aplica las reglas R1-R10 y R12 a una caja concreta, descontando las excepciones escritas.
     Retorna [(tipo, id, mensaje)]; tipo «excepcion» = lo decidido dejar así (no cuenta como falla)."""
@@ -749,7 +931,7 @@ def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
     mia = ruta_en_repo(raiz, carpeta)
     salida = []
     for tipo, r_id, msg in hallazgos:
-        exceptuable = tipo == "error" or r_id == "R12"  # R12 es aviso, pero también se puede dejar así por escrito
+        exceptuable = tipo == "error" or r_id in ("R12", "R13", "R14", "R15", "R16", "R17", "R18")  # R12 es aviso, pero también se puede dejar así por escrito
         if exceptuable and r_id not in NO_EXCEPTUABLES and r_id != "R8" and (r_id, mia) in excepciones:
             salida.append(("excepcion", r_id, f"{msg} (motivo: {excepciones[(r_id, mia)]})"))
         else:
@@ -878,6 +1060,12 @@ def _revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
     faltan = faltan_documentos_vivos(carpeta)
     if faltan:
         hallazgos.append(("aviso", "R12", "faltan los documentos vivos: " + ", ".join(faltan)))
+
+    # R13-R18: el contenido de los archivos (rutas, conteos, agentes, documentos, pendientes, reanudación)
+    try:
+        hallazgos.extend(revisar_contenido(carpeta))
+    except Exception as e:   # el control nunca rompe un arranque
+        hallazgos.append(("aviso", "R13", f"no se pudo revisar el contenido ({type(e).__name__})"))
 
     return hallazgos
 
