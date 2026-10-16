@@ -939,6 +939,11 @@ class TestContenido(unittest.TestCase):
             finally:
                 os.chmod(caja / "scripts", 0o755)
 
+    def test_anclas_y_columnas_no_son_rutas_faltantes(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, "Ver `docs/PRD.md#arquitectura` y `docs/PRD.md:10:5` y `./CLAUDE.md`.\n")
+            self.assertNotIn("R13", self._ids(caja))
+
     def test_las_reglas_nuevas_tienen_arreglo_en_el_molde(self):
         md = SCRIPTS_DIR.parent / "estructura" / "ESTRUCTURA.md"
         arreglos = estructura.cargar_arreglos(str(md))
