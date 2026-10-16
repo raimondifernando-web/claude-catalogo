@@ -30,7 +30,7 @@ faltan = []
 
 def git(*args):
     try:
-        r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
+        r = subprocess.run(["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.devnull, "-C", cwd, *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
         return r.stdout.strip() if r.returncode == 0 else None
     except Exception:
         return None
@@ -300,9 +300,28 @@ def serie_sesiones():
     except Exception as e:  # nunca romper el chequeo por esto
         print(f"- Grupo: no pude leer los grupos de la app ({type(e).__name__}); mirá get_session(\"self\").group")
     if viejas:
-        print("• SESIONES ANTERIORES SIN ARCHIVAR (archivalas directo, sin preguntar; ids para archive_session):")
+        import sesiones_hijas as _sh  # noqa: E402
+        _todas = _sh.cargar()
+        libres, frenadas = [], []
         for n, s in viejas:
+            hijas = _sh.hijas_de(s["sessionId"], _todas, excluir=(yo["sessionId"],))
+            (frenadas if any(_sh.bloqueos_de(h, _todas) for h in hijas) else libres).append((s, hijas))
+        if libres:
+            print("• SESIONES ANTERIORES SIN ARCHIVAR (archivalas directo, sin preguntar; ids para archive_session):")
+        for s, hijas in libres:
             print(f"    {s['sessionId']} «{s.get('title', '')}»")
+            for _p in _sh.pistas_archivar(s):  # si la app la rechaza, el motivo ya está medido en el disco
+                print(f"      ⚠ si la app la rechaza: {_p}")
+            if hijas:
+                print("      se archivan con ella (sin trabajo pendiente): " + ", ".join(f"«{h.get('title', '')}»" for h in hijas))
+        for s, hijas in frenadas:
+            # Lo resuelve ESTA sesión, no la persona: no entra en «Falta» ni es una pregunta
+            print(f"• RESOLVER ANTES DE ARCHIVAR {s['sessionId']} «{s.get('title', '')}» (se llevaría hijas con trabajo pendiente; hacelo VOS y volvé a correr arrancar-check.py):")
+            for h in hijas:
+                for x in _sh.acciones_de(h, _todas):
+                    print(f"      ✗ hija «{h.get('title', '')}» ({h['sessionId']}): {x}")
+        if frenadas:
+            print("      → solo si una acción de arriba exige algo que únicamente la persona puede decidir (permisos, un OK), decíselo en UNA línea")
     else:
         print("✓ Serie anterior: no hay sesiones sin archivar")
 
@@ -322,9 +341,10 @@ try:
     _lib, _ret = sh.clasificar(sh.citadas_en(texto, _tod, excluir=(_yo["sessionId"],) if _yo else ()), _tod)
     if _lib:
         print("• ARCHIVAR (sesiones que cita el REANUDAR; archivalas vos con archive_session, sin preguntarle a nadie): "
-              + ", ".join(f"{h['sessionId']} «{h.get('title', '')}»" for h, _b in _lib))
+              + ", ".join(f"{h['sessionId']} «{h.get('title', '')}»" + "".join(f" [⚠ si la rechaza: {_p}]" for _p in sh.pistas_archivar(h)) for h, _b in _lib))
     for h, b in _ret:
-        print(f"• NO ARCHIVAR «{h.get('title', '')}» ({h['sessionId']}), la cita el REANUDAR: {'; '.join(b)} (la resuelve su dueña, no es una pregunta para vos)")
+        print(f"• NO ARCHIVAR TODAVÍA «{h.get('title', '')}» ({h['sessionId']}), la cita el REANUDAR: {'; '.join(b)} → hacelo VOS: "
+              + " | ".join(a.split(" → ", 1)[-1] for a in sh.acciones_de(h, _tod)))
 except Exception as e:
     print(f"• Sesiones citadas por el REANUDAR: no se pudo medir ({type(e).__name__})")
 

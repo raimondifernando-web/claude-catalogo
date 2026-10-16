@@ -1,5 +1,13 @@
 # metodo — qué cambia para vos
 
+## 0.46.0 — 2026-10-15
+**Cuando algo frena el cierre o el archivado, Claude hace el trabajo y recién después cierra; ya no te lo deja como tarea.** Se aplica solo; no hay nada que correr.
+- **Antes:** si una sesión hija tenía algo pendiente, `/arrancar` decía `NO ARCHIVAR … resolver antes de archivar` y la tarea te quedaba a vos; `/cerrar` marcaba ✗ sin decir qué hacer.
+- **Ahora** cada ✗ trae la acción exacta (pedirle a la hija que guarde y suba lo suyo, esperar a que termine, leer su informe) y la sesión la ejecuta, repite el chequeo y archiva. A la persona solo le llega, en una línea, lo que únicamente ella puede decidir.
+- **La caché de herramientas (`.omc/`, `__pycache__`, `.DS_Store`) ya no cuenta como trabajo** en la copia de una hija: antes frenaba el archivado sin motivo.
+- **Si `archive_session` va a ser rechazado** (cliente remoto abierto, informe en cola), el chequeo lo avisa de antemano con `⚠ si la app la rechaza: …`; y las sesiones ya archivadas no se mencionan.
+- **Repo que no une solo** (no está en `~/.claude/unir-a-main.txt`): `/cerrar` lo dice **una vez** y deja el camino: abrir el PR, unirlo con `gh pr merge --squash --auto` (o dejarte UN comando si el repo no lo admite), volver a la rama base **sin perder el `REANUDAR.md`** (`cierre_repo.py volver`) y seguir con el paso de abrir la sesión siguiente y archivarse. Antes el cierre quedaba parado en la rama de cierre y saltaba ese paso.
+
 ## 0.45.0 — 2026-10-15
 **Claude te llama como VOS pedís que te llamen, y sabe qué hacer si en la misma computadora trabajan varias personas.** Se aplica solo; no hay nada que correr.
 - **Regla 24 (nueva):** en TU ficha personal (`~/.claude/CLAUDE.md`, la de tu computadora) va una línea `Llamame: …` con cómo querés que te llamen (un apodo, si querés). Claude nunca usa en su lugar tu nombre formal, el del correo ni el de git. Las fichas de las carpetas (que comparte el equipo) no llevan nombres de personas.
