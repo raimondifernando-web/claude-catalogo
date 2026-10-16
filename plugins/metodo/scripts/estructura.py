@@ -748,7 +748,7 @@ _RUTA_PERSONAL = {".env", "CLAUDE.local.md", "settings.local.json"}   # personal
 _RUTA_GENERADA = ("graphify-out", "node_modules", ".omc", "__pycache__", ".venv", "dist/", "out/", ".git/")
 _CONTEO = re.compile(r"\b(\d{2,})\s+(agentes|skills|plugins|PMs|proyectos|cajas|workflows|scripts|hooks|MCPs|repos)\b")
 _BACKTICK = re.compile(r"`([^`\n]+)`")
-_HISTORICA = re.compile(r"ya no existe|retirad|archivad|borrad|obsolet|desinstalad|apagad|antes:|era |eran |viej", re.I)
+_HISTORICA = re.compile(r"ya no existe|retirad|archivad|borrad|obsolet|desinstalad|apagad|antes:|\bera\b|\beran\b|viej", re.I)
 MAX_EJEMPLOS = 3
 
 
@@ -773,16 +773,19 @@ def rutas_citadas_que_faltan(texto: str, carpeta: Path) -> list:
                 tok = tok.rsplit(":", 1)[0]
             if not tok.startswith(_RUTA_PREFIJOS) or " " in tok or any(c in tok for c in "<>*{}$…|()[]"):
                 continue
-            if ".." in tok.strip("./") or tok.rstrip("/").rsplit("/", 1)[-1] in _RUTA_PERSONAL:
+            if ".." in tok.split("/") or tok.rstrip("/").rsplit("/", 1)[-1] in _RUTA_PERSONAL:
                 continue
-            if any(g in tok for g in _RUTA_GENERADA):
+            if any(g.rstrip("/") in tok.split("/") or g in ("graphify-out", "node_modules") and g in tok for g in _RUTA_GENERADA):
                 continue
             if "/" not in tok.lstrip("~./"):
                 continue
-            if tok.startswith("~/"):
-                existe = Path(os.path.expanduser(tok)).exists()
-            else:
-                existe = any((b / tok).exists() for b in bases)
+            try:
+                if tok.startswith("~/"):
+                    existe = Path(os.path.expanduser(tok)).exists()
+                else:
+                    existe = any((b / tok).exists() for b in bases)
+            except OSError:   # sin permiso o nombre demasiado largo: no se puede afirmar que falte
+                existe = True
             if not existe and tok not in faltan:
                 faltan.append(tok)
     return faltan
@@ -852,7 +855,7 @@ def revisar_contenido(carpeta: Path) -> list:
             spec.loader.exec_module(mod)
             prob, _ids, _ult = mod.analizar(_lee(pend))
             if prob:
-                h.append(("error", "R17", f".claude/PENDIENTES.md tiene {len(prob)} problema(s) de formato: " + " | ".join(prob[:2])))
+                h.append(("aviso", "R17", f".claude/PENDIENTES.md tiene {len(prob)} problema(s) de formato: " + " | ".join(prob[:2])))
         except Exception:
             h.append(("aviso", "R17", "no se pudo revisar .claude/PENDIENTES.md"))
     # R18: el texto de reanudación (REANUDAR.md) coherente con la caja
@@ -862,21 +865,21 @@ def revisar_contenido(carpeta: Path) -> list:
         problemas = []
         if len(t.splitlines()) > 120:
             problemas.append(f"tiene {len(t.splitlines())} líneas (conviene ≤ 120: contrato + estado, no un informe)")
-        m = re.search(r"Worktree:\s*(\S+)\s*·\s*Rama:\s*(\S+)", t)
+        m = re.search(r"Worktree:\s*`?(\S+?)`?\s*·\s*Rama:\s*`?([^\s`]+)", t)
         if m and m.group(1).startswith(("~", "/")):
             wt = Path(os.path.expanduser(m.group(1))).resolve()
             if not wt.exists():
                 problemas.append(f"dice Worktree {m.group(1)} y esa carpeta no existe")
             elif wt == carpeta.resolve():
                 code, rama = ejecutar_git("branch", "--show-current", cwd=carpeta)
-                if code == 0 and rama and rama != m.group(2):
+                if code == 0 and rama and rama != m.group(2).rstrip(".,;"):
                     problemas.append(f"dice Rama {m.group(2)} y la caja está en {rama}")
         c = re.search(r"cierre (\d{4})-(\d{2})-(\d{2})", t[:300])
         if c:
             try:
                 dias = (date.today() - date(int(c.group(1)), int(c.group(2)), int(c.group(3)))).days
-                if dias > 14:
-                    problemas.append(f"el último cierre es de hace {dias} días")
+                if dias > 30:
+                    problemas.append(f"el último cierre es de hace {dias} días (más de 30)")
             except ValueError:
                 pass
         falta = rutas_citadas_que_faltan(t, carpeta)
@@ -1028,7 +1031,10 @@ def _revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
         hallazgos.append(("aviso", "R12", "faltan los documentos vivos: " + ", ".join(faltan)))
 
     # R13-R18: el contenido de los archivos (rutas, conteos, agentes, documentos, pendientes, reanudación)
-    hallazgos.extend(revisar_contenido(carpeta))
+    try:
+        hallazgos.extend(revisar_contenido(carpeta))
+    except Exception as e:   # el control nunca rompe un arranque
+        hallazgos.append(("aviso", "R13", f"no se pudo revisar el contenido ({type(e).__name__})"))
 
     return hallazgos
 

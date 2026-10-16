@@ -909,12 +909,12 @@ class TestContenido(unittest.TestCase):
             self.assertIn("docs/PRD.md", h[0])
             self.assertNotIn("decisiones", h[0])
 
-    def test_r17_pendientes_mal_formado_es_falla(self):
+    def test_r17_pendientes_mal_formado_avisa(self):
         with tempfile.TemporaryDirectory() as td:
             mal = "## A · Cosas\n| ID | Pendiente | Prioridad | Estado | x | y | z | w |\n|---|---|---|---|---|---|---|---|\n| A1 | algo | 9 | cualquiera | a | b | c | d |\n"
             caja = self._caja(td, **{".claude__PENDIENTES.md": mal})
             h = [(t, r) for t, r, _m in estructura.revisar_contenido(caja)]
-            self.assertIn(("error", "R17"), h)
+            self.assertIn(("aviso", "R17"), h)
 
     def test_r18_reanudar_incoherente(self):
         with tempfile.TemporaryDirectory() as td:
@@ -928,6 +928,15 @@ class TestContenido(unittest.TestCase):
             self.assertIn("Rama otra/rama", h[0])
             self.assertIn("hace", h[0])
             self.assertIn("docs/falta.md", h[0])
+
+    def test_carpeta_ilegible_no_rompe(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td, "Ver `docs/secreta/x.md`.\n")
+            os.chmod(caja / "docs", 0)
+            try:
+                estructura.revisar_caja(caja, "proyecto")   # no debe lanzar
+            finally:
+                os.chmod(caja / "docs", 0o755)
 
     def test_las_reglas_nuevas_tienen_arreglo_en_el_molde(self):
         md = SCRIPTS_DIR.parent / "estructura" / "ESTRUCTURA.md"

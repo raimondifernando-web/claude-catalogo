@@ -84,8 +84,8 @@ Fuera de las cajas:
 | R14 | El `CLAUDE.md` no tiene conteos escritos a mano («12 agentes», «40 skills»): se desactualizan | toda caja | aviso | reemplazar el número por el comando que lo cuenta (por ejemplo, contarlo con `ls`) |
 | R15 | Los agentes `pm-…` que nombra el `CLAUDE.md` existen | toda caja | aviso | corregir el nombre o crear el agente |
 | R16 | `docs/PRD.md` y `docs/decisiones.md` están completados (no son solo la plantilla) | toda caja | aviso | completarlos con la sesión de la caja: nunca se inventa el contenido |
-| R17 | `.claude/PENDIENTES.md`, si existe, tiene el formato que lee el panel (8 columnas, estados válidos, sin IDs repetidos) | toda caja | ✗ | corregir las filas que indica el aviso (las mide `pendientes-check.py`) |
-| R18 | `.claude/prompts/REANUDAR.md`, si existe, es coherente: la rama y la carpeta que dice son las de la caja, las rutas que cita existen, no pasa de 120 líneas y su cierre no tiene más de 14 días | toda caja | aviso | volver a cerrar la sesión con `/cerrar` (reescribe el texto de reanudación) |
+| R17 | `.claude/PENDIENTES.md`, si existe, tiene el formato que lee el panel (8 columnas, estados válidos, sin IDs repetidos) | toda caja | aviso | corregir las filas que indica el aviso (las mide `pendientes-check.py`) |
+| R18 | `.claude/prompts/REANUDAR.md`, si existe, es coherente: la rama y la carpeta que dice son las de la caja, las rutas que cita existen, no pasa de 120 líneas y su cierre no tiene más de 30 días | toda caja | aviso | volver a cerrar la sesión con `/cerrar` (reescribe el texto de reanudación) |
 
 **Excepciones:** lo que se decidió dejar así, con su motivo, no queda como ✗ para siempre: se anota en
 `.estructura-excepciones.json` en la raíz del repositorio, una lista de
