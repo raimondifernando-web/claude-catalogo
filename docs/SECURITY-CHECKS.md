@@ -1120,7 +1120,9 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Límites (lo NO comprobado) | No probado con una ficha real de cliente. No probado en Windows. |
 | Veredicto | **PASS**: sin hallazgos de seguridad. Lo escribe Tech con revisión de Gemini; no la hizo quien lo programó. |
 
-### 2026-10-16 · metodo 0.46.0 (el cierre y el arranque hacen lo resoluble; `cierre_repo.py` nuevo) — commit de main `9877e3e`
+### 2026-10-16 · metodo 0.46.0 (commit 9877e3e) — PASS
+
+*El cierre y el arranque hacen lo resoluble; `cierre_repo.py` nuevo.*
 | Ítem | Resultado |
 |---|---|
 | Qué cambia | `arrancar-check.py`, `cerrar-check.py` y `sesiones_hijas.py`: cada ✗ de una hija trae la acción exacta y la caché de herramientas (`.omc/`, `__pycache__`, `.DS_Store`) ya no cuenta como trabajo; `cierre_repo.py` (nuevo): `estado` y `volver` para repos que no unen solos; textos de `arrancar` y `cerrar`; `zona-sensible.py` agrega `--no-ext-diff` a dos `git diff`. Diff real revisado: `6e06c17..9877e3e` (13 archivos). |
