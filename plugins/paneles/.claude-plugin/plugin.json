@@ -1,7 +1,7 @@
 {
   "name": "paneles",
-  "version": "0.4.0",
-  "description": "Cuatro paneles a la derecha de la app: «Uso», «Pendientes», «Tareas» y «Actividad» (qué agente, subagente o skill se activó y quién lo lanzó). Uso, Pendientes y Tareas solo leen. Actividad guarda en tu Mac, en la carpeta de Claude, un registro liviano con nombre y hora (nunca contenido).",
+  "version": "0.5.0",
+  "description": "Tres paneles a la derecha de la app: «Uso», «Tareas y pendientes» (uno solo: las tareas de la sesión arriba, los pendientes que arrastramos abajo) y «Actividad» (qué agente, subagente o skill se activó y quién lo lanzó). Uso y Tareas y pendientes solo leen. Actividad guarda en tu Mac, en la carpeta de Claude, un registro liviano con nombre y hora (nunca contenido).",
   "author": {
     "name": "Fernando Raimondi"
   },
