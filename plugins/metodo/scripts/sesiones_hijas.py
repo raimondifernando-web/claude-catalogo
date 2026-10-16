@@ -95,7 +95,7 @@ def bloqueos_det(h, ses):
     wt = h.get("worktreePath")
     if wt and os.path.isdir(wt):
         try:
-            st = subprocess.run(["git", "-C", wt, "--no-optional-locks", "status", "--short", "-uall"], capture_output=True, text=True,
+            st = subprocess.run(["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.devnull, "-C", wt, "--no-optional-locks", "status", "--short", "-uall"], capture_output=True, text=True,
                                 encoding="utf-8", errors="replace", timeout=20).stdout
         except Exception:
             st = ""

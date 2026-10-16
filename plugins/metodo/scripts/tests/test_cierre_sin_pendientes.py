@@ -175,6 +175,27 @@ class Casos(unittest.TestCase):
         for malo in ("RESOLVER ANTES DE ARCHIVAR", "NO ARCHIVAR", "Falta: serie", "su dueño"):
             self.assertNotIn(malo, out)
 
+    # ---- Seguridad (revisión C117): un .git/config con core.fsmonitor NO se ejecuta desde estos scripts ----
+    def test_fsmonitor_del_git_config_no_se_ejecuta(self):
+        if os.name == "nt":
+            self.skipTest("el señuelo es un script de shell")
+        marca = self.t / "marca-fsmonitor"
+        senuelo = self.t / "senuelo.sh"
+        senuelo.write_text(f"#!/bin/sh\ntouch '{marca}'\n", encoding="utf-8")
+        senuelo.chmod(0o755)
+        wt = self.hija_wt("fs", "hija/fs")  # se prepara ANTES del señuelo: los git del propio test lo dispararían
+        g(self.repo, "config", "core.fsmonitor", str(senuelo))
+        g(self.repo, "status")
+        self.assertTrue(marca.exists(), "control: sin el arreglo, git SÍ ejecuta el señuelo")
+        marca.unlink()
+        sh.bloqueos_det({"sessionId": "h", "worktreePath": str(wt)}, [])
+        cr.volver(str(self.repo))
+        cr.lineas_cierre(str(self.repo))
+        self.reanudar()
+        self.correr("cerrar-check.py")
+        self.correr("arrancar-check.py")
+        self.assertFalse(marca.exists(), "un fsmonitor declarado en .git/config se ejecutó")
+
 
 if __name__ == "__main__":
     unittest.main()

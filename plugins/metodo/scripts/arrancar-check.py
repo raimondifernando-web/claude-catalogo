@@ -30,7 +30,7 @@ faltan = []
 
 def git(*args):
     try:
-        r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
+        r = subprocess.run(["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.devnull, "-C", cwd, *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
         return r.stdout.strip() if r.returncode == 0 else None
     except Exception:
         return None

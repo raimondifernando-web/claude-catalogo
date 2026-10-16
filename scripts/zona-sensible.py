@@ -222,7 +222,7 @@ def manifiesto_cambia_lo_que_corre(base, head, ruta):
 def con_poderes(base, head):
     """Skills, comandos o agentes cuyas líneas AGREGADAS les dan hooks, servidores, permisos o ejecución al cargar."""
     out = {}
-    diff = git("diff", "-U0", "--no-renames", "--no-color", f"{base}...{head}", "--", *CARPETAS_CON_PODERES).stdout
+    diff = git("diff", "--no-ext-diff", "-U0", "--no-renames", "--no-color", f"{base}...{head}", "--", *CARPETAS_CON_PODERES).stdout
     actual = None
     for linea in diff.splitlines():
         if linea.startswith("+++ "):
@@ -233,7 +233,7 @@ def con_poderes(base, head):
 
 
 def revisar(base, head):
-    cambiados = [p for p in git("diff", "--name-only", "-z", "--no-renames", f"{base}...{head}").stdout.split("\0") if p]
+    cambiados = [p for p in git("diff", "--no-ext-diff", "--name-only", "-z", "--no-renames", f"{base}...{head}").stdout.split("\0") if p]
     reglas = list(FIJAS)
     for sha in (base, head):  # lo que los hooks ejecutaban antes Y después
         reglas += list(ejecutados_por_hooks(sha, archivos(sha)).items())

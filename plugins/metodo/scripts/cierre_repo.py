@@ -28,7 +28,7 @@ RUIDO = re.compile(r"(^|/)(\.omc|__pycache__|\.pytest_cache|node_modules)(/|$)|(
 
 def git(repo, *a):
     try:
-        r = subprocess.run(["git", "-C", repo, *a], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
+        r = subprocess.run(["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.devnull, "-C", repo, *a], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
         return r.stdout.strip() if r.returncode == 0 else None
     except Exception:
         return None
@@ -113,7 +113,7 @@ def volver(repo, a=None):
         return False, f"hay {len(sucios)} archivo(s) versionados sin guardar ({sucios[0].strip()[:60]}…): guardalos (commit) antes de volver"
     ruta = os.path.join(repo, REANUDAR)
     guardado = _leer(ruta)
-    r = subprocess.run(["git", "-C", repo, "checkout", "-q", b], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    r = subprocess.run(["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.devnull, "-C", repo, "checkout", "-q", b], capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode != 0:
         return False, f"git checkout {b} falló: {r.stderr.strip()[:160]}"
     if guardado is not None and _leer(ruta) != guardado:

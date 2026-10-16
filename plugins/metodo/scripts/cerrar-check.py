@@ -47,7 +47,7 @@ A_MANO = []  # archivos que se dieron por ajenos con --ajeno: el veredicto final
 
 def git(*a):
     try:
-        r = subprocess.run(["git", "-C", cwd, *a], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
+        r = subprocess.run(["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.devnull, "-C", cwd, *a], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
         return r.stdout.strip() if r.returncode == 0 else None
     except Exception:
         return None
