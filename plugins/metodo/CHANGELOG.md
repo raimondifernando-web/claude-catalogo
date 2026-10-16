@@ -7,6 +7,12 @@
 - **Cuándo corre (el mismo aviso de siempre):** al abrir cada sesión (la carpeta actual), la primera vez de cada semana recorre todas las cajas, y `/cerrar` lo muestra. Solo avisa y propone el arreglo; nunca cambia el contenido por su cuenta (`estructura.py arreglar` sigue creando únicamente lo que falta).
 - Un aviso que en tu caso es a propósito se deja por escrito en `.estructura-excepciones.json`, con motivo y fecha, como cualquier otra regla.
 
+## 0.47.1 — 2026-10-16
+**El recordatorio del nombre (0.47.0) queda más firme.** Se aplica solo; no hay nada que correr.
+- Solo repite apodos normales: letras, espacios, punto, guion y apóstrofe, hasta 40 caracteres. Si la línea `Llamame:` trae otra cosa (comillas que cierran la frase, texto larguísimo o con forma de instrucción), no dice nada.
+- Si la variable `CLAUDE_CONFIG_DIR` está definida pero vacía, usa tu carpeta de siempre (`~/.claude`) en vez de leer el `CLAUDE.md` de la carpeta de trabajo, que podría ser de un proyecto ajeno.
+- Entiende fichas guardadas con marca BOM y no falla en consolas de Windows con acentos.
+
 ## 0.47.0 — 2026-10-16
 **Claude te sigue llamando como pediste durante toda la sesión, no solo al abrirla.** Se aplica solo; no hay nada que correr.
 - **Antes:** la regla 24 se mostraba una vez al abrir la sesión («Quién habla: …») y a medida que la conversación avanzaba Claude volvía a decir tu nombre formal o ninguno.
