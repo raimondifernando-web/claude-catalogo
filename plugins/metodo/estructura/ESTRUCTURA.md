@@ -93,8 +93,15 @@ Fuera de las cajas:
 habla el aviso, relativa a esa raíz; `.` es la raíz misma). El control la muestra como `• excepción …` y no la cuenta como
 falla. Sin motivo o sin fecha no vale (se ignora y se avisa). R6 y R11 no se pueden exceptuar.
 
-El control **solo avisa**: nunca cambia nada solo. Para completar lo que falta: `estructura.py completar <carpeta>`, que
+El control (`revisar`) **solo avisa**; lo que se arregla solo es el *bucle de orden* de abajo, y únicamente donde la persona lo encendió. Para completar lo que falta: `estructura.py completar <carpeta>`, que
 agrega lo que no está y nunca pisa un archivo existente.
+
+### El bucle de orden: se arregla solo, en tres grupos
+Apagado por defecto. Se enciende con `estructura.py orden-config --encender` (y se apaga con `--apagar`); sin eso, solo muestra qué haría (`estructura.py auto`). Cada hallazgo cae en un grupo:
+1. **Seguro y reversible** — se aplica solo, un commit por arreglo, con una prueba que lo verifica, registro (`orden/registro.jsonl` en la carpeta de estado) y comando para deshacer (`estructura.py deshacer <id>`). Nunca hace push. Hoy: una ruta de `CLAUDE.md` que git muestra renombrada se reescribe con la ruta nueva · un documento vivo que falta se crea con su plantilla (si ya está en GitHub, no se crea: lo que falta es traerlo) · una caja atrasada que solo necesita avanzar (sin cambios propios) avanza. No toca un archivo con cambios sin guardar (puede estar editándolo otra sesión) ni un repositorio a mitad de una operación.
+2. **De juicio** — lo decide Claude con la evidencia del disco y la confirma una segunda IA; solo se aplica con `estructura.py aplicar <id> --verificado-por <IA>`. Hoy: una ruta que no existe, sin renombrado en git, pero con un único archivo del mismo nombre en la caja.
+3. **De la persona** — nunca se aplica solo. Llega como UNA pregunta de sí/no: qué se encontró, qué se propone y por qué, con la recomendación. Siempre acá: todo lo sensible (hooks, `settings`, `.mcp.json`, `.github/`, instaladores, lo que corre solo), borrar o mover carpetas, una caja sin repositorio, claves versionadas, las decisiones de negocio.
+La primera vez de cada semana, el aviso de arranque corre el bucle (si está encendido) y muestra un resumen de 3 líneas: «arreglé N cosas, nada pendiente».
 
 **Cuándo corre (nadie tiene que acordarse):** al abrir sesión revisa la carpeta actual · al cerrar sesión también · una vez
 por semana, la primera sesión recorre todas las carpetas de `~/Proyectos/`.

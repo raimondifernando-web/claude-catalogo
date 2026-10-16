@@ -1198,6 +1198,11 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
                 estado_file.write_text(semana_actual, encoding="utf-8")
             except OSError:
                 pass
+            try:   # el bucle de orden (C140): la primera vez de la semana, y solo ahí
+                import estructura_orden
+                estructura_orden.semanal(raiz)
+            except Exception:
+                pass
         if lineas_salida:
             # primero los ✗ (sort estable), como mucho 10 líneas
             ordenadas = sorted(lineas_salida, key=lambda l: not l.startswith("✗"))
@@ -1515,7 +1520,35 @@ def main():
     p_arreglar.add_argument("--origen", default=None, help="Ruta de ESTRUCTURA.md")
     p_arreglar.add_argument("--si", action="store_true", help="Aplica el plan (sin esto solo lo muestra)")
 
+    # Subcomandos del bucle de orden (estructura_orden.py)
+    p_auto = subparsers.add_parser("auto", help="Muestra (o con --si aplica) los arreglos seguros del bucle de orden")
+    p_auto.add_argument("--raiz", default=None, help="Raíz de proyectos (por defecto ~/Proyectos)")
+    p_auto.add_argument("--si", action="store_true", help="Aplica el grupo 1 (un commit por arreglo, con registro)")
+    p_aplicar = subparsers.add_parser("aplicar", help="Aplica un hallazgo de juicio (grupo 2) ya verificado por una segunda IA")
+    p_aplicar.add_argument("id")
+    p_aplicar.add_argument("--verificado-por", required=True, help="Qué IA verificó la evidencia")
+    p_aplicar.add_argument("--raiz", default=None)
+    p_deshacer = subparsers.add_parser("deshacer", help="Deshace un arreglo automático por su id")
+    p_deshacer.add_argument("id")
+    p_resumen = subparsers.add_parser("resumen", help="Resumen semanal de 3 líneas del bucle de orden")
+    p_resumen.add_argument("--raiz", default=None)
+    p_cfg = subparsers.add_parser("orden-config", help="Enciende o apaga la aplicación automática (apagada por defecto)")
+    p_cfg.add_argument("--encender", action="store_true")
+    p_cfg.add_argument("--apagar", action="store_true")
+
     args = parser.parse_args()
+
+    if args.comando in ("auto", "aplicar", "deshacer", "resumen", "orden-config"):
+        import estructura_orden as O
+        if args.comando == "auto":
+            sys.exit(O.comando_auto(raiz_arg=args.raiz, aplicar=args.si))
+        if args.comando == "aplicar":
+            sys.exit(O.comando_aplicar(args.id, args.verificado_por, raiz_arg=args.raiz))
+        if args.comando == "deshacer":
+            sys.exit(O.comando_deshacer(args.id))
+        if args.comando == "resumen":
+            sys.exit(O.comando_resumen(raiz_arg=args.raiz))
+        sys.exit(O.comando_config(args.encender, args.apagar))
 
     if args.comando == "dibujo":
         sys.exit(comando_dibujo(salida_ruta=args.salida, origen_ruta=args.origen))
