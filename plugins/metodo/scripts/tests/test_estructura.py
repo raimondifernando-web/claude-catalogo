@@ -931,12 +931,13 @@ class TestContenido(unittest.TestCase):
 
     def test_carpeta_ilegible_no_rompe(self):
         with tempfile.TemporaryDirectory() as td:
-            caja = self._caja(td, "Ver `docs/secreta/x.md`.\n")
-            os.chmod(caja / "docs", 0)
+            caja = self._caja(td, "Ver `scripts/secreta/x.md`.\n")
+            (caja / "scripts").mkdir()
+            os.chmod(caja / "scripts", 0)
             try:
                 estructura.revisar_caja(caja, "proyecto")   # no debe lanzar
             finally:
-                os.chmod(caja / "docs", 0o755)
+                os.chmod(caja / "scripts", 0o755)
 
     def test_las_reglas_nuevas_tienen_arreglo_en_el_molde(self):
         md = SCRIPTS_DIR.parent / "estructura" / "ESTRUCTURA.md"
