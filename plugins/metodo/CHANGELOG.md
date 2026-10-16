@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.47.2 — 2026-10-16
+**`radar.py hoy` suma, en la línea de cupo, el estado y el saldo estimado del Puente Gemini si lo usás.** Se aplica solo; no hay nada que correr.
+- **Antes:** el saldo del Puente Gemini solo se veía corriendo `puente-gemini estado`.
+- **Ahora**, si existe `~/.cerebro/puente-gemini.json` (lo deja ese comando), la línea «Cupo:» agrega «Puente Gemini: apagado · saldo ~US$X (estimado)». El saldo es una estimación; el real está en AI Studio → Gasto.
+- **Lo que no hace:** solo lee ese archivo; no usa internet ni toca claves. Si el archivo no existe (no usás el puente), no dice nada.
+
 ## 0.47.1 — 2026-10-16
 **El recordatorio del nombre (0.47.0) queda más firme.** Se aplica solo; no hay nada que correr.
 - Solo repite apodos normales: letras, espacios, punto, guion y apóstrofe, hasta 40 caracteres. Si la línea `Llamame:` trae otra cosa (comillas que cierran la frase, texto larguísimo o con forma de instrucción), no dice nada.
