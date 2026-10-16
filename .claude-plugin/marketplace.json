@@ -359,8 +359,8 @@
     {
       "name": "paneles",
       "source": "./plugins/paneles",
-      "description": "Cuatro paneles a la derecha de la app que se abren solos: «Uso» (contexto y cupo del plan), «Pendientes» (la lista de .claude/PENDIENTES.md), «Tareas» (las de la sesión, en vivo) y «Actividad» (qué agente, subagente o skill se activó, quién lo lanzó y si está trabajando ahora). Actividad guarda en tu Mac solo nombre y hora, nunca contenido; nada sale de tu máquina. Sin dependencias.",
-      "version": "0.4.0",
+      "description": "Tres paneles a la derecha de la app que se abren solos: «Uso» (contexto y cupo del plan), «Tareas y pendientes» (arriba las tareas de esta sesión, abajo la lista de .claude/PENDIENTES.md que arrastramos; se abre también con /tareas) y «Actividad» (qué agente, subagente o skill se activó, quién lo lanzó y si está trabajando ahora). Actividad guarda en tu Mac solo nombre y hora, nunca contenido; nada sale de tu máquina. Sin dependencias.",
+      "version": "0.5.0",
       "category": "productivity",
       "tags": [
         "l3",

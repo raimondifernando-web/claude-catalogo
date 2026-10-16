@@ -1,5 +1,12 @@
 # paneles
 
+## 0.5.0 — 2026-10-16
+- **Un solo panel, «Tareas y pendientes», en lugar de «Pendientes» y «Tareas».** Arriba, «ESTA SESIÓN» (las tareas de la sesión, con `.claude/tareas.json` o lo que la sesión anota); abajo, «PENDIENTES QUE ARRASTRAMOS» (`.claude/PENDIENTES.md`: prioridad 1 abierta, 2 y 3 plegadas). Lo que está en las dos listas se marca «en sesión» abajo; no se esconde. Se abre con `/tareas` (y `/pendientes`).
+- Símbolos: ○ por hacer · ◐ en curso · ✋ espera algo tuyo · ✅ hecho · › / ⌄ detalle · ↳ espera a la de arriba.
+- Tocar un pendiente despliega su detalle (de qué depende, qué desbloquea, esfuerzo, quién). Los «Cambios» salen de comparar con la versión anterior en git (solo lectura).
+- Uso y Actividad no cambian. Si ya tenías abiertos los paneles viejos, se reemplazan solos al empezar una sesión nueva.
+- Probado con 44 pruebas automáticas.
+
 ## 0.4.0 — 2026-10-16
 - **Cuarto panel, «Actividad»** (`/actividad`): ves qué agente, subagente o skill se activó, a quién llamó cada uno y cuáles están trabajando ahora. Árbol por sesión: cada skill cuelga del agente que la usó y cada subagente de quien lo lanzó. El agente se dibuja como un Bicho, el subagente como una luciérnaga y la skill como una hoja de archivo (son instrucciones); verde y animado = trabajando, gris = terminó. En la terminal se ven como símbolos de texto.
 - **Qué guarda (único panel que escribe):** un archivo por día y por sesión en `<carpeta de Claude>/actividad/` con tipo, nombre, hora, id corto de sesión y carpeta. Nunca el pedido, la descripción ni los argumentos. No manda nada afuera. Se registra solo, sin que nadie corra nada.

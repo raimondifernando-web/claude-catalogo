@@ -3,7 +3,7 @@ import type { EngineInterface, Register, SessionContextUsage, SessionRateLimit }
 
 import type { ActModelo, ActNodo, ActSesion, ActSinUso, Tarea, Categoria, Cambio, Cambios, Fila, Gasto, Limite, Medida, Modelo, Proxima } from '../types'
 
-// Plugin «paneles»: tres paneles a la derecha, «Uso», «Pendientes» y «Tareas». Un plugin tiene un solo
+// Plugin «paneles»: tres paneles a la derecha, «Uso», «Tareas y pendientes» (uno solo) y «Actividad». Un plugin tiene un solo
 // módulo de hooks y no admite dos hooks del mismo evento sin filtro, y `$` no cruza archivos:
 // por eso van juntos acá, y los hooks de los dos paneles se encadenan al final.
 
@@ -384,35 +384,42 @@ const registrarUso: Register = on => {
 // SOLO LEE el archivo. Los «Cambios» salen de git.
 
 const P_PANEL = 'pendientes'
-const P_TITULO = 'Pendientes'
+
+// Panel «Tareas y pendientes» (unifica los mods tareas-sesion y pendientes, 2026-10-16). Arriba, «Esta sesión»: las
+// tareas de la sesión (.claude/tareas.json y las llamadas a TodoWrite/TaskCreate). Abajo, «Pendientes que arrastramos»:
+// la lista de .claude/PENDIENTES.md de la CARPETA de la sesión (la carpeta misma o la raíz de su repo git). Lo que
+// está en las dos listas se MARCA abajo («en sesión»), no se esconde. SOLO LEE los archivos. Los «Cambios» salen de git.
+const UN_PANEL = 'pendientes'
+const UN_TITULO = 'Tareas y pendientes'
+const ARCHIVO_TAREAS = '.claude/tareas.json'
 const ARCHIVO = '.claude/PENDIENTES.md'
-const CADA = 30_000
+const CADA = 5_000
 
 const datos = atom({ plugin: 'paneles', key: 'datos' } as const, null)
-const abierto = atom({ plugin: 'paneles', key: 'abierto' } as const, false)
+// Grupos de prioridad desplegados (p1 siempre se ve; p2 y p3 arrancan plegados).
+const grupos = atom({ plugin: 'paneles', key: 'grupos' } as const, [])
+// Tareas que la propia sesión carga con TodoWrite / TaskCreate (valen si no hay tareas.json).
+const lista = atom({ plugin: 'paneles', key: 'lista' } as const, [])
 // IDs de las filas desplegadas para ver su detalle.
 const detalle = atom({ plugin: 'paneles', key: 'detalle' } as const, [])
 
 const COLUMNAS = ['ID', 'Pendiente', 'Prio', 'Estado', 'Depende de', 'Esf.', 'Quién', 'Origen']
-const ESTADOS = ['pendiente', 'en curso', 'hecho']
-// «espera dato de <alguien>» / «espera OK de <alguien>»: lo que está parado esperando una respuesta.
-const esperaRespuesta = (estado: string): boolean => /^espera (dato|OK) de \S/.test(estado)
-const estadoValido = (estado: string): boolean => ESTADOS.includes(estado) || esperaRespuesta(estado)
+const ESTADOS = ['pendiente', 'en curso', 'espera dato de F', 'espera OK de F', 'hecho']
+const ESTADOS_TAREA = ['pending', 'in_progress', 'completed']
 const MAX_CAMBIOS = 8
 
-// Colores del sistema de Apple, sin flúor.
-// Naranja = espera una respuesta. Rojo suave = algo falló. Todo lo demás, en gris.
+// Colores del sistema de Apple, sin flúor: lo que depende de Fernando se destaca.
+// Naranja = te toca a vos. Rojo suave = algo falló. Todo lo demás, en gris.
 const NARANJA = '#FF9F0A'
 const ROJO = '#FF453A'
-const P_SEPARADOR = 'rgba(142,142,147,0.28)'
+const UN_SEPARADOR = 'rgba(142,142,147,0.28)'
 
 // Argentina no cambia de hora: UTC-3 todo el año.
-const P_ART_MS = 3 * 60 * 60 * 1000
 const DIA_MS = 24 * 60 * 60 * 1000
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
-const P_ANCHO = 300
-const P_SEPARACION = `<svg xmlns="http://www.w3.org/2000/svg" width="${P_ANCHO}" height="1" viewBox="0 0 ${P_ANCHO} 1"><rect width="${P_ANCHO}" height="1" fill="${P_SEPARADOR}"/></svg>`
+const UN_ANCHO = 300
+const UN_SEPARACION = `<svg xmlns="http://www.w3.org/2000/svg" width="${UN_ANCHO}" height="1" viewBox="0 0 ${UN_ANCHO} 1"><rect width="${UN_ANCHO}" height="1" fill="${UN_SEPARADOR}"/></svg>`
 
 // ---------- Lectura del archivo ----------
 
@@ -558,7 +565,7 @@ function analizar(texto: string): Lectura {
       problemas.push(`${id}: la prioridad «${c[2]}» no es 1, 2 ni 3.`)
       return
     }
-    if (!estadoValido(estado)) {
+    if (!ESTADOS.includes(estado)) {
       problemas.push(`${id}: el estado «${estado}» no es uno de los conocidos.`)
       return
     }
@@ -598,7 +605,7 @@ function analizar(texto: string): Lectura {
 // ---------- Próxima fecha ----------
 
 function diaART(ms: number): number {
-  const d = new Date(ms - P_ART_MS)
+  const d = new Date(ms - ART_MS)
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
 }
 
@@ -606,9 +613,9 @@ const dos = (n: number): string => String(n).padStart(2, '0')
 
 // Hasta cuándo vale la fecha: la hora exacta, o el final del día / del mes si no trae hora.
 function finDe(f: Fecha): number {
-  if (f.d !== undefined && f.h !== undefined) return Date.UTC(f.y, f.mo - 1, f.d, f.h, f.mi ?? 0) + P_ART_MS
-  if (f.d !== undefined) return Date.UTC(f.y, f.mo - 1, f.d + 1) + P_ART_MS
-  return Date.UTC(f.y, f.mo, 1) + P_ART_MS
+  if (f.d !== undefined && f.h !== undefined) return Date.UTC(f.y, f.mo - 1, f.d, f.h, f.mi ?? 0) + ART_MS
+  if (f.d !== undefined) return Date.UTC(f.y, f.mo - 1, f.d + 1) + ART_MS
+  return Date.UTC(f.y, f.mo, 1) + ART_MS
 }
 
 function etiquetaFecha(f: Fecha, ahora: number): string {
@@ -628,10 +635,6 @@ function proximaFecha(fechas: Fecha[], ahora: number): Proxima | undefined {
 }
 
 // ---------- Cambios (git) ----------
-// git corre en la carpeta de la sesión, que puede ser un repo ajeno: un `.git/config` con `core.fsmonitor=<comando>` ejecutaría ese comando al hacer `git status`.
-// Se apagan las dos opciones que lanzan programas o escriben caché (F11 del security check 0.35.0). Todas las llamadas a git de este archivo pasan por acá.
-const GIT_SEGURO = ['--no-optional-locks', '-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false']
-
 
 function comparar(vieja: Fila[], nueva: Fila[]): Cambio[] {
   const antes = new Map(vieja.map(f => [f.id, f]))
@@ -674,7 +677,7 @@ function diaCorto(iso: string | undefined): string | undefined {
 // La versión de comparación: si el archivo tiene cambios sin guardar, la última guardada;
 // si no, la anterior a la última. Todo sale de `git log` del archivo.
 async function cambiosDeGit($: EngineInterface, repo: string, nueva: Fila[]): Promise<Cambios> {
-  const git = (args: string[]) => $.process.run(['git', ...GIT_SEGURO, '-C', repo, ...args])
+  const git = (args: string[]) => $.process.run(['git', '-C', repo, ...args])
   try {
     const estado = await git(['status', '--porcelain', '--', ARCHIVO])
     // Carpeta que no es repo git (código 128): no hay historial, no es un error.
@@ -706,18 +709,19 @@ async function cambiosDeGit($: EngineInterface, repo: string, nueva: Fila[]): Pr
 const VACIO: Cambios = { estado: 'sin-anterior', lista: [], extra: 0 }
 
 function modeloConError(error: string): Modelo {
-  return { error, problemas: [], ahora: [], semana: [], despues: [], hechos: 0, nombres: {}, cambios: VACIO, hayFechas: false }
+  return { sesion: null, error, problemas: [], ahora: [], semana: [], despues: [], hechos: 0, nombres: {}, cambios: VACIO, hayFechas: false }
 }
 
 function modeloSinLista(): Modelo {
-  return { sinLista: true, problemas: [], ahora: [], semana: [], despues: [], hechos: 0, nombres: {}, cambios: VACIO, hayFechas: false }
+  return { sesion: null, sinLista: true, problemas: [], ahora: [], semana: [], despues: [], hechos: 0, nombres: {}, cambios: VACIO, hayFechas: false }
 }
 
 let ultimaClave = ''
 let ultimosCambios: Cambios = VACIO
 
-// Busca .claude/PENDIENTES.md en la carpeta de la sesión y, si no está, en la raíz de su repo git.
-async function buscar($: EngineInterface, carpeta: string): Promise<{ repo: string; texto: string } | null> {
+// Busca .claude/PENDIENTES.md en la raíz de la sesión, en su carpeta de trabajo, en las carpetas madre (hasta 3 niveles)
+// y en la raíz de su repo git. La sesión puede haber entrado a un subrepo o la app puede haberla dejado en otra carpeta.
+async function buscar($: EngineInterface, carpeta: string, archivo: string = ARCHIVO): Promise<{ repo: string; texto: string } | null> {
   const candidatas: string[] = []
   const agregar = (c: string) => {
     if (c !== '' && c !== '/' && !candidatas.includes(c)) candidatas.push(c)
@@ -728,21 +732,23 @@ async function buscar($: EngineInterface, carpeta: string): Promise<{ repo: stri
   } catch {
     // queda solo la raíz
   }
-  // Solo la carpeta de la sesión y la raíz de SU repo: nunca las carpetas madre (podrían ser de otro proyecto).
   for (const inicio of [carpeta, cwd]) {
-    if (inicio === '') continue
-    agregar(inicio)
-    try {
-      const top = await $.process.run(['git', ...GIT_SEGURO, '-C', inicio, 'rev-parse', '--show-toplevel'])
-      const raiz = top.exitCode === 0 ? top.stdout.trim() : ''
-      if (raiz !== '') agregar(raiz)
-    } catch {
-      // sin git: se usa solo la carpeta
+    let c = inicio
+    for (let nivel = 0; nivel < 4 && c !== '' && c !== '/'; nivel++) {
+      agregar(c)
+      c = c.slice(0, c.lastIndexOf('/'))
     }
+  }
+  try {
+    const top = await $.process.run(['git', '-C', carpeta, 'rev-parse', '--show-toplevel'])
+    const raiz = top.exitCode === 0 ? top.stdout.trim() : ''
+    if (raiz !== '') agregar(raiz)
+  } catch {
+    // sin git: se usan solo las carpetas
   }
   for (const repo of candidatas) {
     try {
-      return { repo, texto: await $.fs.read(`${repo}/${ARCHIVO}`) }
+      return { repo, texto: await $.fs.read(`${repo}/${archivo}`) }
     } catch {
       // no está acá; se prueba la siguiente
     }
@@ -750,11 +756,29 @@ async function buscar($: EngineInterface, carpeta: string): Promise<{ repo: stri
   return null
 }
 
+// Lee .claude/tareas.json. null = no hay archivo o no se entiende.
+function leerTareas(texto: string): Tarea[] | null {
+  try {
+    const d = JSON.parse(texto) as { tareas?: unknown }
+    if (!Array.isArray(d.tareas)) return null
+    return d.tareas.flatMap((t, i) => {
+      const o = t as { id?: unknown; texto?: unknown; estado?: unknown }
+      if (typeof o?.texto !== 'string') return []
+      const estado = ESTADOS_TAREA.includes(String(o.estado)) ? (o.estado as Tarea['estado']) : 'pending'
+      return [{ id: String(o.id ?? `a${i + 1}`), texto: o.texto, estado }]
+    })
+  } catch {
+    return null
+  }
+}
+
 async function refrescar($: EngineInterface): Promise<void> {
   try {
     const ahora = await $.clock.now()
     const carpeta = await $.session.root()
     let modelo: Modelo
+    const deTareas = await buscar($, carpeta, ARCHIVO_TAREAS)
+    const sesion = deTareas === null ? null : leerTareas(deTareas.texto)
     const hallada = await buscar($, carpeta)
     if (hallada === null) {
       modelo = modeloSinLista()
@@ -773,6 +797,7 @@ async function refrescar($: EngineInterface): Promise<void> {
         }
         const abiertas = l.filas.filter(f => f.estado !== 'hecho')
         modelo = {
+          sesion,
           problemas: l.problemas,
           ahora: abiertas.filter(f => f.prio === 1),
           semana: abiertas.filter(f => f.prio === 2),
@@ -788,6 +813,7 @@ async function refrescar($: EngineInterface): Promise<void> {
         }
       }
     }
+    if (modelo.sesion === null && sesion !== null) modelo = { ...modelo, sesion }
     // Se compara con lo que tiene la app guardado, no con una copia de este módulo: si la app reinicia sus valores
     // y el módulo sigue con su copia, comparar contra la copia dejaba el panel vacío hasta que cambiara el archivo.
     const enApp = await $.state.get({ plugin: 'paneles', key: 'datos' } as const)
@@ -805,7 +831,7 @@ async function refrescar($: EngineInterface): Promise<void> {
 // ---------- Dibujo ----------
 
 const colorDe = (estado: string): string | undefined =>
-  esperaRespuesta(estado) ? NARANJA : undefined
+  estado === 'espera dato de F' || estado === 'espera OK de F' ? NARANJA : undefined
 
 const ICONO: Record<Cambio['tipo'], string> = { nuevo: '＋', cerrado: '✓', prio: '↕', estado: '→', sacado: '–' }
 const VERBO: Record<Cambio['tipo'], string> = {
@@ -816,541 +842,95 @@ const VERBO: Record<Cambio['tipo'], string> = {
   sacado: 'Salió de la lista',
 }
 
-// Ver uCerrado / uAsegurar (Uso): mismo motivo.
-let pCerrado = false
+// Un panel que se abre «solo» (sin que la persona lo pida) no se dibuja por debajo de 144 columnas, ni si todavía no hay
+// ventana (sesiones que abre /cerrar). Un open que responde al mensaje de la persona (PaneOpenArgs) se dibuja con
+// cualquier ancho, pero solo cuenta como «pedido» si se hace DENTRO del hook de prompt.submit, esperado (await) antes de
+// devolver. Por eso el open va primero y sin consultar nada antes (consultar $.ui.panes() primero dejaba el open
+// para después de que el hook ya había vuelto). Abrir un id ya abierto solo lo retitula, así que se hace con cada mensaje.
+// Si la persona lo cierra a mano, no se vuelve a abrir solo.
+let cerradoAMano = false
+// Sesiones que abre /cerrar (start_session): el open de session.start y el de prompt.submit (mensajes inyectados, no de la
+// persona) ocurren SIN ventana y quedan sin dibujar (isPlaced false). Si la persona después abre la sesión y no escribe
+// nada, nada vuelve a pedirlos y los paneles quedan vacíos. Por eso se recuerda si el panel quedó dibujado y, mientras no,
+// se reintenta con el reloj y al terminar cada turno (sin pedido de la persona se dibuja desde 144 columnas).
+let colocado = false
 
-async function pAsegurar($: EngineInterface): Promise<void> {
-  if (pCerrado) return
+async function asegurarPanel($: EngineInterface): Promise<void> {
+  if (cerradoAMano) return
   try {
-    await $.ui.open({ id: P_PANEL, title: P_TITULO, columns: 38 })
+    const r = await $.ui.open({ id: UN_PANEL, title: UN_TITULO, columns: 38 })
+    colocado = r.isPlaced
   } catch {
     // se reintenta con el próximo mensaje
   }
 }
 
-const pendSessionStart: H = async ($, e, next) => {
-  const ran = await next(e)
-  pCerrado = false
-  ultimaClave = ''
-  await $.command.register({ name: 'pendientes', description: 'Abre el panel de pendientes (PENDIENTES.md)' })
-  // El reloj va ANTES de leer nada: si una lectura (git) se cuelga, el panel igual se refresca después.
-  $.clock.every(CADA, () => refrescar($))
-  void pAsegurar($)
-  void refrescar($)
-  return ran
+
+const unSessionStart: H = async ($, e, next) => {
+    const ran = await next(e)
+    cerradoAMano = false
+    colocado = false
+    ultimaClave = ''
+    await $.command.register({ name: 'pendientes', description: 'Abre el panel de tareas y pendientes' })
+    // «/pendientes» choca con la skill /metodo:pendientes (que solo imprime la tabla); «/tareas» abre el panel sin ambigüedad.
+    await $.command.register({ name: 'tareas', description: 'Abre el panel de tareas y pendientes' })
+    // El reloj va ANTES de leer nada: si una lectura (git) se cuelga, el panel igual se refresca después.
+    $.clock.every(CADA, () => {
+      if (!colocado) void asegurarPanel($)
+      return refrescar($)
+    })
+    void asegurarPanel($)
+    void refrescar($)
+    return ran
 }
 
-const pendPromptSubmit: H = async ($, e, next) => {
-  await pAsegurar($)
-  void refrescar($)
-  return next(e)
+const unPromptSubmit: H = async ($, e, next) => {
+    await asegurarPanel($)
+    void refrescar($)
+    return next(e)
 }
 
-const pendSessionMeasure: H = async ($, e, next) => {
-  await refrescar($)
-  return next(e)
+const unSessionMeasure: H = async ($, e, next) => {
+    if (!colocado) await asegurarPanel($)
+    await refrescar($)
+    return next(e)
 }
 
-const registrarPendientes: Register = on => {
-
-  on('ui.close', { id: P_PANEL }, async ($, e, next) => {
-    if (e.origin.kind === 'person') pCerrado = true
+const registrarUnico: Register = on => {
+  on('ui.close', { id: UN_PANEL }, async ($, e, next) => {
+    if (e.origin.kind === 'person') cerradoAMano = true
     return next(e)
   }).catch(($, e, next) => next(e))
 
   on('command.run', { command: 'pendientes' }, async $ => {
-    pCerrado = false
-    await $.ui.open({ id: P_PANEL, title: P_TITULO, columns: 38 })
+    cerradoAMano = false
+    await $.ui.open({ id: UN_PANEL, title: UN_TITULO, columns: 38 })
     await refrescar($)
-    return { text: 'Panel de pendientes abierto.' }
+    return { text: 'Panel de tareas y pendientes abierto.' }
   })
-
-  // Además del reloj, se relee al enviar un mensaje y al terminar cada turno.
-
-
-  on('ui.render', { component: 'Pane', requestId: P_PANEL }, async ($, e) => {
-    const ui = $.ui.resolve(e)
-    const { Box, Text, Button } = ui
-    const m = await read($, datos)
-    const desplegado = (await read($, abierto)) ?? false
-    const abiertas = (await read($, detalle)) ?? []
-    const Linea = e.surface === 'desktop' && 'Svg' in ui ? ui.Svg : null
-    const sep = (k: string) => (Linea ? <Linea key={k} source={P_SEPARACION} alt="" /> : null)
-
-    if (m === null) return <Text dimColor>Leyendo PENDIENTES.md…</Text>
-    if (m.sinLista) {
-      return (
-        <Box flexDirection="column" paddingX={1}>
-          <Text>Esta carpeta no tiene lista de pendientes todavía.</Text>
-          <Text dimColor>Para tener una, creá el archivo .claude/PENDIENTES.md en esta carpeta.</Text>
-        </Box>
-      )
-    }
-    if (m.error) {
-      return (
-        <Box flexDirection="column" paddingX={1}>
-          <Text color={ROJO}>{m.error}</Text>
-          <Text dimColor>Revisá el formato de las tablas en .claude/PENDIENTES.md de esta carpeta.</Text>
-        </Box>
-      )
-    }
-
-    const dato = (titulo: string, valor: string) => (
-      <Text>
-        <Text dimColor>{titulo}: </Text>
-        {valor}
-      </Text>
-    )
-    // Una fila: el título se toca para ver de qué se trata, de qué depende y qué desbloquea.
-    const fila = (f: Fila, siempreEstado: boolean) => {
-      const color = colorDe(f.estado)
-      const desplegada = abiertas.includes(f.id)
-      return (
-        <Box key={f.id} flexDirection="column">
-          <Button
-            key={`fila-${f.id}`}
-            label={`${desplegada ? '▾' : '▸'} ${f.id} ${f.texto}`}
-            plain
-            onPress={() =>
-              update($, detalle, l => {
-                const lista = l ?? []
-                return lista.includes(f.id) ? lista.filter(i => i !== f.id) : [...lista, f.id]
-              })
-            }
-          />
-          {siempreEstado || f.estado !== 'pendiente' ? (
-            <Text color={color} dimColor={color === undefined} bold={color !== undefined}>
-              {'  '}
-              {color ? '● ' : ''}
-              {f.estado}
-              {siempreEstado ? <Text dimColor> · {f.quien}</Text> : null}
-            </Text>
-          ) : null}
-          {desplegada ? (
-            <Box flexDirection="column" paddingLeft={2}>
-              <Text>{f.completo}</Text>
-              {f.estado.startsWith('espera dato') ? <Text color={NARANJA}>Necesita un dato para avanzar.</Text> : null}
-              {f.estado.startsWith('espera OK') ? <Text color={NARANJA}>Necesita un OK para avanzar.</Text> : null}
-              {dato('Depende de', f.depende === '—' || f.depende === '' ? 'nada, se puede hacer ya' : f.depende)}
-              {f.desbloquea.length > 0 ? dato('Desbloquea', f.desbloquea.join(', ')) : null}
-              {dato('Esfuerzo', f.esfuerzo)}
-              {dato('Quién', f.quien)}
-              {dato('Viene de', f.origen)}
-            </Box>
-          ) : null}
-        </Box>
-      )
-    }
-
-    const esperan = m.ahora.filter(f => esperaRespuesta(f.estado)).length
-    const porSeccion: { letra: string; filas: Fila[] }[] = []
-    for (const f of m.semana) {
-      const grupo = porSeccion.find(g => g.letra === f.seccion)
-      if (grupo) grupo.filas.push(f)
-      else porSeccion.push({ letra: f.seccion, filas: [f] })
-    }
-
-    return (
-      <Box flexDirection="column" gap={1} paddingX={1}>
-        {m.problemas.length > 0 ? (
-          <Box flexDirection="column">
-            <Text color={ROJO}>
-              No pude leer bien PENDIENTES.md ({m.problemas.length} {m.problemas.length === 1 ? 'problema' : 'problemas'}):
-            </Text>
-            {m.problemas.slice(0, 3).map((p, i) => (
-              <Text key={`p${i}`} dimColor>
-                {p}
-              </Text>
-            ))}
-            {m.problemas.length > 3 ? <Text dimColor>y {m.problemas.length - 3} más</Text> : null}
-          </Box>
-        ) : null}
-
-        {m.dias === undefined ? (
-          <Text color={ROJO}>No encuentro la fecha de la última actualización (falta una línea fechada en «Cambios»).</Text>
-        ) : (
-          <Text color={m.dias > 7 ? ROJO : undefined} dimColor={m.dias <= 7}>
-            {m.dias === 0 ? 'Actualizada hoy' : m.dias === 1 ? 'Actualizada hace 1 día' : `Actualizada hace ${m.dias} días`}
-            {m.dias > 7 ? ' · puede estar vieja' : ''}
-          </Text>
-        )}
-
-        {m.desde !== undefined ? <Text dimColor>Lista de {m.desde}</Text> : null}
-
-        <Text dimColor>Tocá un título para ver el detalle.</Text>
-
-        <Box flexDirection="column">
-          <Box flexDirection="row" justifyContent="space-between">
-            <Text bold>Ahora</Text>
-            <Text dimColor>{m.ahora.length}</Text>
-          </Box>
-          <Text dimColor>Prio 1 · lo que va primero</Text>
-          {esperan > 0 ? (
-            <Text color={NARANJA}>
-              {esperan === 1 ? 'Hay 1 esperando un dato o un OK' : `Hay ${esperan} esperando un dato o un OK`}
-            </Text>
-          ) : null}
-          {m.ahora.length === 0 ? <Text dimColor>Nada urgente.</Text> : null}
-          {m.ahora.map(f => fila(f, true))}
-        </Box>
-
-        {sep('s1')}
-
-        <Box flexDirection="column">
-          <Box flexDirection="row" justifyContent="space-between">
-            <Text bold>Esta semana</Text>
-            <Text dimColor>{m.semana.length}</Text>
-          </Box>
-          <Text dimColor>Prio 2 · para esta semana</Text>
-          {m.semana.length === 0 ? <Text dimColor>Nada para esta semana.</Text> : null}
-          {porSeccion.map(g => (
-            <Box key={g.letra} flexDirection="column">
-              <Text dimColor>{m.nombres[g.letra] ?? g.letra}</Text>
-              {g.filas.map(f => fila(f, false))}
-            </Box>
-          ))}
-        </Box>
-
-        {sep('s2')}
-
-        <Box flexDirection="column">
-          <Text bold>Cambios</Text>
-          {m.cambios.estado === 'error' ? (
-            <Text color={ROJO}>No pude leer el historial de git, así que no se ven los Cambios. La lista sí.</Text>
-          ) : m.cambios.estado === 'sin-anterior' ? (
-            <Text dimColor>Todavía no hay una versión anterior en git para comparar.</Text>
-          ) : (
-            <Box flexDirection="column">
-              <Text dimColor>
-                {m.cambios.sucio ? 'Contra la última versión guardada' : 'Contra la versión anterior'}
-                {m.cambios.desde ? ` (${diaCorto(m.cambios.desde)})` : ''}
-              </Text>
-              {m.cambios.lista.length === 0 ? <Text dimColor>Sin cambios.</Text> : null}
-              {m.cambios.lista.map(c => (
-                <Box key={`${c.tipo}${c.id}`} flexDirection="column">
-                  <Text>
-                    <Text dimColor>{ICONO[c.tipo]} </Text>
-                    <Text bold>{c.id} </Text>
-                    {c.texto}
-                  </Text>
-                  <Text dimColor>
-                    {'  '}
-                    {VERBO[c.tipo]}
-                    {c.detalle ? ` · ${c.detalle}` : ''}
-                  </Text>
-                </Box>
-              ))}
-              {m.cambios.extra > 0 ? <Text dimColor>y {m.cambios.extra} más</Text> : null}
-            </Box>
-          )}
-        </Box>
-
-        {sep('s3')}
-
-        <Box flexDirection="column">
-          <Text bold>Próxima fecha</Text>
-          {!m.hayFechas ? (
-            <Text color={ROJO}>No encontré la tabla «Fechas» en el archivo.</Text>
-          ) : m.proxima ? (
-            <Box flexDirection="column">
-              <Text>{m.proxima.cuando}</Text>
-              <Text dimColor>{m.proxima.texto}</Text>
-            </Box>
-          ) : (
-            <Text dimColor>No quedan fechas por delante.</Text>
-          )}
-        </Box>
-
-        {sep('s4')}
-
-        <Box flexDirection="column">
-          <Button
-            key="despues"
-            plain
-            label={`${desplegado ? '▾' : '▸'} Después · ${m.despues.length}`}
-            onPress={() => update($, abierto, a => !(a ?? false))}
-          />
-          {desplegado
-            ? [<Text key="p3" dimColor>Prio 3 · espera cupo o una decisión</Text>, ...m.despues.map(f => fila(f, false))]
-            : null}
-        </Box>
-      </Box>
-    )
-  })
-}
-
-
-// ---------- Panel «Tareas» ----------
-// Las tareas de ESTA sesión, en vivo. Se alimenta de las llamadas que la propia sesión hace a
-// TodoWrite / TaskCreate / TaskUpdate, o de <carpeta>/.claude/tareas.json si existe. Hechas = tachadas.
-const T_PANEL = 'tareas-sesion'
-const tLista = atom({ plugin: 'paneles', key: 'tareasLista' } as const, [])
-// null = no hay archivo.
-const tArchivo = atom({ plugin: 'paneles', key: 'tareasArchivo' } as const, null)
-const T_ARCHIVO = '.claude/tareas.json'
-const T_CADA = 3_000
-const T_ESTADOS = ['pending', 'in_progress', 'completed']
-// Tareas que salen de PENDIENTES.md + git (ver abajo). null = la carpeta no tiene lista.
-// Carpeta de la que salió la lista cuando no es la de la sesión (una de arriba). null = la de la sesión.
-const tOrigen = atom({ plugin: 'paneles', key: 'tareasOrigen' } as const, null)
-const derivadas = atom({ plugin: 'paneles', key: 'tareasDerivadas' } as const, null)
-
-// ---------- Tareas derivadas de PENDIENTES.md + git ----------
-// El panel se arma solo: en curso → ▶, pendientes de prioridad 1 (y nuevos de prioridad 2) → ○, y lo cerrado desde la
-// versión anterior del archivo (según git) → ✓. Lo que está en tareas.json con el mismo ID se reemplaza: PENDIENTES manda.
-const TP_ARCHIVO = '.claude/PENDIENTES.md'
-const TP_MAX = 15
-const TP_DIAS_HECHO = 2
-
-type TpFila = { id: string; texto: string; prio: number; estado: string }
-
-function tpCeldas(linea: string): string[] {
-  const t = linea.trim()
-  if (!t.startsWith('|')) return []
-  const salida: string[] = []
-  let actual = ''
-  let codigo = false
-  for (const ch of t.slice(1)) {
-    if (ch === '`') codigo = !codigo
-    if (ch === '|' && !codigo) {
-      salida.push(actual.trim())
-      actual = ''
-    } else {
-      actual += ch
-    }
-  }
-  if (actual.trim() !== '') salida.push(actual.trim())
-  return salida
-}
-
-function tpCorto(texto: string): string {
-  const sin = (s: string) => s.replace(/\*\*(.+?)\*\*/g, '$1').replace(/`([^`]*)`/g, '$1')
-  const negrita = /^\*\*(.+?)\*\*/.exec(texto)
-  let t = negrita?.[1] ?? sin(texto)
-  if (!negrita) {
-    const corte = [': ', '. ', ' ('].map(s => t.indexOf(s)).filter(i => i > 0)
-    if (corte.length > 0) t = t.slice(0, Math.min(...corte))
-  }
-  t = sin(t).trim()
-  return t.length > 60 ? `${t.slice(0, 59).trimEnd()}…` : t
-}
-
-function tpFilas(texto: string): TpFila[] {
-  const filas: TpFila[] = []
-  for (const linea of texto.split('\n')) {
-    const c = tpCeldas(linea)
-    if (c.length < 8 || !/^[A-Z]\d+$/.test(c[0] ?? '')) continue
-    filas.push({ id: c[0] ?? '', texto: tpCorto(c[1] ?? ''), prio: Number(c[2]), estado: c[3] ?? '' })
-  }
-  return filas
-}
-
-// viejo = la versión anterior del archivo (null si no hay historial). `reciente` = el cambio es de hace poco.
-function tpDerivar(nuevo: string, viejo: string | null, reciente: boolean): Tarea[] {
-  const antes = new Map(tpFilas(viejo ?? '').map(f => [f.id, f]))
-  const hay = viejo !== null
-  const encurso: Tarea[] = []
-  const pendientes: Tarea[] = []
-  const hechas: Tarea[] = []
-  for (const f of tpFilas(nuevo)) {
-    const texto = `${f.id}: ${f.texto}`
-    const a = antes.get(f.id)
-    if (f.estado === 'en curso') encurso.push({ id: f.id, texto, estado: 'in_progress' })
-    else if (f.estado === 'pendiente' && (f.prio === 1 || (f.prio === 2 && hay && !a))) pendientes.push({ id: f.id, texto, estado: 'pending' })
-    else if (f.estado === 'hecho' && hay && reciente && a && a.estado !== 'hecho') hechas.push({ id: f.id, texto, estado: 'completed' })
-  }
-  return [...encurso, ...pendientes, ...hechas].slice(0, TP_MAX)
-}
-
-// Quita de la lista manual lo que PENDIENTES ya cubre (mismo ID al principio del texto).
-function tpMezclar(manual: Tarea[], derivadas: Tarea[]): Tarea[] {
-  const ids = new Set(derivadas.map(t => t.id))
-  return [...manual.filter(t => !ids.has(t.texto.replace(':', ' ').split(' ')[0] ?? '')), ...derivadas]
-}
-
-let tpUltimoTexto: string | null = null
-let tpCache: Tarea[] | null = null
-
-// Lee PENDIENTES.md de la carpeta y la versión anterior en git. null = la carpeta no tiene lista.
-async function tpLeer($: EngineInterface, carpeta: string, texto: string): Promise<Tarea[] | null> {
-  // Sin cambios en el archivo (ni de carpeta) no se vuelve a llamar a git (esto corre cada pocos segundos).
-  const clave = `${carpeta}\0${texto}`
-  if (clave === tpUltimoTexto) return tpCache
-  let viejo: string | null = null
-  let reciente = false
-  try {
-    const git = (args: string[]) => $.process.run(['git', ...GIT_SEGURO, '-C', carpeta, ...args])
-    const estado = await git(['status', '--porcelain', '--', TP_ARCHIVO])
-    const log = await git(['log', '--format=%H %cs', '-n', '2', '--', TP_ARCHIVO])
-    if (estado.exitCode === 0 && log.exitCode === 0) {
-      const v = log.stdout.trim().split('\n').filter(Boolean).map(l => l.split(' '))
-      const sucio = estado.stdout.trim() !== ''
-      const base = sucio ? v[0] : v[1]
-      const fecha = Date.parse(`${(sucio ? 'hoy' : v[0]?.[1]) ?? ''}T12:00:00Z`)
-      reciente = sucio || (!Number.isNaN(fecha) && Date.now() - fecha < TP_DIAS_HECHO * 86_400_000 + 43_200_000)
-      if (base?.[0]) {
-        const r = await git(['show', `${base[0]}:./${TP_ARCHIVO}`])
-        if (r.exitCode === 0) viejo = r.stdout
-      }
-    }
-  } catch {
-    // sin git: se muestran en curso y prioridad 1, sin lo cerrado
-  }
-  tpUltimoTexto = clave
-  tpCache = tpDerivar(texto, viejo, reciente)
-  return tpCache
-}
-
-
-function tLeer(texto: string): Tarea[] | null {
-  try {
-    const d = JSON.parse(texto) as { tareas?: unknown }
-    if (!Array.isArray(d.tareas)) return null
-    return d.tareas.flatMap((t, i) => {
-      const o = t as { id?: unknown; texto?: unknown; estado?: unknown }
-      if (typeof o?.texto !== 'string') return []
-      const estado = T_ESTADOS.includes(String(o.estado)) ? (o.estado as Tarea['estado']) : 'pending'
-      return [{ id: String(o.id ?? `a${i + 1}`), texto: o.texto, estado }]
-    })
-  } catch {
-    return null
-  }
-}
-
-// La carpeta de la sesión puede no ser la que tiene el archivo (la sesión entra a un subdirectorio de su repo).
-// Se prueba la raíz de la sesión, su carpeta de trabajo y la raíz del repo de cada una; nunca las carpetas madre de
-// afuera del repo: podrían tener la lista de OTRO proyecto. Gana la primera que lo tiene.
-async function tDonde($: EngineInterface, relativo: string): Promise<{ carpeta: string; texto: string } | null> {
-  const vistas = new Set<string>()
-  const candidatas: string[] = []
-  const agregar = (c: string) => {
-    if (c !== '' && c !== '/' && !vistas.has(c)) {
-      vistas.add(c)
-      candidatas.push(c)
-    }
-  }
-  for (const pedir of [() => $.session.root(), () => $.session.cwd()]) {
-    let inicio = ''
-    try {
-      inicio = await pedir()
-    } catch {
-      // esa forma de saber la carpeta no respondió; queda la otra
-    }
-    if (inicio === '') continue
-    agregar(inicio)
-    try {
-      const top = await $.process.run(['git', ...GIT_SEGURO, '-C', inicio, 'rev-parse', '--show-toplevel'])
-      const raiz = top.exitCode === 0 ? top.stdout.trim() : ''
-      if (raiz !== '') agregar(raiz)
-    } catch {
-      // sin git: se usa solo la carpeta
-    }
-  }
-  for (const c of candidatas) {
-    try {
-      return { carpeta: c, texto: await $.fs.read(`${c}/${relativo}`) }
-    } catch {
-      // no está acá; se prueba la siguiente
-    }
-  }
-  return null
-}
-
-async function tRefrescar($: EngineInterface): Promise<void> {
-  try {
-    let nuevo: Tarea[] | null = null
-    const dTareas = await tDonde($, T_ARCHIVO)
-    if (dTareas !== null) nuevo = tLeer(dTareas.texto)
-    // Se compara con lo que tiene la app guardado, no con una copia de este módulo: si la app reinicia sus valores
-    // (otra sesión, /clear) y el módulo sigue con su copia, comparar contra la copia dejaba el panel vacío para siempre.
-    const enApp = await $.state.get({ plugin: 'paneles', key: 'tareasArchivo' } as const)
-    if (JSON.stringify(enApp.value ?? null) !== JSON.stringify(nuevo)) await update($, tArchivo, () => nuevo)
-
-    const dPend = await tDonde($, TP_ARCHIVO)
-    const der = dPend === null ? null : await tpLeer($, dPend.carpeta, dPend.texto)
-    // Si alguna de las dos fuentes salió de una carpeta de arriba, el panel lo dice.
-    let raiz = ''
-    try {
-      raiz = await $.session.root()
-    } catch {
-      // sin raíz no se puede decir de dónde salió
-    }
-    const de = [dTareas, dPend].find(d => d !== null && raiz !== '' && d.carpeta !== raiz)?.carpeta ?? null
-    const oApp = await $.state.get({ plugin: 'paneles', key: 'tareasOrigen' } as const)
-    if ((oApp.value ?? null) !== de) await update($, tOrigen, () => de)
-    const derApp = await $.state.get({ plugin: 'paneles', key: 'tareasDerivadas' } as const)
-    if (JSON.stringify(derApp.value ?? null) !== JSON.stringify(der)) await update($, derivadas, () => der)
-  } catch {
-    // se reintenta en el próximo ciclo
-  }
-}
-
-// Ver uCerrado / uAsegurar (Uso): mismo motivo.
-let tCerrado = false
-
-async function tAsegurar($: EngineInterface): Promise<void> {
-  if (tCerrado) return
-  try {
-    await $.ui.open({ id: T_PANEL, title: 'Tareas', columns: 38 })
-  } catch {
-    // se reintenta con el próximo mensaje
-  }
-}
-
-const tSessionStart: H = async ($, e, next) => {
-  const ran = await next(e)
-  tCerrado = false
-  tpUltimoTexto = null
-  tpCache = null
-  await $.command.register({ name: 'tareas', description: 'Abre el panel de tareas de la sesión' })
-  // El reloj va ANTES de leer nada: si una lectura se cuelga, el panel igual se refresca después.
-  $.clock.every(T_CADA, () => tRefrescar($))
-  void tAsegurar($)
-  void tRefrescar($)
-  return ran
-}
-
-// Además del reloj (que en la app puede no latir), Tareas se relee con cada mensaje y al terminar cada turno.
-const tPromptSubmit: H = async ($, e, next) => {
-  await tAsegurar($)
-  await tRefrescar($)
-  return next(e)
-}
-
-const tRelee: H = async ($, e, next) => {
-  await tRefrescar($)
-  return next(e)
-}
-
-const registrarTareas: Register = on => {
-  on('ui.close', { id: T_PANEL }, async ($, e, next) => {
-    if (e.origin.kind === 'person') tCerrado = true
-    return next(e)
-  }).catch(($, e, next) => next(e))
 
   on('command.run', { command: 'tareas' }, async $ => {
-    tCerrado = false
-    await $.ui.open({ id: T_PANEL, title: 'Tareas', columns: 38 })
-    await tRefrescar($)
-    return { text: 'Panel de tareas abierto.' }
+    cerradoAMano = false
+    await $.ui.open({ id: UN_PANEL, title: UN_TITULO, columns: 38 })
+    await refrescar($)
+    return { text: 'Panel de tareas y pendientes abierto.' }
   })
 
-  // TodoWrite trae la lista entera cada vez.
+  // Las tareas que la propia sesión carga: TodoWrite trae la lista entera; TaskCreate/TaskUpdate, de a una.
   on('tool.call', { tool: 'TodoWrite' }, async ($, e, next) => {
     const ran = await next(e)
     if (ran.deny === undefined && ran.isError !== true) {
       const nueva: Tarea[] = e.todos.map((t, i) => ({ id: `t${i + 1}`, texto: t.content, estado: t.status }))
-      await update($, tLista, () => nueva)
+      await update($, lista, () => nueva)
     }
     return ran
   }).catch(($, e, next) => next(e))
 
-  // TaskCreate: el id lo da el resultado.
   on('tool.call', { tool: 'TaskCreate' }, async ($, e, next) => {
     const ran = await next(e)
     if (ran.deny === undefined && ran.isError !== true) {
       const id = String(ran.result?.task?.id ?? `n${Date.now()}`)
-      await update($, tLista, l => [...(l ?? []).filter(t => t.id !== id), { id, texto: e.subject, estado: 'pending' as const }])
+      await update($, lista, l => [...(l ?? []).filter(t => t.id !== id), { id, texto: e.subject, estado: 'pending' as const }])
     }
     return ran
   }).catch(($, e, next) => next(e))
@@ -1358,7 +938,7 @@ const registrarTareas: Register = on => {
   on('tool.call', { tool: 'TaskUpdate' }, async ($, e, next) => {
     const ran = await next(e)
     if (ran.deny === undefined && ran.isError !== true) {
-      await update($, tLista, l =>
+      await update($, lista, l =>
         (l ?? [])
           .filter(t => !(t.id === e.taskId && e.status === 'deleted'))
           .map(t =>
@@ -1371,27 +951,294 @@ const registrarTareas: Register = on => {
     return ran
   }).catch(($, e, next) => next(e))
 
-  on('ui.render', { component: 'Pane', requestId: T_PANEL }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
-    const deArchivo = await read($, tArchivo)
-    // El archivo manda cuando existe; si no, valen las llamadas a TodoWrite/TaskCreate.
-    const manual = deArchivo ?? (await read($, tLista)) ?? []
-    const tareas = tpMezclar(manual, (await read($, derivadas)) ?? [])
-    const hechas = tareas.filter(t => t.estado === 'completed').length
-    return (
-      <Box flexDirection="column" paddingX={1} gap={1}>
-        {(await read($, tOrigen)) != null ? <Text dimColor>Lista de {await read($, tOrigen)}</Text> : null}
-        <Text dimColor>
-          {tareas.length === 0 ? 'Sin tareas todavía.' : `${hechas} de ${tareas.length} hechas`}
-        </Text>
-        {tareas.map(t => (
-          <Text key={t.id} strikethrough={t.estado === 'completed'} dimColor={t.estado === 'completed'} bold={t.estado === 'in_progress'}>
-            {t.estado === 'completed' ? '✓' : t.estado === 'in_progress' ? '▶' : '○'} {t.texto}
+  on('ui.render', { component: 'Pane', requestId: UN_PANEL }, async ($, e) => {
+    const ui = $.ui.resolve(e)
+    const { Box, Text, Button } = ui
+    const m = await read($, datos)
+    const abiertos = (await read($, grupos)) ?? []
+    const desplegadas = (await read($, detalle)) ?? []
+    const deSesion = (await read($, lista)) ?? []
+    const Linea = e.surface === 'desktop' && 'Svg' in ui ? ui.Svg : null
+    const sep = (k: string) => (Linea ? <Linea key={k} source={UN_SEPARACION} alt="" /> : null)
+
+    if (m === null) return <Text dimColor>Leyendo tareas y pendientes…</Text>
+
+    // ---------- Esta sesión: tareas.json manda; si no hay, valen TodoWrite/TaskCreate ----------
+    const tareas = m.sesion ?? deSesion
+    const enCurso = tareas.filter(t => t.estado === 'in_progress')
+    const porHacer = tareas.filter(t => t.estado === 'pending')
+    const hechasS = tareas.filter(t => t.estado === 'completed')
+    const idsSesion = new Set(tareas.map(t => t.id))
+    const lineaTarea = (t: Tarea) => (
+      <Text key={`t-${t.id}`} strikethrough={t.estado === 'completed'} dimColor={t.estado === 'completed'} bold={t.estado === 'in_progress'}>
+        {ICONO_ESTADO[t.estado]} {t.texto}
+        {/^[A-Z]\d+$/.test(t.id) ? <Text dimColor>{'  '}{t.id}</Text> : null}
+      </Text>
+    )
+    const bloqueSesion = (
+      <Box flexDirection="column" gap={1}>
+        <Text dimColor>ESTA SESIÓN</Text>
+        {tareas.length === 0 ? (
+          <Text dimColor>Sin tareas todavía.</Text>
+        ) : (
+          <Text dimColor>
+            {enCurso.length} en curso · {porHacer.length} por hacer · {hechasS.length} {hechasS.length === 1 ? 'hecha' : 'hechas'}
           </Text>
-        ))}
+        )}
+        {enCurso.length > 0 ? (
+          <Box flexDirection="column">
+            <Text bold>En curso</Text>
+            {enCurso.map(lineaTarea)}
+          </Box>
+        ) : null}
+        {porHacer.length > 0 ? (
+          <Box flexDirection="column">
+            <Box flexDirection="row" justifyContent="space-between">
+              <Text bold>Por hacer</Text>
+              <Text dimColor>{porHacer.length}</Text>
+            </Box>
+            {porHacer.map(lineaTarea)}
+          </Box>
+        ) : null}
+        {hechasS.length > 0 ? (
+          <Box flexDirection="column">
+            <Box flexDirection="row" justifyContent="space-between">
+              <Text bold>Hechas</Text>
+              <Text dimColor>{hechasS.length}</Text>
+            </Box>
+            {hechasS.map(lineaTarea)}
+          </Box>
+        ) : null}
+      </Box>
+    )
+
+    // ---------- Pendientes que arrastramos ----------
+    let bloquePend: JSX.Element
+    if (m.sinLista) {
+      bloquePend = (
+        <Box flexDirection="column">
+          <Text>Esta carpeta no tiene lista de pendientes todavía.</Text>
+          <Text dimColor>Se arma sola con /cerrar (queda en .claude/PENDIENTES.md).</Text>
+        </Box>
+      )
+    } else if (m.error) {
+      bloquePend = (
+        <Box flexDirection="column">
+          <Text color={ROJO}>{m.error}</Text>
+          <Text dimColor>Revisá el formato de las tablas en .claude/PENDIENTES.md de esta carpeta.</Text>
+        </Box>
+      )
+    } else {
+      bloquePend = renderPendientes($, ui, m, abiertos, desplegadas, idsSesion, sep)
+    }
+
+    return (
+      <Box flexDirection="column" gap={1} paddingX={1}>
+        {bloqueSesion}
+        {sep('sb')}
+        {bloquePend}
       </Box>
     )
   })
+}
+
+const dato = (Text: any, titulo: string, valor: string) => (
+  <Text>
+    <Text dimColor>{titulo}: </Text>
+    {valor}
+  </Text>
+)
+
+// Icono de estado de una tarea de la sesión.
+const ICONO_ESTADO: Record<Tarea['estado'], string> = { pending: '○', in_progress: '◐', completed: '✅' }
+
+const iconoDe = (estado: string): string =>
+  estado === 'espera dato de F' || estado === 'espera OK de F' ? '✋' : estado === 'en curso' ? '◐' : estado === 'hecho' ? '✅' : '○'
+
+// Una fila depende de otra si su columna «Depende de» nombra el ID de la otra y esa otra sigue abierta en el mismo grupo.
+function agrupar(filas: Fila[]): { fila: Fila; hijas: Fila[] }[] {
+  const ids = new Set(filas.map(f => f.id))
+  const padreDe = new Map<string, string>()
+  for (const f of filas) {
+    const p = filas.find(o => o.id !== f.id && ids.has(o.id) && new RegExp(`(^|[^A-Za-z0-9])${o.id}([^A-Za-z0-9]|$)`).test(f.depende))
+    if (p) padreDe.set(f.id, p.id)
+  }
+  // Solo un nivel: si el padre también espera a otra, la fila queda al nivel de arriba (evita ciclos y sangrías sin fin).
+  const arriba = filas.filter(f => !padreDe.has(f.id) || padreDe.has(padreDe.get(f.id) ?? ''))
+  return arriba.map(f => ({ fila: f, hijas: filas.filter(h => padreDe.get(h.id) === f.id && !padreDe.has(f.id)) }))
+}
+
+function renderPendientes(
+  $: EngineInterface,
+  ui: ReturnType<EngineInterface['ui']['resolve']>,
+  m: Modelo,
+  abiertos: string[],
+  desplegadas: string[],
+  idsSesion: Set<string>,
+  sep: (k: string) => JSX.Element | null,
+): JSX.Element {
+  const { Box, Text, Button } = ui
+  const fila = (f: Fila, sangria: boolean) => {
+    const color = colorDe(f.estado)
+    const abierta = desplegadas.includes(f.id)
+    const enSesion = idsSesion.has(f.id)
+    return (
+      <Box key={f.id} flexDirection="column" paddingLeft={sangria ? 2 : 0}>
+        <Box flexDirection="row" gap={1}>
+          {sangria ? <Text dimColor>↳</Text> : null}
+          <Text color={color} dimColor={color === undefined && f.estado !== 'en curso'}>
+            {iconoDe(f.estado)}
+          </Text>
+          <Button
+            key={`fila-${f.id}`}
+            label={`${f.texto}  ${f.id}${enSesion ? ' · en sesión' : ''} ${abierta ? '⌄' : '›'}`}
+            plain
+            onPress={() =>
+              update($, detalle, l => {
+                const lst = l ?? []
+                return lst.includes(f.id) ? lst.filter(i => i !== f.id) : [...lst, f.id]
+              })
+            }
+          />
+        </Box>
+        {f.estado === 'espera dato de F' || f.estado === 'espera OK de F' ? (
+          <Text color={NARANJA} bold>
+            {'    '}te llama: {f.estado === 'espera dato de F' ? 'falta un dato tuyo' : 'falta tu OK'}
+          </Text>
+        ) : null}
+        {abierta ? (
+          <Box flexDirection="column" paddingLeft={4}>
+            <Text>{f.completo}</Text>
+            {f.estado === 'espera dato de F' ? <Text color={NARANJA}>Necesita un dato tuyo para avanzar.</Text> : null}
+            {f.estado === 'espera OK de F' ? <Text color={NARANJA}>Necesita tu OK para avanzar.</Text> : null}
+            {dato(Text, 'Depende de', f.depende === '—' || f.depende === '' ? 'nada, se puede hacer ya' : f.depende)}
+            {f.desbloquea.length > 0 ? dato(Text, 'Desbloquea', f.desbloquea.join(', ')) : null}
+            {dato(Text, 'Esfuerzo', f.esfuerzo)}
+            {dato(Text, 'Quién', f.quien)}
+            {dato(Text, 'Viene de', f.origen)}
+          </Box>
+        ) : null}
+      </Box>
+    )
+  }
+  const lista = (filas: Fila[]) =>
+    agrupar(filas).map(g => (
+      <Box key={g.fila.id} flexDirection="column">
+        {fila(g.fila, false)}
+        {g.hijas.map(h => fila(h, true))}
+      </Box>
+    ))
+  const alternar = (id: string) => update($, grupos, a => ((a ?? []).includes(id) ? (a ?? []).filter(x => x !== id) : [...(a ?? []), id]))
+  // Grupo de prioridad: el título es el botón; la prioridad no lleva símbolo.
+  const grupo = (id: string, titulo: string, filas: Fila[], siempreAbierto: boolean, nota?: string) => {
+    const abierto = siempreAbierto || abiertos.includes(id)
+    return (
+      <Box flexDirection="column">
+        {siempreAbierto ? (
+          <Box flexDirection="row" justifyContent="space-between">
+            <Text bold>{titulo}</Text>
+            <Text dimColor>{filas.length}</Text>
+          </Box>
+        ) : (
+          <Button key={id} plain label={`${abierto ? '⌄' : '›'} ${titulo} · ${filas.length}`} onPress={() => alternar(id)} />
+        )}
+        {abierto && nota ? <Text dimColor>{nota}</Text> : null}
+        {abierto && filas.length === 0 ? <Text dimColor>Nada por acá.</Text> : null}
+        {abierto ? lista(filas) : null}
+      </Box>
+    )
+  }
+
+  const esperan = m.ahora.filter(f => f.estado === 'espera dato de F' || f.estado === 'espera OK de F').length
+
+  return (
+    <Box flexDirection="column" gap={1}>
+      {m.problemas.length > 0 ? (
+        <Box flexDirection="column">
+          <Text color={ROJO}>
+            No pude leer bien PENDIENTES.md ({m.problemas.length} {m.problemas.length === 1 ? 'problema' : 'problemas'}):
+          </Text>
+          {m.problemas.slice(0, 3).map((p, i) => (
+            <Text key={`p${i}`} dimColor>
+              {p}
+            </Text>
+          ))}
+          {m.problemas.length > 3 ? <Text dimColor>y {m.problemas.length - 3} más</Text> : null}
+        </Box>
+      ) : null}
+
+      <Text dimColor>PENDIENTES QUE ARRASTRAMOS</Text>
+      {m.dias === undefined ? (
+        <Text color={ROJO}>No encuentro la fecha de la última actualización (falta una línea fechada en «Cambios»).</Text>
+      ) : (
+        <Text color={m.dias > 7 ? ROJO : undefined} dimColor={m.dias <= 7}>
+          {m.dias === 0 ? 'Actualizada hoy' : m.dias === 1 ? 'Actualizada hace 1 día' : `Actualizada hace ${m.dias} días`}
+          {m.dias > 7 ? ' · puede estar vieja' : ''}
+        </Text>
+      )}
+      {m.desde !== undefined ? <Text dimColor>Lista de {m.desde}</Text> : null}
+      <Text dimColor>Tocá un título para ver el detalle. ✋ = te llama.</Text>
+
+      <Box flexDirection="column">
+        {esperan > 0 ? <Text color={NARANJA}>{esperan === 1 ? 'Hay 1 que depende de vos' : `Hay ${esperan} que dependen de vos`}</Text> : null}
+        {grupo('p1', 'Prioridad 1 · ahora', m.ahora, true)}
+      </Box>
+
+      {sep('s1')}
+      {grupo('p2', 'Prioridad 2 · esta semana', m.semana, false, 'Para esta semana')}
+      {grupo('p3', 'Prioridad 3 · después', m.despues, false, 'Espera cupo o una decisión')}
+
+      {sep('s2')}
+
+      <Box flexDirection="column">
+        <Text bold>Cambios</Text>
+        {m.cambios.estado === 'error' ? (
+          <Text color={ROJO}>No pude leer el historial de git, así que no se ven los Cambios. La lista sí.</Text>
+        ) : m.cambios.estado === 'sin-anterior' ? (
+          <Text dimColor>Todavía no hay una versión anterior en git para comparar.</Text>
+        ) : (
+          <Box flexDirection="column">
+            <Text dimColor>
+              {m.cambios.sucio ? 'Contra la última versión guardada' : 'Contra la versión anterior'}
+              {m.cambios.desde ? ` (${diaCorto(m.cambios.desde)})` : ''}
+            </Text>
+            {m.cambios.lista.length === 0 ? <Text dimColor>Sin cambios.</Text> : null}
+            {m.cambios.lista.map(c => (
+              <Box key={`${c.tipo}${c.id}`} flexDirection="column">
+                <Text>
+                  <Text dimColor>{ICONO[c.tipo]} </Text>
+                  <Text bold>{c.id} </Text>
+                  {c.texto}
+                </Text>
+                <Text dimColor>
+                  {'  '}
+                  {VERBO[c.tipo]}
+                  {c.detalle ? ` · ${c.detalle}` : ''}
+                </Text>
+              </Box>
+            ))}
+            {m.cambios.extra > 0 ? <Text dimColor>y {m.cambios.extra} más</Text> : null}
+          </Box>
+        )}
+      </Box>
+
+      {sep('s3')}
+
+      <Box flexDirection="column">
+        <Text bold>Próxima fecha</Text>
+        {!m.hayFechas ? (
+          <Text color={ROJO}>No encontré la tabla «Fechas» en el archivo.</Text>
+        ) : m.proxima ? (
+          <Box flexDirection="column">
+            <Text>{m.proxima.cuando}</Text>
+            <Text dimColor>{m.proxima.texto}</Text>
+          </Box>
+        ) : (
+          <Text dimColor>No quedan fechas por delante.</Text>
+        )}
+      </Box>
+    </Box>
+  )
 }
 
 // ───────── Panel «Actividad» (agentes, subagentes y skills) ─────────
@@ -1777,13 +1624,12 @@ export const registrarActividad = (on: Parameters<Register>[0]): void => {
 }
 
 export const register: Register = on => {
-  on('session.start', ($, e, next) => usoSessionStart($, e, e2 => pendSessionStart($, e2, e3 => tSessionStart($, e3, e4 => actSessionStart($, e4, next))))).catch(($, e, next) => next(e))
+  on('session.start', ($, e, next) => usoSessionStart($, e, e2 => unSessionStart($, e2, e3 => actSessionStart($, e3, next)))).catch(($, e, next) => next(e))
   on('command.run', ($, e, next) => usoCommandRun($, e, next)).catch(($, e, next) => next(e))
-  on('prompt.submit', ($, e, next) => usoPromptSubmit($, e, e2 => pendPromptSubmit($, e2, e3 => tPromptSubmit($, e3, e4 => actPromptSubmit($, e4, next))))).catch(($, e, next) => next(e))
-  on('session.measure', ($, e, next) => usoSessionMeasure($, e, e2 => pendSessionMeasure($, e2, e3 => tRelee($, e3, e4 => actSessionMeasure($, e4, next)))))
+  on('prompt.submit', ($, e, next) => usoPromptSubmit($, e, e2 => unPromptSubmit($, e2, e3 => actPromptSubmit($, e3, next)))).catch(($, e, next) => next(e))
+  on('session.measure', ($, e, next) => usoSessionMeasure($, e, e2 => unSessionMeasure($, e2, e3 => actSessionMeasure($, e3, next))))
   registrarUso(on)
-  registrarPendientes(on)
-  registrarTareas(on)
-  // Cuarto panel: «Actividad» (agentes, subagentes y skills), en su propio archivo.
+  registrarUnico(on)
+  // Tercer panel: «Actividad» (agentes, subagentes y skills), en su propio archivo.
   registrarActividad(on)
 }

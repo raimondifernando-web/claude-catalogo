@@ -35,7 +35,7 @@ export type Fila = {
   origen: string
   // IDs de las filas que dependen de esta (salen de la columna «Depende de» de las otras).
   desbloquea: string[]
-  // Letra de la sección (A, B, C…).
+  // Letra de la sección (S, B, C, E, M, O).
   seccion: string
 }
 
@@ -61,6 +61,8 @@ export type Cambios = {
 export type Proxima = { cuando: string; texto: string }
 
 export type Modelo = {
+  // Tareas de esta sesión según .claude/tareas.json (null = no hay archivo).
+  sesion: Tarea[] | null
   // Si no se pudo leer nada, el motivo: el panel lo muestra en lugar de las listas.
   error?: string
   // La carpeta de la sesión no tiene .claude/PENDIENTES.md: el panel lo dice en criollo.
@@ -119,13 +121,10 @@ declare module 'claude-code' {
       categorias: Categoria[]
       gasto: Gasto
       datos: Modelo | null
-      abierto: boolean
+      grupos: string[]
       detalle: string[]
+      lista: Tarea[]
       actividadDatos: ActModelo | null
-      tareasLista: Tarea[]
-      tareasArchivo: Tarea[] | null
-      tareasDerivadas: Tarea[] | null
-      tareasOrigen: string | null
     }
   }
 }

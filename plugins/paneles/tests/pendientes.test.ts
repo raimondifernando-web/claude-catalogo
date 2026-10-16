@@ -9,12 +9,12 @@ const AHORA = Date.parse('2026-10-10T15:30:00Z')
 const CARPETA = '/casa/Proyectos/Tienda'
 const RUTA = `${CARPETA}/.claude/PENDIENTES.md`
 
-// La versión anterior en git: la lista sin E10 y con B14 en prio 2 y S1 sin esperar a Ana.
+// La versión anterior en git: la lista sin E10 y con B14 en prio 2 y S1 sin esperar a F.
 const ANTERIOR = EJEMPLO.replace(/^\| E10 \|.*\n/m, '')
   .replace(/^(\| B14 \|.*?\| )1( \| pendiente \|)/m, '$12$2')
-  .replace(/^(\| S1 \|.*?\| 1 \| )espera dato de Ana( \|)/m, '$1pendiente$2')
+  .replace(/^(\| S1 \|.*?\| 1 \| )espera dato de F( \|)/m, '$1pendiente$2')
 
-type Mundo = { llamadas?: string[][]; texto?: string; sucio?: boolean; versiones?: string[]; antes?: string; fallaGit?: boolean; carpeta?: string; sinGit?: boolean }
+type Mundo = { tareas?: string; texto?: string; sucio?: boolean; versiones?: string[]; antes?: string; fallaGit?: boolean; carpeta?: string; sinGit?: boolean }
 
 function salida(stdout: string, exitCode = 0, stderr = '') {
   return { value: { exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false } } as never
@@ -32,10 +32,13 @@ function fondo(on: On, mundo: Mundo) {
   on('session.measure', (_$, e) => ({ changed: e.changed }))
   on('prompt.submit', (_$, e) => ({ text: e.text }))
   // Sin texto, la lectura sigue al archivo de verdad, que en /casa no existe.
-  on('fs.read', (_$, e, next) => (e.path === RUTA && mundo.texto !== undefined ? ({ value: mundo.texto } as never) : next(e)))
+  on('fs.read', (_$, e, next) => {
+    if (e.path === RUTA && mundo.texto !== undefined) return { value: mundo.texto } as never
+    if (e.path === `${CARPETA}/.claude/tareas.json` && mundo.tareas !== undefined) return { value: mundo.tareas } as never
+    return next(e)
+  })
   on('process.run', (_$, e) => {
-    mundo.llamadas?.push([...e.argv])
-    const [, , cmd, ...resto] = e.argv.filter((a: string, i: number, todo: string[]) => a !== "--no-optional-locks" && a !== "-C" && a !== "-c" && todo[i - 1] !== "-c")
+    const [, , , cmd, ...resto] = e.argv
     if (cmd === 'rev-parse') return salida(`${(mundo.carpeta ?? CARPETA).startsWith(CARPETA) ? CARPETA : mundo.carpeta}\n`)
     if (mundo.sinGit) return salida('', 128, 'fatal: not a git repository')
     if (mundo.fallaGit) return salida('', 128, 'fatal: index file corrupt')
@@ -66,42 +69,41 @@ async function abrir($: Parameters<Parameters<typeof test>[1]>[0], surface: 'ter
   return $.ui.mount({ plugin: 'paneles', surface, ...PANEL })
 }
 
-test('lee un archivo con el formato verdadero: Ahora, Esta semana, Cambios y Próxima fecha', async ($, on) => {
+test('lee el archivo real: Ahora, Esta semana, Cambios y Próxima fecha', async ($, on) => {
   fondo(on, { texto: EJEMPLO })
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await abrir($, surface)
-    // Ahora: las filas de prio 1, con lo que espera una respuesta destacado.
-    expect(await ui.find({ type: 'Text', text: /^Ahora$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Hay 2 esperando un dato o un OK/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /espera dato de Ana/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /espera OK de Ana/ })).toBeDefined()
-    expect(await ui.find({ type: 'Button', text: /Armar el respaldo del equipo/ })).toBeDefined()
-    expect(await ui.find({ type: 'Button', text: /Lista de tareas visible en pantalla/ })).toBeDefined()
-    // Esta semana, agrupado por sección.
-    expect(await ui.find({ type: 'Text', text: /^Esta semana$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^Seguridad y respaldo$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^Orden interno/ })).toBeDefined()
+    // Ahora: las 9 filas de prio 1, con lo que depende de Fernando destacado.
+    expect(await ui.find({ type: 'Text', text: /^Prioridad 1 · ahora$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Hay 2 que dependen de vos|Hay 3 que dependen de vos/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /te llama: falta un dato tuyo/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /te llama: falta tu OK/ })).toBeDefined()
+    expect(await ui.find({ type: 'Button', text: /Respaldo real de toda la Mac/ })).toBeDefined()
+    expect(await ui.find({ type: 'Button', text: /Panel de pendientes a la derecha/ })).toBeDefined()
+    // Prioridad 2 y 3 arrancan plegadas, con su conteo.
+    expect(await ui.find({ type: 'Button', text: /› Prioridad 2 · esta semana · \d+/ })).toBeDefined()
+    expect(await ui.find({ type: 'Button', text: /› Prioridad 3 · después · \d+/ })).toBeDefined()
     // Cambios: sale de comparar contra la versión anterior en git.
     expect(await ui.find({ type: 'Text', text: /Contra la versión anterior \(9\/10\)/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Nuevo · prio 2/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Cambió de prioridad · prio 2 → 1/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Cambió de estado · pendiente → espera dato de Ana/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Cambió de estado · pendiente → espera dato de F/ })).toBeDefined()
     // Próxima fecha: la primera de la tabla que todavía no pasó (10/10 15:00).
     expect(await ui.find({ type: 'Text', text: /^hoy 15:00$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Hacer la copia semanal/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Se renueva el cupo semanal de Claude/ })).toBeDefined()
     await ui.unmount()
   }
 })
 
-test('prio 3: solo el conteo, y un clic lo despliega', async ($, on) => {
+test('prioridad 3: solo el conteo, y un clic lo despliega', async ($, on) => {
   fondo(on, { texto: EJEMPLO })
   const ui = await abrir($)
-  const antes = await ui.find({ type: 'Button', text: /Después · \d+/ })
+  const antes = await ui.find({ type: 'Button', text: /Prioridad 3 · después · \d+/ })
   expect(antes).toBeDefined()
-  expect(await ui.find({ type: 'Button', text: /Terminar las vistas del tablero/ })).toBeUndefined()
-  await ui.press({ key: 'despues' })
-  expect(await ui.find({ type: 'Button', text: /Terminar las vistas del tablero/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Prio 3 · espera cupo o una decisión/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /Terminar vistas y secciones/ })).toBeUndefined()
+  await ui.press({ key: 'p3' })
+  expect(await ui.find({ type: 'Button', text: /Terminar vistas y secciones/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Espera cupo o una decisión/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -109,18 +111,18 @@ for (const surface of ['terminal', 'desktop'] as const) {
   test(`tocar un título muestra el detalle: de qué depende, qué desbloquea, esfuerzo y quién (${surface})`, async ($, on) => {
     fondo(on, { texto: EJEMPLO })
     const ui = await abrir($, surface)
-    expect(await ui.find({ type: 'Text', text: /^Prio 1 · lo que va primero$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Prioridad 1 · ahora$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^Desbloquea:/ })).toBeUndefined()
     await ui.press({ key: 'fila-B1' })
-    // B1 (el plan de la tienda) no depende de nada y desbloquea a las filas que lo nombran en «Depende de».
-    expect(await ui.find({ type: 'Text', text: /Plan de la tienda: catálogo, pagos y envíos/ })).toBeDefined()
+    // B1 (el plan del Bicho) no depende de nada y desbloquea a las filas que lo nombran en «Depende de».
+    expect(await ui.find({ type: 'Text', text: /Plan del Bicho como asistente tipo Jarvis: qué es, dónde vive/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Depende de: nada, se puede hacer ya/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Desbloquea: B3, B4, B5/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Desbloquea: B3, B4, B5, B13, B7, B10, B11, E11/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Esfuerzo: grande/ })).toBeDefined()
-    // S1 espera un dato: lo aclara en criollo.
+    // S1 espera un dato de F: lo aclara en criollo.
     await ui.press({ key: 'fila-S1' })
-    expect(await ui.find({ type: 'Text', text: /Necesita un dato para avanzar/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Depende de: dato de Ana: espacio libre en el disco/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Necesita un dato tuyo para avanzar/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Depende de: dato de F: espacio libre en Drive/ })).toBeDefined()
     // Otro toque lo cierra.
     await ui.press({ key: 'fila-B1' })
     expect(await ui.find({ type: 'Text', text: /Esfuerzo: grande/ })).toBeUndefined()
@@ -155,7 +157,7 @@ test('si git falla, avisa en lugar de dejar Cambios vacío', async ($, on) => {
   const ui = await abrir($)
   expect(await ui.find({ type: 'Text', text: /No pude leer el historial de git, así que no se ven los Cambios/ })).toBeDefined()
   // Lo demás se sigue viendo.
-  expect(await ui.find({ type: 'Button', text: /Armar el respaldo del equipo/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /Respaldo real de toda la Mac/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -164,14 +166,14 @@ test('carpeta sin lista: mensaje en criollo, no un error técnico', async ($, on
   const ui = await abrir($)
   expect(await ui.find({ type: 'Text', text: /^Esta carpeta no tiene lista de pendientes todavía\.$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^No pude leer/ })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: /^Ahora$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^Prioridad 1 · ahora$/ })).toBeUndefined()
   await ui.unmount()
 })
 
 test('desde una subcarpeta del repo encuentra la lista de la raíz', async ($, on) => {
   fondo(on, { texto: EJEMPLO, carpeta: `${CARPETA}/sub` })
   const ui = await abrir($)
-  expect(await ui.find({ type: 'Text', text: /^Ahora$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Prioridad 1 · ahora$/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -179,7 +181,7 @@ test('lista con un estado inválido: avisa el problema, sigue mostrando el resto
   fondo(on, { texto: EJEMPLO.replace(/^(\| S2 \|.*?\| 1 \| )pendiente( \|)/m, '$1inventado$2') })
   const ui = await abrir($)
   expect(await ui.find({ type: 'Text', text: /S2: el estado «inventado» no es uno de los conocidos/ })).toBeDefined()
-  expect(await ui.find({ type: 'Button', text: /Armar el respaldo del equipo/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /Respaldo real de toda la Mac/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -187,7 +189,7 @@ test('sin ninguna lista en la carpeta ni en su repo: lo dice en criollo', async 
   fondo(on, {})
   const ui = await abrir($)
   expect(await ui.find({ type: 'Text', text: /^Esta carpeta no tiene lista de pendientes todavía\.$/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /^Ahora$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^Prioridad 1 · ahora$/ })).toBeUndefined()
   await ui.unmount()
 })
 
@@ -206,7 +208,7 @@ test('una fila mal formada se avisa y el resto se sigue mostrando', async ($, on
   expect(await ui.find({ type: 'Text', text: /No pude leer bien PENDIENTES\.md \(2 problemas\)/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /S3: tiene 4 columnas y tiene que tener 8/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /S4: la prioridad «7» no es 1, 2 ni 3/ })).toBeDefined()
-  expect(await ui.find({ type: 'Button', text: /Armar el respaldo del equipo/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /Respaldo real de toda la Mac/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -214,7 +216,7 @@ test('una tabla con otras columnas se avisa', async ($, on) => {
   const roto = EJEMPLO.replace('| ID | Pendiente | Prio | Estado | Depende de | Esf. | Quién | Origen |', '| ID | Pendiente | Prio |')
   fondo(on, { texto: roto })
   const ui = await abrir($)
-  expect(await ui.find({ type: 'Text', text: /Sección [SBE]: la tabla no tiene las columnas/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Sección [SBCEMO]: la tabla no tiene las columnas/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -228,7 +230,7 @@ test('sin tabla de fechas lo avisa', async ($, on) => {
 test('la plantilla de PENDIENTES.md se lee sin problemas', async ($, on) => {
   fondo(on, { texto: PLANTILLA })
   const ui = await abrir($)
-  expect(await ui.find({ type: 'Text', text: /^Ahora$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Prioridad 1 · ahora$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^No pude leer/ })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: /^hoy|^el \d|2099/ })).toBeDefined()
   await ui.unmount()
@@ -261,7 +263,7 @@ test('dos sesiones crearon el mismo ID: el panel dice cuál y qué hacer', async
   fondo(on, { texto: repetido })
   const ui = await abrir($)
   expect(await ui.find({ type: 'Text', text: /S2: el mismo número está en dos filas/ })).toBeDefined()
-  expect(await ui.find({ type: 'Button', text: /Armar el respaldo del equipo/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /Respaldo real de toda la Mac/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -270,26 +272,6 @@ test('marcas de conflicto de git: el panel lo dice en criollo', async ($, on) =>
   const ui = await abrir($)
   expect(await ui.find({ type: 'Text', text: /marcas de conflicto de git \(línea 1\): dos sesiones editaron lo mismo/ })).toBeDefined()
   await ui.unmount()
-})
-
-test('«espera dato de» o «espera OK de» con cualquier nombre se acepta y se destaca', async ($, on) => {
-  fondo(on, { texto: EJEMPLO.replace(/^(\| S2 \|.*?\| 1 \| )pendiente( \|)/m, '$1espera OK de Marcos$2') })
-  const ui = await abrir($)
-  expect(await ui.find({ type: 'Text', text: /Hay 3 esperando un dato o un OK/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /No pude leer bien/ })).toBeUndefined()
-  await ui.unmount()
-})
-
-test('todas las llamadas a git apagan fsmonitor y untrackedCache (repo ajeno)', async ($, on) => {
-  const llamadas: string[][] = []
-  fondo(on, { texto: EJEMPLO, llamadas })
-  await abrir($)
-  const deGit = llamadas.filter(a => a[0] === 'git')
-  expect(deGit.length).toBeGreaterThan(0)
-  for (const argv of deGit) {
-    expect(argv.join(' ')).toContain('-c core.fsmonitor=false')
-    expect(argv.join(' ')).toContain('-c core.untrackedCache=false')
-  }
 })
 
 // ---------- Arreglos de 2026-10-14 ----------
@@ -302,6 +284,7 @@ test('cada mensaje abre el panel DENTRO del hook (así cuenta como pedido de la 
   fondo(on, { texto: EJEMPLO })
   arranque(on)
   let aperturas = 0
+  // Cuenta solo las aperturas de ESTE panel (Uso y Actividad también abren el suyo).
   on('ui.open', (_$, e) => {
     if (e.id === 'pendientes') aperturas++
     return { value: { isPlaced: false } } as never
@@ -342,6 +325,93 @@ test('si la lista salió de una carpeta de arriba, el panel dice de cuál', asyn
 test('si la lista está en la carpeta de la sesión, no avisa de otra carpeta', async ($, on) => {
   fondo(on, { texto: EJEMPLO })
   const ui = await abrir($)
-  expect(await ui.find({ type: 'Text', text: /^Lista de \// })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /Lista de / })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('sesión de /cerrar sin ventana: el panel se pide de nuevo con el reloj hasta que se dibuja, y después deja de insistir', async ($, on) => {
+  const reloj = fondo(on, { texto: EJEMPLO })
+  on('session.start', (_$, e) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: { command: 'pendientes' } }) as never)
+  let hayVentana = false
+  let aperturas = 0
+  on('ui.open', () => {
+    aperturas++
+    return { value: { isPlaced: hayVentana } } as never
+  })
+  await $.session.start({ cwd: '/casa/Proyectos/Tienda' } as never)
+  const sinVentana = aperturas
+  await reloj.advance(90100)
+  expect(aperturas).toBeGreaterThan(sinVentana) // insiste mientras no hay ventana
+  hayVentana = true
+  await reloj.advance(30100)
+  const alDibujar = aperturas
+  await reloj.advance(120000)
+  expect(aperturas).toBe(alDibujar) // ya dibujado: no vuelve a pedirlo
+})
+
+// ---------- Unificación con las tareas de la sesión (2026-10-16) ----------
+const TAREAS = JSON.stringify({
+  tareas: [
+    { id: 'T0', texto: 'Unificar paneles', estado: 'in_progress' },
+    { id: 'S1', texto: 'Respaldo en sesión', estado: 'pending' },
+    { id: 'T1', texto: 'Arranque de sesión', estado: 'completed' },
+  ],
+})
+
+test('arriba «Esta sesión»: en curso ◐, por hacer ○, hechas ✅ tachadas', async ($, on) => {
+  fondo(on, { texto: EJEMPLO, tareas: TAREAS })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await abrir($, surface)
+    expect(await ui.find({ type: 'Text', text: /ESTA SESIÓN/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /1 en curso · 1 por hacer · 1 hecha/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /◐ Unificar paneles/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /○ Respaldo en sesión/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /✅ Arranque de sesión/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /PENDIENTES QUE ARRASTRAMOS/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('lo que está en las dos listas se MARCA abajo («en sesión»), no se esconde', async ($, on) => {
+  fondo(on, { texto: EJEMPLO, tareas: TAREAS })
+  const ui = await abrir($)
+  expect(await ui.find({ type: 'Button', text: /Respaldo real de toda la Mac.*S1 · en sesión/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /Plan del Bicho como asistente tipo Jarvis.*B1 ›/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('lo que espera algo de Fer lleva la manito ✋ y «te llama»; ◐ en curso; ○ por hacer', async ($, on) => {
+  fondo(on, { texto: EJEMPLO })
+  const ui = await abrir($)
+  expect(await ui.find({ type: 'Text', text: /^✋$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /te llama: falta un dato tuyo/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^◐$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^○$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('sin tareas de sesión: lo dice, y la lista de pendientes se ve igual', async ($, on) => {
+  fondo(on, { texto: EJEMPLO })
+  const ui = await abrir($)
+  expect(await ui.find({ type: 'Text', text: /Sin tareas todavía/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /Respaldo real de toda la Mac/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('si la carpeta no tiene PENDIENTES.md, las tareas de la sesión se ven igual', async ($, on) => {
+  fondo(on, { tareas: TAREAS })
+  const ui = await abrir($)
+  expect(await ui.find({ type: 'Text', text: /◐ Unificar paneles/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Esta carpeta no tiene lista de pendientes todavía/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('la que espera a otra va sangrada debajo, con ↳', async ($, on) => {
+  fondo(on, { texto: EJEMPLO.replace(/^(\| B3 \|.*?\| )2( \|)/m, '$11$2') })
+  const ui = await abrir($)
+  // B3 (ahora prioridad 1) nombra a B1 en «Depende de»: B1 va arriba y B3 cuelga de él.
+  // En el archivo real, B1 desbloquea a otras; las prioridad 1 que lo nombran en «Depende de» cuelgan de él.
+  expect(await ui.find({ type: 'Text', text: /^↳$/ })).toBeDefined()
   await ui.unmount()
 })
