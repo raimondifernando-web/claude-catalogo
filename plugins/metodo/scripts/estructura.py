@@ -866,7 +866,7 @@ def revisar_contenido(carpeta: Path) -> list:
         if len(t.splitlines()) > 120:
             problemas.append(f"tiene {len(t.splitlines())} líneas (conviene ≤ 120: contrato + estado, no un informe)")
         m = re.search(r"Worktree:\s*`?(\S+?)`?\s*·\s*Rama:\s*`?([^\s`]+)", t)
-        if m and m.group(1).startswith(("~", "/")):
+        if m and (m.group(1).startswith(("~", "/")) or re.match(r"[A-Za-z]:[\\/]", m.group(1))):
             wt = Path(os.path.expanduser(m.group(1))).resolve()
             if not wt.exists():
                 problemas.append(f"dice Worktree {m.group(1)} y esa carpeta no existe")
