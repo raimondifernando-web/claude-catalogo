@@ -14,7 +14,7 @@ const ANTERIOR = EJEMPLO.replace(/^\| E10 \|.*\n/m, '')
   .replace(/^(\| B14 \|.*?\| )1( \| pendiente \|)/m, '$12$2')
   .replace(/^(\| S1 \|.*?\| 1 \| )espera dato de F( \|)/m, '$1pendiente$2')
 
-type Mundo = { tareas?: string; texto?: string; sucio?: boolean; versiones?: string[]; antes?: string; fallaGit?: boolean; carpeta?: string; sinGit?: boolean }
+type Mundo = { llamadas?: string[][]; raiz?: string; tareas?: string; texto?: string; sucio?: boolean; versiones?: string[]; antes?: string; fallaGit?: boolean; carpeta?: string; sinGit?: boolean }
 
 function salida(stdout: string, exitCode = 0, stderr = '') {
   return { value: { exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false } } as never
@@ -38,8 +38,10 @@ function fondo(on: On, mundo: Mundo) {
     return next(e)
   })
   on('process.run', (_$, e) => {
-    const [, , , cmd, ...resto] = e.argv
-    if (cmd === 'rev-parse') return salida(`${(mundo.carpeta ?? CARPETA).startsWith(CARPETA) ? CARPETA : mundo.carpeta}\n`)
+    mundo.llamadas?.push([...e.argv])
+    // Se quitan las opciones de seguridad (-c …, --no-optional-locks) y -C <carpeta> para ver el comando de git.
+    const [, , cmd, ...resto] = e.argv.filter((a: string, i: number, todo: string[]) => a !== '--no-optional-locks' && a !== '-C' && a !== '-c' && todo[i - 1] !== '-c')
+    if (cmd === 'rev-parse') return salida(`${mundo.raiz ?? ((mundo.carpeta ?? CARPETA).startsWith(CARPETA) ? CARPETA : mundo.carpeta)}\n`)
     if (mundo.sinGit) return salida('', 128, 'fatal: not a git repository')
     if (mundo.fallaGit) return salida('', 128, 'fatal: index file corrupt')
     if (cmd === 'status') return salida(mundo.sucio ? ' M .claude/PENDIENTES.md\n' : '')
@@ -271,6 +273,39 @@ test('marcas de conflicto de git: el panel lo dice en criollo', async ($, on) =>
   fondo(on, { texto: '<<<<<<< HEAD\n' + EJEMPLO + '\n=======\n>>>>>>> otra\n' })
   const ui = await abrir($)
   expect(await ui.find({ type: 'Text', text: /marcas de conflicto de git \(línea 1\): dos sesiones editaron lo mismo/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('todas las llamadas a git apagan fsmonitor y untrackedCache (repo ajeno)', async ($, on) => {
+  const llamadas: string[][] = []
+  fondo(on, { texto: EJEMPLO, llamadas })
+  await abrir($)
+  const deGit = llamadas.filter(a => a[0] === 'git')
+  expect(deGit.length).toBeGreaterThan(0)
+  for (const argv of deGit) {
+    expect(argv.join(' ')).toContain('-c core.fsmonitor=false')
+    expect(argv.join(' ')).toContain('-c core.untrackedCache=false')
+    expect(argv).toContain('--no-optional-locks')
+  }
+})
+
+test('nunca busca la lista en carpetas madre (podrían ser de otro proyecto o cliente)', async ($, on) => {
+  // La lista existe solo en CARPETA; la sesión está en una subcarpeta que es su propio repo.
+  fondo(on, { texto: EJEMPLO, carpeta: `${CARPETA}/plataforma`, raiz: `${CARPETA}/plataforma` })
+  const ui = await abrir($)
+  expect(await ui.find({ type: 'Text', text: /no tiene lista de pendientes/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Prioridad 1 · ahora$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('un PENDIENTES.md enorme se corta: no cuelga el panel y muestra a lo sumo 500 filas', async ($, on) => {
+  const fila = (i: number) => `| Z${i} | Fila de relleno número ${i} | 1 | pendiente | — | chico | C | prueba |\n`
+  const enorme = EJEMPLO.replace('## Cadena de dependencias', '## Z · Relleno\n| ID | Pendiente | Prio | Estado | Depende de | Esf. | Quién | Origen |\n|---|---|---|---|---|---|---|---|\n' + Array.from({ length: 5000 }, (_, i) => fila(i)).join('') + '\n## Cadena de dependencias')
+  expect(enorme.length).toBeGreaterThan(300_000)
+  fondo(on, { texto: enorme })
+  const ui = await abrir($)
+  expect(await ui.find({ type: 'Text', text: /^Prioridad 1 · ahora$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /Fila de relleno número 4999/ })).toBeUndefined()
   await ui.unmount()
 })
 
