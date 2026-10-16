@@ -1,5 +1,10 @@
 # paneles
 
+## 0.4.0 — 2026-10-16
+- **Cuarto panel, «Actividad»** (`/actividad`): ves qué agente, subagente o skill se activó, a quién llamó cada uno y cuáles están trabajando ahora. Árbol por sesión: cada skill cuelga del agente que la usó y cada subagente de quien lo lanzó. El agente se dibuja como un Bicho, el subagente como una luciérnaga y la skill como una hoja de archivo (son instrucciones); verde y animado = trabajando, gris = terminó. En la terminal se ven como símbolos de texto.
+- **Qué guarda (único panel que escribe):** un archivo por día y por sesión en `<carpeta de Claude>/actividad/` con tipo, nombre, hora, id corto de sesión y carpeta. Nunca el pedido, la descripción ni los argumentos. No manda nada afuera. Se registra solo, sin que nadie corra nada.
+- Los paneles de Uso, Pendientes y Tareas no cambian.
+
 ## 0.3.1 — 2026-10-15
 - **Pendientes y Tareas ya no suben a carpetas de afuera de tu repositorio.** Buscaban la lista hasta 3 carpetas más arriba y podían mostrar la de otro proyecto. Ahora miran solo la carpeta de la sesión y la raíz de su repo.
 
