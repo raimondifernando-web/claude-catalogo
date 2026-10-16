@@ -1119,3 +1119,13 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Pruebas | Suite completa de metodo sobre `845b7cf` (`test_reglas.py`, 13 pruebas, incluida): resultado del control `controles` del PR de este registro. `verificar-metadatos`: TODO COINCIDE. Grep de nombres de clientes: 0. |
 | Límites (lo NO comprobado) | No probado con una ficha real de cliente. No probado en Windows. |
 | Veredicto | **PASS**: sin hallazgos de seguridad. Lo escribe Tech con revisión de Gemini; no la hizo quien lo programó. |
+
+### 2026-10-16 · metodo 0.46.0 (commit 9877e3e) — PASS
+
+*El cierre y el arranque hacen lo resoluble; `cierre_repo.py` nuevo.*
+| Ítem | Resultado |
+|---|---|
+| Qué cambia | `arrancar-check.py`, `cerrar-check.py` y `sesiones_hijas.py`: cada ✗ de una hija trae la acción exacta y la caché de herramientas (`.omc/`, `__pycache__`, `.DS_Store`) ya no cuenta como trabajo; `cierre_repo.py` (nuevo): `estado` y `volver` para repos que no unen solos; textos de `arrancar` y `cerrar`; `zona-sensible.py` agrega `--no-ext-diff` a dos `git diff`. Diff real revisado: `6e06c17..9877e3e` (13 archivos). |
+| Superficie nueva | `cierre_repo.py volver` ejecuta `git checkout <rama base>` y reescribe `.claude/prompts/REANUDAR.md` tras el cambio de rama; se niega si hay commits sin subir o cambios sin guardar. Todo `subprocess` va con lista de argumentos (sin shell), `-c core.hooksPath=/dev/null -c core.fsmonitor=false`. Los comandos `gh pr …` los emite como texto la skill; el script no los corre. Sin red, sin borrados, sin `--force`/`reset --hard`. |
+| Verificación | Revisión independiente de solo lectura (`agy-delegar --revisar`, Gemini) sobre el diff pegado: PASS, 0 críticos. Hallazgos leídos contra el propósito: `git checkout -q <rama>` sin `--` (bajo; la rama sale de `origin/HEAD` o de un argumento local, falso positivo; endurecible en una versión futura); escritura de `REANUDAR.md` (intencional y confinada); `--no-ext-diff` y `core.hooksPath`/`fsmonitor` fortalecen. Cupo de Codex agotado el día de la revisión. |
+| Metadatos / clientes | verificar-metadatos: TODO COINCIDE (ver controles del PR) · grep de clientes: 0 |
