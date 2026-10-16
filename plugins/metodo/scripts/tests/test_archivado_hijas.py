@@ -78,7 +78,7 @@ class Archivado(unittest.TestCase):
         out = self.correr("arrancar-check.py")
         self.assertIn(f"{U['libre']} «Hija libre»", out)
         self.assertIn("sin preguntarle a nadie", out)
-        self.assertIn(f"NO ARCHIVAR «Hija ocupada» ({U['ocup']})", out)
+        self.assertIn(f"NO ARCHIVAR TODAVÍA «Hija ocupada» ({U['ocup']})", out)
         self.assertNotIn(U["arch"], out)
         self.assertNotIn("Ofrecer", out)
         self.assertNotIn("¿archivo", out.lower())

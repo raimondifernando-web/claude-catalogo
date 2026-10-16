@@ -329,9 +329,10 @@ try:
     _yo = _sh.mi_sesion(_todas) if _todas else None
     if _yo:
         _libres, _ret = _sh.clasificar(_sh.hijas_de(_yo["sessionId"], _todas), _todas)
-        for _h, _b in _ret:
-            linea(False, f"hija «{_h.get('title', '')}» ({_h['sessionId']}): {'; '.join(_b)}",
-                  f"hija «{_h.get('title', '')}» con trabajo o informe pendiente (archivarte la arrastra)")
+        for _h, _b in _ret:  # C127: lo resuelve esta sesión (acción indicada) y repite el chequeo; no es tarea de la persona
+            for _x in _sh.acciones_de(_h, _todas):
+                linea(False, f"hija «{_h.get('title', '')}» ({_h['sessionId']}): {_x}",
+                      f"hija «{_h.get('title', '')}» con trabajo o informe pendiente (resolvelo VOS con la acción indicada y repetí el chequeo)")
         if _libres and not _ret:
             print("• HIJAS A ARCHIVAR (sin preguntarle a nadie): " + ", ".join(f"{_h['sessionId']} «{_h.get('title', '')}»" for _h, _b in _libres)
                   + " → comprobá con list_sessions {linked:true} que figuren «idle»; la app las archiva sola con vos (paso 10). "
@@ -353,6 +354,14 @@ try:
                   + " · no se abandonan: se resuelven o se anotan (nunca borres la de otra sesión)")
 except Exception:
     pass
+
+# (C130) repo que no une solo: se dice UNA vez, con el camino correcto, y el cierre no queda a medias en la rama de cierre
+try:
+    import cierre_repo as _cr
+    for _l in _cr.lineas_cierre(cwd):
+        print(_l)
+except Exception as e:
+    print(f"• Repo/unión: no se pudo medir ({type(e).__name__})")
 
 # (g) lo que solo puede hacer la sesión
 print("• MANUAL (paso 3, lo durable): lo que esta sesión aprendió como regla permanente ya bajó al CLAUDE.md (o a su archivo), "

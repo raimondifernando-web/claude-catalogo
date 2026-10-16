@@ -58,9 +58,9 @@ def padre_de(s):
     return sf.get("sessionId") if isinstance(sf, dict) else (sf if isinstance(sf, str) else None)
 
 
-def hijas_de(sid, ses):
-    """Descendientes vivas (hijas, nietas…) de `sid`: sin detach y sin PR abierto propio."""
-    out, vistos, cola = [], {sid}, [sid]
+def hijas_de(sid, ses, excluir=()):
+    """Descendientes vivas (hijas, nietas…) de `sid`: sin detach y sin PR abierto propio. `excluir` saca a una sesión y a su rama (p. ej. la actual)."""
+    out, vistos, cola = [], {sid, *excluir}, [sid]
     while cola:
         p = cola.pop(0)
         for s in ses:
@@ -72,24 +72,55 @@ def hijas_de(sid, ses):
     return out
 
 
-def bloqueos_de(h, ses):
-    """Motivos por los que NO conviene archivar `h`: informe sin entregar o sin leer, o cambios sin guardar en su copia propia."""
+# Caché de herramientas que no es trabajo de nadie (C127): una copia propia que solo tiene esto cuenta como limpia.
+RUIDO = re.compile(r"(^|/)(\.omc|__pycache__|\.pytest_cache|node_modules)(/|$)|(^|/)\.DS_Store$")
+
+# Qué hace la sesión SOLA con cada pendiente de una hija (C127): nada de esto es una pregunta para la persona.
+ACCIONES = {
+    "sin_guardar": 'SendMessage a la hija: «guardá (commit) lo tuyo, subí tu rama y avisame "listo"»; esperá a que termine su turno',
+    "informe_debido": "esperá a que entregue (la app te avisa cuando termina su turno) o pedíselo con SendMessage; si tarda, ScheduleWakeup, nunca una tarea para la persona",
+    "informe_sin_leer": "leé su informe (get_session) y pasá lo que sirva a PENDIENTES.md; recién ahí archivá",
+}
+
+
+def bloqueos_det(h, ses):
+    """[(tipo, texto)]: motivos por los que NO conviene archivar `h` todavía. Se resuelven solos (ACCIONES)."""
     out = []
     dias = (time.time() * 1000 - (h.get("lastActivityAt") or time.time() * 1000)) / 86400000
     if h.get("sideSessionReportOwed") and dias <= VIEJO_DIAS:
-        out.append("todavía no entregó su informe")
+        out.append(("informe_debido", "todavía no entregó su informe"))
     padre = next((s for s in ses if s["sessionId"] == padre_de(h)), None)
     if padre and any(n.get("sessionId") == h["sessionId"] for n in padre.get("queuedSideSessionNotes") or []):
-        out.append("su informe llegó pero nadie lo leyó")
+        out.append(("informe_sin_leer", "su informe llegó pero nadie lo leyó"))
     wt = h.get("worktreePath")
     if wt and os.path.isdir(wt):
         try:
-            st = subprocess.run(["git", "-C", wt, "--no-optional-locks", "status", "--short"], capture_output=True, text=True,
-                                encoding="utf-8", errors="replace", timeout=20).stdout.strip()
+            st = subprocess.run(["git", "-C", wt, "--no-optional-locks", "status", "--short", "-uall"], capture_output=True, text=True,
+                                encoding="utf-8", errors="replace", timeout=20).stdout
         except Exception:
             st = ""
-        if st:
-            out.append(f"su copia propia tiene {len(st.splitlines())} cambio(s) sin guardar ({wt})")
+        sucios = [l for l in st.splitlines() if l.strip() and not RUIDO.search(l.strip().split(None, 1)[-1].split(" -> ")[-1].strip('"'))]
+        if sucios:
+            out.append(("sin_guardar", f"su copia propia tiene {len(sucios)} cambio(s) sin guardar ({wt})"))
+    return out
+
+
+def bloqueos_de(h, ses):
+    return [t for _k, t in bloqueos_det(h, ses)]
+
+
+def acciones_de(h, ses):
+    """[«<qué> → <hacelo vos>»] para que la sesión resuelva sola lo que frena a `h`."""
+    return [f"{t} → {ACCIONES[k]}" for k, t in bloqueos_det(h, ses)]
+
+
+def pistas_archivar(s):
+    """Por qué la app puede rechazar archivar `s` aunque no tenga trabajo pendiente, medido en el disco. [] = nada visible."""
+    out = []
+    if s.get("steeredByRemoteClient"):
+        out.append("tiene un cliente remoto abierto (otra pantalla la está usando): cerrá esa ventana o esperá")
+    if s.get("queuedSideSessionNotes"):
+        out.append("tiene un informe en cola sin leer: leelo (get_session) y reintentá")
     return out
 
 
