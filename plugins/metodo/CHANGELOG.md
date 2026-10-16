@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.47.2 — 2026-10-16
+**`radar.py hoy` suma, en la línea de cupo, el estado y el saldo estimado del Puente Gemini si lo usás.** Se aplica solo; no hay nada que correr.
+- **Antes:** el saldo del Puente Gemini solo se veía corriendo `puente-gemini estado`.
+- **Ahora**, si existe `~/.cerebro/puente-gemini.json` (lo deja ese comando), la línea «Cupo:» agrega «Puente Gemini: apagado · saldo ~US$X (estimado)». El saldo es una estimación; el real está en AI Studio → Gasto.
+- **Lo que no hace:** solo lee ese archivo; no usa internet ni toca claves. Si el archivo no existe (no usás el puente), no dice nada.
+
 ## 0.47.0 — 2026-10-16
 **Claude te sigue llamando como pediste durante toda la sesión, no solo al abrirla.** Se aplica solo; no hay nada que correr.
 - **Antes:** la regla 24 se mostraba una vez al abrir la sesión («Quién habla: …») y a medida que la conversación avanzaba Claude volvía a decir tu nombre formal o ninguno.

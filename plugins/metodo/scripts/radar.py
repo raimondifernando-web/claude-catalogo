@@ -883,6 +883,25 @@ def otras_ia_linea(radar):
         return ""
 
 
+def puente_gemini_texto():
+    """Una frase con el estado y el saldo ESTIMADO del Puente Gemini, leída del archivo que deja el comando `puente-gemini`
+    (`~/.cerebro/puente-gemini.json`). Sin archivo o roto: cadena vacía. No llama a ninguna API ni toca claves."""
+    cerebro = os.environ.get("CEREBRO_HOME", "").strip()
+    base = Path(cerebro) if cerebro else Path.home() / ".cerebro"
+    try:
+        ruta = base / "puente-gemini.json"
+        if not ruta.is_file() or ruta.stat().st_size > 65536:
+            return ""
+        d = json.loads(ruta.read_text(encoding="utf-8"))
+        saldo = d.get("saldo_estimado")
+        if not isinstance(saldo, (int, float)) or isinstance(saldo, bool):
+            saldo = float(d["saldo_base"]) - float(d.get("gastado_estimado", 0))
+        return "Puente Gemini: %s · saldo ~US$%.2f (estimado; el real está en AI Studio → Gasto)." % (
+            "encendido" if d.get("encendido") is True else "apagado", float(saldo))
+    except (OSError, ValueError, KeyError, TypeError):
+        return ""
+
+
 def hoy_lineas(radar, cupos=None):
     """Las líneas de `radar.py hoy`. Sin red, sin comandos lentos."""
     cupos = cupos or cupos_rapidos()
@@ -901,6 +920,9 @@ def hoy_lineas(radar, cupos=None):
     if libres:
         linea += " Con cupo libre: %s; %s revisiones y trabajo acotado con delegar.py." % (
             " y ".join(libres), "mandale" if len(libres) == 1 else "mandales")
+    puente = puente_gemini_texto()
+    if puente:
+        linea += " " + puente
     lineas.append(linea)
     otra = otras_ia_linea(radar)
     if otra:
