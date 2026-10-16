@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionContextUsage, SessionRateLimit } from 'claude-code'
 
-import type { Tarea, Categoria, Cambio, Cambios, Fila, Gasto, Limite, Medida, Modelo, Proxima } from '../types'
+import type { ActModelo, ActNodo, ActSesion, ActSinUso, Tarea, Categoria, Cambio, Cambios, Fila, Gasto, Limite, Medida, Modelo, Proxima } from '../types'
 
 // Plugin «paneles»: tres paneles a la derecha, «Uso», «Pendientes» y «Tareas». Un plugin tiene un solo
 // módulo de hooks y no admite dos hooks del mismo evento sin filtro, y `$` no cruza archivos:
@@ -1394,12 +1394,396 @@ const registrarTareas: Register = on => {
   })
 }
 
+// ───────── Panel «Actividad» (agentes, subagentes y skills) ─────────
+// Pedido de Fer (C137): ver, en un panel a la derecha, cuándo se activa un agente,
+// subagente o skill. El registro guarda SOLO tipo, nombre, actHora, id actCorto de sesión y
+// actCarpeta; nunca el prompt, la descripción ni los argumentos (Mand. XXII). Un archivo
+// por día y por sesión: actDos sesiones a la vez nunca se pisan. Un mod no puede borrar:
+// los archivos de más de 90 días los poda quien administre la Mac (hoy son livianos).
+const actPANEL = 'actividad'
+const actTITULO = 'Actividad'
+// La actCarpeta del registro sale de la configuración de actCADA persona (nunca una ruta fija).
+let actDIR = ''
+let actSIN_USO = ''
+async function actCarpeta($: EngineInterface): Promise<void> {
+  if (actDIR !== '') return
+  const cfg = await $.env.get('CLAUDE_CONFIG_DIR').catch(() => undefined)
+  const casa = await $.env.get('HOME').catch(() => undefined)
+  const base = cfg || (casa ? `${casa}/.claude` : '')
+  actDIR = base ? `${base}/actividad` : ''
+  actSIN_USO = `${actDIR}/sin-uso.json`
+}
+const actCADA = 5_000
+const actLEE_DIAS = 2
+const actSKILL_FRESCA = 20_000
+const actACTIVO_MAX = 6 * 3600 * 1000
+const actART_MS = 3 * 60 * 60 * 1000
+const actDIA_MS = 24 * 3600 * 1000
+
+const actDatos = atom({ plugin: 'paneles', key: 'actividadDatos' } as const, null)
+
+const actVERDE = '#30D158'
+const actROJO = '#FF453A'
+const actAMARILLO = '#FFD60A'
+
+
+// Dibujos del panel (pantalla de la app): el agente es el Bicho del notch; el subagente, una luciérnaga.
+// Verde y animado = trabajando; gris y quieto = terminó. En la terminal no hay dibujos: se cae a ● / ◦.
+const actSVG = (cuerpo: string) => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="22" viewBox="0 0 20 22">${cuerpo}</svg>`
+const actBICHO_VERDE = actSVG(
+  `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -1.5;0 0" dur="1s" repeatCount="indefinite"/>` +
+    `<path d="M7 4 Q6 1 3.5 .5 M13 4 Q14 1 16.5 .5" stroke="#30D158" stroke-width="1.1" fill="none" stroke-linecap="round"/>` +
+    `<circle cx="3.2" cy=".8" r="1.3" fill="#30D158"/><circle cx="16.8" cy=".8" r="1.3" fill="#30D158"/>` +
+    `<rect x="2" y="3.5" width="16" height="13" rx="6.5" fill="#1F5A33" stroke="#30D158" stroke-width=".9"/>` +
+    `<ellipse cx="7" cy="9.5" rx="2.6" ry="3" fill="#F5F5F7"/><ellipse cx="13" cy="9.5" rx="2.6" ry="3" fill="#F5F5F7"/>` +
+    `<circle cx="7.4" cy="9.9" r="1.3" fill="#0F0F10"/><circle cx="12.6" cy="9.9" r="1.3" fill="#0F0F10"/>` +
+    `<path d="M5 17 l-1.5 2.5 M10 17 v2.5 M15 17 l1.5 2.5" stroke="#30D158" stroke-width="1.1" stroke-linecap="round"/></g>`,
+)
+const actBICHO_GRIS = actSVG(
+  `<path d="M7 4 Q6 1 3.5 .5 M13 4 Q14 1 16.5 .5" stroke="#636366" stroke-width="1.1" fill="none" stroke-linecap="round"/>` +
+    `<circle cx="3.2" cy=".8" r="1.2" fill="#636366"/><circle cx="16.8" cy=".8" r="1.2" fill="#636366"/>` +
+    `<rect x="2" y="3.5" width="16" height="13" rx="6.5" fill="#2C2C2E" stroke="#48484A" stroke-width=".8"/>` +
+    `<path d="M4.8 9.8 q2.2 1.6 4.4 0 M10.8 9.8 q2.2 1.6 4.4 0" stroke="#8E8E93" stroke-width="1.1" fill="none" stroke-linecap="round"/>` +
+    `<path d="M5 17 l-1.5 2.5 M10 17 v2.5 M15 17 l1.5 2.5" stroke="#48484A" stroke-width="1.1" stroke-linecap="round"/>`,
+)
+const actLUCI_VERDE = actSVG(
+  `<ellipse cx="6" cy="6" rx="4.2" ry="2.2" transform="rotate(-25 6 6)" fill="#30D158" opacity=".35"/>` +
+    `<ellipse cx="14" cy="6" rx="4.2" ry="2.2" transform="rotate(25 14 6)" fill="#30D158" opacity=".35"/>` +
+    `<ellipse cx="10" cy="10" rx="3" ry="5.5" fill="#2E3A31" stroke="#30D158" stroke-width=".8"/>` +
+    `<circle cx="10" cy="3.8" r="2" fill="#2E3A31" stroke="#30D158" stroke-width=".8"/>` +
+    `<ellipse cx="10" cy="14.4" rx="5.6" ry="5.6" fill="#30D158" opacity=".22"><animate attributeName="opacity" values=".1;.35;.1" dur="1.4s" repeatCount="indefinite"/></ellipse>` +
+    `<ellipse cx="10" cy="14.4" rx="3.2" ry="3.4" fill="#30D158"><animate attributeName="opacity" values="1;.55;1" dur="1.4s" repeatCount="indefinite"/></ellipse>` +
+    `<path d="M8.8 1.6 Q8 .3 6.8 .2 M11.2 1.6 Q12 .3 13.2 .2" stroke="#30D158" stroke-width=".8" fill="none" stroke-linecap="round"/>`,
+)
+const actLUCI_GRIS = actSVG(
+  `<ellipse cx="6" cy="6" rx="4.2" ry="2.2" transform="rotate(-25 6 6)" fill="#636366" opacity=".25"/>` +
+    `<ellipse cx="14" cy="6" rx="4.2" ry="2.2" transform="rotate(25 14 6)" fill="#636366" opacity=".25"/>` +
+    `<ellipse cx="10" cy="10" rx="3" ry="5.5" fill="#2C2C2E" stroke="#48484A" stroke-width=".8"/>` +
+    `<circle cx="10" cy="3.8" r="2" fill="#2C2C2E" stroke="#48484A" stroke-width=".8"/>` +
+    `<ellipse cx="10" cy="14.4" rx="3.2" ry="3.4" fill="#48484A"/>` +
+    `<path d="M8.8 1.6 Q8 .3 6.8 .2 M11.2 1.6 Q12 .3 13.2 .2" stroke="#636366" stroke-width=".8" fill="none" stroke-linecap="round"/>`,
+)
+
+const actCorto = (s: unknown) => String(s ?? '').slice(0, 80)
+
+// Sesión y actCarpeta de la última conversación vista: la herramienta Skill no las trae.
+let actSidActual = ''
+let actCwdActual = ''
+
+// Una actCola: actDos eventos casi a la vez (arranque y vínculo de un subagente) no se pisan al escribir.
+let actCola: Promise<unknown> = Promise.resolve()
+
+function actAnotar($: EngineInterface, linea: Record<string, unknown>): Promise<void> {
+  const t = Date.now()
+  const hecho = actCola.then(async () => {
+    await actCarpeta($)
+    if (actDIR === '') return
+    const dia = new Date(t).toISOString().slice(0, 10)
+    const sid = String(linea.s ?? '').replace(/[^a-zA-Z0-9_-]/g, '')
+    const ruta = `${actDIR}/${dia}-${sid || 'sin-sesion'}.jsonl`
+    const previo = await $.fs.read(ruta).catch(() => '')
+    await $.fs.write(ruta, `${typeof previo === 'string' ? previo : ''}${JSON.stringify({ t, ...linea })}\n`)
+  })
+  actCola = hecho.catch(() => undefined)
+  return hecho
+}
+
+function actALineas(texto: string): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = []
+  for (const l of texto.split('\n')) {
+    if (l.trim() === '') continue
+    try {
+      const o = JSON.parse(l)
+      if (o && typeof o === 'object') out.push(o as Record<string, unknown>)
+    } catch {
+      // línea cortada: se ignora
+    }
+  }
+  return out
+}
+
+// Pura (se prueba sola): del conjunto de líneas al árbol del panel.
+export function actArmar(lineas: Record<string, unknown>[], ahora: number, sinUso?: ActSinUso): ActModelo {
+  const paradas = new Map<string, number>()
+  const padres = new Map<string, string>()
+  for (const l of lineas) {
+    if (l.ev === 'stop' && typeof l.id === 'string' && typeof l.t === 'number') paradas.set(l.id, l.t)
+    if (l.ev === 'link' && typeof l.id === 'string' && typeof l.padre === 'string') padres.set(l.id, l.padre)
+  }
+  const nodos: ActNodo[] = []
+  const porId = new Map<string, ActNodo>()
+  for (const l of lineas) {
+    if (l.ev !== 'start' || typeof l.t !== 'number') continue
+    const tipo = l.tipo === 'skill' ? 'skill' : 'agente'
+    const nombre = actCorto(l.n)
+    if (nombre === '') continue
+    const id = typeof l.id === 'string' ? l.id : undefined
+    const fin = id !== undefined ? paradas.get(id) : undefined
+    const n: ActNodo = {
+      tipo,
+      nombre,
+      t: l.t,
+      dur: fin !== undefined && fin >= l.t ? fin - l.t : undefined,
+      activo: false,
+      sesion: actCorto(l.s),
+      cwd: actCorto(l.cwd).split('/').filter(Boolean).pop() ?? '',
+      hijos: [],
+    }
+    n.activo = tipo === 'agente' && fin === undefined && ahora - l.t < actACTIVO_MAX
+    const padre = id !== undefined ? padres.get(id) : typeof l.por === 'string' ? l.por : undefined
+    ;(n as ActNodo & { _p?: string })._p = padre
+    if (id !== undefined) porId.set(id, n)
+    nodos.push(n)
+  }
+  const raices: ActNodo[] = []
+  for (const n of nodos) {
+    const padre = (n as ActNodo & { _p?: string })._p
+    const sup = padre !== undefined && padre !== 'main' ? porId.get(padre) : undefined
+    if (sup && sup !== n) sup.hijos.push(n)
+    else raices.push(n)
+  }
+  for (const n of nodos) {
+    delete (n as ActNodo & { _p?: string })._p
+    n.hijos.sort((a, b) => a.t - b.t)
+    // Una skill cuenta como «trabajando» un rato, mientras su agente sigue activo.
+    if (n.tipo === 'skill') n.activo = ahora - n.t < actSKILL_FRESCA
+  }
+  // Un agente sigue «trabajando» si él o algo de lo que colgó lo está.
+  const vivo = (n: ActNodo): boolean => n.activo || n.hijos.some(vivo)
+  const cuenta = (n: ActNodo): number => (n.activo ? 1 : 0) + n.hijos.reduce((x, h) => x + cuenta(h), 0)
+  const inicioHoy = Math.floor((ahora - actART_MS) / actDIA_MS) * actDIA_MS + actART_MS
+  raices.sort((a, b) => b.t - a.t)
+  const agrupar = (lista: ActNodo[]): ActSesion[] => {
+    const por = new Map<string, ActSesion>()
+    for (const r of lista) {
+      const k = r.sesion || '-'
+      const g = por.get(k) ?? { sesion: k, cwd: r.cwd, raices: [] }
+      g.raices.push(r)
+      por.set(k, g)
+    }
+    return [...por.values()]
+  }
+  return {
+    ahora: agrupar(raices.filter(vivo)),
+    hoy: agrupar(raices.filter(r => !vivo(r) && r.t >= inicioHoy).slice(0, 12)),
+    trabajando: raices.reduce((x, r) => x + cuenta(r), 0),
+    sinUso,
+  }
+}
+
+async function actRefrescar($: EngineInterface): Promise<void> {
+  try {
+    await actCarpeta($)
+    if (actDIR === '') throw new Error('No encuentro la actCarpeta de Claude de esta Mac.')
+    const ahora = await $.clock.now()
+    const archivos = await $.fs.list(actDIR).catch(() => [])
+    const lineas: Record<string, unknown>[] = []
+    for (const f of archivos) {
+      if (f.kind !== 'file' || !f.name.endsWith('.jsonl')) continue
+      if (ahora - f.mtimeMs > actLEE_DIAS * actDIA_MS) continue
+      const txt = await $.fs.read(`${actDIR}/${f.name}`).catch(() => '')
+      if (typeof txt === 'string') for (const l of actALineas(txt)) lineas.push(l)
+    }
+    let sinUso: ActSinUso | undefined
+    try {
+      const r = await $.fs.read(actSIN_USO)
+      const o = JSON.parse(typeof r === 'string' ? r : '{}')
+      if (typeof o.sin === 'number' && typeof o.total === 'number') sinUso = { dias: Number(o.dias) || 30, sin: o.sin, total: o.total, generado: String(o.generado ?? '') }
+    } catch {
+      // todavía no se corrió sin-activar
+    }
+    await update($, actDatos, () => actArmar(lineas, ahora, sinUso)).catch(() => undefined)
+  } catch (err) {
+    await update($, actDatos, () => ({ ahora: [], hoy: [], trabajando: 0, error: String((err as Error)?.message ?? err) })).catch(() => undefined)
+  }
+}
+
+let actCerradoAMano = false
+let actColocado = false
+
+async function actAsegurarPanel($: EngineInterface): Promise<void> {
+  if (actCerradoAMano) return
+  try {
+    const r = await $.ui.open({ id: actPANEL, title: actTITULO, columns: 38 })
+    actColocado = r.isPlaced
+  } catch {
+    // se reintenta con el reloj
+  }
+}
+
+const actDos = (n: number) => String(n).padStart(2, '0')
+function actHora(ms: number): string {
+  const d = new Date(ms - actART_MS)
+  return `${actDos(d.getUTCHours())}:${actDos(d.getUTCMinutes())}`
+}
+function actHace(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000))
+  if (s < 60) return `${s} s`
+  if (s < 3600) return `${Math.round(s / 60)} min`
+  return `${Math.floor(s / 3600)} h ${actDos(Math.round((s % 3600) / 60))} min`
+}
+
+
+export const actSessionStart: H = async ($, e, next) => {
+  const ran = await next(e)
+  actCerradoAMano = false
+  actColocado = false
+  await $.command.register({ name: 'actividad', description: 'Abre el panel de actividad de agentes y skills' })
+  $.clock.every(actCADA, () => {
+    if (!actColocado) void actAsegurarPanel($)
+    return actRefrescar($)
+  })
+  void actAsegurarPanel($)
+  void actRefrescar($)
+  return ran
+}
+
+export const actPromptSubmit: H = async ($, e, next) => {
+  await actAsegurarPanel($)
+  void actRefrescar($)
+  return next(e)
+}
+
+// Se relee también al terminar cada turno.
+export const actSessionMeasure: H = async ($, e, next) => {
+  if (!actColocado) await actAsegurarPanel($)
+  await actRefrescar($)
+  return next(e)
+}
+
+export const registrarActividad = (on: Parameters<Register>[0]): void => {
+  // ── Registro: dispara solo, con cada agente o skill que se activa ──
+  on('classic.UserPromptSubmit', async ($, e, next) => {
+    actSidActual = actCorto(e.session_id).slice(0, 8)
+    actCwdActual = actCorto(e.cwd)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('classic.SubagentStart', async ($, e, next) => {
+    actSidActual = actCorto(e.session_id).slice(0, 8)
+    await actAnotar($, { s: actSidActual, ev: 'start', tipo: 'agente', n: actCorto(e.agent_type), id: actCorto(e.agent_id), cwd: actCorto(e.cwd) })
+    void actRefrescar($)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  // El padre de cada subagente: quién lo lanzó (el agente de arriba, o 'main' si fue la conversación).
+  on('agent.spawn', async ($, e, next) => {
+    const r = await next(e)
+    const hijo = (r as { agentId?: string }).agentId
+    if (hijo) await actAnotar($, { s: actSidActual, ev: 'link', id: hijo, padre: (e as { parentAgentId?: string }).parentAgentId ?? 'main' })
+    return r
+  }).catch(($, e, next) => next(e))
+
+  on('classic.SubagentStop', async ($, e, next) => {
+    await actAnotar($, { s: actCorto(e.session_id).slice(0, 8), ev: 'stop', tipo: 'agente', n: actCorto(e.agent_type), id: actCorto(e.agent_id) })
+    void actRefrescar($)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'Skill' }, async ($, e, next) => {
+    await actAnotar($, { s: actSidActual, ev: 'start', tipo: 'skill', n: actCorto((e as { skill?: string }).skill), cwd: actCwdActual, por: (e as { agentId?: string }).agentId })
+    void actRefrescar($)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  // ── Panel ──
+  on('ui.close', { id: actPANEL }, async ($, e, next) => {
+    if (e.origin.kind === 'person') actCerradoAMano = true
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('command.run', { command: 'actividad' }, async $ => {
+    actCerradoAMano = false
+    await $.ui.open({ id: actPANEL, title: actTITULO, columns: 38 })
+    await actRefrescar($)
+    return { text: 'Panel de actividad abierto.' }
+  })
+
+  on('ui.render', { component: 'Pane', requestId: actPANEL }, async ($, e) => {
+    const ui = $.ui.resolve(e)
+    const { Box, Text } = ui
+    const m = await read($, actDatos)
+    const ahora = await $.clock.now()
+    if (m === null) return <Text dimColor>Leyendo la actividad…</Text>
+    if (m.error) return <Text color={actROJO}>{m.error}</Text>
+
+    const Dibujo = e.surface === 'desktop' && 'Svg' in ui ? ui.Svg : null
+    // El dibujo de cada fila: Bicho (agente), luciérnaga (subagente) o hoja de archivo (skill).
+    const icono = (n: ActNodo, nivel: number) => {
+      if (n.tipo === 'skill') return <Text color={n.activo ? actVERDE : undefined} dimColor={!n.activo}>▤ </Text>
+      const luciernaga = nivel > 0
+      if (Dibujo === null) return <Text color={n.activo ? actVERDE : undefined} dimColor={!n.activo}>{n.activo ? '● ' : '◦ '}</Text>
+      const fuente = luciernaga ? (n.activo ? actLUCI_VERDE : actLUCI_GRIS) : n.activo ? actBICHO_VERDE : actBICHO_GRIS
+      return <Dibujo source={fuente} alt={`${luciernaga ? 'subagente' : 'agente'} ${n.activo ? 'trabajando' : 'terminó'}`} width={luciernaga ? 17 : 20} height={luciernaga ? 19 : 22} isInteractive={n.activo} />
+    }
+    // Una fila del árbol: agente = Bicho, subagente = luciérnaga, skill = hoja de archivo (son instrucciones).
+    const fila = (n: ActNodo, nivel: number, k: string): unknown[] => {
+      if (nivel > 8) return []
+      const esSkill = n.tipo === 'skill'
+      const etiqueta = esSkill ? 'skill' : nivel > 0 ? 'subagente' : 'agente'
+      const cuando = n.activo
+        ? esSkill
+          ? 'ahora'
+          : actHace(ahora - n.t)
+        : `${actHora(n.t)}${n.dur !== undefined ? ` · ${actHace(n.dur)}` : ''}`
+      const propia = (
+        <Box key={k} flexDirection="row" justifyContent="space-between">
+          <Box flexDirection="row" gap={1}>
+            {nivel > 0 ? <Text dimColor>{`${'   '.repeat(nivel - 1)}└`}</Text> : null}
+            {icono(n, nivel)}
+            <Text bold={n.activo}>
+              {n.nombre}
+              <Text dimColor> {etiqueta}</Text>
+            </Text>
+          </Box>
+          <Text color={n.activo ? actVERDE : undefined} dimColor={!n.activo}>{cuando}</Text>
+        </Box>
+      )
+      return [propia, ...n.hijos.flatMap((h, i) => fila(h, nivel + 1, `${k}.${i}`))]
+    }
+    const grupos = (lista: ActSesion[], pref: string) =>
+      lista.map((g, gi) => (
+        <Box key={`${pref}${gi}`} flexDirection="column">
+          <Text dimColor>
+            {g.cwd || 'sesión'} · {g.sesion}
+          </Text>
+          {g.raices.flatMap((r, i) => fila(r, 0, `${pref}${gi}-${i}`))}
+        </Box>
+      ))
+
+    return (
+      <Box flexDirection="column" gap={1} paddingX={1}>
+        <Box flexDirection="row" justifyContent="space-between">
+          <Text dimColor>Quién activó a quién</Text>
+          <Text color={m.trabajando > 0 ? actVERDE : undefined} dimColor={m.trabajando === 0}>
+            {m.trabajando > 0 ? `● ${m.trabajando} trabajando` : 'nada trabajando'}
+          </Text>
+        </Box>
+        <Box flexDirection="column">
+          <Text bold>Ahora</Text>
+          {m.ahora.length === 0 ? <Text dimColor>Nada activo.</Text> : grupos(m.ahora, 'a')}
+        </Box>
+        <Box flexDirection="column">
+          <Text bold>Hoy · terminaron</Text>
+          {m.hoy.length === 0 ? <Text dimColor>Todavía nada hoy.</Text> : grupos(m.hoy, 'h')}
+        </Box>
+        {m.sinUso ? (
+          <Text dimColor>{`Sin activarse en ${m.sinUso.dias} días: ${m.sinUso.sin} de ${m.sinUso.total} (propios)`}</Text>
+        ) : null}
+        <Text dimColor>Bicho = agente · luciérnaga = subagente · ▤ skill (instrucciones) · verde = trabajando</Text>
+      </Box>
+    )
+  })
+}
+
 export const register: Register = on => {
-  on('session.start', ($, e, next) => usoSessionStart($, e, e2 => pendSessionStart($, e2, e3 => tSessionStart($, e3, next)))).catch(($, e, next) => next(e))
+  on('session.start', ($, e, next) => usoSessionStart($, e, e2 => pendSessionStart($, e2, e3 => tSessionStart($, e3, e4 => actSessionStart($, e4, next))))).catch(($, e, next) => next(e))
   on('command.run', ($, e, next) => usoCommandRun($, e, next)).catch(($, e, next) => next(e))
-  on('prompt.submit', ($, e, next) => usoPromptSubmit($, e, e2 => pendPromptSubmit($, e2, e3 => tPromptSubmit($, e3, next)))).catch(($, e, next) => next(e))
-  on('session.measure', ($, e, next) => usoSessionMeasure($, e, e2 => pendSessionMeasure($, e2, e3 => tRelee($, e3, next))))
+  on('prompt.submit', ($, e, next) => usoPromptSubmit($, e, e2 => pendPromptSubmit($, e2, e3 => tPromptSubmit($, e3, e4 => actPromptSubmit($, e4, next))))).catch(($, e, next) => next(e))
+  on('session.measure', ($, e, next) => usoSessionMeasure($, e, e2 => pendSessionMeasure($, e2, e3 => tRelee($, e3, e4 => actSessionMeasure($, e4, next)))))
   registrarUso(on)
   registrarPendientes(on)
   registrarTareas(on)
+  // Cuarto panel: «Actividad» (agentes, subagentes y skills), en su propio archivo.
+  registrarActividad(on)
 }

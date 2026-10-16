@@ -7,6 +7,13 @@
 - **Cuándo corre (el mismo aviso de siempre):** al abrir cada sesión (la carpeta actual), la primera vez de cada semana recorre todas las cajas, y `/cerrar` lo muestra. Solo avisa y propone el arreglo; nunca cambia el contenido por su cuenta (`estructura.py arreglar` sigue creando únicamente lo que falta).
 - Un aviso que en tu caso es a propósito se deja por escrito en `.estructura-excepciones.json`, con motivo y fecha, como cualquier otra regla.
 
+## 0.47.0 — 2026-10-16
+**Claude te sigue llamando como pediste durante toda la sesión, no solo al abrirla.** Se aplica solo; no hay nada que correr.
+- **Antes:** la regla 24 se mostraba una vez al abrir la sesión («Quién habla: …») y a medida que la conversación avanzaba Claude volvía a decir tu nombre formal o ninguno.
+- **Ahora** en cada mensaje tuyo se le repite, en una línea, el nombre de tu línea `Llamame:` (la de tu ficha personal, `~/.claude/CLAUDE.md`). Lo hace el paquete mismo; no se toca tu configuración.
+- **Lo que no hace:** solo lee esa ficha; no escribe nada ni usa internet. Si no hay línea `Llamame:`, o anotaste `Personas en esta computadora: …` (varias personas), no dice nada: nunca inventa un nombre. El ejemplo del bloque de reglas no cuenta como tu nombre.
+- Para apagarlo: sacá el bloque `UserPromptSubmit` de `hooks/hooks.json` del paquete, o desinstalá `metodo`.
+
 ## 0.46.0 — 2026-10-15
 **Cuando algo frena el cierre o el archivado, Claude hace el trabajo y recién después cierra; ya no te lo deja como tarea.** Se aplica solo; no hay nada que correr.
 - **Antes:** si una sesión hija tenía algo pendiente, `/arrancar` decía `NO ARCHIVAR … resolver antes de archivar` y la tarea te quedaba a vos; `/cerrar` marcaba ✗ sin decir qué hacer.

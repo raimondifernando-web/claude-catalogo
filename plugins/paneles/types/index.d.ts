@@ -83,6 +83,35 @@ export type Modelo = {
   desde?: string
 }
 
+// ── Panel «Actividad» ──
+export type ActNodo = {
+  tipo: 'agente' | 'skill'
+  nombre: string
+  // Milisegundos desde 1970 del arranque.
+  t: number
+  // Duración en milisegundos si ya terminó (solo agentes); undefined si sigue o no se sabe.
+  dur?: number
+  activo: boolean
+  // Id corto de la sesión y nombre de la carpeta donde corrió.
+  sesion: string
+  cwd: string
+  // Lo que cuelga de este: subagentes lanzados y skills usadas por él.
+  hijos: ActNodo[]
+}
+
+export type ActSesion = { sesion: string; cwd: string; raices: ActNodo[] }
+
+export type ActSinUso = { dias: number; sin: number; total: number; generado: string }
+
+export type ActModelo = {
+  ahora: ActSesion[]
+  hoy: ActSesion[]
+  // Cuántos nodos (agentes y skills) están trabajando ahora.
+  trabajando: number
+  sinUso?: ActSinUso
+  error?: string
+}
+
 declare module 'claude-code' {
   interface PluginState {
     paneles: {
@@ -92,6 +121,7 @@ declare module 'claude-code' {
       datos: Modelo | null
       abierto: boolean
       detalle: string[]
+      actividadDatos: ActModelo | null
       tareasLista: Tarea[]
       tareasArchivo: Tarea[] | null
       tareasDerivadas: Tarea[] | null
