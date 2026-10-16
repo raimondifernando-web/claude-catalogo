@@ -1479,7 +1479,7 @@ function actAnotar($: EngineInterface, linea: Record<string, unknown>): Promise<
     await actCarpeta($)
     if (actDIR === '') return
     const dia = new Date(t).toISOString().slice(0, 10)
-    const sid = String(linea.s ?? '')
+    const sid = String(linea.s ?? '').replace(/[^a-zA-Z0-9_-]/g, '')
     const ruta = `${actDIR}/${dia}-${sid || 'sin-sesion'}.jsonl`
     const previo = await $.fs.read(ruta).catch(() => '')
     await $.fs.write(ruta, `${typeof previo === 'string' ? previo : ''}${JSON.stringify({ t, ...linea })}\n`)
@@ -1582,7 +1582,7 @@ async function actRefrescar($: EngineInterface): Promise<void> {
       if (f.kind !== 'file' || !f.name.endsWith('.jsonl')) continue
       if (ahora - f.mtimeMs > actLEE_DIAS * actDIA_MS) continue
       const txt = await $.fs.read(`${actDIR}/${f.name}`).catch(() => '')
-      if (typeof txt === 'string') lineas.push(...actALineas(txt))
+      if (typeof txt === 'string') for (const l of actALineas(txt)) lineas.push(l)
     }
     let sinUso: ActSinUso | undefined
     try {
@@ -1718,6 +1718,7 @@ export const registrarActividad = (on: Parameters<Register>[0]): void => {
     }
     // Una fila del árbol: agente = Bicho, subagente = luciérnaga, skill = hoja de archivo (son instrucciones).
     const fila = (n: ActNodo, nivel: number, k: string): unknown[] => {
+      if (nivel > 8) return []
       const esSkill = n.tipo === 'skill'
       const etiqueta = esSkill ? 'skill' : nivel > 0 ? 'subagente' : 'agente'
       const cuando = n.activo
