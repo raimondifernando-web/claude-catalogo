@@ -1,6 +1,6 @@
 # metodo — qué cambia para vos
 
-## 0.47.0 — 2026-10-16
+## 0.48.0 — 2026-10-16
 **El control de estructura ahora mira también lo que dicen los archivos, no solo que existan.** Se aplica solo; no hay nada que correr.
 - **Antes:** el control avisaba si faltaba `CLAUDE.md` o un documento, pero un `CLAUDE.md` con rutas que ya no existen, un contador viejo o un texto de reanudación de hace un mes pasaban como «al día».
 - **Ahora** (reglas R13 a R18 de `ESTRUCTURA.md`, sin IA, solo lee): las rutas que cita el `CLAUDE.md` existen · no hay conteos escritos a mano («40 skills») · los agentes `pm-…` que nombra existen · `docs/PRD.md` y `docs/decisiones.md` no son solo la plantilla · `.claude/PENDIENTES.md` tiene el formato que lee el panel (esta sí frena: ✗) · el texto de reanudación dice la rama y la carpeta correctas, no cita archivos inexistentes y su cierre no es de hace más de 14 días.
