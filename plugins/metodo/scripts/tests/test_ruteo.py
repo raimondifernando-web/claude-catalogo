@@ -184,6 +184,16 @@ class TestHoy(Base):
         self.assertIn("(* = sin medición independiente: vale la política de modelos)", todo)
         self.assertTrue(all("\n" not in x for x in lineas))
 
+    def test_puente_gemini_en_la_linea_de_cupo(self):
+        # Sin el archivo del contador no se dice nada (el cliente no lo tiene); con él, estado y saldo ESTIMADO en la misma línea.
+        self.cache("cupo.json", five_hour={"pct": 12}, seven_day={"pct": 30})
+        self.assertNotIn("Puente Gemini", "\n".join(R.hoy_lineas(radar_con_versiones())))
+        self.cache("puente-gemini.json", saldo_base=4.43, gastado_estimado=0.2, encendido=False)
+        lineas = R.hoy_lineas(radar_con_versiones())
+        cupo = next(x for x in lineas if x.startswith("Cupo:"))
+        self.assertIn("Puente Gemini: apagado · saldo ~US$4.23 (estimado", cupo)
+        self.assertTrue(5 <= len(lineas) <= 6, lineas)
+
     def test_otras_ia_linea(self):
         radar = radar_con_versiones()
         radar["categorias"] = [
