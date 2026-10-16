@@ -38,7 +38,10 @@ class Base(unittest.TestCase):
     def setUp(self):
         self._td = tempfile.TemporaryDirectory()
         self.td = self._td.name
-        self._env = {k: os.environ.get(k) for k in ("CLAUDE_PLUGIN_DATA", "CLAUDE_CONFIG_DIR")}
+        claves = ("CLAUDE_PLUGIN_DATA", "CLAUDE_CONFIG_DIR", "GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL")
+        self._env = {k: os.environ.get(k) for k in claves}
+        for k, v in (("GIT_AUTHOR_NAME", "t"), ("GIT_COMMITTER_NAME", "t"), ("GIT_AUTHOR_EMAIL", "t@t"), ("GIT_COMMITTER_EMAIL", "t@t")):
+            os.environ[k] = v   # el runner de CI no tiene identidad de git; el commit automático la necesita
         os.environ["CLAUDE_PLUGIN_DATA"] = str(Path(self.td) / "estado")
         os.environ["CLAUDE_CONFIG_DIR"] = str(Path(self.td) / "config")
 
