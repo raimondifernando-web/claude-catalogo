@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.49.0 — 2026-10-16
+**El orden de tus carpetas se puede arreglar solo, sin que tengas que acordarte.** Viene **apagado**: no cambia nada hasta que lo enciendas (`estructura.py orden-config --encender`). Mientras esté apagado, `estructura.py auto` solo te muestra qué haría.
+- **Lo seguro y reversible se arregla solo,** con un commit por arreglo, una prueba que lo verifica, un registro y un comando para deshacerlo (`estructura.py deshacer <id>`): una ruta del `CLAUDE.md` que cambió de lugar, un documento del molde que falta, una carpeta que quedó atrás de GitHub. Nunca sube nada a GitHub y no toca un archivo que otra sesión esté editando.
+- **Lo que pide criterio** lo decide Claude con evidencia del disco y lo confirma una segunda IA antes de aplicarlo.
+- **Lo tuyo te llega como UNA pregunta de sí/no** (qué se encontró, qué se propone, por qué, con la recomendación). Nunca se arregla solo lo sensible (permisos, avisos automáticos, lo que corre solo), ni borrar o mover carpetas, ni una carpeta sin respaldo en GitHub.
+- **Una vez por semana,** el aviso de arranque muestra tres líneas: «arreglé N cosas, nada pendiente».
+
 ## 0.48.0 — 2026-10-16
 **El control de estructura ahora mira también lo que dicen los archivos, no solo que existan.** Se aplica solo; no hay nada que correr.
 - **Antes:** el control avisaba si faltaba `CLAUDE.md` o un documento, pero un `CLAUDE.md` con rutas que ya no existen, un contador viejo o un texto de reanudación de hace un mes pasaban como «al día».
