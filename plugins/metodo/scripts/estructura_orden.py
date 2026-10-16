@@ -99,14 +99,24 @@ def git(caja, *args):
     return E.ejecutar_git(*args, cwd=caja)
 
 
+def rama_principal(caja: Path) -> str:
+    c2, ppal = git(caja, "symbolic-ref", "-q", "--short", "refs/remotes/origin/HEAD")
+    return ppal.replace("origin/", "") if c2 == 0 and ppal else "main"
+
+
 def arbol_ocupado(caja: Path) -> str:
     """Motivo por el que NO se toca la caja ahora (otra sesión o git a mitad de algo), o ''."""
     g = caja / ".git"
     if not g.is_dir():
         return "no es un repositorio"
-    for marca in ("index.lock", "MERGE_HEAD", "rebase-merge", "rebase-apply", "CHERRY_PICK_HEAD"):
+    for marca in ("index.lock", "MERGE_HEAD", "rebase-merge", "rebase-apply", "CHERRY_PICK_HEAD", "REVERT_HEAD"):
         if (g / marca).exists():
             return f"git está a mitad de algo ({marca})"
+    code, rama = git(caja, "branch", "--show-current")
+    if code != 0 or not rama:
+        return "la carpeta está en un estado suelto (sin rama)"
+    if rama != rama_principal(caja):
+        return f"está trabajando en la rama «{rama}» (los arreglos automáticos van solo en la rama principal)"
     return ""
 
 
@@ -162,8 +172,8 @@ def _unico_con_el_mismo_nombre(caja: Path, tok: str):
     code, out = git(caja, "ls-files")
     if code != 0:
         return None
-    iguales = [l for l in out.splitlines() if l.rsplit("/", 1)[-1] == nombre]
-    return iguales[0] if len(iguales) == 1 else None
+    iguales = [l for l in out.splitlines() if l.rsplit("/", 1)[-1] == nombre]   # ls-files lista relativo a la caja
+    return iguales[0] if len(iguales) == 1 and not iguales[0].startswith("..") else None
 
 
 def hallazgos_caja(caja: Path, nivel: str) -> list:
@@ -180,14 +190,14 @@ def hallazgos_caja(caja: Path, nivel: str) -> list:
                 if tok.startswith("~/"):
                     continue
                 nueva = _nueva_ruta(tok, caja, top, mapa)
-                if nueva and nueva != tok:
+                if nueva and nueva != tok and not nueva.startswith(".."):
                     h.append(dict(id=_id(nombre, "ruta", tok, nueva), grupo=1, tipo="ruta_movida", caja=str(caja), nombre=nombre,
                                   archivo="CLAUDE.md", antes=tok, despues=nueva,
                                   evidencia=f"git muestra que «{tok}» se renombró a «{nueva}» y esa ruta existe"))
                     continue
                 cand = _unico_con_el_mismo_nombre(caja, tok)
                 if cand:
-                    rel = _rel(top / cand, caja)
+                    rel = cand
                     h.append(dict(id=_id(nombre, "cand", tok, rel), grupo=2, tipo="ruta_candidata", caja=str(caja), nombre=nombre,
                                   archivo="CLAUDE.md", antes=tok, despues=rel,
                                   evidencia=f"«{tok}» no existe y no hay renombrado en git, pero hay UN solo archivo llamado igual: «{rel}»"))
@@ -289,35 +299,50 @@ def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
         nuevo_txt = antes_txt.replace(f"`{h['antes']}`", f"`{h['despues']}`")
         if nuevo_txt == antes_txt:
             return dict(base, estado="omitido", motivo="la ruta ya no aparece")
-        f.write_text(nuevo_txt, encoding="utf-8")
-        if h["antes"] in E.rutas_citadas_que_faltan(nuevo_txt, caja):   # prueba que lo verifica
+        try:
+            f.write_text(nuevo_txt, encoding="utf-8")
+        except OSError as e:
+            return dict(base, estado="omitido", motivo=f"no se pudo escribir ({type(e).__name__})")
+        faltan_despues = E.rutas_citadas_que_faltan(nuevo_txt, caja)
+        if h["antes"] in faltan_despues or h["despues"] in faltan_despues or not (caja / h["despues"]).exists():   # prueba que lo verifica
             f.write_text(antes_txt, encoding="utf-8")
             return dict(base, estado="fallo", motivo="la verificación no pasó; se restauró el texto")
         sha = _commit(caja, [rel], f"orden: {rel} cita {h['despues']} en vez de {h['antes']}")
         if not sha:
             f.write_text(antes_txt, encoding="utf-8")
+            git(caja, "reset", "-q", "--", rel)
             return dict(base, estado="fallo", motivo="no se pudo commitear; se restauró el texto")
         return dict(base, estado="aplicado", commit=sha, antes=h["antes"], despues=h["despues"],
-                    deshacer=f"git -C {caja} revert --no-edit {sha}")
+                    deshacer=f'git -C "{caja}" revert --no-edit {sha}')
     if t == "doc_vivo":
         rel = h["archivo"]
         if (caja / rel).exists():
             return dict(base, estado="omitido", motivo="ya existe")
-        E.crear_nuevo(caja, rel, h["contenido"])
+        if ".." in Path(rel).parts or Path(rel).is_absolute():
+            return dict(base, estado="omitido", motivo="la ruta sale de la caja")
+        try:
+            E.crear_nuevo(caja, rel, h["contenido"])
+        except OSError as e:
+            return dict(base, estado="omitido", motivo=f"no se pudo escribir ({type(e).__name__})")
         if not (caja / rel).exists():
             return dict(base, estado="fallo", motivo="no se pudo crear")
         sha = _commit(caja, [rel], f"orden: agrega {rel} (documento vivo del molde)")
         if not sha:
-            return dict(base, estado="fallo", motivo="no se pudo commitear")
-        return dict(base, estado="aplicado", commit=sha, despues=rel, deshacer=f"git -C {caja} revert --no-edit {sha}")
+            git(caja, "reset", "-q", "--", rel)
+            return dict(base, estado="fallo", motivo="no se pudo commitear (el archivo creado queda sin versionar)")
+        return dict(base, estado="aplicado", commit=sha, despues=rel, deshacer=f'git -C "{caja}" revert --no-edit {sha}')
     if t == "caja_atrasada":
+        c5, sucio = git(caja, "status", "--porcelain", "--untracked-files=no")
+        if c5 != 0 or sucio.strip():
+            return dict(base, estado="omitido", motivo="tiene cambios sin guardar")
         c0, previo = git(caja, "rev-parse", "HEAD")
         code, _ = git(caja, "merge", "-q", "--ff-only", f"origin/{h['rama']}")
         c1, atras = git(caja, "rev-list", "--count", f"HEAD..origin/{h['rama']}")
         if code != 0 or atras != "0":
             return dict(base, estado="fallo", motivo="no pudo avanzar")
-        return dict(base, estado="aplicado", commit=previo, antes=previo[:8], despues="origin/" + h["rama"],
-                    deshacer=f"git -C {caja} reset --keep {previo}")
+        c2, nuevo_head = git(caja, "rev-parse", "HEAD")
+        return dict(base, estado="aplicado", commit=previo, antes=previo[:8], despues="origin/" + h["rama"], cabeza_nueva=nuevo_head,
+                    deshacer=f'git -C "{caja}" reset --keep {previo}')
     return dict(base, estado="omitido", motivo="tipo sin arreglo automático")
 
 
@@ -382,7 +407,11 @@ def comando_aplicar(id_: str, verificado_por: str, raiz_arg=None) -> int:
 
 
 def comando_deshacer(id_: str) -> int:
-    for e in reversed(leer_registro()):
+    reg = leer_registro()
+    if any(e.get("id") == id_ and e.get("estado") == "deshecho" for e in reg):
+        print("Ese arreglo ya se deshizo.")
+        return 1
+    for e in reversed(reg):
         if e.get("id") == id_ and e.get("estado") == "aplicado":
             caja = Path(e["caja"])
             ocupado = arbol_ocupado(caja)
@@ -390,11 +419,17 @@ def comando_deshacer(id_: str) -> int:
                 print(f"No se puede deshacer ahora: {ocupado}")
                 return 1
             if e["tipo"] == "caja_atrasada":
+                c0, cabeza = git(caja, "rev-parse", "HEAD")
+                if cabeza != e.get("cabeza_nueva"):   # hubo commits propios después: no se retrocede a ciegas
+                    print("No se deshace: la carpeta tiene commits posteriores al avance (se perderían). Hacelo a mano o pedime ayuda.")
+                    return 1
                 code, out = git(caja, "reset", "--keep", e["commit"])
             else:
                 code, out = git(caja, "revert", "--no-edit", e["commit"])
+                if code != 0:
+                    git(caja, "revert", "--abort")   # nunca dejar el repositorio a mitad de un conflicto
             if code != 0:
-                print(f"No se pudo deshacer: {out[:200]}")
+                print(f"No se pudo deshacer (la carpeta quedó como estaba): {out[:200]}")
                 return 1
             registrar(dict(id=id_, fecha=datetime.now().isoformat(timespec="seconds"), caja=e["caja"], tipo=e["tipo"], grupo=e["grupo"],
                            estado="deshecho"))
@@ -404,7 +439,7 @@ def comando_deshacer(id_: str) -> int:
     return 1
 
 
-def resumen_semanal(raiz_arg=None) -> list:
+def resumen_semanal(raiz_arg=None, hs=None) -> list:
     """3 líneas: «arreglé N cosas, nada pendiente»."""
     desde = (datetime.now() - timedelta(days=SEMANA)).isoformat(timespec="seconds")
     reg = [e for e in leer_registro() if e.get("fecha", "") >= desde]
@@ -412,10 +447,11 @@ def resumen_semanal(raiz_arg=None) -> list:
     deshechos = {e["id"] for e in reg if e.get("estado") == "deshecho"}
     hechos = [e for e in hechos if e["id"] not in deshechos]
     raiz = Path(raiz_arg).resolve() if raiz_arg else Path.home() / "Proyectos"
-    try:
-        hs = todos(raiz)
-    except Exception:
-        hs = []
+    if hs is None:
+        try:
+            hs = todos(raiz)
+        except Exception:
+            hs = []
     quedan2 = sum(1 for h in hs if h["grupo"] == 2)
     quedan3 = [h for h in hs if h["grupo"] == 3]
     por_tipo = {}
@@ -452,9 +488,13 @@ def comando_config(encender: bool, apagar: bool) -> int:
 def semanal(raiz: Path):
     """Lo que corre la primera vez de cada semana, desde el aviso de arranque. Nunca rompe el arranque."""
     try:
+        if not aplicar_encendido() and not leer_registro():
+            return   # apagado y sin historia: no recorre las carpetas en el arranque
+        hs = todos(raiz)
         if aplicar_encendido():
-            comando_auto(str(raiz), aplicar=True, silencioso=True)
-        for l in resumen_semanal(str(raiz)):
+            for h in [x for x in hs if x["grupo"] == 1]:
+                registrar(aplicar_uno(h))
+        for l in resumen_semanal(str(raiz), [h for h in hs if h["grupo"] != 1]):
             print(l)
     except Exception:
         pass

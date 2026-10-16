@@ -187,5 +187,51 @@ class TestEncendidoYResumen(Base):
             self.assertEqual(O.comando_deshacer("no-existe"), 1)
 
 
+class TestRevisionIndependiente(Base):
+    """Hallazgos de la revisión de Gemini (2026-10-16): ramas, deshacer repetido, pérdida de commits."""
+
+    def test_no_toca_si_la_caja_esta_en_otra_rama(self):
+        c = _caja(self.td)
+        self.mover(c)
+        h = next(h for h in O.todos(self.raiz()) if h["tipo"] == "ruta_movida")
+        _git(c, "checkout", "-q", "-b", "feature/algo")
+        e = O.aplicar_uno(h)
+        self.assertEqual(e["estado"], "omitido")
+        self.assertIn("rama", e["motivo"])
+        self.assertIn("docs/origen.md", (c / "CLAUDE.md").read_text(encoding="utf-8"))
+
+    def test_deshacer_dos_veces_no_repite(self):
+        c = _caja(self.td)
+        self.mover(c)
+        h = next(h for h in O.todos(self.raiz()) if h["tipo"] == "ruta_movida")
+        e = O.aplicar_uno(h)
+        O.registrar(e)
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(O.comando_deshacer(e["id"]), 0)
+            commits = _git(c, "rev-list", "--count", "HEAD")
+            self.assertEqual(O.comando_deshacer(e["id"]), 1)
+        self.assertEqual(_git(c, "rev-list", "--count", "HEAD"), commits)
+
+    def test_deshacer_un_conflicto_deja_la_carpeta_limpia(self):
+        c = _caja(self.td)
+        self.mover(c)
+        h = next(h for h in O.todos(self.raiz()) if h["tipo"] == "ruta_movida")
+        e = O.aplicar_uno(h)
+        O.registrar(e)
+        (c / "CLAUDE.md").write_text("# Caja\nTexto totalmente distinto escrito después.\n", encoding="utf-8")
+        _git(c, "commit", "-q", "-am", "cambio posterior")
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(O.comando_deshacer(e["id"]), 1)
+        self.assertFalse((c / ".git" / "REVERT_HEAD").exists())
+        self.assertEqual(_git(c, "status", "--porcelain"), "")
+
+    def test_semanal_apagado_y_sin_historia_no_recorre_nada(self):
+        _caja(self.td)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            O.semanal(self.raiz())
+        self.assertEqual(buf.getvalue(), "")
+
+
 if __name__ == "__main__":
     unittest.main()
