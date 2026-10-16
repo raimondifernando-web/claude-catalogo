@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_estructura_orden.py — el bucle de orden (C140): grupos 1/2/3, registro, deshacer, resumen, apagado por defecto."""
+"""test_estructura_orden.py — el bucle de orden (C140): grupos 1/2/3, registro, deshacer, resumen, encendido por defecto."""
 import io
 import json
 import os
@@ -153,18 +153,71 @@ class TestGrupo2y3(Base):
 
 
 class TestEncendidoYResumen(Base):
-    def test_apagado_por_defecto_y_se_enciende_con_el_comando(self):
+    def _escribir_cfg(self, texto):
+        O.archivo_config().parent.mkdir(parents=True, exist_ok=True)
+        O.archivo_config().write_text(texto, encoding="utf-8")
+
+    def test_sin_archivo_esta_encendido_por_defecto(self):
+        self.assertFalse(O.archivo_config().exists())
+        self.assertEqual(O.estado_encendido(), (True, "encendida por defecto"))
+        self.assertTrue(O.aplicar_encendido())
+
+    def test_archivo_sin_la_clave_esta_encendido(self):
+        self._escribir_cfg("{}")
+        self.assertEqual(O.estado_encendido(), (True, "encendida por defecto"))
+
+    def test_aplicar_false_apaga_y_aplicar_true_enciende(self):
+        self._escribir_cfg('{"aplicar": false}')
+        self.assertEqual(O.estado_encendido(), (False, "apagada por vos"))
+        self._escribir_cfg('{"aplicar": true}')
+        self.assertEqual(O.estado_encendido(), (True, "encendida por vos"))
+
+    def test_archivo_roto_o_raro_queda_apagado(self):
+        for txt in ("{no es json", "", "[]", '"hola"', '{"aplicar": "si"}', '{"aplicar": null}', '{"aplicar": 0}'):
+            self._escribir_cfg(txt)
+            self.assertFalse(O.aplicar_encendido(), txt)
+
+    def test_archivo_ilegible_queda_apagado(self):
+        O.archivo_config().parent.mkdir(parents=True, exist_ok=True)
+        O.archivo_config().mkdir()   # un directorio donde va el archivo: leerlo da error de sistema
         self.assertFalse(O.aplicar_encendido())
+
+    def test_los_comandos_apagan_y_encienden_y_dicen_cual_es_el_caso(self):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            O.comando_config(False, False)
+        self.assertIn("ENCENDIDA (encendida por defecto)", buf.getvalue())
+        with redirect_stdout(io.StringIO()):
+            O.comando_config(False, True)
+        self.assertEqual(json.loads(O.archivo_config().read_text(encoding="utf-8")), {"aplicar": False})
+        self.assertFalse(O.aplicar_encendido())
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            O.comando_config(False, False)
+        self.assertIn("APAGADA (apagada por vos)", buf.getvalue())
+        with redirect_stdout(io.StringIO()):
+            O.comando_config(True, False)
+        self.assertEqual(json.loads(O.archivo_config().read_text(encoding="utf-8")), {"aplicar": True})
+        self.assertTrue(O.aplicar_encendido())
+
+    def test_encender_sobre_un_archivo_roto_lo_reescribe(self):
+        self._escribir_cfg("[1,2]")
         with redirect_stdout(io.StringIO()):
             O.comando_config(True, False)
         self.assertTrue(O.aplicar_encendido())
+
+    def test_semanal_sin_archivo_arregla_solo(self):
+        c = _caja(self.td)
+        self.mover(c)
         with redirect_stdout(io.StringIO()):
-            O.comando_config(False, True)
-        self.assertFalse(O.aplicar_encendido())
+            O.semanal(self.raiz())
+        self.assertIn("docs/destino.md", (c / "CLAUDE.md").read_text(encoding="utf-8"))
 
     def test_semanal_apagado_no_cambia_nada(self):
         c = _caja(self.td)
         self.mover(c)
+        with redirect_stdout(io.StringIO()):
+            O.comando_config(False, True)
         antes = _git(c, "rev-parse", "HEAD")
         with redirect_stdout(io.StringIO()):
             O.semanal(self.raiz())
@@ -230,6 +283,8 @@ class TestRevisionIndependiente(Base):
 
     def test_semanal_apagado_y_sin_historia_no_recorre_nada(self):
         _caja(self.td)
+        with redirect_stdout(io.StringIO()):
+            O.comando_config(False, True)
         buf = io.StringIO()
         with redirect_stdout(buf):
             O.semanal(self.raiz())

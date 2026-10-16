@@ -1157,6 +1157,20 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Límites (lo NO comprobado) | No se corrieron escáneres de librerías (el código usa la biblioteca estándar). No probado en Windows real ni en una ficha real de cliente. `controles.sh` local falla `nombres-en-ci` por falta del secreto `NOMBRES_PROHIBIDOS` fuera de CI; lo corrió el CI. |
 | Veredicto | **PASS con condiciones**: sin hallazgos altos. Condición: cerrar el tope de `_lee` y el `AttributeError` en la próxima versión. Lo escribe Tech con revisión independiente; no la hizo quien lo programó. |
 
+### 2026-10-16 · metodo 0.49.0 → 0.49.1 (orden encendido por defecto) — PASS con condiciones
+
+*Un solo cambio de comportamiento: `aplicar_encendido()` pasa de «apagado salvo que exista `aplicar:true`» a «encendido salvo que diga `aplicar:false`». No se agrega código nuevo que escriba en disco.*
+| Ítem | Resultado |
+|---|---|
+| Alcance | Diff sobre `plugins/metodo`: `estructura_orden.py` (`estado_encendido()` nuevo, `aplicar_encendido()` lo usa, texto del estado), `estructura.py` (solo el texto de ayuda), pruebas, `ESTRUCTURA.md`, CHANGELOG, versión 0.49.1 en `plugin.json`, `marketplace.json` y README. Sin hooks nuevos: lo engancha el aviso de arranque ya instalado. |
+| Superficie | Quien recibe 0.49.1 sin tener `metodo-orden.json` pasa a tener el arreglo automático ENCENDIDO (lo describe la entrada 0.48.0 → 0.49.0). Se apaga por escrito con `orden-config --apagar` (`aplicar:false`). Archivo ilegible, roto, que no es un objeto, o con un `aplicar` que no es verdadero/falso → APAGADO (decisión: ante la duda no se escribe en las cajas). Una ausencia del archivo es el único caso «sin dato» que enciende. |
+| Condiciones del revisor de 0.49.0 | Se mantienen TODAS y el código que las sostiene no cambió: (a) lista de sensibles por denegación (`SENSIBLES`), (b) `--verificado-por` es texto libre (solo grupo 2, que sigue sin aplicarse solo), (c) tope de tiempo de `semanal` solo entre cajas. Estado: **siguen abiertas**; con el encendido por defecto pasan a valer para toda máquina que reciba 0.49.1, incluida la de un cliente. Quedan como condición a cerrar en la próxima versión. |
+| Windows | Sin rutas POSIX nuevas: `archivo_config()` usa `Path`; la lectura distingue «no existe» (`FileNotFoundError`) del resto de errores de disco. No probado en Windows real. |
+| Verificación | Pruebas nuevas en `test_estructura_orden.py`: sin archivo = encendido, `{}` = encendido, `aplicar:false` = apagado, `aplicar:true` = encendido, archivo corrupto/vacío/no-objeto/valor raro/ilegible = apagado, los comandos escriben `aplicar:false`/`true` y dicen el caso, `semanal` sin archivo arregla solo, y apagado no cambia nada. Se actualizaron las pruebas que daban por hecho el apagado por defecto. |
+| Metadatos / clientes | `verificar-metadatos` y `controles.sh` locales corridos antes del PR (ver el PR). Grep de nombres de clientes: 0. |
+| Límites (lo NO comprobado) | No se probó con la aplicación encendida en una máquina de cliente ni sobre un árbol grande. No se midió el tiempo total de una pasada. No probado en Windows real. |
+| Veredicto | **PASS con condiciones**: sin hallazgos altos nuevos; condiciones (a), (b) y (c) abiertas y ahora aplicables a clientes. Es zona sensible (corre solo en la compu del cliente): necesita el OK de Fer para ESE commit. Lo escribe Tech; no lo programó quien lo escribe. |
+
 ### 2026-10-16 · metodo 0.48.0 → 0.49.0 (commit e386e71) — PASS con condiciones
 
 *Un solo cambio de código: el bucle de orden (C140, PR #35), nuevo `scripts/estructura_orden.py` y 5 subcomandos en `estructura.py`. Viene APAGADO por defecto.*

@@ -1532,7 +1532,7 @@ def main():
     p_deshacer.add_argument("id")
     p_resumen = subparsers.add_parser("resumen", help="Resumen semanal de 3 líneas del bucle de orden")
     p_resumen.add_argument("--raiz", default=None)
-    p_cfg = subparsers.add_parser("orden-config", help="Enciende o apaga la aplicación automática (apagada por defecto)")
+    p_cfg = subparsers.add_parser("orden-config", help="Muestra, enciende o apaga la aplicación automática (viene encendida por defecto)")
     p_cfg.add_argument("--encender", action="store_true")
     p_cfg.add_argument("--apagar", action="store_true")
 
