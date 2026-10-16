@@ -72,7 +72,7 @@ class TestGrupo1(Base):
         self.assertIn("docs/destino.md", (c / "CLAUDE.md").read_text(encoding="utf-8"))
         self.assertEqual(int(_git(c, "rev-list", "--count", "HEAD")), int(antes) + 1)  # un commit por arreglo
         self.assertEqual(_git(c, "status", "--porcelain"), "")
-        self.assertIn("revert", e["deshacer"])
+        self.assertIn("deshacer", e["deshacer"])
         with redirect_stdout(io.StringIO()):
             self.assertEqual(O.comando_deshacer(e["id"]), 0)
         self.assertIn("docs/origen.md", (c / "CLAUDE.md").read_text(encoding="utf-8"))
@@ -231,6 +231,71 @@ class TestRevisionIndependiente(Base):
         with redirect_stdout(buf):
             O.semanal(self.raiz())
         self.assertEqual(buf.getvalue(), "")
+
+
+class TestRevisionDeSeguridad(Base):
+    """Hallazgos del revisor de seguridad (2026-10-16): lo sensible que trae GitHub, enlaces, deshecho que no vuelve."""
+
+    def test_una_caja_atrasada_que_trae_algo_sensible_pasa_al_grupo_3(self):
+        c = _caja(self.td)
+        origen = Path(self.td) / "remoto"
+        subprocess.run(["git", "clone", "-q", str(c), str(origen)], check=True)
+        (origen / ".claude").mkdir()
+        (origen / ".claude" / "settings.json").write_text("{}", encoding="utf-8")
+        _git(origen, "add", "-f", "-A")
+        _git(origen, "commit", "-q", "-m", "settings ajeno")
+        _git(c, "remote", "add", "origin", str(origen))
+        _git(c, "fetch", "-q", "origin")
+        _git(c, "branch", "-q", "--set-upstream-to=origin/main", "main")
+        _git(c, "remote", "set-head", "origin", "main")
+        sens = [x for x in O.todos(self.raiz()) if x["tipo"] == "archivo_sensible"]
+        self.assertTrue(sens)
+        self.assertEqual(sens[0]["grupo"], 3)
+        self.assertFalse([x for x in O.todos(self.raiz()) if x["tipo"] == "caja_atrasada"])
+
+    def test_no_escribe_a_traves_de_un_enlace(self):
+        c = _caja(self.td)
+        self.mover(c)
+        h = next(h for h in O.todos(self.raiz()) if h["tipo"] == "ruta_movida")
+        fuera = Path(self.td) / "fuera.md"
+        fuera.write_text("# Caja\nVer `docs/origen.md`.\n", encoding="utf-8")
+        (c / "CLAUDE.md").unlink()
+        os.symlink(fuera, c / "CLAUDE.md")
+        e = O.aplicar_uno(h)
+        self.assertEqual(e["estado"], "omitido")
+        self.assertIn("docs/origen.md", fuera.read_text(encoding="utf-8"))
+
+    def test_lo_deshecho_no_se_vuelve_a_aplicar_solo(self):
+        c = _caja(self.td)
+        self.mover(c)
+        h = next(h for h in O.todos(self.raiz()) if h["tipo"] == "ruta_movida")
+        e = O.aplicar_uno(h)
+        O.registrar(e)
+        with redirect_stdout(io.StringIO()):
+            O.comando_deshacer(e["id"])
+        h2 = next(h for h in O.todos(self.raiz()) if h["tipo"] == "ruta_movida")
+        self.assertEqual(O.aplicar_uno(h2)["estado"], "omitido")
+
+    def test_el_comando_de_deshacer_es_el_seguro_y_el_commit_es_mecanico(self):
+        c = _caja(self.td)
+        self.mover(c)
+        h = next(h for h in O.todos(self.raiz()) if h["tipo"] == "ruta_movida")
+        e = O.aplicar_uno(h)
+        self.assertTrue(e["deshacer"].startswith("estructura.py deshacer "))
+        self.assertNotIn("git ", e["deshacer"])
+        self.assertTrue(O._sha_valido(e["commit"]))
+        self.assertFalse(O._sha_valido("--abort"))
+
+    def test_las_lineas_historicas_del_claude_md_no_se_tocan(self):
+        c = _caja(self.td)
+        (c / "CLAUDE.md").write_text("# Caja\nVer `docs/origen.md`.\nAntes: `docs/origen.md` era el documento viejo.\n", encoding="utf-8")
+        _git(c, "commit", "-q", "-am", "historia")
+        self.mover(c)
+        h = next(h for h in O.todos(self.raiz()) if h["tipo"] == "ruta_movida")
+        O.aplicar_uno(h)
+        txt = (c / "CLAUDE.md").read_text(encoding="utf-8")
+        self.assertIn("Ver `docs/destino.md`", txt)
+        self.assertIn("Antes: `docs/origen.md` era", txt)
 
 
 if __name__ == "__main__":

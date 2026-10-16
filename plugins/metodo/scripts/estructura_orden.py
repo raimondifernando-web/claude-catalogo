@@ -90,6 +90,10 @@ def leer_registro() -> list:
         return []
 
 
+def _sha_valido(sha) -> bool:
+    return isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{40}", sha) is not None
+
+
 def _id(*partes) -> str:
     return hashlib.sha1("|".join(partes).encode("utf-8")).hexdigest()[:8]
 
@@ -191,14 +195,14 @@ def hallazgos_caja(caja: Path, nivel: str) -> list:
                     continue
                 nueva = _nueva_ruta(tok, caja, top, mapa)
                 if nueva and nueva != tok and not nueva.startswith(".."):
-                    h.append(dict(id=_id(nombre, "ruta", tok, nueva), grupo=1, tipo="ruta_movida", caja=str(caja), nombre=nombre,
+                    h.append(dict(id=_id(str(caja), "ruta", tok, nueva), grupo=1, tipo="ruta_movida", caja=str(caja), nombre=nombre,
                                   archivo="CLAUDE.md", antes=tok, despues=nueva,
                                   evidencia=f"git muestra que «{tok}» se renombró a «{nueva}» y esa ruta existe"))
                     continue
                 cand = _unico_con_el_mismo_nombre(caja, tok)
                 if cand:
                     rel = cand
-                    h.append(dict(id=_id(nombre, "cand", tok, rel), grupo=2, tipo="ruta_candidata", caja=str(caja), nombre=nombre,
+                    h.append(dict(id=_id(str(caja), "cand", tok, rel), grupo=2, tipo="ruta_candidata", caja=str(caja), nombre=nombre,
                                   archivo="CLAUDE.md", antes=tok, despues=rel,
                                   evidencia=f"«{tok}» no existe y no hay renombrado en git, pero hay UN solo archivo llamado igual: «{rel}»"))
     # documentos vivos y demás esqueletos aditivos
@@ -208,15 +212,15 @@ def hallazgos_caja(caja: Path, nivel: str) -> list:
         plan = []
     for rel, contenido, regla in plan:
         if es_sensible(rel):
-            h.append(dict(id=_id(nombre, "sens", rel), grupo=3, tipo="archivo_sensible", caja=str(caja), nombre=nombre, archivo=rel,
+            h.append(dict(id=_id(str(caja), "sens", rel), grupo=3, tipo="archivo_sensible", caja=str(caja), nombre=nombre, archivo=rel,
                           evidencia=f"falta {rel}, que es de los que cambian lo que corre solo o los permisos"))
         elif regla == "R12" and (caja / ".git").is_dir() and not _esta_en_el_remoto(caja, rel):
-            h.append(dict(id=_id(nombre, "doc", rel), grupo=1, tipo="doc_vivo", caja=str(caja), nombre=nombre, archivo=rel,
+            h.append(dict(id=_id(str(caja), "doc", rel), grupo=1, tipo="doc_vivo", caja=str(caja), nombre=nombre, archivo=rel,
                           contenido=contenido, evidencia=f"falta {rel} (documento vivo del molde)"))
     # estructura que solo la persona decide
     for tipo, r_id, msg in E.revisar_caja(caja, nivel):   # con las excepciones escritas ya descontadas
         if tipo == "error" and r_id in ("R1", "R6", "R8"):
-            h.append(dict(id=_id(nombre, "est", r_id, msg), grupo=3, tipo="estructura_" + r_id, caja=str(caja), nombre=nombre,
+            h.append(dict(id=_id(str(caja), "est", r_id, msg), grupo=3, tipo="estructura_" + r_id, caja=str(caja), nombre=nombre,
                           evidencia=msg))
     # caja atrasada que solo necesita avanzar
     if (caja / ".git").is_dir():
@@ -235,6 +239,13 @@ def _esta_en_el_remoto(caja: Path, rel: str) -> bool:
     return False
 
 
+def _trae_sensibles(caja: Path, rama: str) -> list:
+    code, out = git(caja, "diff", "--name-only", f"HEAD..origin/{rama}")
+    if code != 0:
+        return ["(no se pudo mirar)"]
+    return [l for l in out.splitlines() if es_sensible(l)]
+
+
 def _plan_al_dia(caja: Path):
     code, rama = git(caja, "branch", "--show-current")
     c2, ppal = git(caja, "symbolic-ref", "-q", "--short", "refs/remotes/origin/HEAD")
@@ -246,19 +257,27 @@ def _plan_al_dia(caja: Path):
     c5, sucio = git(caja, "status", "--porcelain", "--untracked-files=no")
     if (c3, c4, c5) != (0, 0, 0) or not atras.isdigit() or atras == "0" or delante != "0" or sucio.strip():
         return None
-    return dict(id=_id(caja.name, "aldia", atras), grupo=1, tipo="caja_atrasada", caja=str(caja), nombre=caja.name,
+    sens = _trae_sensibles(caja, ppal)
+    if sens:
+        return dict(id=_id(str(caja), "aldia-sens", atras), grupo=3, tipo="archivo_sensible", caja=str(caja), nombre=caja.name, archivo=sens[0],
+                    evidencia=f"la copia está {atras} cambio(s) atrás de GitHub y lo que falta traer incluye {sens[0]}, que es de los que corren solo en tu compu")
+    return dict(id=_id(str(caja), "aldia", atras), grupo=1, tipo="caja_atrasada", caja=str(caja), nombre=caja.name,
                 rama=ppal, atras=int(atras), evidencia=f"la copia está {atras} cambio(s) atrás de GitHub y no tiene nada propio sin subir")
 
 
-def todos(raiz: Path) -> list:
+def todos(raiz: Path, tope_segundos: float = 0) -> list:
+    """Todos los hallazgos. Con tope_segundos corta la pasada (el arranque no se puede colgar); el resto queda para la próxima."""
     out = []
+    t0 = time.monotonic()
     for c_path, c_nivel, _parent in E.descubrir_cajas(raiz):
+        if tope_segundos and time.monotonic() - t0 > tope_segundos:
+            break
         if c_path.name.startswith("."):
             continue
         try:
             out.extend(hallazgos_caja(c_path, c_nivel))
         except Exception as e:   # un hallazgo roto no tapa a los demás
-            out.append(dict(id=_id(c_path.name, "err"), grupo=2, tipo="no_se_pudo_revisar", caja=str(c_path), nombre=c_path.name,
+            out.append(dict(id=_id(str(c_path), "err"), grupo=2, tipo="no_se_pudo_revisar", caja=str(c_path), nombre=c_path.name,
                             evidencia=f"no se pudo revisar ({type(e).__name__})"))
     return out
 
@@ -268,11 +287,16 @@ def _commit(caja: Path, rutas: list, mensaje: str):
     code, _ = git(caja, "add", "--", *rutas)
     if code != 0:
         return None
-    code, out = git(caja, "commit", "-q", "-m", mensaje + "\n\nAutomático (metodo, orden de carpetas). Deshacer: estructura.py deshacer", "--", *rutas)
+    code, out = git(caja, "-c", "commit.gpgsign=false", "commit", "-q", "--no-verify", "-m", mensaje + "\n\nAutomático (metodo, orden de carpetas). Deshacer: estructura.py deshacer", "--", *rutas)
     if code != 0:
         return None
     c2, sha = git(caja, "rev-parse", "HEAD")
     return sha if c2 == 0 else None
+
+
+def deshecho(id_: str) -> bool:
+    ultimo = next((e for e in reversed(leer_registro()) if e.get("id") == id_), None)
+    return bool(ultimo and ultimo.get("estado") == "deshecho")
 
 
 def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
@@ -282,6 +306,8 @@ def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
                 evidencia=h.get("evidencia", ""), verificado_por=verificado_por)
     if h["grupo"] == 3:
         return dict(base, estado="omitido", motivo="es de la persona: nunca se aplica solo")
+    if deshecho(h["id"]):
+        return dict(base, estado="omitido", motivo="la persona lo deshizo: no se vuelve a aplicar solo")
     if h["grupo"] == 2 and not verificado_por:
         return dict(base, estado="omitido", motivo="falta --verificado-por (segunda IA)")
     ocupado = arbol_ocupado(caja)
@@ -295,16 +321,23 @@ def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
         if not archivo_limpio(caja, rel):
             return dict(base, estado="omitido", motivo=f"{rel} tiene cambios sin guardar (puede estar editándolo otra sesión)")
         f = caja / rel
+        if f.is_symlink() or not f.resolve().is_relative_to(caja.resolve()):
+            return dict(base, estado="omitido", motivo="el archivo es un enlace o sale de la caja")
         antes_txt = E._lee(f)
-        nuevo_txt = antes_txt.replace(f"`{h['antes']}`", f"`{h['despues']}`")
+        # solo en las líneas que el control miró (las históricas, como changelogs, no se tocan)
+        lineas = antes_txt.split("\n")
+        nuevas = [l if E._HISTORICA.search(l) else l.replace(f"`{h['antes']}`", f"`{h['despues']}`") for l in lineas]
+        nuevo_txt = "\n".join(nuevas)
         if nuevo_txt == antes_txt:
             return dict(base, estado="omitido", motivo="la ruta ya no aparece")
         try:
+            if E._lee(f) != antes_txt:   # otra sesión lo tocó justo ahora
+                return dict(base, estado="omitido", motivo="el archivo cambió mientras se preparaba el arreglo")
             f.write_text(nuevo_txt, encoding="utf-8")
         except OSError as e:
             return dict(base, estado="omitido", motivo=f"no se pudo escribir ({type(e).__name__})")
         faltan_despues = E.rutas_citadas_que_faltan(nuevo_txt, caja)
-        if h["antes"] in faltan_despues or h["despues"] in faltan_despues or not (caja / h["despues"]).exists():   # prueba que lo verifica
+        if h["antes"] in faltan_despues or h["despues"] in faltan_despues:   # prueba que lo verifica
             f.write_text(antes_txt, encoding="utf-8")
             return dict(base, estado="fallo", motivo="la verificación no pasó; se restauró el texto")
         sha = _commit(caja, [rel], f"orden: {rel} cita {h['despues']} en vez de {h['antes']}")
@@ -313,7 +346,7 @@ def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
             git(caja, "reset", "-q", "--", rel)
             return dict(base, estado="fallo", motivo="no se pudo commitear; se restauró el texto")
         return dict(base, estado="aplicado", commit=sha, antes=h["antes"], despues=h["despues"],
-                    deshacer=f'git -C "{caja}" revert --no-edit {sha}')
+                    deshacer=f"estructura.py deshacer {h['id']}")
     if t == "doc_vivo":
         rel = h["archivo"]
         if (caja / rel).exists():
@@ -330,11 +363,13 @@ def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
         if not sha:
             git(caja, "reset", "-q", "--", rel)
             return dict(base, estado="fallo", motivo="no se pudo commitear (el archivo creado queda sin versionar)")
-        return dict(base, estado="aplicado", commit=sha, despues=rel, deshacer=f'git -C "{caja}" revert --no-edit {sha}')
+        return dict(base, estado="aplicado", commit=sha, despues=rel, deshacer=f"estructura.py deshacer {h['id']}")
     if t == "caja_atrasada":
         c5, sucio = git(caja, "status", "--porcelain", "--untracked-files=no")
         if c5 != 0 or sucio.strip():
             return dict(base, estado="omitido", motivo="tiene cambios sin guardar")
+        if _trae_sensibles(caja, h["rama"]):
+            return dict(base, estado="omitido", motivo="lo que trae GitHub incluye archivos sensibles (hooks, permisos, lo que corre solo): lo decide la persona")
         c0, previo = git(caja, "rev-parse", "HEAD")
         code, _ = git(caja, "merge", "-q", "--ff-only", f"origin/{h['rama']}")
         c1, atras = git(caja, "rev-list", "--count", f"HEAD..origin/{h['rama']}")
@@ -342,7 +377,7 @@ def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
             return dict(base, estado="fallo", motivo="no pudo avanzar")
         c2, nuevo_head = git(caja, "rev-parse", "HEAD")
         return dict(base, estado="aplicado", commit=previo, antes=previo[:8], despues="origin/" + h["rama"], cabeza_nueva=nuevo_head,
-                    deshacer=f'git -C "{caja}" reset --keep {previo}')
+                    deshacer=f"estructura.py deshacer {h['id']}")
     return dict(base, estado="omitido", motivo="tipo sin arreglo automático")
 
 
@@ -408,12 +443,16 @@ def comando_aplicar(id_: str, verificado_por: str, raiz_arg=None) -> int:
 
 def comando_deshacer(id_: str) -> int:
     reg = leer_registro()
-    if any(e.get("id") == id_ and e.get("estado") == "deshecho" for e in reg):
+    ultimo = next((e for e in reversed(reg) if e.get("id") == id_), None)
+    if ultimo and ultimo.get("estado") == "deshecho":
         print("Ese arreglo ya se deshizo.")
         return 1
     for e in reversed(reg):
         if e.get("id") == id_ and e.get("estado") == "aplicado":
             caja = Path(e["caja"])
+            if not _sha_valido(e.get("commit")):
+                print("El registro de ese arreglo no tiene un commit válido: no se toca nada.")
+                return 1
             ocupado = arbol_ocupado(caja)
             if ocupado:
                 print(f"No se puede deshacer ahora: {ocupado}")
@@ -423,9 +462,9 @@ def comando_deshacer(id_: str) -> int:
                 if cabeza != e.get("cabeza_nueva"):   # hubo commits propios después: no se retrocede a ciegas
                     print("No se deshace: la carpeta tiene commits posteriores al avance (se perderían). Hacelo a mano o pedime ayuda.")
                     return 1
-                code, out = git(caja, "reset", "--keep", e["commit"])
+                code, out = git(caja, "reset", "--keep", e["commit"], "--")
             else:
-                code, out = git(caja, "revert", "--no-edit", e["commit"])
+                code, out = git(caja, "revert", "--no-edit", e["commit"], "--")
                 if code != 0:
                     git(caja, "revert", "--abort")   # nunca dejar el repositorio a mitad de un conflicto
             if code != 0:
@@ -490,7 +529,7 @@ def semanal(raiz: Path):
     try:
         if not aplicar_encendido() and not leer_registro():
             return   # apagado y sin historia: no recorre las carpetas en el arranque
-        hs = todos(raiz)
+        hs = todos(raiz, tope_segundos=20)
         if aplicar_encendido():
             for h in [x for x in hs if x["grupo"] == 1]:
                 registrar(aplicar_uno(h))
