@@ -123,6 +123,9 @@ class TestControl(unittest.TestCase):
             (caja / ".claude").mkdir()
             (caja / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
             (caja / ".gitignore").write_text(".env\n.claude/settings.local.json\nCLAUDE.local.md\n", encoding="utf-8")
+            (caja / "docs" / "planes").mkdir(parents=True)
+            (caja / "docs" / "PRD.md").write_text("# PRD\n\nQué se construye: una herramienta para ordenar pedidos de clientes.\n", encoding="utf-8")
+            (caja / "docs" / "decisiones.md").write_text("# Decisiones\n\n2026-10-17: se usa una base simple, por costo y mantenimiento.\n", encoding="utf-8")
 
             # Ejecutar revisión
             buf = io.StringIO()
@@ -133,6 +136,31 @@ class TestControl(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("Estructura al día ✓", salida)
             self.assertNotIn("✗", salida)
+
+    def test_solo_avisos_no_dice_al_dia(self):
+        """C150: con avisos pendientes (sin errores) el resumen cuenta los avisos y NO dice «al día ✓»."""
+        with tempfile.TemporaryDirectory() as td:
+            caja = Path(td) / "mi_proyecto"
+            caja.mkdir()
+            _configurar_repo_git(caja, Path(td))
+            subprocess.run(["git", "remote", "add", "origin", "https://github.com/org/repo.git"], cwd=caja, capture_output=True, check=True)
+            (caja / "CLAUDE.md").write_text("# Proyecto\n\nReglas válidas.\n", encoding="utf-8")
+            (caja / ".claude").mkdir()
+            (caja / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
+            (caja / ".gitignore").write_text(".env\n.claude/settings.local.json\nCLAUDE.local.md\n", encoding="utf-8")
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                code = estructura.comando_revisar(carpeta_arg=str(caja), nivel_arg="proyecto")
+            salida = buf.getvalue()
+            self.assertEqual(code, 0)  # sin errores: sigue saliendo 0
+            self.assertNotIn("al día", salida)
+            self.assertIn("Sin errores, pero con 1 aviso pendiente ⚠", salida)
+            # en modo aviso (el hook de arranque) tampoco existe «Falta: 0»
+            _marcar_semana(td)
+            _, sal = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto", aviso=True)
+            self.assertNotIn("Falta: 0", sal)
+            self.assertNotIn("al día", sal)
+            self.assertIn("Sin errores, pero con 1 aviso pendiente ⚠", sal)
 
     def test_fallas_plantadas(self):
         """En un entorno con fallas plantadas, sale exactamente una línea ✗ por cada falla con su Rnn."""
@@ -532,7 +560,7 @@ class TestArreglar(unittest.TestCase):
             self.assertEqual(len(hallazgos), 10)
             total = 13 + 4  # errores: 13 de R9 + R1, R2, R4, R5 (el aviso R12 se muestra pero no cuenta como falla)
             self.assertIn(f"… y {total + 1 - 10} más (estructura.py revisar --todas)", lineas)
-            self.assertIn(f"Falta: {total} cosas ✗", lineas)
+            self.assertIn(f"Falta: {total} cosas ✗ · además 1 aviso ⚠", lineas)
             self.assertEqual(lineas[-1], "Claude: ofrecé arreglarlo con `estructura.py arreglar` (primero el plan; pedí OK antes de `--si`).")
 
     def test_el_arreglo_sale_del_markdown(self):

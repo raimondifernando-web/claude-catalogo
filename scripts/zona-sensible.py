@@ -33,6 +33,8 @@ FIJAS = [
     ("scripts/zona-sensible.py", "un control obligatorio"),
     ("scripts/nombres-en-ci.py", "un control obligatorio"),
     ("scripts/disparadores-excepciones.txt", "afloja un control obligatorio"),
+    ("scripts/pasos-manuales.py", "un control obligatorio"),
+    ("scripts/pasos-manuales-excepciones.txt", "afloja un control obligatorio"),
     ("scripts/tests/*", "las pruebas de los controles"),
     ("plugins/*/scripts/tests/*", "pruebas que corre el control obligatorio"),
     ("plugins/*/scripts/*/tests/*", "pruebas que corre el control obligatorio"),
