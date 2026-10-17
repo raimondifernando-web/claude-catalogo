@@ -1,5 +1,11 @@
 # paneles
 
+## 0.5.2 — 2026-10-17
+Arreglo en «Actividad»: ahora los agentes se ven encendidos mientras trabajan.
+- Antes, el panel solo se enteraba de que un agente empezó por un aviso que no le llega a todos (los que lanza una skill o se reanudan con un mensaje terminaban sin haber avisado). Resultado: aparecían recién al terminar, o nunca. Ahora además pregunta al motor, cada 5 segundos, quién está corriendo, y los muestra en verde desde ese momento. Sigue guardando solo el tipo, nunca el pedido ni la descripción.
+- El aviso «terminó» llega cuando el agente entrega su informe, aunque siga trabajando en segundo plano (un caso real: «terminó» a los 12 s y siguió 13 minutos). Ahora, si el motor lo ve corriendo después de esa parada, vuelve a verde hasta la parada final.
+- Un agente anotado dos veces cuenta una sola. Pruebas nuevas (49 en total).
+
 ## 0.5.1 — 2026-10-16
 Arreglo de seguridad: el panel único de 0.5.0 había perdido tres protecciones de 0.3.1/0.4.0.
 - **git no ejecuta nada de la carpeta ajena.** Todas las llamadas a `git` vuelven a apagar `core.fsmonitor` y `core.untrackedCache` y a no tomar bloqueos opcionales. Sin esto, un repositorio ajeno con `core.fsmonitor=<comando>` ejecutaba ese comando en tu Mac al abrir el panel.
