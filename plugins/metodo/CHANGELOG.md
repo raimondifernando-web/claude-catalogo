@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.50.1 — 2026-10-17
+**Las sesiones que abre Claude ya no quedan en un modelo distinto del pedido sin que nadie se dé cuenta.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** al abrir una sesión nueva pidiendo un modelo más caro que el de la sesión que la abre (por ejemplo, Opus desde una sesión en Sonnet), la herramienta lo ignora en silencio y la nueva arranca en el modelo equivocado.
+- **El arreglo:** apenas Claude abre una sesión pidiendo un modelo, le llega la orden de comprobarlo y corregirlo antes del primer turno de la nueva. No bloquea nada ni te pide nada.
+
 ## 0.50.0 — 2026-10-17
 **El revisor de carpetas deja de dar órdenes mecánicas y empieza a dar consejos pensados.** Se aplica solo con la actualización; no hay nada que correr.
 - **Cada aviso dice tres cosas:** qué encontró, cuánto cuesta dejarlo así (tokens por sesión, riesgo, lo que se rompe) y el arreglo que conviene en ese caso. Ejemplo: con pocas líneas de más en el `CLAUDE.md` ya no dice «mové un bloque a otro archivo»: dice que no hace falta nada; con muchas, pide mirar primero si hay algo repetido, viejo o contradictorio para sacar, y solo manda a `.claude/rules/` un bloque que aplica a un tema o carpeta puntual.
