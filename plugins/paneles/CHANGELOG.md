@@ -1,5 +1,11 @@
 # paneles
 
+## 0.5.4 — 2026-10-17
+Retoques al panel «Uso y actividad»:
+- **«Actividad» va en una barra de punta a punta** que separa el panel en dos.
+- **Más compacto arriba:** sin huecos entre los bloques de Uso, para darle lugar a Actividad.
+- **Sin textos repetidos:** el «nada trabajando» de la barra ya no aparece (queda «Nada activo.» en «Ahora»); con agentes corriendo se ve «● N trabajando».
+
 ## 0.5.3 — 2026-10-17
 - **«Uso» y «Actividad» ahora son un solo panel, «Uso y actividad».** Arriba, lo de siempre (contexto, límites del plan, qué gastó más); abajo, la actividad de agentes, subagentes y skills. `/uso` y `/actividad` abren el mismo panel.
 - **El detalle de colores del contexto (los puntitos) ahora se pliega:** arranca cerrado y se abre tocando «Detalle del contexto».
