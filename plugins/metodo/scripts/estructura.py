@@ -856,6 +856,12 @@ def _contenido_claude_md(carpeta: Path) -> list:
             sueltos = [x for x in pms if x not in conocidos]
             if sueltos:
                 h.append(("aviso", "R15", "CLAUDE.md nombra agente(s) que no existen: " + ", ".join(sueltos[:MAX_EJEMPLOS])))
+        # R19-R21: el equipo (PM, skills del PM, conectores); aislado: si falla, lo dice y las demás reglas siguen
+        try:
+            import estructura_equipo
+            h.extend(estructura_equipo.revisar(carpeta, "\n".join(l for l in texto.splitlines() if not _HISTORICA.search(l))))
+        except Exception as e:
+            h.append(("aviso", "R19", f"no se pudo revisar el equipo ({type(e).__name__})"))
     return h
 
 
@@ -1116,6 +1122,10 @@ def descubrir_cajas(raiz: Path):
 MAX_LINEAS_AVISO = 10
 
 
+def _palabra_aviso(n: int) -> str:
+    return "aviso" if n == 1 else "avisos"
+
+
 def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, raiz_arg=None, origen_arg=None) -> int:
     """Implementa el subcomando revisar."""
     raiz = Path(raiz_arg).resolve() if raiz_arg else (Path.home() / "Proyectos")
@@ -1190,6 +1200,7 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
                 else:
                     lineas_salida.append(con_arreglo(r_id, f"• {r_id} {display_name}: {msg}"))
 
+    total_avisos = sum(1 for l in lineas_salida if not l.startswith("✗"))
     # En modo aviso: si todo está bien, no imprime nada y sale 0. Si hay fallas, imprime y sale 0.
     if aviso:
         if primera_vez_semana:
@@ -1211,7 +1222,10 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
             if len(ordenadas) > MAX_LINEAS_AVISO:
                 print(f"… y {len(ordenadas) - MAX_LINEAS_AVISO} más (estructura.py revisar --todas)")
             palabra = "cosa" if total_errores == 1 else "cosas"
-            print(f"Falta: {total_errores} {palabra} ✗")
+            if total_errores:
+                print(f"Falta: {total_errores} {palabra} ✗" + (f" · además {total_avisos} {_palabra_aviso(total_avisos)} ⚠" if total_avisos else ""))
+            else:   # solo avisos: nunca decir «Falta: 0»
+                print(f"Sin errores, pero con {total_avisos} {_palabra_aviso(total_avisos)} pendiente{'s' if total_avisos != 1 else ''} ⚠")
             print("Claude: ofrecé arreglarlo con `estructura.py arreglar` (primero el plan; pedí OK antes de `--si`).")
         return 0
 
@@ -1220,9 +1234,14 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
         print(l)
 
     if total_errores == 0:
-        print("Estructura al día ✓")
+        if total_avisos:
+            print(f"Sin errores, pero con {total_avisos} {_palabra_aviso(total_avisos)} pendiente{'s' if total_avisos != 1 else ''} ⚠")
+        else:
+            print("Estructura al día ✓")
         return 0
     else:
+        if total_avisos:
+            print(f"Además: {total_avisos} {_palabra_aviso(total_avisos)} pendiente{'s' if total_avisos != 1 else ''} ⚠")
         palabra = "cosa" if total_errores == 1 else "cosas"
         print(f"Falta: {total_errores} {palabra} ✗")
         return 1

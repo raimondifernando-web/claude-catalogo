@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.49.2 — 2026-10-17
+**El control de estructura dice la verdad y ahora mira también el equipo de cada carpeta.** Se aplica solo; no hay nada que hacer.
+- **Antes:** «Estructura al día ✓» aparecía aunque hubiera avisos pendientes, y en el aviso de arranque podía leerse «Falta: 0 cosas». **Ahora** cuenta los avisos: sin nada pendiente dice «Estructura al día ✓»; con solo avisos dice «Sin errores, pero con N avisos pendientes ⚠»; con errores suma «Además: N avisos». El código de salida no cambia.
+- **Reglas nuevas (R19 a R21 de `ESTRUCTURA.md`, solo lectura):** el PM que nombra el `CLAUDE.md` existe y no es una cáscara, y si una carpeta no nombra ningún PM pero hay uno que la cita, te lo señala · las skills que el PM precarga existen · los conectores que el `CLAUDE.md` dice usar están configurados y habilitados (configurar no es habilitar) y las herramientas `mcp__…` del PM existen. De las configuraciones solo toma nombres de servidor, nunca llaves ni valores; los conectores de la nube no se juzgan.
+- **Para el catálogo:** un control nuevo en cada cambio (`scripts/pasos-manuales.py`) frena lo que dependa de que el cliente haga algo a mano (una pieza que sale desactivada, una orden en el changelog) o use herramientas de una sola plataforma en un hook sin alternativa para Windows.
+
 ## 0.49.1 — 2026-10-16
 **El arreglo automático del orden de tus carpetas ahora viene ENCENDIDO.** Se aplica solo con la actualización; no hay nada que correr.
 - **Antes (0.49.0)** venía apagado y había que encenderlo a mano. **Ahora** corre solo, una vez por semana, desde el aviso de arranque. Hace lo mismo que se describe en 0.49.0: solo lo seguro y reversible, un commit por arreglo, con registro y `estructura.py deshacer <id>`; nunca sube nada a GitHub, no toca un archivo con cambios sin guardar y no toca lo sensible (permisos, avisos automáticos, lo que corre solo).
