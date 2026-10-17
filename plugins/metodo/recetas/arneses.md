@@ -11,7 +11,7 @@ Receta arneses (2026-10-11). Cada regla lleva su fuente oficial; verificada cont
 - A3. Orden de evaluación: deny, luego ask, luego allow; un `allow` no abre una excepción dentro de un `deny`. Fuente: permissions.md.
 - A4. Para esconder credenciales a los comandos (archivos y variables): sandbox con `credentials` / `filesystem.denyRead`. Por defecto el sandbox deja leer `~/.ssh` y `~/.aws/credentials`. Probar antes: puede cortar git/gh. Fuente: sandboxing.md.
 - A5. Medido (no oficial, 2026-10-11): una regla `deny` sobre los archivos de entorno también rompe `grep -c '^VAR=' <archivo>`, la forma segura de verificar que una variable existe. Por eso esos archivos van al freno (hook) y los otros almacenes de llaves (`~/.ssh`, etc.) a `deny`.
-- A6. Un hook no ve lo que entra por `@archivo` en el prompt (no hay llamada a herramienta). Fuente: hooks.md (PreToolUse).
+- A6. Un hook no ve lo que entra por `@archivo` en el prompt (no hay llamada a herramienta). Dos salidas: una regla `deny Read(...)` para esas rutas, o `CLAUDE_CODE_DISABLE_FILE_MENTIONS=1` (Claude recibe solo la ruta y la lee con sus herramientas, así que los hooks `Read` sí corren; pide Claude Code ≥ 2.1.299; se ignora en settings de proyecto y locales: va en el shell, los settings de usuario o los gestionados). Fuente: hooks.md (PreToolUse).
 - A7. En Windows con PowerShell los comandos llegan por otra herramienta: el matcher debe ser `Bash|PowerShell`; un freno solo de Bash no ve nada. Fuente: hooks.md.
 
 **Hooks y avisos**
@@ -28,7 +28,7 @@ Receta arneses (2026-10-11). Cada regla lleva su fuente oficial; verificada cont
 **Instrucciones y costo**
 - D1. CLAUDE.md: menos de 200 líneas; lo de una carpeta, a una regla con `paths:`; MEMORY.md carga solo las primeras 200 líneas o 25 KB. Fuente: memory.md.
 - D2. Las reglas con `paths:` y los CLAUDE.md anidados se vuelven a cargar a demanda tras compactar; el CLAUDE.md de la raíz se re-inyecta. Las reglas de usuario en `~/.claude/rules/` valen para todos los proyectos. Fuente: memory.md.
-- D3. Todo subagente propio carga los CLAUDE.md salvo que tenga `omitClaudeMd: true` (Explore y Plan no los cargan). Para especialistas de solo lectura, apagarlo ahorra contexto en cada uno. Fuente: sub-agents.md.
+- D3. Todo subagente propio carga los CLAUDE.md salvo que tenga `omitClaudeMd: true` (pide ≥ 2.1.271; Explore y Plan tampoco los cargan). Con `omitClaudeMd` igual entran los de política gestionada y el CLAUDE.md de un subdirectorio cuando trabaja con archivos de ahí; la sesión principal sí tiene todo, así que una regla que el subagente deba cumplir se repite en el pedido. Para especialistas de solo lectura, apagarlo ahorra contexto. Fuente: sub-agents.md.
 
 **Cómo se usa**
 1. Si vas a tocar hooks, permisos, skills ajenas, CLAUDE.md o sandbox, leé la regla del bloque.
