@@ -77,6 +77,9 @@ test('muestra contexto por categoría, límites y qué gastó más', async ($, o
   }
 
   const ui = await $.ui.mount({ plugin: 'paneles', surface: 'desktop', ...PANEL })
+  // El detalle de colores del contexto arranca plegado: se despliega tocando «Detalle del contexto».
+  expect((await ui.findAll({ type: 'Svg' })).map(x => String(x.props.alt))).not.toContain('Mensajes 95K, MCP 32K')
+  await ui.press({ key: 'leyenda' })
   const graficos = (await ui.findAll({ type: 'Svg' })).map(x => String(x.props.alt))
   expect(graficos).toContain('Mensajes 95K, MCP 32K')
   expect(await ui.find({ type: 'Text', text: /^75 %$/ })).toBeDefined()

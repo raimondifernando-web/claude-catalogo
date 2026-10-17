@@ -15,7 +15,7 @@ import type { ActModelo, ActNodo, ActSesion, ActSinUso, Tarea, Categoria, Cambio
 type H = ($: EngineInterface, e: any, next: (e: any) => any) => any // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const PANEL = 'medidor-uso'
-const TITULO = 'Uso'
+const TITULO = 'Uso y actividad'
 const medida = atom({ plugin: 'paneles', key: 'medida' } as const, null)
 const categorias = atom({ plugin: 'paneles', key: 'categorias' } as const, [])
 const GASTO_INICIAL: Gasto = { actual: 'conversación', costoPrevio: 0, porOrigen: {} }
@@ -287,13 +287,15 @@ const registrarUso: Register = on => {
     const g = (await read($, gasto)) ?? GASTO_INICIAL
     const ahora = await $.clock.now()
     const top = ranking(g)
+    const actividad = (await actDibujar($, e)) as never
     // En la línea, lo usado de mayor a menor y después la reserva y lo libre, como en macOS.
     const usadas = cats.filter(c => c.kind === 'used').sort((a, b) => b.tokens - a.tokens)
     const enLinea = [...usadas, ...cats.filter(c => c.kind === 'buffer'), ...cats.filter(c => c.kind === 'free')]
 
     if (e.surface === 'desktop') {
-      const { Box, Text, Svg } = $.ui.resolve(e)
+      const { Box, Text, Svg, Button } = $.ui.resolve(e)
       if (m === null) return <Text dimColor>Esperando la primera respuesta…</Text>
+      const abierta = (await read($, leyendaAbierta)) === true
       return (
         <Box flexDirection="column" gap={1} paddingX={1}>
           <Box flexDirection="column">
@@ -305,6 +307,9 @@ const registrarUso: Register = on => {
             </Box>
             <Svg source={lineaContexto(enLinea, m.percent)} alt={`Contexto ${m.percent ?? '—'} %`} />
             {usadas.length > 0 ? (
+              <Button key="leyenda" plain label={`${abierta ? '⌄' : '›'} Detalle del contexto`} onPress={() => update($, leyendaAbierta, v => v !== true)} />
+            ) : null}
+            {usadas.length > 0 && abierta ? (
               <Svg
                 source={leyenda(usadas)}
                 alt={usadas.map(c => `${CATEGORIAS[c.name] ?? c.name} ${abreviar(c.tokens)}`).join(', ')}
@@ -343,6 +348,8 @@ const registrarUso: Register = on => {
               ) : null}
             </Box>
           ) : null}
+          <Svg source={SEPARACION} alt="" />
+          {actividad}
         </Box>
       )
     }
@@ -371,6 +378,7 @@ const registrarUso: Register = on => {
             {r.origen} {r.pct} %
           </Text>
         ))}
+        {actividad}
       </Box>
     )
   })
@@ -400,6 +408,8 @@ const datos = atom({ plugin: 'paneles', key: 'datos' } as const, null)
 const grupos = atom({ plugin: 'paneles', key: 'grupos' } as const, [])
 // Tareas que la propia sesión carga con TodoWrite / TaskCreate (valen si no hay tareas.json).
 const lista = atom({ plugin: 'paneles', key: 'lista' } as const, [])
+// Detalle de colores del contexto (los puntitos): plegado hasta que se toca.
+const leyendaAbierta = atom({ plugin: 'paneles', key: 'leyendaAbierta' } as const, false)
 // IDs de las filas desplegadas para ver su detalle.
 const detalle = atom({ plugin: 'paneles', key: 'detalle' } as const, [])
 
@@ -1253,8 +1263,8 @@ function renderPendientes(
 // actCarpeta; nunca el prompt, la descripción ni los argumentos (Mand. XXII). Un archivo
 // por día y por sesión: actDos sesiones a la vez nunca se pisan. Un mod no puede borrar:
 // los archivos de más de 90 días los poda quien administre la Mac (hoy son livianos).
-const actPANEL = 'actividad'
-const actTITULO = 'Actividad'
+const actPANEL = 'medidor-uso'
+const actTITULO = 'Uso y actividad'
 // La actCarpeta del registro sale de la configuración de actCADA persona (nunca una ruta fija).
 let actDIR = ''
 let actSIN_USO = ''
@@ -1499,14 +1509,9 @@ async function actRefrescar($: EngineInterface): Promise<void> {
 let actCerradoAMano = false
 let actColocado = false
 
-async function actAsegurarPanel($: EngineInterface): Promise<void> {
-  if (actCerradoAMano) return
-  try {
-    const r = await $.ui.open({ id: actPANEL, title: actTITULO, columns: 38 })
-    actColocado = r.isPlaced
-  } catch {
-    // se reintenta con el reloj
-  }
+async function actAsegurarPanel(_$: EngineInterface): Promise<void> {
+  // Actividad vive dentro del panel de Uso («Uso y actividad»): ese panel ya lo abre el de Uso.
+  actColocado = true
 }
 
 const actDos = (n: number) => String(n).padStart(2, '0')
@@ -1547,6 +1552,83 @@ export const actSessionMeasure: H = async ($, e, next) => {
   if (!actColocado) await actAsegurarPanel($)
   await actRefrescar($)
   return next(e)
+}
+
+// Lo de «Actividad» que se dibuja abajo del panel de Uso (un solo panel: «Uso y actividad»).
+async function actDibujar($: EngineInterface, e: any): Promise<unknown> { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const ui = $.ui.resolve(e)
+  const { Box, Text } = ui
+  const m = await read($, actDatos)
+  const ahora = await $.clock.now()
+  if (m === null) return <Text dimColor>Leyendo la actividad…</Text>
+  if (m.error) return <Text color={actROJO}>{m.error}</Text>
+
+  const Dibujo = e.surface === 'desktop' && 'Svg' in ui ? ui.Svg : null
+  // El dibujo de cada fila: Bicho (agente), luciérnaga (subagente) o hoja de archivo (skill).
+  const icono = (n: ActNodo, nivel: number) => {
+    if (n.tipo === 'skill') return <Text color={n.activo ? actVERDE : undefined} dimColor={!n.activo}>▤ </Text>
+    const luciernaga = nivel > 0
+    if (Dibujo === null) return <Text color={n.activo ? actVERDE : undefined} dimColor={!n.activo}>{n.activo ? '● ' : '◦ '}</Text>
+    const fuente = luciernaga ? (n.activo ? actLUCI_VERDE : actLUCI_GRIS) : n.activo ? actBICHO_VERDE : actBICHO_GRIS
+    return <Dibujo source={fuente} alt={`${luciernaga ? 'subagente' : 'agente'} ${n.activo ? 'trabajando' : 'terminó'}`} width={luciernaga ? 17 : 20} height={luciernaga ? 19 : 22} isInteractive={n.activo} />
+  }
+  // Una fila del árbol: agente = Bicho, subagente = luciérnaga, skill = hoja de archivo (son instrucciones).
+  const fila = (n: ActNodo, nivel: number, k: string): unknown[] => {
+    if (nivel > 8) return []
+    const esSkill = n.tipo === 'skill'
+    const etiqueta = esSkill ? 'skill' : nivel > 0 ? 'subagente' : 'agente'
+    const cuando = n.activo
+      ? esSkill
+        ? 'ahora'
+        : actHace(ahora - n.t)
+      : `${actHora(n.t)}${n.dur !== undefined ? ` · ${actHace(n.dur)}` : ''}`
+    const propia = (
+      <Box key={k} flexDirection="row" justifyContent="space-between">
+        <Box flexDirection="row" gap={1}>
+          {nivel > 0 ? <Text dimColor>{`${'   '.repeat(nivel - 1)}└`}</Text> : null}
+          {icono(n, nivel)}
+          <Text bold={n.activo}>
+            {n.nombre}
+            <Text dimColor> {etiqueta}</Text>
+          </Text>
+        </Box>
+        <Text color={n.activo ? actVERDE : undefined} dimColor={!n.activo}>{cuando}</Text>
+      </Box>
+    )
+    return [propia, ...n.hijos.flatMap((h, i) => fila(h, nivel + 1, `${k}.${i}`))]
+  }
+  const grupos = (lista: ActSesion[], pref: string) =>
+    lista.map((g, gi) => (
+      <Box key={`${pref}${gi}`} flexDirection="column">
+        <Text dimColor>
+          {g.cwd || 'sesión'} · {g.sesion}
+        </Text>
+        {g.raices.flatMap((r, i) => fila(r, 0, `${pref}${gi}-${i}`))}
+      </Box>
+    ))
+
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Box flexDirection="row" justifyContent="space-between">
+        <Text bold>Actividad</Text>
+        <Text color={m.trabajando > 0 ? actVERDE : undefined} dimColor={m.trabajando === 0}>
+          {m.trabajando > 0 ? `● ${m.trabajando} trabajando` : 'nada trabajando'}
+        </Text>
+      </Box>
+      <Box flexDirection="column">
+        <Text bold>Ahora</Text>
+        {m.ahora.length === 0 ? <Text dimColor>Nada activo.</Text> : grupos(m.ahora, 'a')}
+      </Box>
+      <Box flexDirection="column">
+        <Text bold>Hoy · terminaron</Text>
+        {m.hoy.length === 0 ? <Text dimColor>Todavía nada hoy.</Text> : grupos(m.hoy, 'h')}
+      </Box>
+      {m.sinUso ? (
+        <Text dimColor>{`Sin activarse en ${m.sinUso.dias} días: ${m.sinUso.sin} de ${m.sinUso.total} (propios)`}</Text>
+      ) : null}
+      <Text dimColor>Bicho = agente · luciérnaga = subagente · ▤ skill (instrucciones) · verde = trabajando</Text>
+    </Box>
+  )
 }
 
 export const registrarActividad = (on: Parameters<Register>[0]): void => {
@@ -1608,82 +1690,6 @@ export const registrarActividad = (on: Parameters<Register>[0]): void => {
     await $.ui.open({ id: actPANEL, title: actTITULO, columns: 38 })
     await actRefrescar($)
     return { text: 'Panel de actividad abierto.' }
-  })
-
-  on('ui.render', { component: 'Pane', requestId: actPANEL }, async ($, e) => {
-    const ui = $.ui.resolve(e)
-    const { Box, Text } = ui
-    const m = await read($, actDatos)
-    const ahora = await $.clock.now()
-    if (m === null) return <Text dimColor>Leyendo la actividad…</Text>
-    if (m.error) return <Text color={actROJO}>{m.error}</Text>
-
-    const Dibujo = e.surface === 'desktop' && 'Svg' in ui ? ui.Svg : null
-    // El dibujo de cada fila: Bicho (agente), luciérnaga (subagente) o hoja de archivo (skill).
-    const icono = (n: ActNodo, nivel: number) => {
-      if (n.tipo === 'skill') return <Text color={n.activo ? actVERDE : undefined} dimColor={!n.activo}>▤ </Text>
-      const luciernaga = nivel > 0
-      if (Dibujo === null) return <Text color={n.activo ? actVERDE : undefined} dimColor={!n.activo}>{n.activo ? '● ' : '◦ '}</Text>
-      const fuente = luciernaga ? (n.activo ? actLUCI_VERDE : actLUCI_GRIS) : n.activo ? actBICHO_VERDE : actBICHO_GRIS
-      return <Dibujo source={fuente} alt={`${luciernaga ? 'subagente' : 'agente'} ${n.activo ? 'trabajando' : 'terminó'}`} width={luciernaga ? 17 : 20} height={luciernaga ? 19 : 22} isInteractive={n.activo} />
-    }
-    // Una fila del árbol: agente = Bicho, subagente = luciérnaga, skill = hoja de archivo (son instrucciones).
-    const fila = (n: ActNodo, nivel: number, k: string): unknown[] => {
-      if (nivel > 8) return []
-      const esSkill = n.tipo === 'skill'
-      const etiqueta = esSkill ? 'skill' : nivel > 0 ? 'subagente' : 'agente'
-      const cuando = n.activo
-        ? esSkill
-          ? 'ahora'
-          : actHace(ahora - n.t)
-        : `${actHora(n.t)}${n.dur !== undefined ? ` · ${actHace(n.dur)}` : ''}`
-      const propia = (
-        <Box key={k} flexDirection="row" justifyContent="space-between">
-          <Box flexDirection="row" gap={1}>
-            {nivel > 0 ? <Text dimColor>{`${'   '.repeat(nivel - 1)}└`}</Text> : null}
-            {icono(n, nivel)}
-            <Text bold={n.activo}>
-              {n.nombre}
-              <Text dimColor> {etiqueta}</Text>
-            </Text>
-          </Box>
-          <Text color={n.activo ? actVERDE : undefined} dimColor={!n.activo}>{cuando}</Text>
-        </Box>
-      )
-      return [propia, ...n.hijos.flatMap((h, i) => fila(h, nivel + 1, `${k}.${i}`))]
-    }
-    const grupos = (lista: ActSesion[], pref: string) =>
-      lista.map((g, gi) => (
-        <Box key={`${pref}${gi}`} flexDirection="column">
-          <Text dimColor>
-            {g.cwd || 'sesión'} · {g.sesion}
-          </Text>
-          {g.raices.flatMap((r, i) => fila(r, 0, `${pref}${gi}-${i}`))}
-        </Box>
-      ))
-
-    return (
-      <Box flexDirection="column" gap={1} paddingX={1}>
-        <Box flexDirection="row" justifyContent="space-between">
-          <Text dimColor>Quién activó a quién</Text>
-          <Text color={m.trabajando > 0 ? actVERDE : undefined} dimColor={m.trabajando === 0}>
-            {m.trabajando > 0 ? `● ${m.trabajando} trabajando` : 'nada trabajando'}
-          </Text>
-        </Box>
-        <Box flexDirection="column">
-          <Text bold>Ahora</Text>
-          {m.ahora.length === 0 ? <Text dimColor>Nada activo.</Text> : grupos(m.ahora, 'a')}
-        </Box>
-        <Box flexDirection="column">
-          <Text bold>Hoy · terminaron</Text>
-          {m.hoy.length === 0 ? <Text dimColor>Todavía nada hoy.</Text> : grupos(m.hoy, 'h')}
-        </Box>
-        {m.sinUso ? (
-          <Text dimColor>{`Sin activarse en ${m.sinUso.dias} días: ${m.sinUso.sin} de ${m.sinUso.total} (propios)`}</Text>
-        ) : null}
-        <Text dimColor>Bicho = agente · luciérnaga = subagente · ▤ skill (instrucciones) · verde = trabajando</Text>
-      </Box>
-    )
   })
 }
 

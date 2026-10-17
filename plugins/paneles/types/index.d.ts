@@ -125,6 +125,7 @@ declare module 'claude-code' {
       detalle: string[]
       lista: Tarea[]
       actividadDatos: ActModelo | null
+      leyendaAbierta: boolean
     }
   }
 }
