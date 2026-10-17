@@ -19,6 +19,8 @@ Subcomandos:
 - dibujo [--salida RUTA] [--origen RUTA]
 - revisar [CARPETA] [--todas] [--nivel empresa|area|proyecto] [--aviso] [--raiz RUTA] [--origen RUTA]
 - completar CARPETA --nivel empresa|area|proyecto [--origen RUTA]
+- brief [CARPETA]   (brief para una sesión secundaria con lo que vale arreglar)
+- descartar CLAVE   (anota un aviso que se decidió no hacer)
 - arreglar [CARPETA] [--todas] [--raiz RUTA] [--origen RUTA] [--si]   (sin --si solo muestra el plan)
 """
 import argparse
@@ -675,6 +677,32 @@ def tiene_codigo(carpeta: Path) -> bool:
     return False
 
 
+def necesita_documentos(carpeta: Path) -> bool:
+    """¿La caja tiene un producto propio que documentar (PRD, decisiones, planes)? Sí si tiene código de aplicación (en la
+    raíz, en src/app, o al menos 5 archivos de código a dos niveles, sin contar `scripts/` ni `docs/`) o un historial de más de
+    100 commits propios. Una caja de paso, de consultoría o contenedora no los necesita: sería crear archivos que nadie lee.
+    Barato: nunca recorre más de dos niveles ni entra a carpetas ocultas o de dependencias."""
+    if tiene_codigo(carpeta):
+        return True
+    saltar = {"node_modules", "venv", ".venv", "dist", "build", "__pycache__", "graphify-out", "scripts", "docs", "tests"}
+    cuenta = 0
+    try:
+        base = len(carpeta.parts)
+        for raiz_d, dirs, archivos in os.walk(carpeta):
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d not in saltar and not (Path(raiz_d) / d).is_symlink()]
+            if len(Path(raiz_d).parts) - base >= 2:
+                dirs[:] = []
+            cuenta += sum(1 for a in archivos if Path(a).suffix.lower() in EXTENSIONES_CODIGO)
+            if cuenta >= 5:
+                return True
+    except OSError:
+        pass
+    if (carpeta / ".git").exists():
+        code, out = ejecutar_git("rev-list", "--count", "HEAD", cwd=carpeta)
+        return code == 0 and out.strip().isdigit() and int(out.strip()) > 100
+    return False
+
+
 # Excepciones escritas: algo que se decidió dejar así, con su motivo, en vez de un ✗ para siempre.
 # Archivo `.estructura-excepciones.json` en la raíz del repositorio de la caja (en una copia de trabajo, git worktree,
 # se busca primero en la copia y después en la principal). Lista de {"regla", "ruta", "motivo", "fecha"}; «ruta» es
@@ -1141,6 +1169,117 @@ def _palabra_aviso(n: int) -> str:
     return "aviso" if n == 1 else "avisos"
 
 
+def _consejos_de(registro):
+    """[(clave, nombre, consejo)] de los avisos del registro, ya con acción decidida (sin los «nada»)."""
+    import estructura_consejo as C
+    res = []
+    for tipo, r_id, nombre, msg, c_path, nivel in registro:
+        if tipo != "aviso" or set(c_path.parts) & C.CARPETAS_AJENAS:
+            continue
+        try:
+            c = C.consejo(r_id, msg, {"codigo": necesita_documentos(c_path), "nivel": nivel})
+        except Exception:   # el consejo nunca rompe un arranque: ante la duda, el aviso crudo
+            c = dict(accion="al_pasar", que=msg, cuesta="no se pudo estimar.", conviene="revisarlo cuando abras ese archivo.",
+                     hecho="", rinde=10, medida=0)
+        if c["accion"] != "nada":
+            res.append((C.clave_de(r_id, c_path.name), nombre, c))
+    return res
+
+
+def _dentro(ruta, base) -> bool:
+    try:
+        Path(ruta).resolve().relative_to(Path(base).resolve())
+        return True
+    except (ValueError, TypeError, OSError):
+        return False
+
+
+def _imprimir_aviso(lineas_salida, registro, total_errores, aqui=None):
+    """El aviso de apertura: errores obligatorios + consejos pensados (qué, cuánto cuesta, qué conviene), sin repetir
+    lo ya mostrado ni lo decidido, ordenados por lo que más rinde. Los avisos que no valen la pena no se muestran."""
+    import estructura_consejo as C
+    hoy = date.today()
+    memoria = C.cargar()
+    errores = [l for l in lineas_salida if l.startswith("✗")]
+    todos = _consejos_de(registro)
+    otras = []
+    if aqui is not None:   # la pasada semanal ve todas las cajas, pero esta sesión solo atiende la suya
+        ruta_de = {C.clave_de(r, p.name): p for _t, r, _n, _m, p, _v in registro}
+        otras = [x for x in todos if not _dentro(ruta_de.get(x[0]), aqui)]
+        todos = [x for x in todos if x not in otras]
+    candidatos = [x for x in todos if C.toca_mostrar(x[0], x[2]["medida"], memoria, hoy)]
+    sesion = sorted((x for x in candidatos if x[2]["accion"] == "sesion"), key=lambda x: -x[2]["rinde"])
+    al_pasar = [x for x in candidatos if x[2]["accion"] == "al_pasar"]
+    clave_otras = "OTRAS:" + (aqui.name if aqui is not None else "")
+    hay_otras = bool(otras) and C.toca_mostrar(clave_otras, len(otras), memoria, hoy)
+    if not (errores or sesion or al_pasar or hay_otras):
+        return
+    for l in errores[:MAX_LINEAS_AVISO]:
+        print(l)
+    if len(errores) > MAX_LINEAS_AVISO:
+        print(f"… y {len(errores) - MAX_LINEAS_AVISO} más (estructura.py revisar --todas)")
+    mostrados = sesion[:C.MAX_CONSEJOS]
+    for clave, nombre, c in mostrados:
+        for l in C.lineas_consejo(clave, nombre, c):
+            print(l)
+    if len(sesion) > len(mostrados):
+        print(f"… y {len(sesion) - len(mostrados)} más que valen una sesión (estructura.py brief)")
+    if al_pasar:
+        det = ", ".join(f"{k.split(':')[0]} {n}" for k, n, _ in al_pasar[:4])
+        print(f"• {len(al_pasar)} detalle(s) chico(s) para corregir de paso, sin abrir una sesión aparte: {det}"
+              + (" …" if len(al_pasar) > 4 else "") + " (estructura.py revisar)")
+    if hay_otras:
+        print(f"• Hay {len(otras)} aviso(s) en otras carpetas: no son de esta sesión, no los arregles acá "
+              "(los ve su dueña o Tech con `estructura.py revisar --todas`).")
+        C.anotar_visto(clave_otras, len(otras), memoria, hoy)
+    for clave, _n, c in mostrados + al_pasar:
+        C.anotar_visto(clave, c["medida"], memoria, hoy)
+    C.guardar(memoria)
+    n_av = len(mostrados) + len(al_pasar)
+    if total_errores:
+        palabra = "cosa" if total_errores == 1 else "cosas"
+        print(f"Falta: {total_errores} {palabra} ✗" + (f" · además {n_av} {_palabra_aviso(n_av)} ⚠" if n_av else ""))
+    else:
+        print(f"Sin errores, pero con {n_av} {_palabra_aviso(n_av)} pendiente{'s' if n_av != 1 else ''} ⚠")
+    if errores or sesion:
+        print("Claude: no lo arregles en esta sesión. Proponé UNA sesión secundaria (tarjeta `start_session`, «own_initiative») "
+              "con el brief de `estructura.py brief` y seguí con lo que te pidieron. Un punto que se decidió no hacer: "
+              "`estructura.py descartar <clave>`.")
+
+
+def comando_brief(carpeta_arg=None) -> int:
+    """Brief listo para una sesión secundaria: errores obligatorios + consejos que valen una sesión (menos los descartados)."""
+    import estructura_consejo as C
+    objetivo = Path(carpeta_arg).resolve() if carpeta_arg else Path.cwd()
+    raiz = Path.home() / "Proyectos"
+    nivel = detectar_nivel_carpeta(objetivo, raiz)
+    parent = objetivo.parent if objetivo.parent != raiz and es_caja(objetivo.parent) else None
+    registro, errores = [], []
+    for tipo, r_id, msg in revisar_caja(objetivo, nivel, parent_caja=parent):
+        if tipo == "error":
+            errores.append(f"{r_id} {msg}")
+        elif tipo == "aviso":
+            registro.append((tipo, r_id, objetivo.name, msg, objetivo, nivel))
+    memoria = C.cargar()
+    hoy = date.today()
+    sesion = [(k, c) for k, _n, c in sorted(_consejos_de(registro), key=lambda x: -x[2]["rinde"])
+              if c["accion"] == "sesion" and not ((memoria.get(k) or {}).get("descartado") and not C.empeoro(c["medida"], (memoria.get(k) or {}).get("medida", 0)))]
+    if not (errores or sesion):
+        print(f"Nada que valga una sesión en {objetivo.name} ✓")
+        return 0
+    print(C.armar_brief(objetivo.name, str(objetivo), sesion, errores))
+    return 0
+
+
+def comando_descartar(clave: str) -> int:
+    import estructura_consejo as C
+    if C.descartar(clave):
+        print(f"Anotado ✓ no se vuelve a avisar de {clave} (salvo que empeore o pasen {C.DIAS_DESCARTADO} días)")
+        return 0
+    print("Falta la clave completa del aviso, por ejemplo R3:Mi-Carpeta (la muestra el aviso entre corchetes)")
+    return 1
+
+
 def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, raiz_arg=None, origen_arg=None) -> int:
     """Implementa el subcomando revisar."""
     raiz = Path(raiz_arg).resolve() if raiz_arg else (Path.home() / "Proyectos")
@@ -1173,6 +1312,7 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
 
     lineas_salida = []
     lineas_excepcion = []  # lo decidido dejar así: se muestra, pero no cuenta como falla
+    registro = []          # (tipo, regla, nombre a mostrar, mensaje, carpeta, nivel): el aviso lo convierte en consejos
     total_errores = 0
 
     if todas:
@@ -1193,6 +1333,7 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
                 elif tipo == "excepcion":
                     lineas_excepcion.append(f"• excepción {r_id} {rel_display}: {msg}")
                 else:
+                    registro.append((tipo, r_id, rel_display, msg, c_path, c_nivel))
                     lineas_salida.append(con_arreglo(r_id, f"• {r_id} {rel_display}: {msg}"))
     else:
         objetivo = Path(carpeta_arg).resolve() if carpeta_arg else Path.cwd()
@@ -1213,6 +1354,7 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
                 elif tipo == "excepcion":
                     lineas_excepcion.append(f"• excepción {r_id} {display_name}: {msg}")
                 else:
+                    registro.append((tipo, r_id, display_name, msg, objetivo, nivel))
                     lineas_salida.append(con_arreglo(r_id, f"• {r_id} {display_name}: {msg}"))
 
     total_avisos = sum(1 for l in lineas_salida if not l.startswith("✗"))
@@ -1229,19 +1371,8 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
                 estructura_orden.semanal(raiz)
             except Exception:
                 pass
-        if lineas_salida:
-            # primero los ✗ (sort estable), como mucho 10 líneas
-            ordenadas = sorted(lineas_salida, key=lambda l: not l.startswith("✗"))
-            for l in ordenadas[:MAX_LINEAS_AVISO]:
-                print(l)
-            if len(ordenadas) > MAX_LINEAS_AVISO:
-                print(f"… y {len(ordenadas) - MAX_LINEAS_AVISO} más (estructura.py revisar --todas)")
-            palabra = "cosa" if total_errores == 1 else "cosas"
-            if total_errores:
-                print(f"Falta: {total_errores} {palabra} ✗" + (f" · además {total_avisos} {_palabra_aviso(total_avisos)} ⚠" if total_avisos else ""))
-            else:   # solo avisos: nunca decir «Falta: 0»
-                print(f"Sin errores, pero con {total_avisos} {_palabra_aviso(total_avisos)} pendiente{'s' if total_avisos != 1 else ''} ⚠")
-            print("Claude: ofrecé arreglarlo con `estructura.py arreglar` (primero el plan; pedí OK antes de `--si`).")
+        _imprimir_aviso(lineas_salida, registro, total_errores,
+                        aqui=(Path(carpeta_arg).resolve() if carpeta_arg else Path.cwd()) if todas else None)
         return 0
 
     # Modo normal
@@ -1554,6 +1685,11 @@ def main():
     p_arreglar.add_argument("--origen", default=None, help="Ruta de ESTRUCTURA.md")
     p_arreglar.add_argument("--si", action="store_true", help="Aplica el plan (sin esto solo lo muestra)")
 
+    p_brief = subparsers.add_parser("brief", help="Brief listo para una sesión secundaria con lo que vale arreglar")
+    p_brief.add_argument("carpeta", nargs="?", default=None, help="Carpeta (por defecto la actual)")
+    p_desc = subparsers.add_parser("descartar", help="Anota que un aviso se decidió no hacer (no vuelve a aparecer)")
+    p_desc.add_argument("clave", help="La clave que muestra el aviso entre corchetes, por ejemplo R3:Mi-Carpeta")
+
     # Subcomandos del bucle de orden (estructura_orden.py)
     p_auto = subparsers.add_parser("auto", help="Muestra (o con --si aplica) los arreglos seguros del bucle de orden")
     p_auto.add_argument("--raiz", default=None, help="Raíz de proyectos (por defecto ~/Proyectos)")
@@ -1584,6 +1720,10 @@ def main():
             sys.exit(O.comando_resumen(raiz_arg=args.raiz))
         sys.exit(O.comando_config(args.encender, args.apagar))
 
+    if args.comando == "brief":
+        sys.exit(comando_brief(args.carpeta))
+    if args.comando == "descartar":
+        sys.exit(comando_descartar(args.clave))
     if args.comando == "dibujo":
         sys.exit(comando_dibujo(salida_ruta=args.salida, origen_ruta=args.origen))
     elif args.comando == "revisar":

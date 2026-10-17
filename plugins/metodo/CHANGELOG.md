@@ -1,5 +1,13 @@
 # metodo — qué cambia para vos
 
+## 0.50.0 — 2026-10-17
+**El revisor de carpetas deja de dar órdenes mecánicas y empieza a dar consejos pensados.** Se aplica solo con la actualización; no hay nada que correr.
+- **Cada aviso dice tres cosas:** qué encontró, cuánto cuesta dejarlo así (tokens por sesión, riesgo, lo que se rompe) y el arreglo que conviene en ese caso. Ejemplo: con pocas líneas de más en el `CLAUDE.md` ya no dice «mové un bloque a otro archivo»: dice que no hace falta nada; con muchas, pide mirar primero si hay algo repetido, viejo o contradictorio para sacar, y solo manda a `.claude/rules/` un bloque que aplica a un tema o carpeta puntual.
+- **Si arreglarlo cuesta más de lo que se gana, lo dice y calla.** Ya no pide documentos vivos (`PRD`, `decisiones`, `planes`) en carpetas sin código, ni crea documentos vacíos de forma automática: solo donde el proyecto los necesita.
+- **No se arregla en la sesión principal.** Lo que vale la pena le llega a Claude como pedido de abrir UNA sesión secundaria (tarjeta lista para arrancar con un clic), con el brief armado por `estructura.py brief`.
+- **No repite lo mismo todos los días:** un aviso no vuelve antes de 7 días ni más de 3 veces; lo que decidís no hacer se anota con `estructura.py descartar <clave>` y vuelve solo si empeora o a los 6 meses. Se muestran como mucho 3 consejos, ordenados por lo que más rinde, y los detalles chicos van juntos en una línea.
+- **Lo que no cambia:** `estructura.py revisar` sin `--aviso` muestra todo como antes, y los errores obligatorios (sin `.gitignore`, secretos versionados…) se siguen mostrando.
+
 ## 0.49.4 — 2026-10-17
 **El arreglo automático del orden de tus carpetas es más cuidadoso.** Se aplica solo con la actualización; no hay nada que correr.
 - **Escribe solo donde puede:** el arreglo automático ahora solo modifica el `CLAUDE.md` de cada carpeta y documentos `.md` dentro de `docs/`. Antes tomaba como seguro todo lo que no figuraba en una lista de cosas delicadas; ahora es al revés: lo que no está en la lista corta de permitidos no se toca.

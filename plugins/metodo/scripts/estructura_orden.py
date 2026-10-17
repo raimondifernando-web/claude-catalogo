@@ -302,7 +302,7 @@ def hallazgos_caja(caja: Path, nivel: str) -> list:
         if es_sensible(rel):
             h.append(dict(id=_id(str(caja), "sens", rel), grupo=3, tipo="archivo_sensible", caja=str(caja), nombre=nombre, archivo=rel,
                           evidencia=f"falta {rel}, que es de los que cambian lo que corre solo o los permisos"))
-        elif regla == "R12" and puede_escribir(rel) and (caja / ".git").is_dir() and not _esta_en_el_remoto(caja, rel):
+        elif regla == "R12" and puede_escribir(rel) and (caja / ".git").is_dir() and E.necesita_documentos(caja) and not _esta_en_el_remoto(caja, rel):
             h.append(dict(id=_id(str(caja), "doc", rel), grupo=1, tipo="doc_vivo", caja=str(caja), nombre=nombre, archivo=rel,
                           contenido=contenido, evidencia=f"falta {rel} (documento vivo del molde)"))
     # estructura que solo la persona decide
