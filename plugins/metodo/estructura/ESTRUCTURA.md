@@ -70,7 +70,7 @@ Fuera de las cajas:
 |---|---|---|---|---|
 | R1 | Tiene `.git/` con un remoto (copia en GitHub) | toda caja | ✗ | crear el repositorio y su copia en GitHub: lo hace Claude con tu OK |
 | R2 | Tiene `CLAUDE.md` | toda caja | ✗ | `estructura.py arreglar` lo crea sin pisar nada |
-| R3 | `CLAUDE.md` con menos de 200 líneas | toda caja | aviso | pasar bloques a `.claude/rules/`: lo propone Claude, decidís vos |
+| R3 | `CLAUDE.md` con menos de 200 líneas | toda caja | aviso | mirar si hay algo repetido, viejo o contradictorio para sacar; solo un bloque que aplica a un tema o carpeta puntual va a `.claude/rules/` con `paths:`. Con pocas líneas de más no se hace nada (el aviso lo dice) |
 | R4 | Tiene `.claude/settings.json` y es un JSON válido | toda caja | ✗ | `estructura.py arreglar` lo crea sin pisar nada |
 | R5 | Tiene `.gitignore` | toda caja | ✗ | `estructura.py arreglar` lo crea sin pisar nada |
 | R6 | `.env`, `.claude/settings.local.json` y `CLAUDE.local.md` no están en GitHub | toda caja | ✗ | sacarlo de GitHub sin borrarlo (`git rm --cached <archivo>`); si tenía claves, cambiarlas |
@@ -79,7 +79,7 @@ Fuera de las cajas:
 | R9 | Cada skill (`.claude/skills/<nombre>/SKILL.md`) y cada agente (`.claude/agents/*.md`) tiene encabezado con `name` y `description` | toda caja | ✗ | agregar `name:` y `description:` al encabezado del archivo |
 | R10 | Si la empresa o el área de arriba tiene paquete, `settings.json` lo activa | toda caja de adentro | aviso | activar el paquete en `.claude/settings.json` |
 | R11 | `~/Proyectos/` no es un repositorio | raíz | ✗ | sacar el `.git` de la carpeta de proyectos, con respaldo: lo hace Claude con tu OK |
-| R12 | Tiene los tres documentos vivos: `docs/PRD.md`, `docs/decisiones.md` y la carpeta `docs/planes/` (ver «Tres documentos vivos en toda caja») | toda caja | aviso | `estructura.py arreglar` los crea con instrucciones adentro (qué va, cómo se nombra, un ejemplo mínimo); el contenido lo completa el PM o la sesión con Claude, nunca se inventa |
+| R12 | Tiene los tres documentos vivos: `docs/PRD.md`, `docs/decisiones.md` y la carpeta `docs/planes/` (ver «Tres documentos vivos en toda caja») | toda caja | aviso | solo importa si la caja tiene código (sin código no se avisa ni se crean vacíos); `estructura.py arreglar` los crea con instrucciones adentro y el contenido lo completa el PM o la sesión con Claude, nunca se inventa |
 | R13 | Las rutas que cita el `CLAUDE.md` entre comillas (`docs/…`, `scripts/…`, `~/…`) existen | toda caja | aviso | corregir la ruta o sacar la mención; si la ruta es de otra caja, escribirla completa. Lo decide quien lleva la caja |
 | R14 | El `CLAUDE.md` no tiene conteos escritos a mano («12 agentes», «40 skills»): se desactualizan | toda caja | aviso | reemplazar el número por el comando que lo cuenta (por ejemplo, contarlo con `ls`) |
 | R15 | Los agentes `pm-…` que nombra el `CLAUDE.md` existen | toda caja | aviso | corregir el nombre o crear el agente |
@@ -98,6 +98,8 @@ falla. Sin motivo o sin fecha no vale (se ignora y se avisa). R6 y R11 no se pue
 
 El control (`revisar`) **solo avisa**; lo que se arregla solo es el *bucle de orden* de abajo, y únicamente donde la persona lo encendió. Para completar lo que falta: `estructura.py completar <carpeta>`, que
 agrega lo que no está y nunca pisa un archivo existente.
+
+**El aviso de apertura aconseja, no ordena** (desde 0.50.0). Cada aviso dice tres cosas: qué encontró, cuánto cuesta dejarlo así (tokens por sesión, riesgo, lo que se rompe) y el arreglo que conviene en ESE caso. Si arreglarlo cuesta más de lo que se gana (por ejemplo, 4 líneas de más en el `CLAUDE.md`, o documentos vivos en una carpeta sin código), lo dice y **no manda hacer nada**: el aviso calla. Lo que vale se ordena por lo que más rinde y se muestran como mucho 3; los detalles chicos se juntan en una línea. Un mismo aviso no vuelve antes de 7 días ni más de 3 veces, y lo que se decidió no hacer se anota con `estructura.py descartar <clave>` (vuelve solo si empeora o a los 6 meses). **Nunca se arregla en la sesión principal:** el aviso le pide a Claude una sesión secundaria (tarjeta `start_session` «own_initiative») con el brief de `estructura.py brief`, para que la persona la arranque con un clic. `estructura.py revisar` sin `--aviso` sigue mostrando todo, sin filtrar.
 
 ### El bucle de orden: se arregla solo, en tres grupos
 Encendido por defecto (desde 0.49.1): corre solo, sin que nadie lo active. Se apaga por escrito con `estructura.py orden-config --apagar` (queda `aplicar:false` en `metodo-orden.json`, en la carpeta de Claude) y se vuelve a encender con `--encender`; sin argumentos muestra el estado. Si ese archivo está roto o ilegible, queda APAGADO (ante la duda no escribe). Apagado, `estructura.py auto` solo muestra qué haría. Cada hallazgo cae en un grupo:

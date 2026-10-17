@@ -160,7 +160,14 @@ class TestControl(unittest.TestCase):
             _, sal = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto", aviso=True)
             self.assertNotIn("Falta: 0", sal)
             self.assertNotIn("al día", sal)
+            # sin código, los documentos vacíos no valen un aviso: el aviso de apertura calla
+            self.assertEqual(sal.strip(), "")
+            # con código sí vale (cuesta, conviene) y nunca dice «Falta: 0»
+            (caja / "package.json").write_text("{}\n", encoding="utf-8")
+            _, sal = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto", aviso=True)
+            self.assertNotIn("Falta: 0", sal)
             self.assertIn("Sin errores, pero con 1 aviso pendiente ⚠", sal)
+            self.assertIn("Cuesta dejarlo así:", sal)
 
     def test_fallas_plantadas(self):
         """En un entorno con fallas plantadas, sale exactamente una línea ✗ por cada falla con su Rnn."""
@@ -558,10 +565,11 @@ class TestArreglar(unittest.TestCase):
             lineas = salida.splitlines()
             hallazgos = [l for l in lineas if l[:1] in ("✗", "•")]
             self.assertEqual(len(hallazgos), 10)
-            total = 13 + 4  # errores: 13 de R9 + R1, R2, R4, R5 (el aviso R12 se muestra pero no cuenta como falla)
-            self.assertIn(f"… y {total + 1 - 10} más (estructura.py revisar --todas)", lineas)
-            self.assertIn(f"Falta: {total} cosas ✗ · además 1 aviso ⚠", lineas)
-            self.assertEqual(lineas[-1], "Claude: ofrecé arreglarlo con `estructura.py arreglar` (primero el plan; pedí OK antes de `--si`).")
+            total = 13 + 4  # errores: 13 de R9 + R1, R2, R4, R5 (R12 sin código no vale un aviso: no se muestra)
+            self.assertIn(f"… y {total - 10} más (estructura.py revisar --todas)", lineas)
+            self.assertIn(f"Falta: {total} cosas ✗", lineas)
+            self.assertTrue(lineas[-1].startswith("Claude: no lo arregles en esta sesión."))
+            self.assertIn("«own_initiative»", lineas[-1])
 
     def test_el_arreglo_sale_del_markdown(self):
         """(f) Una fila cambiada en la columna de arreglos de una copia temporal aparece en la salida."""

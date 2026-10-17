@@ -97,8 +97,15 @@ class TestGrupo1(Base):
         (c / ".git" / "index.lock").write_text("", encoding="utf-8")
         self.assertEqual(O.aplicar_uno(h)["estado"], "omitido")
 
+    def test_sin_codigo_no_se_crean_documentos_vacios(self):
+        _caja(self.td)   # solo un CLAUDE.md y un documento: nada que registrar todavía
+        self.assertEqual([h for h in O.todos(self.raiz()) if h["tipo"] == "doc_vivo"], [])
+
     def test_documento_vivo_que_falta_se_crea_y_se_commitea(self):
         c = _caja(self.td)
+        (c / "package.json").write_text("{}\n", encoding="utf-8")   # con código, los documentos vivos sí hacen falta
+        _git(c, "add", "-A")
+        _git(c, "commit", "-q", "-m", "codigo")
         hs = [h for h in O.todos(self.raiz()) if h["tipo"] == "doc_vivo"]
         self.assertTrue(hs)
         for h in hs:
@@ -109,6 +116,7 @@ class TestGrupo1(Base):
 
     def test_no_nunca_crea_lo_que_ya_esta_en_github(self):
         c = _caja(self.td)
+        (c / "package.json").write_text("{}\n", encoding="utf-8")
         (c / "docs" / "PRD.md").write_text("ya está en el remoto " * 5, encoding="utf-8")
         _git(c, "add", "-A")
         _git(c, "commit", "-q", "-m", "prd")
