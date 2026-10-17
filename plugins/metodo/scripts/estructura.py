@@ -598,7 +598,8 @@ def ejecutar_git(*args, cwd=None, timeout=10, config=()):
         if resto <= 0:
             return None, "se terminó el tiempo de la pasada"
         timeout = max(0.5, min(timeout, resto))
-    cmd = ["git", "-c", "core.fsmonitor="]
+    # --no-optional-locks: una lectura (status) cortada por tiempo no deja .git/index.lock trabando la carpeta
+    cmd = ["git", "--no-optional-locks", "-c", "core.fsmonitor="]
     for c in config:
         cmd.extend(["-c", c])
     if cwd:

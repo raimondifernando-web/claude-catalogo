@@ -466,6 +466,33 @@ class TestC152Permitidos(Base):
         self.assertFalse(marca.exists(), "el bucle corrió un hook de git")
 
 
+class TestC152Revision(Base):
+    """Hallazgos de la revisión independiente de 0.49.4 (Gemini, 2026-10-17)."""
+
+    def test_si_otra_sesion_hizo_el_mismo_arreglo_no_se_le_devuelve_el_texto_viejo(self):
+        from unittest import mock
+        c = _caja(self.td)
+        self.mover(c)
+        h = next(x for x in O.todos(self.raiz()) if x["tipo"] == "ruta_movida")
+
+        def la_otra_sesion_commitea_primero(caja, rutas, mensaje):
+            _git(caja, "add", "--", *rutas)
+            _git(caja, "commit", "-q", "-m", "lo mismo, desde la otra sesión")
+            return None   # al commit de esta sesión no le queda nada que guardar
+        with mock.patch.object(O, "_commit", side_effect=la_otra_sesion_commitea_primero):
+            e = O.aplicar_uno(h)
+        self.assertEqual(e["estado"], "omitido")
+        self.assertIn("docs/destino.md", (c / "CLAUDE.md").read_text(encoding="utf-8"))
+        self.assertEqual(_git(c, "status", "--porcelain"), "")
+
+    def test_extensiones_de_windows_que_se_ejecutan(self):
+        for rel in ("a.url", "b.hta", "c.wsf", "d.scr", "e.cpl", "f.com", "docs\\x.ps1"):
+            self.assertTrue(O.es_sensible(rel), rel)
+
+    def test_carpeta_sin_hooks_va_con_barras_normales(self):
+        self.assertNotIn("\\", O._sin_hooks())
+
+
 class TestC152Verificador(Base):
     """(b) --verificado-por: lista cerrada, se registra como declaración, nada automático aplica el grupo 2."""
 

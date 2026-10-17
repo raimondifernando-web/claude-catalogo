@@ -49,7 +49,8 @@ SENSIBLES = (".claude/settings", ".claude/hooks", "hooks/", ".mcp.json", ".githu
              "settings.json", "settings.local", "instalar", "install", "crontab", ".env", "CLAUDE.local",
              "githooks", "husky", "autostart", "startup", "launchagents", "launchdaemons", "systemd", "cron")
 EXT_QUE_CORREN = (".plist", ".service", ".timer", ".desktop", ".sh", ".command", ".ps1", ".psm1", ".bat", ".cmd",
-                  ".vbs", ".lnk", ".reg", ".exe", ".msi", ".scpt", ".applescript", ".workflow")
+                  ".vbs", ".lnk", ".reg", ".exe", ".msi", ".scpt", ".applescript", ".workflow",
+                  ".url", ".hta", ".wsf", ".com", ".scr", ".cpl")
 PUNTO_INERTES = (".gitignore", ".gitkeep")   # archivos con punto que no ejecutan nada
 MODOS_QUE_CORREN = ("100755", "120000", "160000")   # ejecutable, enlace simbólico, submódulo
 # (b) Quién verificó un hallazgo de juicio: lista cerrada. Es una DECLARACIÓN de quien corre el comando, no un control:
@@ -173,7 +174,7 @@ def _sin_hooks() -> str:
         d.mkdir(parents=True, exist_ok=True)
     except OSError:
         pass
-    return str(d)
+    return d.as_posix()   # en Windows, con / (git las entiende y no hay escapes con \)
 
 
 def git(caja, *args):
@@ -254,6 +255,7 @@ def _nueva_ruta(tok: str, caja: Path, top: Path, mapa: dict):
 
 
 def _unico_con_el_mismo_nombre(caja: Path, tok: str):
+    tok = _norm(tok)   # una cita escrita con \ (Windows) se busca igual que con /
     nombre = tok.rstrip("/").rsplit("/", 1)[-1]
     if not nombre or tok.endswith("/"):
         return None
@@ -463,8 +465,11 @@ def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
             return dict(base, estado="fallo", motivo="la verificación no pasó; se restauró el texto")
         sha = _commit(caja, [rel], f"orden: {rel} cita {h['despues']} en vez de {h['antes']}")
         if not sha:
-            f.write_text(antes_txt, encoding="utf-8")
             git(caja, "reset", "-q", "--", rel)
+            c_h, en_head = git(caja, "show", f"HEAD:{rel}")
+            if c_h == 0 and en_head == nuevo_txt.strip():   # otra sesión ya hizo el mismo arreglo: no se le devuelve el texto viejo
+                return dict(base, estado="omitido", motivo="otra sesión ya lo arregló")
+            f.write_text(antes_txt, encoding="utf-8")
             return dict(base, estado="fallo", motivo="no se pudo commitear; se restauró el texto")
         return dict(base, estado="aplicado", commit=sha, antes=h["antes"], despues=h["despues"],
                     deshacer=f"estructura.py deshacer {h['id']}")
