@@ -297,7 +297,8 @@ const registrarUso: Register = on => {
       if (m === null) return <Text dimColor>Esperando la primera respuesta…</Text>
       const abierta = (await read($, leyendaAbierta)) === true
       return (
-        <Box flexDirection="column" gap={1} paddingX={1}>
+        <Box flexDirection="column" gap={0}>
+          <Box flexDirection="column" gap={0} paddingX={1}>
           <Box flexDirection="column">
             <Box flexDirection="row" justifyContent="space-between">
               <Text bold>Contexto</Text>
@@ -348,7 +349,7 @@ const registrarUso: Register = on => {
               ) : null}
             </Box>
           ) : null}
-          <Svg source={SEPARACION} alt="" />
+          </Box>
           {actividad}
         </Box>
       )
@@ -1286,6 +1287,7 @@ const actDIA_MS = 24 * 3600 * 1000
 const actDatos = atom({ plugin: 'paneles', key: 'actividadDatos' } as const, null)
 
 const actVERDE = '#30D158'
+const actBARRA = '#3A3A3C'
 const actROJO = '#FF453A'
 const actAMARILLO = '#FFD60A'
 
@@ -1608,13 +1610,12 @@ async function actDibujar($: EngineInterface, e: any): Promise<unknown> { // esl
     ))
 
   return (
-    <Box flexDirection="column" gap={1}>
-      <Box flexDirection="row" justifyContent="space-between">
-        <Text bold>Actividad</Text>
-        <Text color={m.trabajando > 0 ? actVERDE : undefined} dimColor={m.trabajando === 0}>
-          {m.trabajando > 0 ? `● ${m.trabajando} trabajando` : 'nada trabajando'}
-        </Text>
+    <Box flexDirection="column" gap={1} marginTop={1}>
+      <Box flexDirection="row" justifyContent="space-between" backgroundColor={actBARRA} paddingX={1}>
+        <Text bold color="#F5F5F7">Actividad</Text>
+        {m.trabajando > 0 ? <Text color={actVERDE}>{`● ${m.trabajando} trabajando`}</Text> : null}
       </Box>
+      <Box flexDirection="column" gap={1} paddingX={1}>
       <Box flexDirection="column">
         <Text bold>Ahora</Text>
         {m.ahora.length === 0 ? <Text dimColor>Nada activo.</Text> : grupos(m.ahora, 'a')}
@@ -1627,6 +1628,7 @@ async function actDibujar($: EngineInterface, e: any): Promise<unknown> { // esl
         <Text dimColor>{`Sin activarse en ${m.sinUso.dias} días: ${m.sinUso.sin} de ${m.sinUso.total} (propios)`}</Text>
       ) : null}
       <Text dimColor>Bicho = agente · luciérnaga = subagente · ▤ skill (instrucciones) · verde = trabajando</Text>
+      </Box>
     </Box>
   )
 }
