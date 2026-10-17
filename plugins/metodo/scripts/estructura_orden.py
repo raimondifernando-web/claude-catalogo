@@ -11,12 +11,13 @@ Tres grupos (decisión del dueño, 2026-10-16):
        · documentos vivos que faltan (esqueleto de docs/PRD.md, decisiones.md, planes/)
        · caja atrasada respecto de GitHub que solo necesita avanzar (fast-forward, árbol limpio)
   2. DE JUICIO: lo decide Claude con evidencia del disco y la verifica una segunda IA; se aplica con
-     `estructura.py aplicar <id> --verificado-por <IA>` (sin ese dato no se aplica).
+     `estructura.py aplicar <id> --verificado-por <IA>` (IA de una lista cerrada; es una declaración, no un control).
        · ruta citada que no existe, sin renombrado en git, pero hay UN solo archivo con ese nombre en la caja
   3. DE LA PERSONA: nunca se aplica solo; llega como UNA pregunta de sí/no (qué se encontró, qué se propone, por qué).
        · cualquier cosa sensible (hooks, settings, .mcp.json, .github/, lo que corre solo), borrar o mover carpetas,
          caja sin repositorio, claves versionadas, decisiones de negocio
-Nunca borra ni mueve nada. Solo lee la carpeta de la persona y escribe archivos de texto de las cajas en las que está encendido.
+Nunca borra ni mueve nada. Solo escribe el CLAUDE.md y .md de docs/ (lista de permitidos), nunca ejecuta hooks de git,
+y la pasada del arranque tiene tope total de tiempo (C152).
 """
 import hashlib
 import json
@@ -36,9 +37,33 @@ for _flujo in (sys.stdin, sys.stdout, sys.stderr):
 
 import estructura as E
 
+# (a) Condición del revisor de 0.49.0 (C152): lo que el bucle ESCRIBE va por lista de PERMITIDOS, no de prohibidos.
+# Solo el CLAUDE.md de la caja y documentos .md dentro de docs/. Cualquier otra ruta no se toca, aunque no figure abajo.
+ESCRIBIBLES_RAIZ = ("CLAUDE.md",)
+ESCRIBIBLES_CARPETA = "docs/"
+ESCRIBIBLES_EXT = ".md"
+# Lo que trae GitHub al avanzar una caja atrasada no se puede reducir a docs/ (sería frenar todo repo con código):
+# ahí vale «sensible = lo que puede correr solo», con una regla amplia (fragmentos + toda carpeta o archivo con punto
+# + extensiones que el sistema ejecuta solo) y además el modo del archivo (ejecutable, enlace, submódulo).
 SENSIBLES = (".claude/settings", ".claude/hooks", "hooks/", ".mcp.json", ".github/", "launchd", ".plist",
-             "settings.json", "settings.local", "instalar", "install", "crontab", ".env", "CLAUDE.local")
+             "settings.json", "settings.local", "instalar", "install", "crontab", ".env", "CLAUDE.local",
+             "githooks", "husky", "autostart", "startup", "launchagents", "launchdaemons", "systemd", "cron")
+EXT_QUE_CORREN = (".plist", ".service", ".timer", ".desktop", ".sh", ".command", ".ps1", ".psm1", ".bat", ".cmd",
+                  ".vbs", ".lnk", ".reg", ".exe", ".msi", ".scpt", ".applescript", ".workflow",
+                  ".url", ".hta", ".wsf", ".com", ".scr", ".cpl")
+PUNTO_INERTES = (".gitignore", ".gitkeep")   # archivos con punto que no ejecutan nada
+MODOS_QUE_CORREN = ("100755", "120000", "160000")   # ejecutable, enlace simbólico, submódulo
+# (b) Quién verificó un hallazgo de juicio: lista cerrada. Es una DECLARACIÓN de quien corre el comando, no un control:
+# el programa no puede comprobar que otra IA lo haya visto (por eso nada automático aplica el grupo 2).
+VERIFICADORES = ("gemini", "codex", "gpt", "claude", "opus", "sonnet", "haiku", "pal", "persona")
+# (c) Tope de tiempo TOTAL de la pasada del arranque (no solo entre cajas): revisar + aplicar.
+TOPE_REVISAR = 20
+TOPE_TOTAL = 30
 SEMANA = 7
+
+
+class TiempoAgotado(Exception):
+    """Se terminó el tiempo de la pasada: lo que falta queda para la próxima."""
 
 
 # ---------------------------------------------------------------- estado y config
@@ -86,9 +111,31 @@ def aplicar_encendido() -> bool:
     return estado_encendido()[0]
 
 
+def _norm(rel: str) -> str:
+    return rel.replace("\\", "/")
+
+
+def puede_escribir(rel: str) -> bool:
+    """Lista de PERMITIDOS de lo que el bucle escribe: el CLAUDE.md de la caja o un .md dentro de docs/."""
+    r = _norm(rel)
+    if not r or r.startswith("/") or re.match(r"^[A-Za-z]:", r):
+        return False
+    if any(p in ("", ".", "..") or p.startswith(".") for p in r.split("/")):
+        return False
+    if r in ESCRIBIBLES_RAIZ:
+        return True
+    return r.startswith(ESCRIBIBLES_CARPETA) and r.lower().endswith(ESCRIBIBLES_EXT) and not es_sensible(r)
+
+
 def es_sensible(rel: str) -> bool:
-    r = rel.replace("\\", "/")
-    return any(s in r for s in SENSIBLES)
+    """¿Puede correr solo en la compu (hooks, permisos, servicios, instaladores, scripts)? Ante la duda, sí."""
+    r = _norm(rel)
+    bajo = r.lower()
+    if any(s.lower() in bajo for s in SENSIBLES):
+        return True
+    if any(p.startswith(".") and p not in PUNTO_INERTES for p in r.split("/") if p):
+        return True
+    return bajo.endswith(EXT_QUE_CORREN)
 
 
 def registrar(entrada: dict):
@@ -120,8 +167,25 @@ def _id(*partes) -> str:
 
 
 # ---------------------------------------------------------------- git
+def _sin_hooks() -> str:
+    """Carpeta vacía para core.hooksPath: el bucle nunca ejecuta hooks de git (ni los de la caja ni los que traiga GitHub)."""
+    d = dir_estado() / "sin-hooks"
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    return d.as_posix()   # en Windows, con / (git las entiende y no hay escapes con \)
+
+
 def git(caja, *args):
-    return E.ejecutar_git(*args, cwd=caja)
+    """Toda llamada a git del bucle: sin hooks y dentro del tope total de la pasada (E.LIMITE_GIT recorta el tiempo)."""
+    _queda_tiempo()
+    return E.ejecutar_git(*args, cwd=caja, config=("core.hooksPath=" + _sin_hooks(),))
+
+
+def _queda_tiempo():
+    if E.LIMITE_GIT is not None and time.monotonic() >= E.LIMITE_GIT:
+        raise TiempoAgotado()
 
 
 def rama_principal(caja: Path) -> str:
@@ -191,6 +255,7 @@ def _nueva_ruta(tok: str, caja: Path, top: Path, mapa: dict):
 
 
 def _unico_con_el_mismo_nombre(caja: Path, tok: str):
+    tok = _norm(tok)   # una cita escrita con \ (Windows) se busca igual que con /
     nombre = tok.rstrip("/").rsplit("/", 1)[-1]
     if not nombre or tok.endswith("/"):
         return None
@@ -207,6 +272,7 @@ def hallazgos_caja(caja: Path, nivel: str) -> list:
     nombre = caja.name
     claude = caja / "CLAUDE.md"
     top = raiz_repo(caja)
+    _queda_tiempo()
     if claude.is_file() and (caja / ".git").is_dir():
         faltan = E.rutas_citadas_que_faltan(E._lee(claude), caja)
         if faltan:
@@ -227,6 +293,7 @@ def hallazgos_caja(caja: Path, nivel: str) -> list:
                                   archivo="CLAUDE.md", antes=tok, despues=rel,
                                   evidencia=f"«{tok}» no existe y no hay renombrado en git, pero hay UN solo archivo llamado igual: «{rel}»"))
     # documentos vivos y demás esqueletos aditivos
+    _queda_tiempo()
     try:
         plan = E.plan_seguro(caja, nivel)
     except Exception:
@@ -235,15 +302,17 @@ def hallazgos_caja(caja: Path, nivel: str) -> list:
         if es_sensible(rel):
             h.append(dict(id=_id(str(caja), "sens", rel), grupo=3, tipo="archivo_sensible", caja=str(caja), nombre=nombre, archivo=rel,
                           evidencia=f"falta {rel}, que es de los que cambian lo que corre solo o los permisos"))
-        elif regla == "R12" and (caja / ".git").is_dir() and not _esta_en_el_remoto(caja, rel):
+        elif regla == "R12" and puede_escribir(rel) and (caja / ".git").is_dir() and not _esta_en_el_remoto(caja, rel):
             h.append(dict(id=_id(str(caja), "doc", rel), grupo=1, tipo="doc_vivo", caja=str(caja), nombre=nombre, archivo=rel,
                           contenido=contenido, evidencia=f"falta {rel} (documento vivo del molde)"))
     # estructura que solo la persona decide
+    _queda_tiempo()
     for tipo, r_id, msg in E.revisar_caja(caja, nivel):   # con las excepciones escritas ya descontadas
         if tipo == "error" and r_id in ("R1", "R6", "R8"):
             h.append(dict(id=_id(str(caja), "est", r_id, msg), grupo=3, tipo="estructura_" + r_id, caja=str(caja), nombre=nombre,
                           evidencia=msg))
     # caja atrasada que solo necesita avanzar
+    _queda_tiempo()
     if (caja / ".git").is_dir():
         al_dia = _plan_al_dia(caja)
         if al_dia:
@@ -261,10 +330,20 @@ def _esta_en_el_remoto(caja: Path, rel: str) -> bool:
 
 
 def _trae_sensibles(caja: Path, rama: str) -> list:
-    code, out = git(caja, "diff", "--name-only", f"HEAD..origin/{rama}")
+    """Lo que el avance traería y puede correr solo: por ruta (es_sensible) o por modo (ejecutable, enlace, submódulo)."""
+    code, out = git(caja, "diff", "--raw", "--no-renames", "-z", f"HEAD..origin/{rama}")
     if code != 0:
         return ["(no se pudo mirar)"]
-    return [l for l in out.splitlines() if es_sensible(l)]
+    sens = []
+    campos = out.split("\0")
+    i = 0
+    while i + 1 < len(campos):
+        meta, ruta = campos[i], campos[i + 1]
+        i += 2
+        modos = meta.lstrip(":").split(" ")[:2]
+        if es_sensible(ruta) or any(m in MODOS_QUE_CORREN for m in modos):
+            sens.append(ruta)
+    return sens
 
 
 def _plan_al_dia(caja: Path):
@@ -280,26 +359,37 @@ def _plan_al_dia(caja: Path):
         return None
     sens = _trae_sensibles(caja, ppal)
     if sens:
-        return dict(id=_id(str(caja), "aldia-sens", atras), grupo=3, tipo="archivo_sensible", caja=str(caja), nombre=caja.name, archivo=sens[0],
+        return dict(id=_id(str(caja), "aldia-sens", atras), grupo=3, tipo="caja_atrasada_sensible", caja=str(caja), nombre=caja.name, archivo=sens[0],
                     evidencia=f"la copia está {atras} cambio(s) atrás de GitHub y lo que falta traer incluye {sens[0]}, que es de los que corren solo en tu compu")
     return dict(id=_id(str(caja), "aldia", atras), grupo=1, tipo="caja_atrasada", caja=str(caja), nombre=caja.name,
                 rama=ppal, atras=int(atras), evidencia=f"la copia está {atras} cambio(s) atrás de GitHub y no tiene nada propio sin subir")
 
 
 def todos(raiz: Path, tope_segundos: float = 0) -> list:
-    """Todos los hallazgos. Con tope_segundos corta la pasada (el arranque no se puede colgar); el resto queda para la próxima."""
+    """Todos los hallazgos. Con tope_segundos corta la pasada ENTERA, también dentro de una caja (ninguna llamada a git
+    pasa del tope): el arranque no se puede colgar. Lo que no se llegó a revisar queda para la próxima."""
+    previo = E.LIMITE_GIT
+    if tope_segundos:
+        nuevo = time.monotonic() + tope_segundos
+        E.LIMITE_GIT = nuevo if previo is None else min(previo, nuevo)
     out = []
-    t0 = time.monotonic()
-    for c_path, c_nivel, _parent in E.descubrir_cajas(raiz):
-        if tope_segundos and time.monotonic() - t0 > tope_segundos:
-            break
-        if c_path.name.startswith("."):
-            continue
-        try:
-            out.extend(hallazgos_caja(c_path, c_nivel))
-        except Exception as e:   # un hallazgo roto no tapa a los demás
-            out.append(dict(id=_id(str(c_path), "err"), grupo=2, tipo="no_se_pudo_revisar", caja=str(c_path), nombre=c_path.name,
-                            evidencia=f"no se pudo revisar ({type(e).__name__})"))
+    try:
+        for c_path, c_nivel, _parent in E.descubrir_cajas(raiz):
+            if E.LIMITE_GIT is not None and time.monotonic() >= E.LIMITE_GIT:
+                break
+            if c_path.name.startswith("."):
+                continue
+            try:
+                hs = hallazgos_caja(c_path, c_nivel)
+                _queda_tiempo()   # una caja cortada a la mitad no deja hallazgos a medias
+                out.extend(hs)
+            except TiempoAgotado:
+                break
+            except Exception as e:   # un hallazgo roto no tapa a los demás
+                out.append(dict(id=_id(str(c_path), "err"), grupo=2, tipo="no_se_pudo_revisar", caja=str(c_path), nombre=c_path.name,
+                                evidencia=f"no se pudo revisar ({type(e).__name__})"))
+    finally:
+        E.LIMITE_GIT = previo
     return out
 
 
@@ -320,6 +410,16 @@ def deshecho(id_: str) -> bool:
     return bool(ultimo and ultimo.get("estado") == "deshecho")
 
 
+def verificador_valido(v) -> bool:
+    """Lista cerrada (ej. «gemini», «codex», «claude-opus»). Texto libre como «ok» o «yo» no vale."""
+    if not isinstance(v, str):
+        return False
+    v = v.strip().lower()
+    if not v or len(v) > 40 or not re.fullmatch(r"[a-z0-9][a-z0-9._-]*", v):
+        return False
+    return any(v == x or v.startswith((x + "-", x + ".")) for x in VERIFICADORES)
+
+
 def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
     """Aplica UN hallazgo. Devuelve la entrada del registro (estado aplicado / omitido / fallo)."""
     caja = Path(h["caja"])
@@ -329,16 +429,18 @@ def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
         return dict(base, estado="omitido", motivo="es de la persona: nunca se aplica solo")
     if deshecho(h["id"]):
         return dict(base, estado="omitido", motivo="la persona lo deshizo: no se vuelve a aplicar solo")
-    if h["grupo"] == 2 and not verificado_por:
-        return dict(base, estado="omitido", motivo="falta --verificado-por (segunda IA)")
+    if h["grupo"] == 2:
+        if not verificador_valido(verificado_por):
+            return dict(base, estado="omitido", motivo="falta --verificado-por con una IA conocida (" + ", ".join(VERIFICADORES) + ")")
+        base["verificacion"] = "declarada"   # la escribe quien corre el comando; el programa no la comprueba
     ocupado = arbol_ocupado(caja)
     if ocupado:
         return dict(base, estado="omitido", motivo=ocupado)
     t = h["tipo"]
     if t in ("ruta_movida", "ruta_candidata"):
         rel = h["archivo"]
-        if es_sensible(rel):
-            return dict(base, estado="omitido", motivo="archivo sensible")
+        if not puede_escribir(rel):
+            return dict(base, estado="omitido", motivo="el bucle solo escribe el CLAUDE.md y documentos de docs/")
         if not archivo_limpio(caja, rel):
             return dict(base, estado="omitido", motivo=f"{rel} tiene cambios sin guardar (puede estar editándolo otra sesión)")
         f = caja / rel
@@ -363,17 +465,26 @@ def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
             return dict(base, estado="fallo", motivo="la verificación no pasó; se restauró el texto")
         sha = _commit(caja, [rel], f"orden: {rel} cita {h['despues']} en vez de {h['antes']}")
         if not sha:
-            f.write_text(antes_txt, encoding="utf-8")
             git(caja, "reset", "-q", "--", rel)
+            c_h, en_head = git(caja, "show", f"HEAD:{rel}")
+            if c_h == 0 and en_head == nuevo_txt.strip():   # otra sesión ya hizo el mismo arreglo: no se le devuelve el texto viejo
+                return dict(base, estado="omitido", motivo="otra sesión ya lo arregló")
+            f.write_text(antes_txt, encoding="utf-8")
             return dict(base, estado="fallo", motivo="no se pudo commitear; se restauró el texto")
         return dict(base, estado="aplicado", commit=sha, antes=h["antes"], despues=h["despues"],
                     deshacer=f"estructura.py deshacer {h['id']}")
     if t == "doc_vivo":
         rel = h["archivo"]
+        if not puede_escribir(rel):
+            return dict(base, estado="omitido", motivo="el bucle solo escribe el CLAUDE.md y documentos de docs/")
         if (caja / rel).exists():
             return dict(base, estado="omitido", motivo="ya existe")
-        if ".." in Path(rel).parts or Path(rel).is_absolute():
-            return dict(base, estado="omitido", motivo="la ruta sale de la caja")
+        tramo, enlace = caja, False
+        for parte in Path(rel).parts:   # docs/ (o una subcarpeta) no puede ser un enlace que lleve afuera
+            tramo = tramo / parte
+            enlace = enlace or tramo.is_symlink()
+        if enlace or not (caja / rel).resolve().is_relative_to(caja.resolve()):
+            return dict(base, estado="omitido", motivo="la ruta sale de la caja (enlace)")
         try:
             E.crear_nuevo(caja, rel, h["contenido"])
         except OSError as e:
@@ -409,7 +520,10 @@ def pregunta_de_la_persona(hs: list) -> str:
     h = hs[0]
     mas = f" (y {len(hs) - 1} más parecidas; las veo después de esta)" if len(hs) > 1 else ""
     t = h["tipo"]
-    if t == "archivo_sensible":
+    if t == "caja_atrasada_sensible":
+        prop = "traer los cambios de GitHub a esta carpeta"
+        por = f"lo que llega incluye {h['archivo']}, que puede ejecutarse solo en tu compu; por eso no lo traigo sin tu sí"
+    elif t == "archivo_sensible":
         prop, por = f"crear {h['archivo']} con los permisos mínimos", "toca lo que se ejecuta solo en tu compu, por eso no lo hago sin tu sí"
     elif t == "estructura_R1":
         prop, por = "crear su repositorio privado en GitHub y subir la carpeta", "sin esa copia, un error en la compu te hace perder el trabajo"
@@ -452,6 +566,12 @@ def comando_auto(raiz_arg=None, aplicar=False, silencioso=False) -> int:
 
 def comando_aplicar(id_: str, verificado_por: str, raiz_arg=None) -> int:
     raiz = Path(raiz_arg).resolve() if raiz_arg else Path.home() / "Proyectos"
+    if not verificador_valido(verificado_por):
+        print(f"«--verificado-por {verificado_por}» no es una IA conocida. Usá una de: {', '.join(VERIFICADORES)} "
+              "(ej. gemini, codex, claude-opus). No se aplicó nada.")
+        return 1
+    print("Nota: «--verificado-por» queda registrado como declaración de quien corre el comando; "
+          "el programa no puede comprobar que otra IA lo haya visto.")
     for h in todos(raiz):
         if h["id"] == id_:
             e = aplicar_uno(h, verificado_por)
@@ -553,9 +673,12 @@ def semanal(raiz: Path):
     try:
         if not aplicar_encendido() and not leer_registro():
             return   # apagado y sin historia: no recorre las carpetas en el arranque
-        hs = todos(raiz, tope_segundos=20)
+        t0 = time.monotonic()
+        hs = todos(raiz, tope_segundos=TOPE_REVISAR)
         if aplicar_encendido():
-            for h in [x for x in hs if x["grupo"] == 1]:
+            for h in [x for x in hs if x["grupo"] == 1]:   # nunca el grupo 2: su verificación es una declaración
+                if time.monotonic() - t0 >= TOPE_TOTAL:
+                    break   # no se empieza un arreglo pasado el tope; queda para la próxima
                 registrar(aplicar_uno(h))
         for l in resumen_semanal(str(raiz), [h for h in hs if h["grupo"] != 1]):
             print(l)

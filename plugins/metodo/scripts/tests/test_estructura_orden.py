@@ -306,7 +306,7 @@ class TestRevisionDeSeguridad(Base):
         _git(c, "fetch", "-q", "origin")
         _git(c, "branch", "-q", "--set-upstream-to=origin/main", "main")
         _git(c, "remote", "set-head", "origin", "main")
-        sens = [x for x in O.todos(self.raiz()) if x["tipo"] == "archivo_sensible"]
+        sens = [x for x in O.todos(self.raiz()) if x["tipo"] == "caja_atrasada_sensible"]
         self.assertTrue(sens)
         self.assertEqual(sens[0]["grupo"], 3)
         self.assertFalse([x for x in O.todos(self.raiz()) if x["tipo"] == "caja_atrasada"])
@@ -354,6 +354,245 @@ class TestRevisionDeSeguridad(Base):
         txt = (c / "CLAUDE.md").read_text(encoding="utf-8")
         self.assertIn("Ver `docs/destino.md`", txt)
         self.assertIn("Antes: `docs/origen.md` era", txt)
+
+
+def _atrasada(td, c, archivo, contenido="x\n", ejecutable=False):
+    """Deja la caja `c` un commit atrás de un remoto que agrega `archivo`."""
+    origen = Path(td) / "remoto"
+    subprocess.run(["git", "clone", "-q", str(c), str(origen)], check=True)
+    f = origen / archivo
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(contenido, encoding="utf-8")
+    _git(origen, "add", "-f", "--", archivo)
+    if ejecutable:
+        _git(origen, "update-index", "--chmod=+x", "--", archivo)
+    _git(origen, "commit", "-q", "-m", "trae " + archivo)
+    _git(c, "remote", "add", "origin", str(origen))
+    _git(c, "fetch", "-q", "origin")
+    _git(c, "branch", "-q", "--set-upstream-to=origin/main", "main")
+    _git(c, "remote", "set-head", "origin", "main")
+
+
+class TestC152Permitidos(Base):
+    """(a) Lo que el bucle escribe va por lista de permitidos; lo que trae GitHub, por «puede correr solo» amplio."""
+
+    def test_solo_escribe_claude_md_y_md_de_docs(self):
+        for rel in ("CLAUDE.md", "docs/PRD.md", "docs/planes/README.md", "docs\\decisiones.md"):
+            self.assertTrue(O.puede_escribir(rel), rel)
+        for rel in ("README.md", "src/app.py", "docs/a.py", "docs/hooks/x.md", "../docs/a.md", "docs/../x.md",
+                    "/abs/docs/a.md", "C:/x/docs/a.md", ".claude/x.md", "docs/.oculto/a.md", "Makefile", "",
+                    "sub/CLAUDE.md", "docs/instalar.md"):
+            self.assertFalse(O.puede_escribir(rel), rel)
+
+    def test_un_documento_fuera_de_la_lista_no_se_crea(self):
+        c = _caja(self.td)
+        for rel in ("scripts/arranque.md", "Makefile", "hooks/x.md"):
+            h = dict(id="x" + rel, grupo=1, tipo="doc_vivo", caja=str(c), nombre="caja", archivo=rel, contenido="hola\n")
+            e = O.aplicar_uno(h)
+            self.assertEqual(e["estado"], "omitido", rel)
+            self.assertFalse((c / rel).exists(), rel)
+
+    def test_una_ruta_movida_solo_toca_el_claude_md(self):
+        c = _caja(self.td)
+        (c / "run.py").write_text("`docs/origen.md`\n", encoding="utf-8")
+        _git(c, "add", "run.py")
+        _git(c, "commit", "-q", "-m", "script")
+        h = dict(id="y", grupo=1, tipo="ruta_movida", caja=str(c), nombre="caja", archivo="run.py",
+                 antes="docs/origen.md", despues="docs/destino.md")
+        self.assertEqual(O.aplicar_uno(h)["estado"], "omitido")
+        self.assertIn("docs/origen.md", (c / "run.py").read_text(encoding="utf-8"))
+
+    def test_docs_como_enlace_no_se_escribe(self):
+        c = _caja(self.td)
+        afuera = Path(self.td) / "afuera"
+        afuera.mkdir()
+        try:
+            (c / "docs" / "sub").symlink_to(afuera, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest("este sistema no deja crear enlaces")
+        h = dict(id="z", grupo=1, tipo="doc_vivo", caja=str(c), nombre="caja", archivo="docs/sub/x.md", contenido="hola\n")
+        self.assertEqual(O.aplicar_uno(h)["estado"], "omitido")
+        self.assertFalse((afuera / "x.md").exists())
+
+    def test_lo_que_puede_correr_solo_es_sensible(self):
+        for rel in (".husky/pre-commit", ".vscode/tasks.json", ".devcontainer/devcontainer.json", ".gitattributes",
+                    "scripts/arranque.ps1", "tools\\x.bat", "LaunchAgents/com.x.plist", "deploy.sh", "a/.envrc",
+                    "Startup/x.lnk", "etc/systemd/x.service"):
+            self.assertTrue(O.es_sensible(rel), rel)
+        for rel in (".gitignore", "src/app.py", "docs/a.md", "README.md"):
+            self.assertFalse(O.es_sensible(rel), rel)
+
+    def test_caja_atrasada_que_trae_un_ejecutable_es_pregunta(self):
+        c = _caja(self.td)
+        _atrasada(self.td, c, "herramientas/correr", "#!/bin/sh\necho hola\n", ejecutable=True)
+        hs = O.todos(self.raiz())
+        self.assertFalse([x for x in hs if x["tipo"] == "caja_atrasada"])
+        s = [x for x in hs if x["tipo"] == "caja_atrasada_sensible"]
+        self.assertEqual(len(s), 1)
+        self.assertEqual(s[0]["grupo"], 3)
+        q = O.pregunta_de_la_persona(s)
+        self.assertIn("traer los cambios de GitHub", q)
+        self.assertIn("herramientas/correr", q)
+
+    def test_caja_atrasada_con_codigo_comun_sigue_avanzando_sola(self):
+        c = _caja(self.td)
+        _atrasada(self.td, c, "src/app.py", "print('hola')\n")
+        h = next(x for x in O.todos(self.raiz()) if x["tipo"] == "caja_atrasada")
+        self.assertEqual(h["grupo"], 1)
+        self.assertEqual(O.aplicar_uno(h)["estado"], "aplicado")
+        self.assertTrue((c / "src" / "app.py").exists())
+
+    def test_el_bucle_no_ejecuta_hooks_de_git(self):
+        c = _caja(self.td)
+        marca = Path(self.td) / "corrio-un-hook"
+        hooks = c / "ganchos"
+        hooks.mkdir()
+        cuerpo = "#!/bin/sh\necho x > '" + marca.as_posix() + "'\n"
+        for nombre in ("post-commit", "pre-commit", "post-merge"):
+            (hooks / nombre).write_text(cuerpo, encoding="utf-8")
+            os.chmod(hooks / nombre, 0o755)
+        _git(c, "config", "core.hooksPath", str(hooks))
+        # control: un commit común SÍ corre el hook (si no, la prueba no probaría nada)
+        (c / "docs" / "control.md").write_text("control\n", encoding="utf-8")
+        _git(c, "add", "docs/control.md")
+        _git(c, "commit", "-q", "-m", "control")
+        if not marca.exists():
+            self.skipTest("en este sistema git no corre hooks de prueba")
+        marca.unlink()
+        self.mover(c)
+        marca.unlink(missing_ok=True)
+        h = next(x for x in O.todos(self.raiz()) if x["tipo"] == "ruta_movida")
+        self.assertEqual(O.aplicar_uno(h)["estado"], "aplicado")
+        self.assertFalse(marca.exists(), "el bucle corrió un hook de git")
+
+
+class TestC152Revision(Base):
+    """Hallazgos de la revisión independiente de 0.49.4 (Gemini, 2026-10-17)."""
+
+    def test_si_otra_sesion_hizo_el_mismo_arreglo_no_se_le_devuelve_el_texto_viejo(self):
+        from unittest import mock
+        c = _caja(self.td)
+        self.mover(c)
+        h = next(x for x in O.todos(self.raiz()) if x["tipo"] == "ruta_movida")
+
+        def la_otra_sesion_commitea_primero(caja, rutas, mensaje):
+            _git(caja, "add", "--", *rutas)
+            _git(caja, "commit", "-q", "-m", "lo mismo, desde la otra sesión")
+            return None   # al commit de esta sesión no le queda nada que guardar
+        with mock.patch.object(O, "_commit", side_effect=la_otra_sesion_commitea_primero):
+            e = O.aplicar_uno(h)
+        self.assertEqual(e["estado"], "omitido")
+        self.assertIn("docs/destino.md", (c / "CLAUDE.md").read_text(encoding="utf-8"))
+        self.assertEqual(_git(c, "status", "--porcelain"), "")
+
+    def test_extensiones_de_windows_que_se_ejecutan(self):
+        for rel in ("a.url", "b.hta", "c.wsf", "d.scr", "e.cpl", "f.com", "docs\\x.ps1"):
+            self.assertTrue(O.es_sensible(rel), rel)
+
+    def test_carpeta_sin_hooks_va_con_barras_normales(self):
+        self.assertNotIn("\\", O._sin_hooks())
+
+
+class TestC152Verificador(Base):
+    """(b) --verificado-por: lista cerrada, se registra como declaración, nada automático aplica el grupo 2."""
+
+    def _candidata(self):
+        c = _caja(self.td)
+        (c / "CLAUDE.md").write_text("# Caja\nVer `docs/otro.md`.\n", encoding="utf-8")
+        (c / "docs" / "sub").mkdir()
+        (c / "docs" / "sub" / "otro.md").write_text("texto " * 20, encoding="utf-8")
+        _git(c, "add", "-A")
+        _git(c, "commit", "-q", "-m", "otro está en una subcarpeta")
+        return c
+
+    def test_lista_cerrada(self):
+        for v in ("gemini", "Codex", "claude-opus", "gemini-3.8-flash", "persona", "pal", " gpt "):
+            self.assertTrue(O.verificador_valido(v), v)
+        for v in ("", "x", "ok", "yo", "geminis", "gemini; rm -rf", "otra ia", "g" * 50, None, 3):
+            self.assertFalse(O.verificador_valido(v), v)
+
+    def test_texto_libre_no_aplica_y_lo_conocido_queda_como_declaracion(self):
+        c = self._candidata()
+        h = next(x for x in O.todos(self.raiz()) if x["tipo"] == "ruta_candidata")
+        self.assertEqual(O.aplicar_uno(h, verificado_por="ok")["estado"], "omitido")
+        self.assertNotIn("docs/sub/otro.md", (c / "CLAUDE.md").read_text(encoding="utf-8"))
+        e = O.aplicar_uno(h, verificado_por="gemini")
+        self.assertEqual(e["estado"], "aplicado")
+        self.assertEqual(e["verificacion"], "declarada")
+
+    def test_el_comando_rechaza_texto_libre_y_avisa_que_es_declaracion(self):
+        c = self._candidata()
+        h = next(x for x in O.todos(self.raiz().resolve()) if x["tipo"] == "ruta_candidata")   # el comando resuelve la raíz
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            self.assertEqual(O.comando_aplicar(h["id"], "listo", raiz_arg=str(self.raiz())), 1)
+        self.assertIn("no es una IA conocida", buf.getvalue())
+        self.assertNotIn("docs/sub/otro.md", (c / "CLAUDE.md").read_text(encoding="utf-8"))
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            self.assertEqual(O.comando_aplicar(h["id"], "codex", raiz_arg=str(self.raiz())), 0)
+        self.assertIn("declaración", buf.getvalue())
+
+    def test_la_pasada_semanal_nunca_aplica_el_grupo_2(self):
+        c = self._candidata()
+        antes = _git(c, "log", "-1", "--format=%H", "--", "CLAUDE.md")
+        with redirect_stdout(io.StringIO()):
+            O.semanal(self.raiz())   # puede crear documentos del molde (grupo 1), nunca tocar el CLAUDE.md (grupo 2)
+        self.assertEqual(_git(c, "log", "-1", "--format=%H", "--", "CLAUDE.md"), antes)
+        self.assertNotIn("docs/sub/otro.md", (c / "CLAUDE.md").read_text(encoding="utf-8"))
+
+
+class TestC152Tope(Base):
+    """(c) Tope de tiempo TOTAL: ninguna llamada a git pasa del tope, también dentro de una caja."""
+
+    def test_ninguna_llamada_a_git_pasa_del_tope(self):
+        from unittest import mock
+        import estructura as E
+        for i in range(3):
+            c = _caja(self.td, f"caja{i}")
+            self.mover(c)
+        vistos = []
+        real = E.subprocess.run
+
+        def espia(cmd, **kw):
+            if cmd and cmd[0] == "git":
+                vistos.append(kw.get("timeout"))
+            return real(cmd, **kw)
+        with mock.patch.object(E.subprocess, "run", side_effect=espia):
+            O.todos(self.raiz(), tope_segundos=3)
+        self.assertTrue(vistos)
+        self.assertTrue(all(t is not None and t <= 3 for t in vistos), vistos)
+        self.assertIsNone(E.LIMITE_GIT)   # el tope no queda pegado para lo que venga después
+
+    def test_una_caja_lenta_corta_la_pasada_sin_hallazgos_a_medias(self):
+        from unittest import mock
+        import time as _t
+        import estructura as E
+        for i in range(3):
+            c = _caja(self.td, f"caja{i}")
+            self.mover(c)
+        real = E.revisar_caja
+
+        def lenta(*a, **k):
+            _t.sleep(0.6)
+            return real(*a, **k)
+        t0 = _t.monotonic()
+        with mock.patch.object(E, "revisar_caja", side_effect=lenta):
+            hs = O.todos(self.raiz(), tope_segundos=0.3)
+        self.assertLess(_t.monotonic() - t0, 3)
+        self.assertEqual(hs, [])   # la caja cortada a la mitad no deja su ruta_movida suelta
+        self.assertIsNone(E.LIMITE_GIT)
+
+    def test_pasado_el_tope_total_no_empieza_arreglos(self):
+        from unittest import mock
+        c = _caja(self.td)
+        self.mover(c)
+        antes = _git(c, "rev-parse", "HEAD")
+        buf = io.StringIO()
+        with mock.patch.object(O, "TOPE_TOTAL", 0), redirect_stdout(buf):
+            O.semanal(self.raiz())
+        self.assertEqual(_git(c, "rev-parse", "HEAD"), antes)
+        self.assertEqual(len(buf.getvalue().strip().splitlines()), 3)   # el resumen igual sale
 
 
 if __name__ == "__main__":
