@@ -147,13 +147,51 @@ class ReglasDenyEnWindows(unittest.TestCase):
         (self.cfg / "settings.json").write_text(json.dumps(d), encoding="utf-8")
         r = self.aplicar()
         self.assertEqual((r.returncode, r.stdout), (0, ""))
-        self.assertEqual(json.loads((self.cfg / "settings.json").read_text(encoding="utf-8"))["env"], {"HYPERFRAMES_NO_TELEMETRY": "1", "OTRA": "x"})
+        self.assertEqual(json.loads((self.cfg / "settings.json").read_text(encoding="utf-8"))["env"], {"HYPERFRAMES_NO_TELEMETRY": "1", "FORCE_AUTOUPDATE_PLUGINS": "1", "OTRA": "x"})
 
     def test_settings_que_no_es_json_no_se_toca(self):
         (self.cfg / "settings.json").write_text("{esto no es json", encoding="utf-8")
         r = self.aplicar()
         self.assertEqual(r.returncode, 1)
         self.assertEqual((self.cfg / "settings.json").read_text(encoding="utf-8"), "{esto no es json")
+        self.assertIn("✗", r.stdout)
+        self.assertFalse((self.cfg / "settings.json.antes-arneses").exists())
+
+    def leer_env(self):
+        return json.loads((self.cfg / "settings.json").read_text(encoding="utf-8"))["env"]
+
+    def test_actualizacion_de_paquetes_falta_la_clave_se_pone_y_avisa(self):
+        self.aplicar()
+        d = json.loads((self.cfg / "settings.json").read_text(encoding="utf-8"))
+        del d["env"]["FORCE_AUTOUPDATE_PLUGINS"]; d["env"]["OTRA"] = "x"
+        (self.cfg / "settings.json").write_text(json.dumps(d), encoding="utf-8")
+        r = self.aplicar()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("FORCE_AUTOUPDATE_PLUGINS=1", r.stdout)
+        self.assertEqual(self.leer_env(), {"HYPERFRAMES_NO_TELEMETRY": "1", "FORCE_AUTOUPDATE_PLUGINS": "1", "OTRA": "x"})
+
+    def test_actualizacion_de_paquetes_ya_puesta_no_cambia_nada(self):
+        self.aplicar()
+        antes = (self.cfg / "settings.json").read_bytes()
+        r = self.aplicar()
+        self.assertEqual((r.returncode, r.stdout), (0, ""))
+        self.assertEqual((self.cfg / "settings.json").read_bytes(), antes)
+
+    def test_actualizacion_de_paquetes_con_valor_distinto_se_corrige_sin_tocar_otras_claves(self):
+        (self.cfg / "settings.json").write_text(json.dumps({"env": {"FORCE_AUTOUPDATE_PLUGINS": "0", "OTRA": "x"}, "model": "sonnet"}), encoding="utf-8")
+        self.assertEqual(self.aplicar().returncode, 0)
+        d = json.loads((self.cfg / "settings.json").read_text(encoding="utf-8"))
+        self.assertEqual((d["env"]["FORCE_AUTOUPDATE_PLUGINS"], d["env"]["OTRA"], d["model"]), ("1", "x", "sonnet"))
+
+    def test_actualizacion_de_paquetes_sin_settings_se_crea(self):
+        self.assertFalse((self.cfg / "settings.json").exists())
+        r = self.aplicar()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.leer_env()["FORCE_AUTOUPDATE_PLUGINS"], "1")
+
+    def test_en_env_solo_variables_con_prefijo_de_la_herramienta(self):
+        self.aplicar()
+        self.assertEqual(sorted(self.leer_env()), ["FORCE_AUTOUPDATE_PLUGINS", "HYPERFRAMES_NO_TELEMETRY"])
 
     def test_al_dia_auto_en_windows_aplica_las_reglas_una_vez_por_dia(self):
         falso = self.d / "bin"
