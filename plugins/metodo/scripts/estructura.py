@@ -582,11 +582,25 @@ def comando_dibujo(salida_ruta=None, origen_ruta=None):
 # 3. CONTROL Y REGLAS R1 - R12 (REVISAR)
 # ==============================================================================
 
-def ejecutar_git(*args, cwd=None):
-    """Ejecuta comando git con subprocess, sin shell y con -c core.fsmonitor=."""
+# Instante (time.monotonic) en que vence la pasada del bucle de orden (C152): mientras está puesto, ninguna llamada a
+# git pasa de ese instante, tampoco las de las funciones de este archivo que el bucle usa. None = sin tope.
+LIMITE_GIT = None
+
+
+def ejecutar_git(*args, cwd=None, timeout=10, config=()):
+    """Ejecuta comando git con subprocess, sin shell y con -c core.fsmonitor=.
+    `config`: pares «clave=valor» extra para `-c` (el bucle de orden apaga los hooks); `timeout` en segundos."""
     if not shutil.which("git"):
         return None, "git no está disponible"
+    if LIMITE_GIT is not None:
+        import time
+        resto = LIMITE_GIT - time.monotonic()
+        if resto <= 0:
+            return None, "se terminó el tiempo de la pasada"
+        timeout = max(0.5, min(timeout, resto))
     cmd = ["git", "-c", "core.fsmonitor="]
+    for c in config:
+        cmd.extend(["-c", c])
     if cwd:
         cmd.extend(["-C", str(cwd)])
     cmd.extend(args)
@@ -597,7 +611,7 @@ def ejecutar_git(*args, cwd=None):
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=10,
+            timeout=timeout,
         )
         return res.returncode, res.stdout.strip()
     except Exception as e:
@@ -1545,7 +1559,7 @@ def main():
     p_auto.add_argument("--si", action="store_true", help="Aplica el grupo 1 (un commit por arreglo, con registro)")
     p_aplicar = subparsers.add_parser("aplicar", help="Aplica un hallazgo de juicio (grupo 2) ya verificado por una segunda IA")
     p_aplicar.add_argument("id")
-    p_aplicar.add_argument("--verificado-por", required=True, help="Qué IA verificó la evidencia")
+    p_aplicar.add_argument("--verificado-por", required=True, help="Qué IA verificó la evidencia (lista cerrada: gemini, codex, gpt, claude, opus, sonnet, haiku, pal, persona). Es una declaración, no un control")
     p_aplicar.add_argument("--raiz", default=None)
     p_deshacer = subparsers.add_parser("deshacer", help="Deshace un arreglo automático por su id")
     p_deshacer.add_argument("id")

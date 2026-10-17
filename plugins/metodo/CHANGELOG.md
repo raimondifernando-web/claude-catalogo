@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.49.4 — 2026-10-17
+**El arreglo automático del orden de tus carpetas es más cuidadoso.** Se aplica solo con la actualización; no hay nada que correr.
+- **Escribe solo donde puede:** el arreglo automático ahora solo modifica el `CLAUDE.md` de cada carpeta y documentos `.md` dentro de `docs/`. Antes tomaba como seguro todo lo que no figuraba en una lista de cosas delicadas; ahora es al revés: lo que no está en la lista corta de permitidos no se toca.
+- **No trae de GitHub lo que puede ejecutarse solo:** si una carpeta atrasada recibiría un programa, un archivo ejecutable, un enlace, una carpeta oculta (como `.husky/` o `.vscode/`) o un script de Windows o Mac que arranca solo, no avanza: te llega como pregunta de sí/no. El arreglo nunca ejecuta los avisos automáticos de git (hooks) de tus carpetas.
+- **«Verificado por» ya no acepta cualquier texto:** `estructura.py aplicar <id> --verificado-por` pide el nombre de una IA conocida (gemini, codex, claude, gpt, pal…) o «persona», y queda anotado como lo que es: una declaración de quien lo corre. Lo de juicio nunca se aplica solo.
+- **Nunca demora el arranque más de lo previsto:** la pasada semanal tiene un tope total (20 s para revisar, 30 s en total), que ahora vale también dentro de cada carpeta. Lo que no llega a revisar queda para la próxima.
+
 ## 0.49.3 — 2026-10-17
 **En Windows, los paquetes del catálogo también se actualizan solos.** Se aplica solo con la actualización; no hay nada que correr.
 - **Antes:** la app de escritorio arranca Claude Code con la actualización automática apagada, y eso frenaba también la de los paquetes del catálogo. En Mac la puesta al día ya lo corregía; en Windows no.
