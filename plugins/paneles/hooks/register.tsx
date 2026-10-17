@@ -1358,9 +1358,13 @@ function actALineas(texto: string): Record<string, unknown>[] {
 // Pura (se prueba sola): del conjunto de líneas al árbol del panel.
 export function actArmar(lineas: Record<string, unknown>[], ahora: number, sinUso?: ActSinUso): ActModelo {
   const paradas = new Map<string, number>()
+  // «Terminó» (SubagentStop) llega cuando el agente entrega su informe, aunque siga con trabajo en segundo plano:
+  // si el motor lo vio corriendo después de esa parada, la parada no cuenta hasta la próxima.
+  const seguia = new Map<string, number>()
   const padres = new Map<string, string>()
   for (const l of lineas) {
-    if (l.ev === 'stop' && typeof l.id === 'string' && typeof l.t === 'number') paradas.set(l.id, l.t)
+    if (l.ev === 'stop' && typeof l.id === 'string' && typeof l.t === 'number') paradas.set(l.id, Math.max(l.t, paradas.get(l.id) ?? 0))
+    if (l.ev === 'resume' && typeof l.id === 'string' && typeof l.t === 'number') seguia.set(l.id, Math.max(l.t, seguia.get(l.id) ?? 0))
     if (l.ev === 'link' && typeof l.id === 'string' && typeof l.padre === 'string') padres.set(l.id, l.padre)
   }
   const nodos: ActNodo[] = []
@@ -1371,7 +1375,10 @@ export function actArmar(lineas: Record<string, unknown>[], ahora: number, sinUs
     const nombre = actCorto(l.n)
     if (nombre === '') continue
     const id = typeof l.id === 'string' ? l.id : undefined
-    const fin = id !== undefined ? paradas.get(id) : undefined
+    // El mismo agente puede anotarse dos veces (evento de arranque y recuento del motor): vale la primera.
+    if (id !== undefined && porId.has(id)) continue
+    const parada = id !== undefined ? paradas.get(id) : undefined
+    const fin = parada !== undefined && id !== undefined && (seguia.get(id) ?? 0) > parada ? undefined : parada
     const n: ActNodo = {
       tipo,
       nombre,
@@ -1422,6 +1429,44 @@ export function actArmar(lineas: Record<string, unknown>[], ahora: number, sinUs
     trabajando: raices.reduce((x, r) => x + cuenta(r), 0),
     sinUso,
   }
+}
+
+// Agentes ya anotados como «empezó» por este módulo.
+const actVistos = new Set<string>()
+// Agentes con una parada anotada y todavía sin reanudar.
+const actParados = new Set<string>()
+
+// El aviso «empezó» (SubagentStart) no llega para todos: los agentes que lanza una skill
+// o se reanudan con un mensaje terminan (SubagentStop) sin haber avisado que empezaron, y el
+// panel nunca los mostraba encendidos. Y «terminó» llega al entregar el informe, aunque el
+// agente siga con trabajo en segundo plano. Por eso, cada vez que un agente empieza un turno o
+// usa una herramienta (eventos con su id), se anota: si es nuevo, arranque; si figuraba parado, reanuda.
+// Solo el tipo, nunca la descripción.
+async function actAvisarVivo($: EngineInterface, agentId: string | undefined): Promise<void> {
+  if (agentId === undefined) return
+  const id = actCorto(agentId)
+  if (actVistos.has(id)) {
+    if (actParados.delete(id)) {
+      await actAnotar($, { s: actSidActual, ev: 'resume', id })
+      void actRefrescar($)
+    }
+    return
+  }
+  actVistos.add(id)
+  let tipo = ''
+  let padre = 'main'
+  try {
+    const a = (await $.agent.list()).find(x => x.id === agentId)
+    // Los trabajos internos del motor (resumir la conversación, memoria) llevan un id que la lista no nombra: no son agentes para mostrar.
+    if (a === undefined) return
+    tipo = actCorto(a.type)
+    padre = a.parentId ?? 'main'
+  } catch {
+    // sin la lista: queda como «agente»
+  }
+  await actAnotar($, { s: actSidActual, ev: 'start', tipo: 'agente', n: tipo || 'agente', id, cwd: actCwdActual })
+  await actAnotar($, { s: actSidActual, ev: 'link', id, padre })
+  void actRefrescar($)
 }
 
 async function actRefrescar($: EngineInterface): Promise<void> {
@@ -1514,6 +1559,7 @@ export const registrarActividad = (on: Parameters<Register>[0]): void => {
 
   on('classic.SubagentStart', async ($, e, next) => {
     actSidActual = actCorto(e.session_id).slice(0, 8)
+    actVistos.add(actCorto(e.agent_id))
     await actAnotar($, { s: actSidActual, ev: 'start', tipo: 'agente', n: actCorto(e.agent_type), id: actCorto(e.agent_id), cwd: actCorto(e.cwd) })
     void actRefrescar($)
     return next(e)
@@ -1523,13 +1569,25 @@ export const registrarActividad = (on: Parameters<Register>[0]): void => {
   on('agent.spawn', async ($, e, next) => {
     const r = await next(e)
     const hijo = (r as { agentId?: string }).agentId
+    if (hijo) actVistos.add(actCorto(hijo))
     if (hijo) await actAnotar($, { s: actSidActual, ev: 'link', id: hijo, padre: (e as { parentAgentId?: string }).parentAgentId ?? 'main' })
     return r
   }).catch(($, e, next) => next(e))
 
   on('classic.SubagentStop', async ($, e, next) => {
+    actParados.add(actCorto(e.agent_id))
     await actAnotar($, { s: actCorto(e.session_id).slice(0, 8), ev: 'stop', tipo: 'agente', n: actCorto(e.agent_type), id: actCorto(e.agent_id) })
     void actRefrescar($)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('turn.start', async ($, e, next) => {
+    await actAvisarVivo($, e.agentId)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', async ($, e, next) => {
+    await actAvisarVivo($, (e as { agentId?: string }).agentId)
     return next(e)
   }).catch(($, e, next) => next(e))
 

@@ -111,3 +111,27 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 }
+
+test('un agente anotado dos veces (arranque y recuento del motor) cuenta una sola vez', () => {
+  const m = armar(
+    [
+      { t: min(2), ev: 'start', tipo: 'agente', n: 'general-purpose', id: 'a9', s: 'abc' },
+      { t: min(1), ev: 'start', tipo: 'agente', n: 'agente', id: 'a9', s: 'abc' },
+    ],
+    AHORA,
+  )
+  expect(m.ahora[0]?.raices.length).toBe(1)
+  expect(m.trabajando).toBe(1)
+})
+
+test('si el motor lo vio corriendo después de la parada, sigue encendido; la parada final lo apaga', () => {
+  const base = [
+    { t: min(5), ev: 'start', tipo: 'agente', n: 'general-purpose', id: 'a7', s: 'abc' },
+    { t: min(4), ev: 'stop', tipo: 'agente', n: 'general-purpose', id: 'a7' },
+    { t: min(3), ev: 'resume', id: 'a7', s: 'abc' },
+  ]
+  expect(armar(base, AHORA).trabajando).toBe(1)
+  const fin = armar([...base, { t: min(1), ev: 'stop', tipo: 'agente', n: 'general-purpose', id: 'a7' }], AHORA)
+  expect(fin.trabajando).toBe(0)
+  expect(fin.hoy[0]?.raices[0]?.dur).toBe(4 * 60_000)
+})
