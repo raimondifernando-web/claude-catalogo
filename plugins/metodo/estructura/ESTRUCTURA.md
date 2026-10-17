@@ -86,6 +86,9 @@ Fuera de las cajas:
 | R16 | `docs/PRD.md` y `docs/decisiones.md` están completados (no son solo la plantilla) | toda caja | aviso | completarlos con la sesión de la caja: nunca se inventa el contenido |
 | R17 | `.claude/PENDIENTES.md`, si existe, tiene el formato que lee el panel (8 columnas, estados válidos, sin IDs repetidos) | toda caja | aviso | corregir las filas que indica el aviso (las mide `pendientes-check.py`) |
 | R18 | `.claude/prompts/REANUDAR.md`, si existe, es coherente: la rama y la carpeta que dice son las de la caja, las rutas que cita existen, no pasa de 120 líneas y su cierre no tiene más de 30 días | toda caja | aviso | volver a cerrar la sesión con `/cerrar` (reescribe el texto de reanudación) |
+| R19 | El PM de la caja: el `pm-…` que nombra el `CLAUDE.md` existe y su cuerpo no es una cáscara (menos de 15 líneas con contenido); y si la caja no nombra ningún PM y hay uno instalado que cita su carpeta, se lo señala | toda caja | aviso | nombrar al PM en el `CLAUDE.md`, o completar el cuerpo del agente con `agent-creator` |
+| R20 | Las skills que el PM precarga (`skills:` de su encabezado) existen | toda caja | aviso | quitar la que no existe del encabezado del PM o instalarla (`skills: []` es válido: es una decisión) |
+| R21 | Los conectores: si el `CLAUDE.md` dice usar un MCP o conector, está configurado y habilitado (configurar ≠ habilitar), y las herramientas `mcp__…` del PM existen. Solo mira nombres, nunca llaves; los conectores de la nube no se juzgan | toda caja | aviso | configurar y habilitar el conector, o aclarar en el `CLAUDE.md` que se usa por script o API |
 
 **Excepciones:** lo que se decidió dejar así, con su motivo, no queda como ✗ para siempre: se anota en
 `.estructura-excepciones.json` en la raíz del repositorio, una lista de

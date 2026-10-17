@@ -15,6 +15,7 @@ paso() {
 paso "metadatos (lo que el catálogo dice = lo que contiene)" bash scripts/verificar-metadatos.sh
 paso "pruebas del vigía" python3 -m unittest discover -s plugins/metodo/scripts/vigia/tests
 paso "pruebas del método (buzón, radar, estable, checks)" python3 -m unittest discover -s plugins/metodo/scripts/tests
+paso "pasos manuales / Windows (nada exige que el cliente corra algo a mano)" python3 scripts/pasos-manuales.py
 paso "pruebas de los controles" python3 -m unittest discover -s scripts/tests
 # En GitHub este control va en un paso aparte y ANTES (controles.yml): así las pruebas del PR nunca ven el secreto.
 if [ -z "${SIN_NOMBRES:-}" ]; then

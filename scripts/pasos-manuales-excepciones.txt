@@ -1,0 +1,4 @@
+# Deuda que YA existía cuando se creó el control scripts/pasos-manuales.py (C150, 2026-10-17). Formato:  plugin|evento|herramienta|script => motivo
+# Entra solo con motivo escrito. Una línea nueva acá es zona sensible (afloja un control obligatorio). Sacarla al arreglar el hook.
+metodo|SessionStart|xcode-select|reglas.py => deuda de la auditoría de pasos manuales (#3): en Windows este hook no corre y las reglas de la ficha no se sincronizan; arreglo pendiente con prueba en una PC con Windows
+metodo|SessionStart|/usr/bin/python3|reglas.py => la misma línea del hook (usa el Python de Apple); se arregla junto con la anterior
