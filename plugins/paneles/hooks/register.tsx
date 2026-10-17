@@ -1438,30 +1438,40 @@ const actParados = new Set<string>()
 
 // El aviso «empezó» (SubagentStart) no llega para todos: los agentes que lanza una skill
 // o se reanudan con un mensaje terminan (SubagentStop) sin haber avisado que empezaron, y el
-// panel nunca los mostraba encendidos. El motor sí sabe cuáles corren ahora: se anotan de ahí.
-// Solo el tipo; nunca la descripción.
-async function actAnotarVivos($: EngineInterface): Promise<void> {
-  try {
-    const lista = await $.agent.list()
-    for (const a of lista) {
-      if (a.status !== 'running' && a.status !== 'pending' && a.status !== 'waiting') continue
-      if (actVistos.has(a.id)) {
-        if (actParados.delete(a.id)) await actAnotar($, { s: actSidActual, ev: 'resume', id: actCorto(a.id) })
-        continue
-      }
-      actVistos.add(a.id)
-      await actAnotar($, { s: actSidActual, ev: 'start', tipo: 'agente', n: actCorto(a.type) || 'agente', id: actCorto(a.id), cwd: actCwdActual })
-      await actAnotar($, { s: actSidActual, ev: 'link', id: actCorto(a.id), padre: a.parentId ?? 'main' })
+// panel nunca los mostraba encendidos. Y «terminó» llega al entregar el informe, aunque el
+// agente siga con trabajo en segundo plano. Por eso, cada vez que un agente empieza un turno o
+// usa una herramienta (eventos con su id), se anota: si es nuevo, arranque; si figuraba parado, reanuda.
+// Solo el tipo, nunca la descripción.
+async function actAvisarVivo($: EngineInterface, agentId: string | undefined): Promise<void> {
+  if (agentId === undefined) return
+  const id = actCorto(agentId)
+  if (actVistos.has(id)) {
+    if (actParados.delete(id)) {
+      await actAnotar($, { s: actSidActual, ev: 'resume', id })
+      void actRefrescar($)
     }
-  } catch {
-    // el motor todavía no tiene la lista: se reintenta con el reloj
+    return
   }
+  actVistos.add(id)
+  let tipo = ''
+  let padre = 'main'
+  try {
+    const a = (await $.agent.list()).find(x => x.id === agentId)
+    // Los trabajos internos del motor (resumir la conversación, memoria) llevan un id que la lista no nombra: no son agentes para mostrar.
+    if (a === undefined) return
+    tipo = actCorto(a.type)
+    padre = a.parentId ?? 'main'
+  } catch {
+    // sin la lista: queda como «agente»
+  }
+  await actAnotar($, { s: actSidActual, ev: 'start', tipo: 'agente', n: tipo || 'agente', id, cwd: actCwdActual })
+  await actAnotar($, { s: actSidActual, ev: 'link', id, padre })
+  void actRefrescar($)
 }
 
 async function actRefrescar($: EngineInterface): Promise<void> {
   try {
     await actCarpeta($)
-    await actAnotarVivos($)
     if (actDIR === '') throw new Error('No encuentro la actCarpeta de Claude de esta Mac.')
     const ahora = await $.clock.now()
     const archivos = await $.fs.list(actDIR).catch(() => [])
@@ -1568,6 +1578,16 @@ export const registrarActividad = (on: Parameters<Register>[0]): void => {
     actParados.add(actCorto(e.agent_id))
     await actAnotar($, { s: actCorto(e.session_id).slice(0, 8), ev: 'stop', tipo: 'agente', n: actCorto(e.agent_type), id: actCorto(e.agent_id) })
     void actRefrescar($)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('turn.start', async ($, e, next) => {
+    await actAvisarVivo($, e.agentId)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', async ($, e, next) => {
+    await actAvisarVivo($, (e as { agentId?: string }).agentId)
     return next(e)
   }).catch(($, e, next) => next(e))
 
