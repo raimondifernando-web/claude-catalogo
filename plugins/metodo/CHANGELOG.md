@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.49.2 — 2026-10-17
+**En Windows, los paquetes del catálogo también se actualizan solos.** Se aplica solo con la actualización; no hay nada que correr.
+- **Antes:** la app de escritorio arranca Claude Code con la actualización automática apagada, y eso frenaba también la de los paquetes del catálogo. En Mac la puesta al día ya lo corregía; en Windows no.
+- **Ahora** la puesta al día de Windows (una vez por día, en segundo plano) deja prendida `FORCE_AUTOUPDATE_PLUGINS=1` en la configuración de Claude Code si falta, y lo dice en una línea. Si usás la terminal en vez de la app, no cambia nada.
+- **Lo que no hace:** no toca ninguna otra clave de tu configuración, no cambia nada si ya estaba prendida y, si el archivo de configuración está roto, no lo toca y avisa. Para apagarla, borrá esa línea de `env`.
+
 ## 0.49.1 — 2026-10-16
 **El arreglo automático del orden de tus carpetas ahora viene ENCENDIDO.** Se aplica solo con la actualización; no hay nada que correr.
 - **Antes (0.49.0)** venía apagado y había que encenderlo a mano. **Ahora** corre solo, una vez por semana, desde el aviso de arranque. Hace lo mismo que se describe en 0.49.0: solo lo seguro y reversible, un commit por arreglo, con registro y `estructura.py deshacer <id>`; nunca sube nada a GitHub, no toca un archivo con cambios sin guardar y no toca lo sensible (permisos, avisos automáticos, lo que corre solo).

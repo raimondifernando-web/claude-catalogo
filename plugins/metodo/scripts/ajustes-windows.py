@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ajustes-windows.py — pone al día <config de Claude>/settings.json con lo mínimo de seguridad y privacidad que en Mac hace al-dia.sh:
 (1) las reglas `permissions.deny` que impiden que las herramientas de Claude lean o editen los lugares
-donde se guardan las llaves (SSH, nube, GitHub, llavero…). (2) `env.HYPERFRAMES_NO_TELEMETRY=1` si no está (apaga los datos de uso de HyperFrames/media-use). Mismas reglas y variable que al-dia.sh aplica en Mac con plutil; este programa existe para Windows, donde
+donde se guardan las llaves (SSH, nube, GitHub, llavero…). (2) `env.HYPERFRAMES_NO_TELEMETRY=1` si no está (apaga los datos de uso de HyperFrames/media-use). (3) `env.FORCE_AUTOUPDATE_PLUGINS=1` si no está (la app de escritorio arranca Claude Code con la actualización automática apagada y eso frena también la de los paquetes del catálogo; en la terminal no cambia nada). Mismas reglas y variable que al-dia.sh aplica en Mac con plutil; este programa existe para Windows, donde
 al-dia.sh no corre (F4 del security check 0.35.0). Funciona en cualquier sistema.
 Disparador: automático, una vez por día, desde al-dia-auto.sh (solo en Windows; en Mac lo hace al-dia.sh).
 Solo agrega lo que falta; no toca nada más del archivo (el formato JSON puede cambiar de sangría). Copia previa en settings.json.antes-arneses (una sola vez),
@@ -25,7 +25,8 @@ RUTAS = ['~/.ssh/**', '~/.aws/**', '~/.config/gh/**', '~/.config/gh-claude/**', 
          '~/.claude/backups/**']
 SOLO_MAC = {'~/Library/Keychains/**'}
 ACCIONES = ('Read', 'Edit')
-VARIABLE_TELEMETRIA = "HYPERFRAMES_NO_TELEMETRY"   # solo esta variable: nunca una general como DO_NOT_TRACK (apaga Remote Control)
+VARIABLE_TELEMETRIA = "HYPERFRAMES_NO_TELEMETRY"   # en env solo variables con prefijo de la herramienta: nunca una general como DO_NOT_TRACK (apaga Remote Control)
+VARIABLE_PAQUETES = "FORCE_AUTOUPDATE_PLUGINS"      # la lee solo Claude Code; la misma que al-dia.sh deja en Mac
 
 
 def reglas(es_mac):
@@ -61,7 +62,8 @@ def main(argv):
     if entorno is None:
         entorno = datos["env"] = {}
     telemetria = isinstance(entorno, dict) and entorno.get(VARIABLE_TELEMETRIA) != "1"
-    if not faltan and not telemetria:
+    paquetes = isinstance(entorno, dict) and entorno.get(VARIABLE_PAQUETES) != "1"
+    if not faltan and not telemetria and not paquetes:
         return 0
     tmp = None
     try:
@@ -73,13 +75,15 @@ def main(argv):
         deny.extend(faltan)
         if telemetria:
             entorno[VARIABLE_TELEMETRIA] = "1"
+        if paquetes:
+            entorno[VARIABLE_PAQUETES] = "1"
         fd, tmp = tempfile.mkstemp(dir=base, prefix=".settings.", suffix=".tmp")
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(datos, f, indent=2, ensure_ascii=False)
             f.write("\n")
         with open(tmp, encoding="utf-8") as f:   # se vuelve a leer antes de reemplazar
             leido = json.load(f)
-            if not set(faltan) <= set(leido["permissions"]["deny"]) or (telemetria and leido["env"].get(VARIABLE_TELEMETRIA) != "1"):
+            if not set(faltan) <= set(leido["permissions"]["deny"]) or (telemetria and leido["env"].get(VARIABLE_TELEMETRIA) != "1") or (paquetes and leido["env"].get(VARIABLE_PAQUETES) != "1"):
                 raise ValueError("la copia no quedó completa")
         os.replace(tmp, ruta)
     except (OSError, ValueError, KeyError) as e:
@@ -91,6 +95,8 @@ def main(argv):
         print(f"· Agregué {len(faltan)} reglas a {ruta} para que Claude no pueda leer ni editar tus carpetas de llaves (SSH, nube, GitHub…). Copia en settings.json.antes-arneses")
     if telemetria:
         print(f"· Apagué los datos de uso de HyperFrames ({VARIABLE_TELEMETRIA}=1 en {ruta}). Copia en settings.json.antes-arneses")
+    if paquetes:
+        print(f"· Prendí la actualización automática de paquetes en la app ({VARIABLE_PAQUETES}=1 en {ruta}): se actualizan solos los paquetes de los catálogos que tengas agregados; para apagarla, borrá esa línea de env. Copia en settings.json.antes-arneses")
     return 0
 
 
