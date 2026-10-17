@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.49.3 — 2026-10-17
+**En Windows, los paquetes del catálogo también se actualizan solos.** Se aplica solo con la actualización; no hay nada que correr.
+- **Antes:** la app de escritorio arranca Claude Code con la actualización automática apagada, y eso frenaba también la de los paquetes del catálogo. En Mac la puesta al día ya lo corregía; en Windows no.
+- **Ahora** la puesta al día de Windows (una vez por día, en segundo plano) deja prendida `FORCE_AUTOUPDATE_PLUGINS=1` en la configuración de Claude Code si falta, y lo dice en una línea. Si usás la terminal en vez de la app, no cambia nada.
+- **Lo que no hace:** no toca ninguna otra clave de tu configuración, no cambia nada si ya estaba prendida y, si el archivo de configuración está roto, no lo toca y avisa. Para apagarla, borrá esa línea de `env`.
+
 ## 0.49.2 — 2026-10-17
 **El control de estructura dice la verdad y ahora mira también el equipo de cada carpeta.** Se aplica solo; no hay nada que hacer.
 - **Antes:** «Estructura al día ✓» aparecía aunque hubiera avisos pendientes, y en el aviso de arranque podía leerse «Falta: 0 cosas». **Ahora** cuenta los avisos: sin nada pendiente dice «Estructura al día ✓»; con solo avisos dice «Sin errores, pero con N avisos pendientes ⚠»; con errores suma «Además: N avisos». El código de salida no cambia.
