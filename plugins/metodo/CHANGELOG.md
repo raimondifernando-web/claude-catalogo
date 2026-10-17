@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.49.1 — 2026-10-16
+**El arreglo automático del orden de tus carpetas ahora viene ENCENDIDO.** Se aplica solo con la actualización; no hay nada que correr.
+- **Antes (0.49.0)** venía apagado y había que encenderlo a mano. **Ahora** corre solo, una vez por semana, desde el aviso de arranque. Hace lo mismo que se describe en 0.49.0: solo lo seguro y reversible, un commit por arreglo, con registro y `estructura.py deshacer <id>`; nunca sube nada a GitHub, no toca un archivo con cambios sin guardar y no toca lo sensible (permisos, avisos automáticos, lo que corre solo).
+- **Se apaga por escrito:** `estructura.py orden-config --apagar` deja `aplicar:false` en `metodo-orden.json` (carpeta de Claude) y queda apagado. `--encender` lo vuelve a prender; sin argumentos dice el estado («encendida por defecto», «encendida por vos» o «apagada por vos»).
+- **Ante la duda, apagado:** si `metodo-orden.json` está roto o ilegible, no escribe nada en tus carpetas hasta que lo corrijas con `orden-config --encender`.
+
 ## 0.49.0 — 2026-10-16
 **El orden de tus carpetas se puede arreglar solo, sin que tengas que acordarte.** Viene **apagado**: no cambia nada hasta que lo enciendas (`estructura.py orden-config --encender`). Mientras esté apagado, `estructura.py auto` solo te muestra qué haría.
 - **Lo seguro y reversible se arregla solo,** con un commit por arreglo, una prueba que lo verifica, un registro y un comando para deshacerlo (`estructura.py deshacer <id>`): una ruta del `CLAUDE.md` que cambió de lugar, un documento del molde que falta, una carpeta que quedó atrás de GitHub. Nunca sube nada a GitHub y no toca un archivo que otra sesión esté editando.

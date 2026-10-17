@@ -5,7 +5,7 @@ Disparador: automático — estructura.py revisar --aviso lo llama la primera ve
 a mano: estructura.py auto | aplicar | deshacer | resumen | orden-config.
 
 Tres grupos (decisión del dueño, 2026-10-16):
-  1. SEGURO Y REVERSIBLE: se aplica solo (si la persona lo encendió con `orden-config --encender`; apagado por defecto).
+  1. SEGURO Y REVERSIBLE: se aplica solo (encendido por defecto; se apaga con `orden-config --apagar`).
      Un commit por arreglo, prueba que lo verifica, registro y comando de deshacer. Nunca hace push.
        · ruta movida: el CLAUDE.md cita una ruta que git muestra renombrada → se reescribe con la ruta nueva
        · documentos vivos que faltan (esqueleto de docs/PRD.md, decisiones.md, planes/)
@@ -57,12 +57,33 @@ def archivo_config() -> Path:
     return dir_config() / "metodo-orden.json"
 
 
-def aplicar_encendido() -> bool:
-    """Apagado por defecto: solo corre solo donde la persona lo encendió (orden-config --encender)."""
+def estado_encendido() -> tuple:
+    """(encendido, motivo). Encendido por defecto: sin archivo, o sin la clave, corre.
+    Solo se apaga si metodo-orden.json dice explícitamente aplicar:false (orden-config --apagar).
+    Archivo ilegible, roto o que no es un objeto → APAGADO: ante la duda no se escribe en las cajas."""
     try:
-        return bool(json.loads(archivo_config().read_text(encoding="utf-8")).get("aplicar"))
-    except (OSError, ValueError):
-        return False
+        txt = archivo_config().read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return True, "encendida por defecto"
+    except OSError:
+        return False, "apagada: no se pudo leer metodo-orden.json"
+    try:
+        cfg = json.loads(txt)
+    except ValueError:
+        return False, "apagada: metodo-orden.json está roto (se corrige con orden-config --encender)"
+    if not isinstance(cfg, dict):
+        return False, "apagada: metodo-orden.json está roto (se corrige con orden-config --encender)"
+    if "aplicar" not in cfg:
+        return True, "encendida por defecto"
+    if cfg["aplicar"] is False:
+        return False, "apagada por vos"
+    if cfg["aplicar"] is True:
+        return True, "encendida por vos"
+    return False, "apagada: el valor de «aplicar» en metodo-orden.json no es verdadero/falso"
+
+
+def aplicar_encendido() -> bool:
+    return estado_encendido()[0]
 
 
 def es_sensible(rel: str) -> bool:
@@ -511,16 +532,19 @@ def comando_resumen(raiz_arg=None) -> int:
 
 def comando_config(encender: bool, apagar: bool) -> int:
     if encender == apagar:
-        print("Aplicación automática: " + ("ENCENDIDA" if aplicar_encendido() else "apagada") + f" ({archivo_config()}). Usá --encender o --apagar.")
+        on, motivo = estado_encendido()
+        print("Aplicación automática: " + ("ENCENDIDA" if on else "APAGADA") + f" ({motivo}). Usá --encender o --apagar.")
         return 0
     archivo_config().parent.mkdir(parents=True, exist_ok=True)
     try:
         cfg = json.loads(archivo_config().read_text(encoding="utf-8"))
     except (OSError, ValueError):
         cfg = {}
+    if not isinstance(cfg, dict):
+        cfg = {}
     cfg["aplicar"] = bool(encender)
     archivo_config().write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-    print("Aplicación automática " + ("ENCENDIDA" if encender else "apagada") + ". Todo al día ✓")
+    print("Aplicación automática " + ("ENCENDIDA (por vos)" if encender else "APAGADA (por vos)") + ". Todo al día ✓")
     return 0
 
 
