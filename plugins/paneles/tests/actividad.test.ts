@@ -95,8 +95,8 @@ for (const surface of ['terminal', 'desktop'] as const) {
       plugin: 'paneles',
       surface,
       component: 'Pane' as const,
-      requestId: 'actividad',
-      props: { title: 'Actividad', isFocused: false, bodyColumns: 38, placement: 'dock' as const, scroll: { offset: 0, bodyRows: 40 }, view: {} },
+      requestId: 'medidor-uso',
+      props: { title: 'Uso y actividad', isFocused: false, bodyColumns: 38, placement: 'dock' as const, scroll: { offset: 0, bodyRows: 40 }, view: {} },
     })
     expect(await ui.find({ type: 'Text', text: /^Ahora$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /pm-marketing/ })).toBeDefined()

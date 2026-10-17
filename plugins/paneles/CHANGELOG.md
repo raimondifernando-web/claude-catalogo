@@ -1,5 +1,10 @@
 # paneles
 
+## 0.5.3 — 2026-10-17
+- **«Uso» y «Actividad» ahora son un solo panel, «Uso y actividad».** Arriba, lo de siempre (contexto, límites del plan, qué gastó más); abajo, la actividad de agentes, subagentes y skills. `/uso` y `/actividad` abren el mismo panel.
+- **El detalle de colores del contexto (los puntitos) ahora se pliega:** arranca cerrado y se abre tocando «Detalle del contexto».
+- Pruebas actualizadas (49).
+
 ## 0.5.2 — 2026-10-17
 Arreglo en «Actividad»: ahora los agentes se ven encendidos mientras trabajan.
 - Antes, el panel solo se enteraba de que un agente empezó por un aviso que no le llega a todos (los que lanza una skill o se reanudan con un mensaje terminaban sin haber avisado). Resultado: aparecían recién al terminar, o nunca. Ahora cada vez que un agente empieza un turno o usa una herramienta, el panel lo anota en ese momento y lo muestra en verde (sin preguntar cada tanto). Sigue guardando solo el tipo, nunca el pedido ni la descripción.
