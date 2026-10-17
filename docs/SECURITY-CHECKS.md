@@ -1157,7 +1157,7 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Límites (lo NO comprobado) | No se corrieron escáneres de librerías (el código usa la biblioteca estándar). No probado en Windows real ni en una ficha real de cliente. `controles.sh` local falla `nombres-en-ci` por falta del secreto `NOMBRES_PROHIBIDOS` fuera de CI; lo corrió el CI. |
 | Veredicto | **PASS con condiciones**: sin hallazgos altos. Condición: cerrar el tope de `_lee` y el `AttributeError` en la próxima versión. Lo escribe Tech con revisión independiente; no la hizo quien lo programó. |
 
-### 2026-10-16 · metodo 0.49.0 → 0.49.1 (commit bf1de6f) — PASS con condiciones (orden encendido por defecto; revisado en la rama como 25d8482, que el squash reemplazó por bf1de6f)
+### 2026-10-16 · metodo 0.49.0 → 0.49.1 (commit bf1de6f; orden encendido por defecto; revisado en la rama como 25d8482, que el squash reemplazó por bf1de6f) — PASS con condiciones
 
 *Un solo cambio de comportamiento: `aplicar_encendido()` pasa de «apagado salvo que exista `aplicar:true`» a «encendido salvo que diga `aplicar:false`». No se agrega código nuevo que escriba en disco.*
 | Ítem | Resultado |
