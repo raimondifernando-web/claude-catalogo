@@ -1225,3 +1225,33 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Metadatos / clientes | `verificar-metadatos`: TODO COINCIDE. Grep de nombres de clientes y personas en los archivos del PR: 0. |
 | Límites (lo NO comprobado) | No probado en un Windows real. Sin revisor independiente: la misma sesión que programó el cambio escribió esta entrada. Los otros hallazgos Windows (reglas del método que no se sincronizan solas, chequeo mensual de seguridad) NO se arreglan acá: quedan descritos en `Tech/docs/2026-10-17-c147-windows.md`. |
 | Veredicto | **PASS con condiciones**: sin hallazgos altos; condiciones (a), (b) y (c) abiertas. Zona sensible: necesitó el OK de Fer para ESE commit. |
+
+### 2026-10-18 · metodo 0.50.2 (commit 4057376) — PASS
+
+*Cambio revisado: todo lo que `metodo` trae desde la versión de `estable` (0.49.3, commit 29e95ec) hasta 4057376 (0.50.0 → 0.50.2; PR #56 y anteriores). Revisión de Tech en sesión aparte de quienes lo programaron. Diff real `29e95ec..4057376` limitado a `plugins/metodo` (18 archivos, ~1.300 líneas agregadas).*
+| Ítem | Resultado |
+|---|---|
+| Alcance | `estructura.py` / `estructura_orden.py` (aviso de apertura que aconseja con costo y arreglo), `estructura_consejo.py` (nuevo), `cierre_repo.py`, `unir-pr` (nuevo), `verificar-modelo-hija.py` (nuevo), `hooks/hooks.json`, `skills/cerrar/SKILL.md`, recetas (`arneses.md`, `vercel-comentarios-en-pr.md`), `ESTRUCTURA.md`, CHANGELOG y pruebas. |
+| Qué corre solo (comparado hook por hook contra `estable`) | Un solo hook nuevo: `PostToolUse` sobre `mcp__ccd_session__start_session` → `verificar-modelo-hija.py`. Está declarado en la `description` de `hooks.json` («Modelo de las sesiones hijas…»), no bloquea ni decide permisos, valida el nombre del modelo con una expresión regular estricta y solo devuelve texto de contexto; ante cualquier error calla. Ningún hook quitado ni cambiado; mismos eventos que antes. `estructura_consejo.py` guarda un registro de avisos ya vistos (`avisos-vistos.json`) en `CLAUDE_PLUGIN_DATA` o `~/.claude/metodo-estado/`, con escritura atómica; sin red. |
+| `unir-pr` (superficie nueva) | Lo corre el paso de unión de `/cerrar` (encadenado) o a mano; **no** es un hook. Solo llama a `gh pr view/checks/merge` con lista de argumentos (sin shell), timeout de 60 s, `--squash`, sin `--force` ni borrar rama. Se niega a unir: PR en borrador, conflicto, controles en rojo, estado bloqueado, y **cualquier PR que toque lo que corre solo en la compu** (lista `SENSIBLE`: plist, LaunchAgents, instaladores, settings, hooks, `.github/`, `unir-pr` mismo) salvo la etiqueta `ok-fernando-<7 del commit>` atada al commit. En un repo sin controles ni unión programada hace unión directa: es el diseño buscado (Mand. V.5), no un hallazgo. |
+| Escrituras en archivos | `estructura_orden.py` solo escribe el `CLAUDE.md` de la caja o `.md` dentro de `docs/` (lista de permitidos `puede_escribir`, excluye rutas sensibles y ocultas), verifica el resultado y restaura el texto si la prueba no pasa; ya existía en `estable`. `cierre_repo.py` vuelve a la rama base; se niega con commits sin subir o cambios sin guardar. |
+| Secretos | Grep de patrones (`sk-`, `ghp_`, `AKIA`, `BEGIN … PRIVATE KEY`, `Bearer`, URLs con clave) sobre las líneas agregadas: 0 valores. Las coincidencias de «token/password/secret» son palabras en textos de aviso o nombres de archivos que el código *evita* (`.env`, `settings.json`). Las únicas URLs son ejemplos en pruebas (`github.com/org/repo`). |
+| Nombres de clientes | `git grep -i -c` de la lista de nombres de clientes y personas (la del control del CI) sobre TODO el árbol de 4057376: 0 coincidencias. Sin nombres en las líneas agregadas del diff. |
+| Red / ejecución | Sin `curl`, `wget`, `requests`, `urllib` ni `os.system`/`shell=True`/`eval`/`exec` en el código nuevo. Los `subprocess` son `git` y `gh` con lista de argumentos, sin shell. |
+| Pruebas | `pytest` sobre `test_verificar_modelo_hija`, `test_estructura_consejo`, `test_estructura_orden`, `test_estructura`, `test_cierre_sin_pendientes`: **129 pasan**. |
+| Metadatos | Versión 0.50.2 en `plugin.json` coincide con el título; `verificar-metadatos` y `controles` los corre el PR de este registro. |
+| Límites (lo NO comprobado) | (a) `unir-pr` no tiene pruebas de comportamiento propias (solo una mención en `test_cierre_sin_pendientes.py`); se leyó línea por línea y se probó `--help`, pero no se ejecutó contra un PR real en esta revisión. (b) Detalle menor: `gh pr view --json files` devuelve como mucho 100 archivos; un PR de más de 100 archivos con un archivo sensible al final podría no verse en la lista. No es explotable sin permiso de escritura en el repo, pero conviene un tope («más de 100 archivos → pedir OK»). (c) No se probó en una Mac ni un Windows de un cliente; el hook nuevo no se ejecutó dentro de la app. |
+| Veredicto | **PASS**: sin hallazgos altos ni críticos; (a) y (b) quedan como mejoras de la próxima versión. El hook y el script nuevos pasaron por zona sensible con la etiqueta `ok-fernando-<commit>` de Fer en los PR #54, #55 y #56 (verificado en GitHub). |
+
+### 2026-10-18 · paneles 0.5.4 (commit 4057376) — PASS
+
+*Cambio revisado: `paneles` desde `estable` (0.5.1, commit 29e95ec) hasta 4057376 (0.5.2 → 0.5.4; panel Actividad encendido y leyenda). Diff real `29e95ec..4057376` limitado a `plugins/paneles` (6 archivos, +205 −94).*
+| Ítem | Resultado |
+|---|---|
+| Alcance | `hooks/register.tsx` (+157 −91), `types/index.d.ts` (un campo `leyendaAbierta`), pruebas `actividad.test.ts` y `uso.test.ts`, CHANGELOG, versión en `plugin.json`. |
+| Qué corre solo | Nada nuevo: `register.tsx` ya era el registro del panel; no se agregan hooks ni scripts ni dependencias. Los imports siguen siendo solo `claude-code` y los tipos locales. |
+| Red / ejecución / archivos | En las líneas agregadas: 0 coincidencias de `fetch`, `http`, `child_process`, `exec`, `spawn`, `fs.`, `process.env`, `eval`, `innerHTML`, `localStorage`. Sin escrituras. Las protecciones del check 0.5.1 (git con `GIT_SEGURO`, topes de texto/filas) no se tocaron en este diff. |
+| Secretos / clientes | 0 valores en las líneas agregadas. grep de nombres de clientes y personas sobre el árbol de 4057376: 0. |
+| Metadatos | Versión 0.5.4 en `plugin.json` coincide con el título. |
+| Límites (lo NO comprobado) | Las pruebas del panel (TypeScript) no se ejecutaron en esta revisión: las corre el CI del catálogo. No se abrió el panel en la app de un cliente. |
+| Veredicto | **PASS**: sin hallazgos; cambio de presentación sin superficie nueva. |
