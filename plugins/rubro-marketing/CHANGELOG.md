@@ -1,5 +1,9 @@
 # rubro-marketing
 
+## 0.2.7 — 2026-10-18
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.2.6 — 2026-10-11
 - `claude-ecom`: ya no tiene la terminal aprobada de antemano (pregunta si la necesita; la skill solo lee y escribe archivos).
 
