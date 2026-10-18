@@ -138,8 +138,9 @@ class Casos(unittest.TestCase):
         self.reanudar()
         out = self.correr("cerrar-check.py", lista="otro-repo\n")
         self.assertEqual(out.count("REPO SIN UNIÓN AUTOMÁTICA"), 1)
-        for frag in ("«remoto»", "gh pr create", "gh pr merge <N> --squash --auto", "UN solo comando", "cierre_repo.py volver", "paso 10"):
+        for frag in ("«remoto»", "gh pr create", "unir-pr <N>", "cierre_repo.py volver", "paso 10"):
             self.assertIn(frag, out)
+        self.assertNotIn("UN solo comando", out)
         self.assertNotIn("SIN UNIÓN AUTOMÁTICA", self.correr("cerrar-check.py", lista="remoto\n"))
 
     def test_e_volver_conserva_el_reanudar_y_no_pierde_trabajo(self):
