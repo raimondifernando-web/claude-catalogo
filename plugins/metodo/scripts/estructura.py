@@ -594,9 +594,10 @@ ARCHIVO_CLAVES = ".env"                    # las claves de la persona (nunca a G
 ARCHIVO_CLAVES_EJEMPLO = ".env.example"    # qué claves hacen falta, sin valores (sí a GitHub)
 
 
-def ejecutar_git(*args, cwd=None, timeout=10, config=()):
+def ejecutar_git(*args, cwd=None, timeout=10, config=(), env=None):
     """Ejecuta comando git con subprocess, sin shell y con -c core.fsmonitor=.
-    `config`: pares «clave=valor» extra para `-c` (el bucle de orden apaga los hooks); `timeout` en segundos."""
+    `config`: pares «clave=valor» extra para `-c` (el bucle de orden apaga los hooks); `timeout` en segundos;
+    `env`: variables extra de entorno para ese comando (ver `entorno_sin_preguntas`)."""
     if not shutil.which("git"):
         return None, "git no está disponible"
     if LIMITE_GIT is not None:
@@ -620,6 +621,7 @@ def ejecutar_git(*args, cwd=None, timeout=10, config=()):
             encoding="utf-8",
             errors="replace",
             timeout=timeout,
+            env={**os.environ, **env} if env else None,
         )
         return res.returncode, res.stdout.strip()
     except Exception as e:
@@ -766,7 +768,7 @@ def cargar_excepciones(carpeta: Path):
             continue
         regla, ruta = str(e.get("regla", "")).strip().upper(), str(e.get("ruta", "")).strip().strip("/") or "."
         motivo, fecha = str(e.get("motivo", "")).strip(), str(e.get("fecha", "")).strip()
-        vence = str(e.get("vence", "")).strip()   # opcional: pasada esa fecha, la excepción deja de valer sola
+        vence = str(e.get("vence") or "").strip()   # opcional: pasada esa fecha, la excepción deja de valer sola
         if vence:
             try:
                 if date.fromisoformat(vence) < date.today():
@@ -1608,6 +1610,13 @@ DIAS_CAJA_VIEJA = 7       # una caja con el primer commit más viejo que esto cu
 HOOKS_APAGADOS = (f"core.hooksPath={os.devnull}",)
 
 
+def entorno_sin_preguntas() -> dict:
+    """Para un `git fetch` en segundo plano: que NUNCA pida una contraseña ni abra una ventana (terminal, gestor de credenciales de
+    Windows, ssh con frase). Si no tiene cómo entrar solo, falla y se cuenta como «no se pudo medir»."""
+    return {"GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never",
+            "GIT_SSH_COMMAND": os.environ.get("GIT_SSH_COMMAND") or "ssh -o BatchMode=yes"}
+
+
 def dir_estado(arg=None) -> Path:
     """Dónde guarda el molde su estado local (plazos de arrastre y el número «X de N»). Siempre la misma carpeta, sin importar quién
     lo corra (un hook, el cierre o a mano): por eso NO usa la carpeta de datos del plugin, que solo existe dentro de los hooks."""
@@ -1666,6 +1675,15 @@ def _fecha_primer_commit(repo: Path, sha: str):
 
 
 def comando_exigir(commit="HEAD", repo_arg=None, estado_arg=None, hoy_arg=None, pr=None, contenido=False) -> int:
+    """Envoltorio: un error en CUALQUIER punto del control (un estado local corrupto, un git que falla) no frena una unión: sale 2."""
+    try:
+        return _exigir(commit, repo_arg, estado_arg, hoy_arg, pr, contenido)
+    except Exception as e:
+        print(f"Molde: no se pudo medir ({type(e).__name__}); no frena.")
+        return 2
+
+
+def _exigir(commit="HEAD", repo_arg=None, estado_arg=None, hoy_arg=None, pr=None, contenido=False) -> int:
     """`estructura.py exigir`: ¿este commit tiene lo OBLIGATORIO del molde? Lo corren `unir-a-main` y `unir-pr` antes de unir.
     Salida 0 = se puede unir · 1 = falta algo (dice qué y el comando que lo arregla) · 2 = no se pudo medir (nunca frena).
     Con `contenido=True` (lo usa el cierre, no la unión): en una caja con producto propio, un PRD o unas decisiones que siguen siendo
@@ -1681,7 +1699,8 @@ def comando_exigir(commit="HEAD", repo_arg=None, estado_arg=None, hoy_arg=None, 
         repo = Path(top)
         ref = commit
         if pr:
-            code, _ = ejecutar_git("fetch", "--quiet", "origin", f"pull/{pr}/head", cwd=repo, timeout=60, config=HOOKS_APAGADOS)
+            code, _ = ejecutar_git("fetch", "--quiet", "origin", f"pull/{pr}/head", cwd=repo, timeout=60, config=HOOKS_APAGADOS,
+                                   env=entorno_sin_preguntas())
             if code != 0:
                 print(f"Molde: no se pudo traer el PR {pr}; no frena.")
                 return 2
@@ -1750,7 +1769,8 @@ def medir_remoto(carpeta: Path, traer: bool = True) -> dict:
     if code != 0 or not url:
         return {"estado": "sin remoto", **vacio}
     if traer:
-        code, _ = ejecutar_git("fetch", "--quiet", "origin", cwd=carpeta, timeout=60, config=HOOKS_APAGADOS)   # un hook del repositorio no corre por medir
+        code, _ = ejecutar_git("fetch", "--quiet", "origin", cwd=carpeta, timeout=60, config=HOOKS_APAGADOS,   # un hook del repositorio no corre por medir
+                               env=entorno_sin_preguntas())
         if code != 0:
             return {"estado": "no se pudo traer de GitHub", **vacio}
     for ref in ("origin/main", "origin/master"):
@@ -1768,17 +1788,20 @@ def comando_remoto(raiz_arg=None, traer: bool = True, solo_numero: bool = False,
     import time
     raiz = Path(raiz_arg).resolve() if raiz_arg else (Path.home() / "Proyectos")
     t0 = time.monotonic()
-    medidas = completas = sin_medir = 0
+    medidas = completas = sin_repo = no_pude = 0
     for carpeta, _nivel, _parent in descubrir_cajas(raiz):
         rel = str(carpeta.relative_to(raiz))
         if tope_segundos and time.monotonic() - t0 > tope_segundos:
-            sin_medir += 1
+            no_pude += 1   # se acabó el tiempo: lo que falta medir hace que el número quede a medias
             continue
         r = medir_remoto(carpeta, traer)
         if r["estado"] != "ok":
             if not solo_numero:
                 print(f"• {rel}: no se pudo medir ({r['estado']})")
-            sin_medir += 1
+            if r["estado"] in ("sin .git", "sin remoto"):
+                sin_repo += 1   # vive fuera de GitHub (carpeta de pruebas, por ejemplo): no cuenta ni suma ni frena el número
+            else:
+                no_pude += 1    # sin red, sin permiso, sin rama: el número quedaría a medias
             continue
         medidas += 1
         m = M.medir(set(r["archivos"]), r["leer"])
@@ -1788,10 +1811,12 @@ def comando_remoto(raiz_arg=None, traer: bool = True, solo_numero: bool = False,
             pendientes = [f"{f['regla']} {f['que']}" for f in m["duras"] + m["estructura"] + m["contenido"]]
             print(f"• {rel}: falta en GitHub: " + "; ".join(pendientes))
     linea = f"{completas} de {medidas} cajas completas (en GitHub)"
-    if sin_medir:
-        linea += f" · {sin_medir} sin medir"
+    if sin_repo:
+        linea += f" · {sin_repo} sin repositorio en GitHub"
+    if no_pude:
+        linea += f" · {no_pude} sin poder medir"
     print(linea)
-    if medidas and not sin_medir:
+    if medidas and not no_pude:
         _guardar_json(dir_estado(estado_arg) / "molde-numero.json",
                       {"fecha": date.today().isoformat(), "completas": completas, "total": medidas})
     return 0
@@ -1855,9 +1880,9 @@ def comando_nueva(ruta: str, nivel: str = "proyecto", codigo: bool = False, duen
     if padre_remoto[0] == 0:
         mm = re.search(r"[:/]([^/:]+)/[^/]+?(?:\.git)?/?$", padre_remoto[1])
         dueno_gh = mm.group(1) if mm else None
-    cuenta = dueno_gh or '$(gh api user --jq .login)'
+    prefijo = f"{dueno_gh}/" if dueno_gh else ""   # sin dueño, gh crea el repositorio en la cuenta con la que entró
     print("Lo único que falta es GitHub (la sesión no puede crear repositorios). UN comando:")
-    print(f'  gh repo create "{cuenta}/{carpeta.name}" --private --source "{carpeta}" --remote origin --push')
+    print(f'  gh repo create "{prefijo}{carpeta.name}" --private --source "{carpeta}" --remote origin --push')
     return 0
 
 

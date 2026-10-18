@@ -282,26 +282,27 @@ class TestRemoto(Entorno):
 
     def test_mide_lo_que_hay_en_github_y_no_en_la_carpeta(self):
         raiz, caja = self._con_origen({"CLAUDE.md": "# c\n", ".gitignore": "x\n", "docs/PRD.md": "p\n"})
-        # la carpeta local tiene MÁS que GitHub (settings.json con contenido, solo en el disco): el remoto no lo ve
-        (caja / ".claude").mkdir()
-        (caja / ".claude" / "settings.json").write_text(CONTENIDO, encoding="utf-8")
+        # la carpeta local tiene MÁS que GitHub (decisiones.md solo en el disco): el remoto no lo ve
+        (caja / "docs").mkdir(exist_ok=True)
+        (caja / "docs" / "decisiones.md").write_text("# D\n\n" + "Una decisión escrita con su porqué y su fecha, bien larga. " * 3, encoding="utf-8")
         buf = io.StringIO()
         with redirect_stdout(buf):
             code = E.comando_remoto(str(raiz), traer=True)
         sal = buf.getvalue()
         self.assertEqual(code, 0)
         self.assertIn("falta en GitHub", sal)
-        self.assertIn(".claude/settings.json", sal)
         self.assertIn("docs/decisiones.md", sal)
-        self.assertIn("1 cajas medidas · 0 con el molde completo · 0 con settings.json subido", sal)
+        self.assertIn("0 de 1 cajas completas (en GitHub)", sal)
 
-    def test_caja_completa_en_github(self):
+    def test_estructura_completa_pero_documentos_en_plantilla_todavia_no_es_completa(self):
         raiz, _caja_dir = self._con_origen({"CLAUDE.md": "# c\n", ".gitignore": "x\n", ".claude/settings.json": "{}\n",
                                             "docs/PRD.md": "p\n", "docs/decisiones.md": "d\n", "docs/planes/README.md": "r\n"})
         buf = io.StringIO()
         with redirect_stdout(buf):
             E.comando_remoto(str(raiz), traer=False)
-        self.assertIn("1 cajas medidas · 1 con el molde completo · 1 con settings.json subido", buf.getvalue())
+        sal = buf.getvalue()
+        self.assertIn("0 de 1 cajas completas (en GitHub)", sal)
+        self.assertIn("R16", sal)   # existe, pero sin texto propio: falta el contenido
 
     def test_sin_remoto_lo_dice(self):
         raiz = Path(self.td) / "proyectos"

@@ -20,7 +20,7 @@ DOCUMENTOS_VIVOS = ("docs/PRD.md", "docs/decisiones.md")
 PIEZAS_DE_CODIGO = ("README.md", "docs/arquitectura.md", "docs/flujo-de-la-app.md", ".env.example")
 SENALES_CODIGO = ("package.json", "pyproject.toml", "requirements.txt", "Package.swift")
 EXTENSIONES_CODIGO = (".py", ".js", ".ts", ".tsx", ".jsx", ".swift", ".go", ".rs", ".java", ".php", ".rb")
-CARPETAS_QUE_NO_CUENTAN = ("node_modules", "venv", ".venv", "dist", "build", "__pycache__", "graphify-out", "scripts", "docs", "tests")
+CARPETAS_QUE_NO_CUENTAN = ("node_modules", "venv", ".venv", "dist", "build", "__pycache__", "graphify-out", "scripts", "docs", "tests", "test", "__tests__")
 ARCHIVO_EXCEPCIONES = ".estructura-excepciones.json"
 NO_EXCEPTUABLES = ("R6",)
 COMANDO_ARREGLO = "estructura.py arreglar --si"
@@ -60,7 +60,7 @@ def parsear_excepciones(texto: str, hoy: date = None):
             continue
         regla = str(e.get("regla", "")).strip().upper()
         ruta = str(e.get("ruta", "")).strip().strip("/") or "."
-        motivo, fecha, vence = str(e.get("motivo", "")).strip(), str(e.get("fecha", "")).strip(), str(e.get("vence", "")).strip()
+        motivo, fecha, vence = str(e.get("motivo", "")).strip(), str(e.get("fecha", "")).strip(), str(e.get("vence") or "").strip()
         if ruta != "." or not re.fullmatch(r"R\d+", regla) or regla in NO_EXCEPTUABLES:
             continue
         if not motivo or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", fecha):
@@ -71,6 +71,7 @@ def parsear_excepciones(texto: str, hoy: date = None):
                     avisos.append(f"la excepción de {regla} venció el {vence}: ya no vale")
                     continue
             except ValueError:
+                avisos.append(f"la excepción de {regla} tiene un «vence» que no es una fecha AAAA-MM-DD: no vale")
                 continue
         vigentes[regla] = motivo
     return vigentes, avisos

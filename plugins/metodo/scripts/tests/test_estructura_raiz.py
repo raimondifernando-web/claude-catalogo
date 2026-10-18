@@ -383,6 +383,62 @@ class TestNumero(Base):
         self.assertIn("7 de 32", lineas[3])
 
 
+class TestRevisionExternaRaiz(Base):
+    """Lo que encontró la revisión independiente (2026-10-18) y se comprobó."""
+
+    def test_vence_null_o_roto_no_borra_la_excepcion_sin_avisar(self):
+        hoy = date(2026, 10, 18)
+        nulo = json.dumps([{"regla": "R12", "ruta": ".", "motivo": "en curso", "fecha": "2026-10-18", "vence": None}])
+        self.assertEqual(list(M.parsear_excepciones(nulo, hoy)[0]), ["R12"])
+        roto = json.dumps([{"regla": "R12", "ruta": ".", "motivo": "en curso", "fecha": "2026-10-18", "vence": "mañana"}])
+        v, avisos = M.parsear_excepciones(roto, hoy)
+        self.assertEqual(v, {})
+        self.assertIn("vence", avisos[0])
+
+    def test_una_carpeta_test_no_cuenta_como_codigo(self):
+        self.assertFalse(M.hay_codigo_en_arbol({f"test/t{i}.py" for i in range(8)} | {f"__tests__/t{i}.js" for i in range(8)}))
+
+    def test_un_estado_corrupto_nunca_frena_la_union(self):
+        vieja = (date.today() - timedelta(days=200)).isoformat()
+        c = self.caja(archivos={"CLAUDE.md": "# x\n", ".gitignore": ".env\n"}, fecha=vieja)
+        self.estado.mkdir()
+        clave = E._identidad_de_caja(c)
+        (self.estado / "molde-arrastre.json").write_text(json.dumps({clave: "corrupto"}), encoding="utf-8")
+        rc, sal = self.exigir(c)
+        self.assertEqual(rc, 2, sal)
+        self.assertIn("no frena", sal)
+
+    def test_una_carpeta_sin_repositorio_en_github_no_impide_guardar_el_numero(self):
+        escritos = {a: "x\n" for a in COMPLETA}
+        raiz = TestNumero.origen(self, "con-remoto", escritos)
+        suelta = raiz / "solo-local"
+        suelta.mkdir()
+        _git(suelta, "init", "-q", "-b", "main")
+        (suelta / "CLAUDE.md").write_text("# x\n", encoding="utf-8")
+        rc, sal = _correr(E.comando_remoto, str(raiz), True, True, 0, str(self.estado))
+        self.assertIn("1 sin repositorio en GitHub", sal)
+        self.assertTrue((self.estado / "molde-numero.json").is_file())
+
+    def test_si_se_acaba_el_tiempo_no_se_guarda_un_numero_a_medias(self):
+        raiz = TestNumero.origen(self, "una", {a: "x\n" for a in COMPLETA})
+        TestNumero.origen(self, "dos", {a: "x\n" for a in COMPLETA})
+        rc, sal = _correr(E.comando_remoto, str(raiz), False, True, 1e-9, str(self.estado))   # tope de tiempo ridículo
+        self.assertIn("sin poder medir", sal)
+        self.assertFalse((self.estado / "molde-numero.json").exists())
+
+    def test_el_comando_para_github_no_usa_sustitucion_de_shell(self):
+        destino = self.td / "sin-dueno"
+        rc, sal = _correr(E.comando_nueva, str(destino))
+        self.assertNotIn("$(", sal)
+        self.assertIn('gh repo create "sin-dueno"', sal)
+
+    def test_el_fetch_en_segundo_plano_nunca_pregunta(self):
+        env = E.entorno_sin_preguntas()
+        self.assertEqual(env["GIT_TERMINAL_PROMPT"], "0")
+        self.assertEqual(env["GCM_INTERACTIVE"], "never")
+        self.assertIn("BatchMode=yes", env["GIT_SSH_COMMAND"])
+
+
 class TestCerrarCheck(Base):
     def test_cerrar_check_tiene_la_linea_del_molde_y_frena_si_falta_algo(self):
         c = self.caja("cierre", archivos={"CLAUDE.md": "# x\n"})
