@@ -118,7 +118,7 @@ Fuera de las cajas:
 **Excepciones:** lo que se decidió dejar así, con su motivo, no queda como ✗ para siempre: se anota en
 `.estructura-excepciones.json` en la raíz del repositorio, una lista de
 `{"regla": "R8", "ruta": "mi-caja", "motivo": "por qué se deja", "fecha": "AAAA-MM-DD"}` (`ruta` es la carpeta de la que
-habla el aviso, relativa a esa raíz; `.` es la raíz misma; `vence` es opcional: pasada esa fecha, la excepción deja de valer sola). El control la muestra como `• excepción …` y no la cuenta como
+habla el aviso, relativa a esa raíz; `.` es la raíz misma; `vence` es opcional: pasada esa fecha, la excepción deja de valer sola). **Excepción especial `EXENTA`:** `{"regla": "EXENTA", "ruta": "sandbox", …}` en el archivo de la caja de arriba saca esa carpeta **y todo lo que tiene adentro** del molde: no se revisa, no se arregla y no cuenta en el «X de N» (para un campo de pruebas descartable). El control la muestra como `• excepción …` y no la cuenta como
 falla. Sin motivo o sin fecha no vale (se ignora y se avisa). R6 y R11 no se pueden exceptuar.
 
 **«Terminado» se mide en GitHub, no en la carpeta de la Mac:** `estructura.py remoto` hace `git fetch` de cada caja y cuenta qué hay en la rama principal del repositorio; `revisar` mira la carpeta del disco, que puede ir atrasada.

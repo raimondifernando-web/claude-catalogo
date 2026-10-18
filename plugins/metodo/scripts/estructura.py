@@ -777,8 +777,8 @@ def cargar_excepciones(carpeta: Path):
             except ValueError:
                 avisos.append(f"excepción {i} ignorada: «vence» tiene que ser AAAA-MM-DD")
                 continue
-        if not re.fullmatch(r"R\d+", regla):
-            avisos.append(f"excepción {i} ignorada: falta la regla (R1, R8…)")
+        if not re.fullmatch(r"R\d+|EXENTA", regla):
+            avisos.append(f"excepción {i} ignorada: falta la regla (R1, R8… o EXENTA)")
         elif regla in NO_EXCEPTUABLES:
             avisos.append(f"excepción {i} ({regla}) ignorada: esa regla no se puede exceptuar")
         elif not motivo or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", fecha):
@@ -1348,6 +1348,16 @@ def descubrir_cajas(raiz: Path):
         code, out = ejecutar_git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=carpeta)
         return out if code == 0 and out else None
 
+    def exenta(padre: Path, hija: Path) -> bool:
+        """¿El dueño de la caja de arriba dejó escrito que esta carpeta queda FUERA del molde (y todo lo que tiene adentro)?
+        {"regla": "EXENTA", "ruta": «carpeta», "motivo": …, "fecha": …} en el `.estructura-excepciones.json` de la caja de arriba.
+        Sirve para un campo de pruebas descartable: no se revisa, no se arregla, no se cuenta en el «X de N»."""
+        try:
+            validas, _avisos, raiz_repo = cargar_excepciones(padre)
+            return raiz_repo is not None and ("EXENTA", ruta_en_repo(raiz_repo, hija)) in validas
+        except Exception:
+            return False
+
     def recorrer(carpeta: Path, parent, profundidad: int):
         comun = repo_comun(carpeta)
         if comun is not None:
@@ -1358,6 +1368,8 @@ def descubrir_cajas(raiz: Path):
         cajas.append((carpeta, nivel, parent))
         if nivel != "proyecto" and profundidad < 3:
             for hija in sorted(cajas_hijas(carpeta), key=lambda h: (not (h / ".git").is_dir(), h.name)):
+                if exenta(carpeta, hija):
+                    continue
                 recorrer(hija, carpeta, profundidad + 1)
 
     try:

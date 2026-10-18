@@ -439,6 +439,53 @@ class TestRevisionExternaRaiz(Base):
         self.assertIn("BatchMode=yes", env["GIT_SSH_COMMAND"])
 
 
+class TestExenta(Base):
+    """Una carpeta que el dueño dejó FUERA del molde (campo de pruebas): ni se revisa ni se cuenta, ella ni lo de adentro."""
+
+    def armar(self, excepcion):
+        raiz = self.td / "proyectos"
+        madre = raiz / "madre"
+        madre.mkdir(parents=True)
+        _git(madre, "init", "-q", "-b", "main")
+        (madre / "CLAUDE.md").write_text("# madre\n", encoding="utf-8")
+        sandbox = madre / "sandbox"
+        (sandbox / "herramienta").mkdir(parents=True)
+        (sandbox / "CLAUDE.md").write_text("# pruebas\n", encoding="utf-8")
+        _git(sandbox / "herramienta", "init", "-q", "-b", "main")   # una herramienta de terceros clonada adentro
+        (sandbox / "herramienta" / "CLAUDE.md").write_text("# ajena\n", encoding="utf-8")
+        if excepcion is not None:
+            (madre / ".estructura-excepciones.json").write_text(json.dumps(excepcion), encoding="utf-8")
+        return raiz
+
+    def nombres(self, raiz):
+        return {str(c.relative_to(raiz)) for c, _n, _p in E.descubrir_cajas(raiz)}
+
+    def test_sin_excepcion_el_campo_de_pruebas_se_revisa(self):
+        self.assertEqual(self.nombres(self.armar(None)), {"madre", "madre/sandbox", "madre/sandbox/herramienta"})
+
+    def test_exenta_saca_la_carpeta_y_todo_lo_de_adentro(self):
+        raiz = self.armar([{"regla": "EXENTA", "ruta": "sandbox", "motivo": "campo de pruebas descartable", "fecha": "2026-10-18"}])
+        self.assertEqual(self.nombres(raiz), {"madre"})
+
+    def test_exenta_sin_motivo_o_con_otra_ruta_no_vale(self):
+        raiz = self.armar([{"regla": "EXENTA", "ruta": "sandbox", "fecha": "2026-10-18"},
+                           {"regla": "EXENTA", "ruta": "otra", "motivo": "x", "fecha": "2026-10-18"}])
+        self.assertIn("madre/sandbox", self.nombres(raiz))
+
+    def test_exenta_vencida_deja_de_valer(self):
+        ayer = (date.today() - timedelta(days=1)).isoformat()
+        raiz = self.armar([{"regla": "EXENTA", "ruta": "sandbox", "motivo": "x", "fecha": "2026-10-01", "vence": ayer}])
+        self.assertIn("madre/sandbox", self.nombres(raiz))
+
+    def test_lo_exento_no_aparece_ni_en_el_control_ni_en_el_numero(self):
+        raiz = self.armar([{"regla": "EXENTA", "ruta": "sandbox", "motivo": "campo de pruebas", "fecha": "2026-10-18"}])
+        rc, sal = _correr(E.comando_revisar, todas=True, raiz_arg=str(raiz))
+        self.assertIn("madre", sal)                # la caja de arriba sí se revisa
+        self.assertNotIn("madre/sandbox", sal)     # la carpeta exenta (y lo de adentro) no
+        rc, sal = _correr(E.comando_remoto, str(raiz), False, False, 0, str(self.estado))
+        self.assertNotIn("madre/sandbox", sal)
+
+
 class TestCerrarCheck(Base):
     def test_cerrar_check_tiene_la_linea_del_molde_y_frena_si_falta_algo(self):
         c = self.caja("cierre", archivos={"CLAUDE.md": "# x\n"})
