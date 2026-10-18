@@ -334,5 +334,74 @@ class TestPlantillas(Entorno):
             self.assertTrue(any(r in str(x) for x in reglas), r)
 
 
+class TestRevisionExterna(Entorno):
+    """Lo que encontró la revisión independiente (Gemini, 2026-10-18) y se comprobó a mano."""
+
+    def test_r27_etiqueta_en_negrita_vacia_no_cuenta(self):
+        c = _caja(self.td)
+        (c / "docs").mkdir()
+        (c / "docs" / "PRD.md").write_text(
+            "# PRD\n\n- **Dueño:**\n- **Estado:** \n- **Respaldo:** GitHub\n- Última revisión: 2026-10-18\n\nEs una herramienta para ordenar los pedidos.\n",
+            encoding="utf-8")
+        m = _msg(E.revisar_contenido(c), "R27")[0]
+        self.assertIn("Dueño", m)
+        self.assertIn("Estado", m)
+        self.assertNotIn("Respaldo", m)
+        self.assertNotIn("Última", m)
+
+    def test_r24_latest_no_es_una_prueba(self):
+        c = _caja(self.td, codigo=True)
+        (c / "tests").mkdir()
+        (c / "tests" / "test_a.py").write_text("x\n", encoding="utf-8")
+        (c / "README.md").write_text("Descargá the latest version.\n", encoding="utf-8")
+        self.assertIn("dicen cómo correrlas", _msg(E.revisar_desarrollo(c), "R24")[0])
+
+    def test_r25_titulos_sin_tilde_valen(self):
+        c = _caja(self.td)
+        (c / "Dockerfile").write_text("FROM x\n", encoding="utf-8")
+        (c / "docs").mkdir()
+        (c / "docs" / "operacion.md").write_text(
+            "# Operacion\n## Donde corre\n## Como se despliega\n## Claves\n## Datos y respaldo\n", encoding="utf-8")
+        self.assertNotIn("R25", _ids(E.revisar_desarrollo(c)))
+
+    def test_r28_fecha_que_no_existe_en_el_calendario_avisa(self):
+        c = _caja(self.td)
+        (c / "docs" / "esquema").mkdir(parents=True)
+        (c / "docs" / "esquema" / "LEEME.md").write_text("Comando: python3 gen.py\nFecha: 2026-13-45\n", encoding="utf-8")
+        self.assertIn("R28", _ids(E.revisar_desarrollo(c)))
+
+    def test_las_excepciones_escritas_valen_para_las_reglas_nuevas(self):
+        c = _caja(self.td, codigo=True)
+        self.assertIn("R23", _ids(E.revisar_caja(c, "proyecto")))
+        (c / ".estructura-excepciones.json").write_text(
+            '[{"regla": "R23", "ruta": ".", "motivo": "sin pantallas ni flujo por diseño", "fecha": "2026-10-18"}]', encoding="utf-8")
+        h = E.revisar_caja(c, "proyecto")
+        self.assertNotIn("R23", {r for t, r, _m in h if t == "aviso"})
+        self.assertTrue(any(t == "excepcion" and r == "R23" for t, r, _m in h))
+
+    def test_remoto_no_ejecuta_los_hooks_del_repositorio(self):
+        origen = Path(self.td) / "origen"
+        origen.mkdir()
+        _git(origen, "init", "-q", "-b", "main")
+        (origen / "CLAUDE.md").write_text("# c\n", encoding="utf-8")
+        _git(origen, "add", "-A")
+        _git(origen, "commit", "-q", "-m", "a")
+        raiz = Path(self.td) / "proyectos"
+        raiz.mkdir()
+        caja = raiz / "caja"
+        subprocess.run(["git", "clone", "-q", str(origen), str(caja)], check=True, capture_output=True)
+        marca = Path(self.td) / "hook-corrio"
+        hook = caja / ".git" / "hooks" / "reference-transaction"
+        hook.write_text(f"#!/bin/sh\ntouch '{marca}'\n", encoding="utf-8")
+        hook.chmod(0o755)
+        (origen / "otro.md").write_text("x\n", encoding="utf-8")
+        _git(origen, "add", "-A")
+        _git(origen, "commit", "-q", "-m", "b")   # hay algo nuevo que traer: el fetch actualiza referencias
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            E.comando_remoto(str(raiz), traer=True)
+        self.assertFalse(marca.exists(), "el hook del repositorio corrió durante `remoto`")
+
+
 if __name__ == "__main__":
     unittest.main()

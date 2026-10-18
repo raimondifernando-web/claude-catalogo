@@ -39,16 +39,16 @@ persona) · **Obligatorio** (sí · no · condición) · **Baja** (llega a las c
 | `docs/PRD.md` | el documento vivo de la caja: quién la lleva, en qué estado está (activa, dormida o archivada), dónde está su respaldo, qué es, para quién, cuándo está terminada y qué NO se hace | E A P | sí | sí | no | — |
 | `docs/decisiones.md` | el registro de decisiones: cada una con fecha y el porqué, para no volver a discutirla | E A P | sí | sí | no | — |
 | `docs/planes/` | un plan por etapa de trabajo, nombrado `AAAA-MM-DD-tema.md`; cuando la etapa termina, el plan se archiva | E A P | sí | sí | no | — |
-| `docs/arquitectura.md` | cómo está armado por dentro (es el TRD): piezas, dependencias, dónde corre | P | sí | si hay código | no | — |
-| `docs/flujo-de-la-app.md` | cómo se mueve la persona por la app, paso a paso, en un diagrama | P | sí | si hay código | no | — |
-| `docs/diseno/` | el diseño de pantallas: mockups (HTML) y enlaces a Figma; nunca texto | P | sí | no (si hay pantallas) | no | — |
-| `docs/esquema/` | el esquema de datos y el contrato de la API, generados desde el código, con el comando que los genera y la fecha | P | sí | no (si hay base de datos o API) | no | — |
-| `docs/operacion.md` | dónde corre, cómo se despliega y se vuelve atrás, qué claves usa (solo los nombres), dónde están los datos y su respaldo | P | sí | si se despliega | no | — |
-| `docs/specs/` | una especificación por funcionalidad, `AAAA-MM-DD-tema.md` (qué debe hacer; los pasos van en `planes/`) | P | sí | no | no | — |
-| `README.md` | para personas: qué es y cómo se levanta y se prueba | P | sí | si hay código | no | — |
-| `tests/` | las pruebas; el README o el `CLAUDE.md` dice cómo correrlas | P | sí | si hay código | no | — |
-| `.claude/security-checks/` | registro de las revisiones de seguridad, `AAAA-MM-DD.md`, sin valores de claves | P | sí | si se despliega o usa claves | no | — |
-| `.claude/rules/donde-va-cada-cosa.md` | el mapa de la caja: dónde se guarda cada pieza y con qué nombre | P | sí | si hay código | no | memory |
+| `docs/arquitectura.md` | cómo está armado por dentro (es el TRD): piezas, dependencias, dónde corre | E A P | sí | si hay código | no | — |
+| `docs/flujo-de-la-app.md` | cómo se mueve la persona por la app, paso a paso, en un diagrama | E A P | sí | si hay código | no | — |
+| `docs/diseno/` | el diseño de pantallas: mockups (HTML) y enlaces a Figma; nunca texto | E A P | sí | no (si hay pantallas) | no | — |
+| `docs/esquema/` | el esquema de datos y el contrato de la API, generados desde el código, con el comando que los genera y la fecha | E A P | sí | no (si hay base de datos o API) | no | — |
+| `docs/operacion.md` | dónde corre, cómo se despliega y se vuelve atrás, qué claves usa (solo los nombres), dónde están los datos y su respaldo | E A P | sí | si se despliega | no | — |
+| `docs/specs/` | una especificación por funcionalidad, `AAAA-MM-DD-tema.md` (qué debe hacer; los pasos van en `planes/`) | E A P | sí | no | no | — |
+| `README.md` | para personas: qué es y cómo se levanta y se prueba | E A P | sí | si hay código | no | — |
+| `tests/` | las pruebas; el README o el `CLAUDE.md` dice cómo correrlas | E A P | sí | si hay código | no | — |
+| `.claude/security-checks/` | registro de las revisiones de seguridad, `AAAA-MM-DD.md`, sin valores de claves | E A P | sí | si se despliega o usa claves | no | — |
+| `.claude/rules/donde-va-cada-cosa.md` | el mapa de la caja: dónde se guarda cada pieza y con qué nombre | E A P | sí | no (recomendado si hay código) | no | memory |
 | `.claude/PENDIENTES.md` | la lista de pendientes de la caja; la crea y mantiene `/pendientes`, no se escribe a mano | E A P | sí | no | no | — |
 | `.claude/prompts/REANUDAR.md` | el texto de reanudación de la sesión; lo deja `/cerrar`, no se escribe a mano | E A P | sí | no | no | — |
 | `.env.example` | qué claves hacen falta, sin los valores | E A P | sí | si hay .env o si hay código | no | — |
@@ -219,15 +219,35 @@ Textos que muestra el dibujo para cada nivel. El molde define qué archivos exis
 | docs/planes/ | area | docs/planes/ | un plan por etapa (AAAA-MM-DD-tema.md); al terminar, se archiva |
 | docs/planes/ | proyecto | docs/planes/ | un plan por etapa (AAAA-MM-DD-tema.md); al terminar, se archiva. Las pantallas van como mockups y el esquema de datos sale del código |
 | docs/arquitectura.md | proyecto | docs/arquitectura.md | cómo está armado por dentro (TRD): piezas, dependencias, dónde corre. Si hay código |
+| docs/arquitectura.md | empresa | docs/arquitectura.md | cómo está armado por dentro (TRD): piezas, dependencias, dónde corre. Si hay código |
+| docs/arquitectura.md | area | docs/arquitectura.md | cómo está armado por dentro (TRD): piezas, dependencias, dónde corre. Si hay código |
 | docs/flujo-de-la-app.md | proyecto | docs/flujo-de-la-app.md | cómo se mueve la persona por la app, en un diagrama. Si hay código |
+| docs/flujo-de-la-app.md | empresa | docs/flujo-de-la-app.md | cómo se mueve la persona por la app, en un diagrama. Si hay código |
+| docs/flujo-de-la-app.md | area | docs/flujo-de-la-app.md | cómo se mueve la persona por la app, en un diagrama. Si hay código |
 | docs/diseno/ | proyecto | docs/diseno/ | las pantallas como mockups (HTML o Figma), nunca texto |
+| docs/diseno/ | empresa | docs/diseno/ | las pantallas como mockups (HTML o Figma), nunca texto |
+| docs/diseno/ | area | docs/diseno/ | las pantallas como mockups (HTML o Figma), nunca texto |
 | docs/esquema/ | proyecto | docs/esquema/ | esquema de datos y API generados desde el código, con comando y fecha |
+| docs/esquema/ | empresa | docs/esquema/ | esquema de datos y API generados desde el código, con comando y fecha |
+| docs/esquema/ | area | docs/esquema/ | esquema de datos y API generados desde el código, con comando y fecha |
 | docs/operacion.md | proyecto | docs/operacion.md | dónde corre, cómo se despliega y se vuelve atrás, claves (nombres) y respaldo |
+| docs/operacion.md | empresa | docs/operacion.md | dónde corre, cómo se despliega y se vuelve atrás, claves (nombres) y respaldo |
+| docs/operacion.md | area | docs/operacion.md | dónde corre, cómo se despliega y se vuelve atrás, claves (nombres) y respaldo |
 | docs/specs/ | proyecto | docs/specs/ | una especificación por funcionalidad (AAAA-MM-DD-tema.md) |
+| docs/specs/ | empresa | docs/specs/ | una especificación por funcionalidad (AAAA-MM-DD-tema.md) |
+| docs/specs/ | area | docs/specs/ | una especificación por funcionalidad (AAAA-MM-DD-tema.md) |
 | README.md | proyecto | README.md | para personas: qué es y cómo se levanta y se prueba. Si hay código |
+| README.md | empresa | README.md | para personas: qué es y cómo se levanta y se prueba. Si hay código |
+| README.md | area | README.md | para personas: qué es y cómo se levanta y se prueba. Si hay código |
 | tests/ | proyecto | tests/ | las pruebas y cómo correrlas. Si hay código |
+| tests/ | empresa | tests/ | las pruebas y cómo correrlas. Si hay código |
+| tests/ | area | tests/ | las pruebas y cómo correrlas. Si hay código |
 | .claude/security-checks/ | proyecto | .claude/security-checks/ | registro de revisiones de seguridad, sin valores de claves |
+| .claude/security-checks/ | empresa | .claude/security-checks/ | registro de revisiones de seguridad, sin valores de claves |
+| .claude/security-checks/ | area | .claude/security-checks/ | registro de revisiones de seguridad, sin valores de claves |
 | .claude/rules/donde-va-cada-cosa.md | proyecto | .claude/rules/donde-va-cada-cosa.md | el mapa de la caja: dónde va cada pieza |
+| .claude/rules/donde-va-cada-cosa.md | empresa | .claude/rules/donde-va-cada-cosa.md | el mapa de la caja: dónde va cada pieza |
+| .claude/rules/donde-va-cada-cosa.md | area | .claude/rules/donde-va-cada-cosa.md | el mapa de la caja: dónde va cada pieza |
 | .claude/PENDIENTES.md | empresa | .claude/PENDIENTES.md | la lista de pendientes (la mantiene /pendientes) |
 | .claude/PENDIENTES.md | area | .claude/PENDIENTES.md | la lista de pendientes (la mantiene /pendientes) |
 | .claude/PENDIENTES.md | proyecto | .claude/PENDIENTES.md | la lista de pendientes (la mantiene /pendientes) |

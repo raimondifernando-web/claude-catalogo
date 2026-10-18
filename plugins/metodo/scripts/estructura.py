@@ -26,6 +26,7 @@ Subcomandos:
 import argparse
 from datetime import date
 import json
+import unicodedata
 import os
 from pathlib import Path
 import re
@@ -805,6 +806,18 @@ DIAS_REVISION_SEGURIDAD = 90
 DIAS_ESQUEMA_VIEJO = 30
 
 
+def _etiqueta_con_valor(texto: str, etiqueta: str) -> bool:
+    """¿Hay una línea «Etiqueta: valor» (con o sin viñeta o negrita) y el valor no está vacío? `- **Estado:**` vacío no cuenta."""
+    for m in re.finditer(r"(?im)^[ \t\-*_]*" + re.escape(etiqueta) + r"\**[ \t]*:(.*)$", texto):
+        if m.group(1).strip(" \t*_"):
+            return True
+    return False
+
+
+def _sin_tildes(texto: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn")
+
+
 def _settings_con_contenido(ruta: Path) -> bool:
     """¿El settings.json dice algo (permisos, paquetes, hooks)? Un `{}` no. Si no se puede leer, se considera que sí (ante la duda, se mide)."""
     try:
@@ -888,7 +901,7 @@ def revisar_desarrollo(carpeta: Path) -> list:
         # R24: pruebas, y que alguien diga cómo correrlas
         if not hay_pruebas(carpeta):
             h.append(("aviso", "R24", "la caja tiene código pero no se encontraron pruebas"))
-        elif not any(re.search(r"prueba|test", _lee(carpeta / n), re.I) for n in ("README.md", "CLAUDE.md")):
+        elif not any(re.search(r"\b(pruebas?|tests?|pytest|unittest|jest|vitest)\b", _lee(carpeta / n), re.I) for n in ("README.md", "CLAUDE.md")):
             h.append(("aviso", "R24", "tiene pruebas pero ni el README ni el CLAUDE.md dicen cómo correrlas"))
     if despliega:
         # R25: operación
@@ -896,8 +909,8 @@ def revisar_desarrollo(carpeta: Path) -> list:
         if not op.is_file():
             h.append(("aviso", "R25", "la caja se despliega pero falta docs/operacion.md (dónde corre, cómo se despliega y se vuelve atrás, claves, datos y respaldo)"))
         else:
-            titulos = " ".join(l.lower() for l in _lee(op).splitlines() if l.lstrip().startswith("#"))
-            sin = [nombre for nombre, clave in _PARTES_OPERACION if clave not in titulos]
+            titulos = _sin_tildes(" ".join(l.lower() for l in _lee(op).splitlines() if l.lstrip().startswith("#")))
+            sin = [nombre for nombre, clave in _PARTES_OPERACION if _sin_tildes(clave) not in titulos]
             if sin:
                 h.append(("aviso", "R25", "docs/operacion.md no tiene estas partes: " + ", ".join(sin)))
     if codigo or despliega:
@@ -914,7 +927,7 @@ def revisar_desarrollo(carpeta: Path) -> list:
         txt = _lee(esquema / "LEEME.md")
         comando = re.search(r"(?im)^\W*comando\s*:\s*\S", txt)
         fecha = re.search(r"(?im)^\W*fecha\s*:\s*(\d{4}-\d{2}-\d{2})", txt)
-        if not (comando and fecha):
+        if not (comando and fecha and _fecha_en_nombre(fecha.group(1))):
             h.append(("aviso", "R28", "docs/esquema/ no tiene un LEEME.md con «Comando:» y «Fecha: AAAA-MM-DD» (cómo y cuándo se generó)"))
         elif (carpeta / ".git").exists():
             generado = _fecha_en_nombre(fecha.group(1))
@@ -1070,8 +1083,7 @@ def _contenido_documentos(carpeta: Path) -> list:
     prd = carpeta / "docs" / "PRD.md"
     if prd.is_file() and "docs/PRD.md" not in vacios:
         txt = _lee(prd)
-        sin = [etq for etq in ("Dueño", "Estado", "Respaldo", "Última revisión")
-               if not re.search(r"(?im)^[ \t\-*_]*" + etq + r"\**[ \t]*:[ \t]*\**[ \t]*\S", txt)]
+        sin = [etq for etq in ("Dueño", "Estado", "Respaldo", "Última revisión") if not _etiqueta_con_valor(txt, etq)]
         if sin:
             h.append(("aviso", "R27", "docs/PRD.md no dice: " + ", ".join(sin)))
     return h
@@ -1139,7 +1151,7 @@ def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
     mia = ruta_en_repo(raiz, carpeta)
     salida = []
     for tipo, r_id, msg in hallazgos:
-        exceptuable = tipo == "error" or r_id in ("R12", "R13", "R14", "R15", "R16", "R17", "R18")  # R12 es aviso, pero también se puede dejar así por escrito
+        exceptuable = tipo == "error" or r_id in ("R12", "R13", "R14", "R15", "R16", "R17", "R18", "R22", "R23", "R24", "R25", "R26", "R27", "R28")  # son avisos, pero también se pueden dejar así por escrito
         if exceptuable and r_id not in NO_EXCEPTUABLES and r_id != "R8" and (r_id, mia) in excepciones:
             salida.append(("excepcion", r_id, f"{msg} (motivo: {excepciones[(r_id, mia)]})"))
         else:
@@ -1588,7 +1600,8 @@ def medir_remoto(carpeta: Path, traer: bool = True) -> dict:
     if code != 0 or not url:
         return {"estado": "sin remoto", "archivos": []}
     if traer:
-        code, _ = ejecutar_git("fetch", "--quiet", "origin", cwd=carpeta, timeout=60)
+        code, _ = ejecutar_git("fetch", "--quiet", "origin", cwd=carpeta, timeout=60,
+                               config=(f"core.hooksPath={os.devnull}",))   # un hook del repositorio no corre por medir
         if code != 0:
             return {"estado": "no se pudo traer de GitHub", "archivos": []}
     for ref in ("origin/main", "origin/master"):
