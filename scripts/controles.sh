@@ -17,6 +17,8 @@ paso "pruebas del vigía" python3 -m unittest discover -s plugins/metodo/scripts
 paso "pruebas del método (buzón, radar, estable, checks)" python3 -m unittest discover -s plugins/metodo/scripts/tests
 paso "pasos manuales / Windows (nada exige que el cliente corra algo a mano)" python3 scripts/pasos-manuales.py
 paso "pruebas de los controles" python3 -m unittest discover -s scripts/tests
+# El catálogo es una caja más: tiene que tener lo obligatorio del molde (CLAUDE.md, .gitignore, PRD, decisiones, planes).
+paso "molde de esta caja (lo obligatorio, como cualquier otra)" python3 plugins/metodo/scripts/estructura.py exigir --commit HEAD --estado "$(mktemp -d)"
 # En GitHub este control va en un paso aparte y ANTES (controles.yml): así las pruebas del PR nunca ven el secreto.
 if [ -z "${SIN_NOMBRES:-}" ]; then
   paso "nombres de clientes (lista en el secreto NOMBRES_PROHIBIDOS)" python3 scripts/nombres-en-ci.py ${RANGO:+--rango "$RANGO"}

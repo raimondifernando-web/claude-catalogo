@@ -136,6 +136,8 @@ SENSIBLE = [
     ("*.github/*", "los robots y reglas de GitHub"),
     ("*.claude/zona-sensible.txt", "las reglas de zona sensible del repo"),
     ("*.claude/unir-a-main*", "el control de unión"),
+    (".estructura-excepciones.json", "las excepciones al molde de la caja (si no, la propia rama podría saltearse la regla)"),
+    ("*/.estructura-excepciones.json", "las excepciones al molde de la caja"),
     # cómo se corren las pruebas (si la rama las cambia, ya no son las que el repo fijó en main)
     ("*.claude/pruebas.sh", "las pruebas que deciden si se une"),
     ("makefile", "cómo se corren las pruebas"), ("*/makefile", "cómo se corren las pruebas"),
@@ -191,6 +193,36 @@ PROMPT_REVISOR = (
 
 class Frena(Exception):
     pass
+
+
+ESTRUCTURA = Path(__file__).resolve().parent / "estructura.py"   # el del plugin instalado, nunca el de la rama que se juzga
+_EJECUTA_ESTRUCTURA = ("import sys; sys.path.insert(0, sys.argv[1]); sys.argv = ['estructura.py'] + sys.argv[2:]; "
+                       "import estructura; estructura.main()")
+
+
+def exigir_molde(repo, commit):
+    """El molde de la caja (docs/2026-10-18-molde-raiz.md): antes de unir, el commit que se juzga tiene que tener lo OBLIGATORIO
+    (CLAUDE.md, .gitignore, nada personal versionado y los tres documentos; con código, también README, arquitectura, flujo y
+    claves de ejemplo). Frena solo por EXISTENCIA y con el comando que lo arregla; lo viejo tiene 30 días de plazo desde que el
+    control ve la caja. Mismo motor que `estructura.py exigir`. Si el control falla por dentro, avisa y NO frena: un error no
+    puede congelar las uniones."""
+    if not ESTRUCTURA.is_file():
+        return
+    try:
+        r = subprocess.run([sys.executable, "-I", "-c", _EJECUTA_ESTRUCTURA, str(ESTRUCTURA.parent), "exigir",
+                            "--repo", str(repo), "--commit", commit, "--estado", str(CONFIG / "metodo-estado")],
+                           capture_output=True, text=True, timeout=120, errors="replace", env=entorno_limpio())
+    except (OSError, subprocess.SubprocessError):
+        print("Molde: no se pudo medir; no frena.")
+        return
+    if r.returncode == 1:
+        raise Frena("a la caja le falta lo obligatorio del molde:\n" + limpio_multilinea(r.stdout))
+    if r.stdout.strip():
+        print(limpio_multilinea(r.stdout, 1200))
+
+
+def limpio_multilinea(texto, tope=1500):
+    return "\n".join(limpio(l, 300) for l in str(texto).splitlines() if l.strip())[:tope]
 
 
 def limpio(texto, tope=240):
@@ -607,6 +639,8 @@ def principal(a, revisor=None, aprobador=None):
     if commits == 0:
         print(f"Nada para unir: {rama} no tiene commits que main no tenga ✓")
         return 0
+
+    exigir_molde(repo, head)   # garantía 2 del molde: no se une una caja a la que le falta lo obligatorio
 
     cambiados = [p for p in git(repo, "diff", "--name-only", "-z", "--no-renames", "--ignore-submodules=none", f"{base}...{head}").stdout.split("\0")
                  if p]

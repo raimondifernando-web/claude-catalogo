@@ -57,6 +57,26 @@ Solo le llega a la persona, en UNA línea y en criollo, lo que **solo ella** pue
    `cerrar-check` avisa si el cierre es más nuevo que la lista. Si otra sesión puede estar editando: releé el archivo
    antes de crear un ID, no reescribas líneas ajenas, `git pull --rebase --autostash` y guardá solo ese archivo
    (por nombre, nunca `git add -A`). Esa lista es la fuente única: el `REANUDAR.md` la apunta, no la copia.
+3 bis. **Documentos vivos: dejalos escritos, no en plantilla** (el molde de la caja, garantía 3: docs/2026-10-18-molde-raiz.md).
+   Antes de subir (paso 5) y de escribir el prompt, hacé esto con `docs/PRD.md`, `docs/decisiones.md` y `docs/planes/` de la carpeta de
+   trabajo. **Se escriben con hechos que podés comprobar** (el `CLAUDE.md`, el README, el código, lo que se hizo y se dijo en esta
+   sesión); **nunca se inventa**. Lo que no sabés va como `Por confirmar: …` (queda a la vista y no cuenta como contenido).
+   1. Si falta alguno de los tres: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/estructura.py" arreglar --si` los crea (nunca pisa nada).
+   2. **Decisiones:** cada decisión que se tomó hoy (la que cambia cómo se trabaja, con su porqué; una idea o propuesta no es una
+      decisión) se agrega **al final** de `docs/decisiones.md`: `## AAAA-MM-DD — <decisión>` y una o dos líneas de por qué. No reescribas
+      las anteriores (otra sesión puede estar cerrando).
+   3. **Planes:** si hoy se siguió o se definió un plan por etapas, actualizá su estado en `docs/planes/AAAA-MM-DD-tema.md` (qué pasos
+      se hicieron, cuáles faltan); si la etapa terminó, mové el plan a `docs/planes/archivo/` (no se borra). Sin plan, no inventes uno.
+   4. **PRD:** si `docs/PRD.md` sigue siendo la plantilla, **escribilo ahora** (qué es la caja y para quién, cuándo está terminada, qué
+      NO se hace) y completá la cabecera (Dueño, Estado, Respaldo, Última revisión = hoy). Si ya está escrito, actualizá «Última revisión»
+      y corregí lo que esta sesión dejó viejo. Si hay código y cambió cómo está armado o por dónde se mueve la persona, actualizá
+      `docs/arquitectura.md` y `docs/flujo-de-la-app.md`.
+   5. Estos archivos entran en el guardado del paso 5 (por nombre, nunca `git add -A`). `cerrar-check` (paso 8 bis) lo comprueba con una
+      línea «Molde de la caja»: si dice ✗, el cierre no está completo; el chequeo no puede juzgar si lo que escribiste es verdad, eso lo
+      respondés vos en el ítem MANUAL.
+   **Disparador:** encadenado — es un paso de este `/cerrar` (que invoca la persona); lo vigila `cerrar-check` solo, sin que nadie se acuerde.
+   Si la carpeta no tiene producto propio (sin código ni historia) alcanza con la estructura y 3 líneas verdaderas en el PRD, o la
+   excepción escrita con motivo (`.estructura-excepciones.json`).
 4. **Handoff** (obligatorio si se modificaron 3 o más archivos o se tomaron 2 o más decisiones): escribí
    `handoffs/YYYY-MM-DD-tema.md` con la plantilla `metodo/templates/handoff.md`: estado, decisiones (con el
    porqué), próximos pasos en orden, dudas abiertas.

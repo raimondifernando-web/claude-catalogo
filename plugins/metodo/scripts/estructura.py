@@ -24,7 +24,7 @@ Subcomandos:
 - arreglar [CARPETA] [--todas] [--raiz RUTA] [--origen RUTA] [--si]   (sin --si solo muestra el plan)
 """
 import argparse
-from datetime import date
+from datetime import date, timedelta
 import json
 import unicodedata
 import os
@@ -766,6 +766,15 @@ def cargar_excepciones(carpeta: Path):
             continue
         regla, ruta = str(e.get("regla", "")).strip().upper(), str(e.get("ruta", "")).strip().strip("/") or "."
         motivo, fecha = str(e.get("motivo", "")).strip(), str(e.get("fecha", "")).strip()
+        vence = str(e.get("vence", "")).strip()   # opcional: pasada esa fecha, la excepción deja de valer sola
+        if vence:
+            try:
+                if date.fromisoformat(vence) < date.today():
+                    avisos.append(f"excepción {i} ({regla} {ruta}) venció el {vence}: ya no vale")
+                    continue
+            except ValueError:
+                avisos.append(f"excepción {i} ignorada: «vence» tiene que ser AAAA-MM-DD")
+                continue
         if not re.fullmatch(r"R\d+", regla):
             avisos.append(f"excepción {i} ignorada: falta la regla (R1, R8…)")
         elif regla in NO_EXCEPTUABLES:
@@ -1018,11 +1027,17 @@ def _lineas_de_plantilla() -> set:
     return {l.strip() for t in (PLANTILLA_PRD, LEGADO_PRD_TECNICO, PLANTILLA_DECISIONES) for l in t.splitlines() if l.strip()}
 
 
+_CABECERA_PRD = re.compile(r"^[ \t\-*_]*(Dueño|Estado|Respaldo|Última revisión)\**[ \t]*:", re.I)
+_POR_CONFIRMAR = re.compile(r"^[ \t\-*_]*por confirmar", re.I)
+
+
 def _sin_instrucciones(texto: str) -> str:
-    """El texto de un documento sin títulos, citas ni líneas de la plantilla (la plantilla sin completar queda vacía)."""
+    """El texto propio de un documento: sin títulos, citas, líneas de la plantilla, la cabecera del PRD (Dueño, Estado…: tenga o no
+    valor) ni líneas «Por confirmar» (admiten que no se sabe: quedan visibles pero no cuentan como contenido)."""
     plantilla = _lineas_de_plantilla()
     return "\n".join(l for l in texto.splitlines()
-                     if l.strip() and not l.lstrip().startswith(("#", ">", "<!--")) and l.strip() not in plantilla)
+                     if l.strip() and not l.lstrip().startswith(("#", ">", "<!--")) and l.strip() not in plantilla
+                     and not _CABECERA_PRD.match(l) and not _POR_CONFIRMAR.match(l))
 
 
 def revisar_contenido(carpeta: Path) -> list:
@@ -1585,66 +1600,264 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
 
 
 # ==============================================================================
-# 3c. REMOTO: medir lo que hay en GitHub, no en la carpeta de esta computadora
+# 3c. EL MOLDE EN UN ÁRBOL: remoto (el número «X de N»), exigir (el freno al unir) y nueva (al nacer)
+# El motor está en estructura_molde.py: mide nombres de archivo, así que vale igual para GitHub, un commit o una carpeta.
 # ==============================================================================
-_BASE_REMOTO = ("CLAUDE.md", ".claude/settings.json", ".gitignore", "docs/PRD.md", "docs/decisiones.md")
-_DESARROLLO_REMOTO = ("README.md", "docs/arquitectura.md", "docs/flujo-de-la-app.md", ARCHIVO_CLAVES_EJEMPLO)
+DIAS_ARRASTRE = 30        # plazo para completar la estructura de una caja que ya existía cuando el control la vio por primera vez
+DIAS_CAJA_VIEJA = 7       # una caja con el primer commit más viejo que esto cuenta como «ya existía»
+HOOKS_APAGADOS = (f"core.hooksPath={os.devnull}",)
+
+
+def dir_estado(arg=None) -> Path:
+    """Dónde guarda el molde su estado local (plazos de arrastre y el número «X de N»). Siempre la misma carpeta, sin importar quién
+    lo corra (un hook, el cierre o a mano): por eso NO usa la carpeta de datos del plugin, que solo existe dentro de los hooks."""
+    if arg:
+        return Path(arg)
+    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "metodo-estado"
+
+
+def _leer_json(ruta: Path, defecto):
+    try:
+        d = json.loads(ruta.read_text(encoding="utf-8"))
+        return d if isinstance(d, type(defecto)) else defecto
+    except (OSError, ValueError):
+        return defecto
+
+
+def _guardar_json(ruta: Path, datos):
+    """Escritura atómica; si no se puede, sigue (el estado es una comodidad, nunca frena)."""
+    try:
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        tmp = ruta.with_name(f".{ruta.name}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(datos, ensure_ascii=False, indent=1), encoding="utf-8")
+        os.replace(tmp, ruta)
+    except OSError:
+        pass
+
+
+def arbol_de_commit(repo: Path, ref: str):
+    """(archivos, leer, sha) de un commit: lee con git, sin ejecutar nada del repositorio (hooks apagados) ni seguir filtros.
+    Devuelve (None, None, motivo) si no se puede."""
+    code, sha = ejecutar_git("rev-parse", "--verify", "--quiet", ref + "^{commit}", cwd=repo, config=HOOKS_APAGADOS)
+    if code != 0 or not sha:
+        return None, None, f"no existe {ref}"
+    code, out = ejecutar_git("ls-tree", "-r", "--name-only", "-z", sha, cwd=repo, timeout=60, config=HOOKS_APAGADOS)
+    if code != 0:
+        return None, None, "no se pudo leer el árbol del commit"
+    archivos = {a for a in out.split("\0") if a}
+
+    def leer(ruta):
+        if ruta not in archivos:
+            return None
+        c, txt = ejecutar_git("show", f"{sha}:{ruta}", cwd=repo, timeout=30, config=HOOKS_APAGADOS)
+        return txt[:200000] if c == 0 else None
+    return archivos, leer, sha
+
+
+def _identidad_de_caja(repo: Path) -> str:
+    code, url = ejecutar_git("remote", "get-url", "origin", cwd=repo, config=HOOKS_APAGADOS)
+    return url.strip().lower().removesuffix(".git") if code == 0 and url else str(repo.resolve())
+
+
+def _fecha_primer_commit(repo: Path, sha: str):
+    code, out = ejecutar_git("log", "--max-parents=0", "--format=%cs", sha, cwd=repo, config=HOOKS_APAGADOS)
+    fechas = [f for f in (_fecha_en_nombre(x) for x in out.splitlines()) if f] if code == 0 else []
+    return min(fechas) if fechas else None
+
+
+def comando_exigir(commit="HEAD", repo_arg=None, estado_arg=None, hoy_arg=None, pr=None, contenido=False) -> int:
+    """`estructura.py exigir`: ¿este commit tiene lo OBLIGATORIO del molde? Lo corren `unir-a-main` y `unir-pr` antes de unir.
+    Salida 0 = se puede unir · 1 = falta algo (dice qué y el comando que lo arregla) · 2 = no se pudo medir (nunca frena).
+    Con `contenido=True` (lo usa el cierre, no la unión): en una caja con producto propio, un PRD o unas decisiones que siguen siendo
+    la plantilla (o un PRD sin su cabecera) también cuentan como falta: el cierre las tiene que dejar escritas."""
+    import estructura_molde as M
+    hoy = date.fromisoformat(hoy_arg) if hoy_arg else date.today()
+    try:
+        repo = Path(repo_arg).resolve() if repo_arg else Path.cwd()
+        code, top = ejecutar_git("rev-parse", "--show-toplevel", cwd=repo, config=HOOKS_APAGADOS)
+        if code != 0 or not top:
+            print("Molde: no se pudo medir (no es un repositorio git); no frena.")
+            return 2
+        repo = Path(top)
+        ref = commit
+        if pr:
+            code, _ = ejecutar_git("fetch", "--quiet", "origin", f"pull/{pr}/head", cwd=repo, timeout=60, config=HOOKS_APAGADOS)
+            if code != 0:
+                print(f"Molde: no se pudo traer el PR {pr}; no frena.")
+                return 2
+            ref = "FETCH_HEAD"
+        archivos, leer, sha = arbol_de_commit(repo, ref)
+        if archivos is None:
+            print(f"Molde: no se pudo medir ({sha}); no frena.")
+            return 2
+        m = M.medir(archivos, leer, hoy)
+    except Exception as e:   # un error del control nunca congela las uniones
+        print(f"Molde: no se pudo medir ({type(e).__name__}); no frena.")
+        return 2
+
+    # arrastre: lo que falta de ESTRUCTURA en una caja que ya existía tiene 30 días desde la primera vez que el control la ve
+    # (estado local de la compu, no del repo: no ensucia repositorios ajenos ni pide pasos manuales)
+    arrastre = None
+    if m["estructura"]:
+        primer = _fecha_primer_commit(repo, sha)
+        if primer and (hoy - primer).days > DIAS_CAJA_VIEJA:
+            archivo = dir_estado(estado_arg) / "molde-arrastre.json"
+            estado = _leer_json(archivo, {})
+            clave = _identidad_de_caja(repo)
+            e = estado.get(clave)
+            if not e:
+                e = {"desde": hoy.isoformat(), "vence": (hoy + timedelta(days=DIAS_ARRASTRE)).isoformat()}
+                estado[clave] = e
+                _guardar_json(archivo, estado)
+            try:
+                if date.fromisoformat(e["vence"]) >= hoy:
+                    arrastre = e["vence"]
+            except (KeyError, ValueError):
+                arrastre = None
+    frenan = list(m["duras"]) + ([] if arrastre else list(m["estructura"]))
+    pendiente_contenido = []
+    if contenido and m["contenido"] and necesita_documentos(repo):
+        pendiente_contenido = [{**f, "arreglo": "lo escribe el cierre (paso 3 bis de /cerrar) con lo hecho en la sesión; lo que no se sabe va como «Por confirmar»"}
+                               for f in m["contenido"]]
+        frenan += pendiente_contenido
+    for a in m["avisos"]:
+        print(f"• {a}")
+    for f in frenan:
+        print(f"✗ {f['regla']}: {f['que']} → {f['arreglo']}")
+    if arrastre:
+        for f in m["estructura"]:
+            print(f"• (plazo hasta {arrastre}) {f['regla']}: {f['que']} → {f['arreglo']}")
+    for f in m["exceptuadas"]:
+        print(f"• excepción {f['regla']}: {f['que']} (motivo: {f['motivo']})")
+    for f in m["contenido"]:
+        if f not in pendiente_contenido and not any(g["que"] == f["que"] for g in pendiente_contenido):
+            print(f"• contenido: {f['que']}")
+    if frenan:
+        print(f"Falta en el molde: {len(frenan)} cosa(s) ✗ — no se une hasta que estén (casi siempre alcanza con `{M.COMANDO_ARREGLO}`).")
+        return 1
+    print("Molde ✓" + (f" (con plazo hasta {arrastre} para completar la estructura)" if arrastre else ""))
+    return 0
 
 
 def medir_remoto(carpeta: Path, traer: bool = True) -> dict:
-    """Lo que hay en la rama principal del repositorio de la caja EN GITHUB (`git fetch` + `git ls-tree`). Solo lee: no toca
-    archivos ni ramas de trabajo (el fetch actualiza las referencias remotas). {"estado": ..., "archivos": [...]}"""
+    """Lo que hay en la rama principal del repositorio de la caja EN GITHUB (`git fetch` sin hooks + `git ls-tree`). Solo lee: no
+    toca archivos ni ramas de trabajo (el fetch actualiza las referencias remotas).
+    {"estado": ..., "archivos": [...], "leer": función}"""
+    vacio = {"archivos": [], "leer": lambda ruta: None}
     if not (carpeta / ".git").exists():
-        return {"estado": "sin .git", "archivos": []}
-    code, url = ejecutar_git("remote", "get-url", "origin", cwd=carpeta)
+        return {"estado": "sin .git", **vacio}
+    code, url = ejecutar_git("remote", "get-url", "origin", cwd=carpeta, config=HOOKS_APAGADOS)
     if code != 0 or not url:
-        return {"estado": "sin remoto", "archivos": []}
+        return {"estado": "sin remoto", **vacio}
     if traer:
-        code, _ = ejecutar_git("fetch", "--quiet", "origin", cwd=carpeta, timeout=60,
-                               config=(f"core.hooksPath={os.devnull}",))   # un hook del repositorio no corre por medir
+        code, _ = ejecutar_git("fetch", "--quiet", "origin", cwd=carpeta, timeout=60, config=HOOKS_APAGADOS)   # un hook del repositorio no corre por medir
         if code != 0:
-            return {"estado": "no se pudo traer de GitHub", "archivos": []}
+            return {"estado": "no se pudo traer de GitHub", **vacio}
     for ref in ("origin/main", "origin/master"):
-        code, _ = ejecutar_git("rev-parse", "--verify", "--quiet", ref, cwd=carpeta)
-        if code == 0:
-            code, out = ejecutar_git("ls-tree", "-r", "--name-only", ref, cwd=carpeta, timeout=60)
-            if code == 0:
-                return {"estado": "ok", "archivos": out.splitlines()}
-    return {"estado": "sin rama principal en GitHub", "archivos": []}
+        archivos, leer, sha = arbol_de_commit(carpeta, ref)
+        if archivos is not None:
+            return {"estado": "ok", "archivos": sorted(archivos), "leer": leer}
+    return {"estado": "sin rama principal en GitHub", **vacio}
 
 
-def comando_remoto(raiz_arg=None, traer: bool = True) -> int:
-    """`estructura.py remoto`: cuántas cajas tienen en GITHUB el molde completo. Es la medida de «terminado»; `revisar` mira la
-    carpeta de la computadora, que puede ir atrasada respecto de GitHub."""
+def comando_remoto(raiz_arg=None, traer: bool = True, solo_numero: bool = False, tope_segundos: float = 0, estado_arg=None) -> int:
+    """`estructura.py remoto`: cuántas cajas están COMPLETAS en GITHUB (el número único «X de N»). Es la medida de «terminado»;
+    `revisar` mira la carpeta de la computadora, que puede ir atrasada respecto de GitHub. Guarda el número en la carpeta de estado
+    (lo muestran el resumen semanal y el cierre). Con `tope_segundos`, si se acaba el tiempo no guarda un número a medias."""
+    import estructura_molde as M
+    import time
     raiz = Path(raiz_arg).resolve() if raiz_arg else (Path.home() / "Proyectos")
-    medidas = completas = con_settings = con_codigo = codigo_completo = 0
+    t0 = time.monotonic()
+    medidas = completas = sin_medir = 0
     for carpeta, _nivel, _parent in descubrir_cajas(raiz):
         rel = str(carpeta.relative_to(raiz))
+        if tope_segundos and time.monotonic() - t0 > tope_segundos:
+            sin_medir += 1
+            continue
         r = medir_remoto(carpeta, traer)
         if r["estado"] != "ok":
-            print(f"• {rel}: no se pudo medir ({r['estado']})")
+            if not solo_numero:
+                print(f"• {rel}: no se pudo medir ({r['estado']})")
+            sin_medir += 1
             continue
         medidas += 1
-        a = set(r["archivos"])
-        faltan = [x for x in _BASE_REMOTO if x not in a]
-        local_settings = carpeta / ".claude" / "settings.json"
-        if ".claude/settings.json" in faltan and local_settings.is_file() and not _settings_con_contenido(local_settings):
-            faltan.remove(".claude/settings.json")   # un settings.json vacío ({}) no tiene nada que compartir (igual que R22)
-        if not any(x.startswith("docs/planes/") for x in a):
-            faltan.append("docs/planes/")
-        con_settings += ".claude/settings.json" in a
-        codigo = hay_codigo_propio(carpeta)
-        if codigo:
-            con_codigo += 1
-            falta_dev = [x for x in _DESARROLLO_REMOTO if x not in a]
-            codigo_completo += not falta_dev
-            faltan += falta_dev
-        if not faltan:
+        m = M.medir(set(r["archivos"]), r["leer"])
+        if M.esta_completa(m):
             completas += 1
-        else:
-            print(f"• {rel}: falta en GitHub: {', '.join(faltan)}")
-    print(f"En GitHub: {medidas} cajas medidas · {completas} con el molde completo · {con_settings} con settings.json subido · "
-          f"{con_codigo} con código ({codigo_completo} con README, arquitectura, flujo y claves de ejemplo)")
+        elif not solo_numero:
+            pendientes = [f"{f['regla']} {f['que']}" for f in m["duras"] + m["estructura"] + m["contenido"]]
+            print(f"• {rel}: falta en GitHub: " + "; ".join(pendientes))
+    linea = f"{completas} de {medidas} cajas completas (en GitHub)"
+    if sin_medir:
+        linea += f" · {sin_medir} sin medir"
+    print(linea)
+    if medidas and not sin_medir:
+        _guardar_json(dir_estado(estado_arg) / "molde-numero.json",
+                      {"fecha": date.today().isoformat(), "completas": completas, "total": medidas})
+    return 0
+
+
+def numero_guardado(estado_arg=None, hoy: date = None, max_dias: int = 14):
+    """«X de N cajas completas (medido el AAAA-MM-DD)» si hay un número guardado y no es viejo; si no, None."""
+    d = _leer_json(dir_estado(estado_arg) / "molde-numero.json", {})
+    try:
+        f = date.fromisoformat(d["fecha"])
+        if ((hoy or date.today()) - f).days <= max_dias:
+            return f"Cajas completas: {d['completas']} de {d['total']} (medido el {d['fecha']})."
+    except (KeyError, ValueError, TypeError):
+        pass
+    return None
+
+
+def comando_nueva(ruta: str, nivel: str = "proyecto", codigo: bool = False, dueno: str = "") -> int:
+    """`estructura.py nueva <ruta>`: crea una caja que NACE con el molde completo (la única herramienta de caja nueva).
+    Hace carpeta + git + todos los archivos + primer commit, comprueba que pasa `exigir` y deja UN comando para GitHub."""
+    import estructura_molde as M
+    carpeta = Path(ruta).expanduser().resolve()
+    if carpeta.exists() and any(carpeta.iterdir()):
+        print(f"! {carpeta} ya existe y no está vacía: para completarla usá `estructura.py arreglar --si {carpeta}`.")
+        return 1
+    carpeta.mkdir(parents=True, exist_ok=True)
+    code, _ = ejecutar_git("init", "-q", "-b", "main", cwd=carpeta, config=HOOKS_APAGADOS)
+    if code != 0:
+        print("! no se pudo iniciar git en la carpeta nueva.")
+        return 1
+    hoy = date.today().isoformat()
+    creados = []
+    for rel, contenido, _regla in plan_seguro(carpeta, nivel, forzar_codigo=codigo):
+        if rel == "docs/PRD.md":   # la cabecera nace con lo que se sabe; lo que no, queda «Por confirmar» a la vista
+            contenido = (contenido.replace("- Dueño:\n", f"- Dueño: {dueno or 'Por confirmar'}\n")
+                         .replace("- Estado:\n", "- Estado: activa\n").replace("- Respaldo:\n", "- Respaldo: GitHub\n")
+                         .replace("- Última revisión:\n", f"- Última revisión: {hoy}\n"))
+        motivo = crear_nuevo(carpeta, rel, contenido)
+        if motivo is not None:
+            print(f"! no se creó {rel}: {motivo}")
+            return 1
+        creados.append(rel)
+    ejecutar_git("add", "--", *creados, cwd=carpeta, config=HOOKS_APAGADOS)
+    code, out = ejecutar_git("commit", "-q", "-m", "caja nueva: molde completo (estructura.py nueva)", cwd=carpeta,
+                             config=HOOKS_APAGADOS + ("commit.gpgsign=false",))
+    commit_ok = code == 0
+    print(f"+ Caja nueva en {carpeta} ({nivel}{', con código' if codigo else ''}): {len(creados)} archivos")
+    for rel in creados:
+        print(f"  + {rel}")
+    if not commit_ok:
+        print("! el primer commit no se pudo hacer (¿falta user.name/user.email de git?): los archivos están en la carpeta y en el índice.")
+    archivos, leer, sha = arbol_de_commit(carpeta, "HEAD") if commit_ok else (None, None, None)
+    if archivos is not None:
+        m = M.medir(archivos, leer)
+        if m["duras"] or m["estructura"]:
+            print("✗ la caja recién creada no pasa el molde: " + "; ".join(f["que"] for f in m["duras"] + m["estructura"]))
+            return 1
+        print("✓ Pasa el molde (estructura completa). El contenido del PRD y de las decisiones lo escribe quien la lleva, en su primer cierre.")
+    padre_remoto = ejecutar_git("remote", "get-url", "origin", cwd=carpeta.parent, config=HOOKS_APAGADOS) if (carpeta.parent / ".git").exists() else (1, "")
+    dueno_gh = None
+    if padre_remoto[0] == 0:
+        mm = re.search(r"[:/]([^/:]+)/[^/]+?(?:\.git)?/?$", padre_remoto[1])
+        dueno_gh = mm.group(1) if mm else None
+    cuenta = dueno_gh or '$(gh api user --jq .login)'
+    print("Lo único que falta es GitHub (la sesión no puede crear repositorios). UN comando:")
+    print(f'  gh repo create "{cuenta}/{carpeta.name}" --private --source "{carpeta}" --remote origin --push')
     return 0
 
 
@@ -1821,7 +2034,7 @@ def crear_nuevo(carpeta: Path, rel: str, contenido: str):
     return None
 
 
-def plan_seguro(carpeta: Path, nivel: str) -> list:
+def plan_seguro(carpeta: Path, nivel: str, forzar_codigo: bool = False) -> list:
     """Lo seguro y reversible que falta: [(ruta relativa, contenido, regla)]. Nunca incluye lo que ya existe."""
     plan = []
     if not (carpeta / "CLAUDE.md").exists():
@@ -1853,7 +2066,7 @@ def plan_seguro(carpeta: Path, nivel: str) -> list:
     # Piezas de desarrollo (R23): solo en una caja con código propio. Son esqueletos para `arreglar --si` / `completar`
     # (la persona los pide); el bucle de orden NO los crea solos: un esqueleto vacío es un archivo más que nadie lee.
     exceptuado23 = raiz_repo is not None and ("R23", ruta_en_repo(raiz_repo, carpeta)) in excepciones
-    if not exceptuado23 and hay_codigo_propio(carpeta):
+    if not exceptuado23 and (forzar_codigo or hay_codigo_propio(carpeta)):
         nombre = nombre_limpio(carpeta)
         for rel, plantilla in (("docs/arquitectura.md", PLANTILLA_ARQUITECTURA), ("docs/flujo-de-la-app.md", PLANTILLA_FLUJO),
                                ("README.md", PLANTILLA_README)):
@@ -2016,9 +2229,25 @@ def main():
     p_arreglar.add_argument("--origen", default=None, help="Ruta de ESTRUCTURA.md")
     p_arreglar.add_argument("--si", action="store_true", help="Aplica el plan (sin esto solo lo muestra)")
 
-    p_remoto = subparsers.add_parser("remoto", help="Mide cuántas cajas tienen el molde completo EN GITHUB (no en la carpeta de esta computadora)")
+    p_remoto = subparsers.add_parser("remoto", help="El número único «X de N cajas completas» medido EN GITHUB (no en la carpeta de esta computadora)")
     p_remoto.add_argument("--raiz", default=None, help="Raíz de proyectos (por defecto ~/Proyectos)")
     p_remoto.add_argument("--sin-traer", action="store_true", help="No hace git fetch: usa lo último que se trajo")
+    p_remoto.add_argument("--numero", action="store_true", help="Solo la línea «X de N» (y la guarda para el resumen y el cierre)")
+    p_remoto.add_argument("--tope", type=float, default=0, help="Segundos máximos (si se acaban, no guarda un número a medias)")
+
+    p_exigir = subparsers.add_parser("exigir", help="¿Este commit tiene lo OBLIGATORIO del molde? (lo corren unir-a-main y unir-pr antes de unir)")
+    p_exigir.add_argument("--commit", default="HEAD", help="Commit a medir (por defecto HEAD)")
+    p_exigir.add_argument("--pr", default=None, help="Número de PR: trae pull/N/head y mide ese commit")
+    p_exigir.add_argument("--repo", default=None, help="Carpeta del repositorio (por defecto la actual)")
+    p_exigir.add_argument("--estado", default=None, help="Carpeta de estado (por defecto la de metodo)")
+    p_exigir.add_argument("--hoy", default=None, help="Fecha de hoy AAAA-MM-DD (solo para pruebas)")
+    p_exigir.add_argument("--contenido", action="store_true", help="También exige PRD y decisiones escritos (lo usa el cierre)")
+
+    p_nueva = subparsers.add_parser("nueva", help="Crea una caja NUEVA con el molde completo (carpeta + git + todos los archivos + primer commit)")
+    p_nueva.add_argument("ruta", help="Carpeta de la caja nueva (no debe existir o estar vacía)")
+    p_nueva.add_argument("--nivel", default="proyecto", choices=["empresa", "area", "proyecto"])
+    p_nueva.add_argument("--codigo", action="store_true", help="La caja tendrá código: suma README, arquitectura, flujo y claves de ejemplo")
+    p_nueva.add_argument("--dueno", default="", help="Quién la lleva (va a la cabecera del PRD)")
 
     p_brief = subparsers.add_parser("brief", help="Brief listo para una sesión secundaria con lo que vale arreglar")
     p_brief.add_argument("carpeta", nargs="?", default=None, help="Carpeta (por defecto la actual)")
@@ -2056,7 +2285,11 @@ def main():
         sys.exit(O.comando_config(args.encender, args.apagar))
 
     if args.comando == "remoto":
-        sys.exit(comando_remoto(args.raiz, traer=not args.sin_traer))
+        sys.exit(comando_remoto(args.raiz, traer=not args.sin_traer, solo_numero=args.numero, tope_segundos=args.tope))
+    if args.comando == "exigir":
+        sys.exit(comando_exigir(args.commit, args.repo, args.estado, args.hoy, args.pr, args.contenido))
+    if args.comando == "nueva":
+        sys.exit(comando_nueva(args.ruta, args.nivel, args.codigo, args.dueno))
     if args.comando == "brief":
         sys.exit(comando_brief(args.carpeta))
     if args.comando == "descartar":

@@ -295,6 +295,33 @@ try:
 except Exception as e:
     print(f"• Estructura Claude: no se pudo correr estructura.py ({type(e).__name__})")
 
+# (molde de la caja) garantía 3 de docs/2026-10-18-molde-raiz.md: el cierre deja la estructura completa y, en una caja con producto
+# propio, PRD y decisiones ESCRITOS (no esqueletos). Esta línea SÍ frena el cierre. Lee el commit HEAD: corré el chequeo después de subir.
+try:
+    _r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "estructura.py"), "exigir",
+                         "--repo", cwd, "--commit", "HEAD", "--contenido"],
+                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+    _sal = [l for l in _r.stdout.splitlines() if l.strip()]
+    if _r.returncode == 1:
+        _faltas = [l for l in _sal if l.startswith("✗")]
+        linea(False, f"Molde de la caja: falta {len(_faltas)} cosa(s) — el paso 3 bis de /cerrar las deja (estructura.py arreglar --si crea lo que no existe; PRD, decisiones y planes se ESCRIBEN con lo hecho hoy)",
+              "molde de la caja (paso 3 bis)")
+        for _l in _faltas[:8]:
+            print("  " + _l)
+    elif _r.returncode == 0:
+        linea(True, "Molde de la caja: estructura completa" + (" (con plazo para lo viejo)" if "plazo" in (_sal[-1] if _sal else "") else ""))
+    else:
+        print("• Molde de la caja: no se pudo medir; no frena el cierre.")
+    try:
+        import estructura as _E
+        _n = _E.numero_guardado()
+        if _n:
+            print("• " + _n)
+    except Exception:
+        pass
+except Exception as e:
+    print(f"• Molde de la caja: no se pudo correr estructura.py ({type(e).__name__})")
+
 # (verificación propia) ramas ya mergeadas que quedaron vivas + línea de prueba del resultado (regla 1 del método)
 try:
     if git("rev-parse", "--show-toplevel"):
@@ -366,6 +393,8 @@ except Exception as e:
 # (g) lo que solo puede hacer la sesión
 print("• MANUAL (paso 3, lo durable): lo que esta sesión aprendió como regla permanente ya bajó al CLAUDE.md (o a su archivo), "
       "no solo al prompt — decí dónde fue cada cosa, o «nada»")
+print("• MANUAL (paso 3 bis, documentos vivos): ¿las decisiones de hoy (con su porqué) quedaron al final de docs/decisiones.md y el plan "
+      "de la etapa está al día en docs/planes/? Decí qué agregaste, o «nada que registrar»")
 print("• MANUAL (paso 7, contrato): la PARTE A del prompt trae ROL · ALCANCE · REGLAS con contenido real "
       "(no una línea genérica) y la PARTE B los pendientes en orden")
 
