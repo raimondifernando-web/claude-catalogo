@@ -1,5 +1,14 @@
 # metodo — qué cambia para vos
 
+## 0.51.0 — 2026-10-18
+**Cada carpeta con código tiene ahora un lugar con nombre para cada documento de desarrollo, y el revisor de carpetas los vigila.** Se aplica solo con la actualización; no hay nada que correr.
+- **Los seis documentos de desarrollo que se pidieron (PRD, TRD, flujo de la app, UI/UX, esquema de datos, plan) ya tienen su lugar:** `docs/PRD.md`, `docs/arquitectura.md` (cómo está armado), `docs/flujo-de-la-app.md`, `docs/diseno/` (pantallas como mockups), `docs/esquema/` (generado desde el código, nunca a mano) y `docs/planes/`. Más `README.md`, pruebas, `docs/operacion.md` (dónde corre, cómo se despliega y se vuelve atrás, respaldo) y las revisiones de seguridad en `.claude/security-checks/`. El PRD ahora dice quién lleva la carpeta, en qué estado está y dónde está su respaldo.
+- **Siete avisos nuevos (R22 a R28), ninguno bloquea nada:** el archivo de permisos de la carpeta, si dice algo, tiene que estar subido a GitHub (hasta hoy el control miraba solo que existiera en tu disco); en una carpeta con código, que haya README, arquitectura, flujo de la app, claves de ejemplo y pruebas; en una carpeta que se despliega, que haya operación y una revisión de seguridad de menos de 90 días; que el PRD diga dueño, estado y respaldo; y que el esquema generado no esté viejo. Cada uno aparece con su costo y su arreglo, como los demás, y no se repite.
+- **Arreglo de un punto ciego:** un PRD que era solo la plantilla pasaba como «completo» si tenía la sección técnica de ayuda. Ahora se compara contra el texto de la plantilla, la actual y la anterior.
+- **Lo que no cambia:** el arreglo automático sigue creando solo los tres documentos de toda carpeta con producto propio. Los de desarrollo (arquitectura, flujo, README, claves de ejemplo) los deja en esqueleto `estructura.py arreglar --si`, cuando vos lo pedís; nunca se crean vacíos solos. Una carpeta sin código ni historia propia sigue sin recibir avisos de documentos.
+- **Medir «terminado» en GitHub:** `estructura.py remoto` cuenta qué cajas tienen el molde completo en GitHub, no en la carpeta de tu computadora (que puede ir atrasada).
+- **Carpetas nuevas:** el `.gitignore` que se crea ya incluye `!.claude/settings.json`, para que una lista global de ignorados de tu computadora no esconda ese archivo.
+
 ## 0.50.2 — 2026-10-17
 **Al cerrar una sesión, ya no te pide correr un comando para unir el trabajo.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** en un repo sin controles en GitHub, el cierre te dejaba un comando para pegar y unir tu trabajo, y era un pedido que nadie entendía.

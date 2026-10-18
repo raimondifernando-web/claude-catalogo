@@ -299,6 +299,8 @@ def hallazgos_caja(caja: Path, nivel: str) -> list:
     except Exception:
         plan = []
     for rel, contenido, regla in plan:
+        if regla == "R23":
+            continue   # las piezas de desarrollo (README, arquitectura, flujo…) las pide la persona con `arreglar --si`: un esqueleto vacío creado solo es un archivo más que nadie lee
         if es_sensible(rel):
             h.append(dict(id=_id(str(caja), "sens", rel), grupo=3, tipo="archivo_sensible", caja=str(caja), nombre=nombre, archivo=rel,
                           evidencia=f"falta {rel}, que es de los que cambian lo que corre solo o los permisos"))

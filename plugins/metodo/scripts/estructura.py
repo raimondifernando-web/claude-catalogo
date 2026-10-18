@@ -589,6 +589,10 @@ def comando_dibujo(salida_ruta=None, origen_ruta=None):
 LIMITE_GIT = None
 
 
+ARCHIVO_CLAVES = ".env"                    # las claves de la persona (nunca a GitHub)
+ARCHIVO_CLAVES_EJEMPLO = ".env.example"    # qué claves hacen falta, sin valores (sí a GitHub)
+
+
 def ejecutar_git(*args, cwd=None, timeout=10, config=()):
     """Ejecuta comando git con subprocess, sin shell y con -c core.fsmonitor=.
     `config`: pares «clave=valor» extra para `-c` (el bucle de orden apaga los hooks); `timeout` en segundos."""
@@ -677,11 +681,11 @@ def tiene_codigo(carpeta: Path) -> bool:
     return False
 
 
-def necesita_documentos(carpeta: Path) -> bool:
-    """¿La caja tiene un producto propio que documentar (PRD, decisiones, planes)? Sí si tiene código de aplicación (en la
-    raíz, en src/app, o al menos 5 archivos de código a dos niveles, sin contar `scripts/` ni `docs/`) o un historial de más de
-    100 commits propios. Una caja de paso, de consultoría o contenedora no los necesita: sería crear archivos que nadie lee.
-    Barato: nunca recorre más de dos niveles ni entra a carpetas ocultas o de dependencias."""
+def hay_codigo_propio(carpeta: Path) -> bool:
+    """¿La caja tiene un programa propio (código de aplicación)? Las señales de `tiene_codigo`, o al menos 5 archivos de
+    código a dos niveles sin contar `scripts/`, `docs/` ni `tests/`. Es la medida para pedir README, arquitectura, pruebas y
+    operación: una caja de consultoría con mucho historial pero sin programa no los necesita. Barato: nunca recorre más de
+    dos niveles ni entra a carpetas ocultas o de dependencias."""
     if tiene_codigo(carpeta):
         return True
     saltar = {"node_modules", "venv", ".venv", "dist", "build", "__pycache__", "graphify-out", "scripts", "docs", "tests"}
@@ -689,7 +693,9 @@ def necesita_documentos(carpeta: Path) -> bool:
     try:
         base = len(carpeta.parts)
         for raiz_d, dirs, archivos in os.walk(carpeta):
-            dirs[:] = [d for d in dirs if not d.startswith(".") and d not in saltar and not (Path(raiz_d) / d).is_symlink()]
+            # no entra a las cajas de adentro (tienen su propio .git): el código de una caja hija es de ella, no de la que la contiene
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d not in saltar and not (Path(raiz_d) / d).is_symlink()
+                       and not (Path(raiz_d) / d / ".git").exists()]
             if len(Path(raiz_d).parts) - base >= 2:
                 dirs[:] = []
             cuenta += sum(1 for a in archivos if Path(a).suffix.lower() in EXTENSIONES_CODIGO)
@@ -697,6 +703,15 @@ def necesita_documentos(carpeta: Path) -> bool:
                 return True
     except OSError:
         pass
+    return False
+
+
+def necesita_documentos(carpeta: Path) -> bool:
+    """¿La caja tiene un producto propio que documentar (PRD, decisiones, planes)? Sí si tiene código de aplicación
+    (`hay_codigo_propio`) o un historial de más de 100 commits propios. Una caja de paso, de consultoría o contenedora no los
+    necesita: sería crear archivos que nadie lee."""
+    if hay_codigo_propio(carpeta):
+        return True
     if (carpeta / ".git").exists():
         code, out = ejecutar_git("rev-list", "--count", "HEAD", cwd=carpeta)
         return code == 0 and out.strip().isdigit() and int(out.strip()) > 100
@@ -783,6 +798,134 @@ def faltan_documentos_vivos(carpeta: Path) -> list:
 
 
 # ==============================================================================
+# 3a. PIEZAS DE DESARROLLO (R22-R28): lo que una caja con código necesita para que otra persona (o la nube) la entienda,
+# la levante y la opere. Todo mecánico y barato (sin IA). Solo avisos: el consejo decide si vale una sesión.
+# ==============================================================================
+DIAS_REVISION_SEGURIDAD = 90
+DIAS_ESQUEMA_VIEJO = 30
+
+
+def _settings_con_contenido(ruta: Path) -> bool:
+    """¿El settings.json dice algo (permisos, paquetes, hooks)? Un `{}` no. Si no se puede leer, se considera que sí (ante la duda, se mide)."""
+    try:
+        d = json.loads(ruta.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return True
+    return not (isinstance(d, dict) and not d)
+_SENALES_DESPLIEGUE = ("Dockerfile", "docker-compose.yml", "docker-compose.yaml", "vercel.json", "fly.toml", "render.yaml",
+                       "Procfile", "netlify.toml")
+_PARTES_OPERACION = (("dónde corre", "dónde corre"), ("cómo se despliega", "desplieg"), ("claves", "clave"),
+                     ("datos y respaldo", "respaldo"))
+_PATRON_PRUEBA = re.compile(r"(^test_.*\.py$)|(_test\.[a-z]+$)|(\.(test|spec)\.[a-z]+$)", re.I)
+
+
+def _recorrer(carpeta: Path, profundidad: int, ocultas=False):
+    """Archivos de una caja hasta cierta profundidad, sin carpetas ocultas, de dependencias ni enlaces."""
+    saltar = {"node_modules", "venv", ".venv", "dist", "build", "__pycache__", "graphify-out"}
+    base = len(carpeta.parts)
+    for raiz_d, dirs, archivos in os.walk(carpeta):
+        dirs[:] = [d for d in dirs if (ocultas or not d.startswith(".")) and d not in saltar and not (Path(raiz_d) / d).is_symlink()
+                   and not (Path(raiz_d) / d / ".git").exists()]   # las cajas de adentro tienen lo suyo
+        if len(Path(raiz_d).parts) - base >= profundidad:
+            dirs[:] = []
+        yield Path(raiz_d), list(dirs), archivos
+
+
+def se_despliega(carpeta: Path) -> bool:
+    """¿La caja corre en un servidor o servicio (no solo en la Mac)? Señales de archivo, en la raíz o un nivel adentro."""
+    try:
+        for n in _SENALES_DESPLIEGUE:
+            if (carpeta / n).is_file() or any(not (d.parent / ".git").exists() for d in carpeta.glob(f"*/{n}")):
+                return True
+        wf = carpeta / ".github" / "workflows"
+        if wf.is_dir() and any(re.search(r"deploy|despleg|release|publish", f.name, re.I) for f in wf.iterdir()):
+            return True
+        return any(carpeta.glob("*.plist"))
+    except OSError:
+        return False
+
+
+def hay_pruebas(carpeta: Path) -> bool:
+    """¿Hay pruebas? Una carpeta tests/test/__tests__ o archivos test_*.py, *_test.*, *.test.*, *.spec.* (hasta 3 niveles)."""
+    try:
+        for _raiz, dirs, archivos in _recorrer(carpeta, 3):
+            if any(d in ("tests", "test", "__tests__") for d in dirs) or any(_PATRON_PRUEBA.search(a) for a in archivos):
+                return True
+    except OSError:
+        pass
+    return False
+
+
+def _fecha_en_nombre(nombre: str):
+    m = re.search(r"(\d{4}-\d{2}-\d{2})", nombre)
+    try:
+        return date.fromisoformat(m.group(1)) if m else None
+    except ValueError:
+        return None
+
+
+def revision_seguridad_mas_nueva(carpeta: Path):
+    """Fecha de la revisión de seguridad registrada más nueva (`.claude/security-checks/AAAA-MM-DD…md`), o None."""
+    d = carpeta / ".claude" / "security-checks"
+    try:
+        fechas = [f for f in (_fecha_en_nombre(x.name) for x in d.iterdir() if x.is_file()) if f]
+    except OSError:
+        return None
+    return max(fechas) if fechas else None
+
+
+def revisar_desarrollo(carpeta: Path) -> list:
+    """R23-R26 y R28. Retorna [(tipo, id, mensaje)] (todos «aviso»)."""
+    h = []
+    codigo = hay_codigo_propio(carpeta)
+    despliega = se_despliega(carpeta)
+    if codigo:
+        # R23: README, arquitectura (TRD), flujo de la app y qué claves hacen falta
+        faltan = [rel for rel in ("README.md", "docs/arquitectura.md", "docs/flujo-de-la-app.md", ARCHIVO_CLAVES_EJEMPLO)
+                  if not (carpeta / rel).is_file()]
+        if faltan:
+            h.append(("aviso", "R23", "la caja tiene código y le faltan: " + ", ".join(faltan)))
+        # R24: pruebas, y que alguien diga cómo correrlas
+        if not hay_pruebas(carpeta):
+            h.append(("aviso", "R24", "la caja tiene código pero no se encontraron pruebas"))
+        elif not any(re.search(r"prueba|test", _lee(carpeta / n), re.I) for n in ("README.md", "CLAUDE.md")):
+            h.append(("aviso", "R24", "tiene pruebas pero ni el README ni el CLAUDE.md dicen cómo correrlas"))
+    if despliega:
+        # R25: operación
+        op = carpeta / "docs" / "operacion.md"
+        if not op.is_file():
+            h.append(("aviso", "R25", "la caja se despliega pero falta docs/operacion.md (dónde corre, cómo se despliega y se vuelve atrás, claves, datos y respaldo)"))
+        else:
+            titulos = " ".join(l.lower() for l in _lee(op).splitlines() if l.lstrip().startswith("#"))
+            sin = [nombre for nombre, clave in _PARTES_OPERACION if clave not in titulos]
+            if sin:
+                h.append(("aviso", "R25", "docs/operacion.md no tiene estas partes: " + ", ".join(sin)))
+    if codigo or despliega:
+        # R26: una revisión de seguridad registrada y reciente
+        if despliega or (carpeta / ARCHIVO_CLAVES).exists() or (carpeta / ARCHIVO_CLAVES_EJEMPLO).exists():
+            ultima = revision_seguridad_mas_nueva(carpeta)
+            if ultima is None:
+                h.append(("aviso", "R26", "se despliega o usa claves y no hay ninguna revisión de seguridad registrada en .claude/security-checks/"))
+            elif (date.today() - ultima).days > DIAS_REVISION_SEGURIDAD:
+                h.append(("aviso", "R26", f"la última revisión de seguridad registrada es del {ultima.isoformat()} (más de {DIAS_REVISION_SEGURIDAD} días)"))
+    # R28: lo generado dice con qué comando y cuándo se generó, y no quedó viejo respecto del código
+    esquema = carpeta / "docs" / "esquema"
+    if esquema.is_dir():
+        txt = _lee(esquema / "LEEME.md")
+        comando = re.search(r"(?im)^\W*comando\s*:\s*\S", txt)
+        fecha = re.search(r"(?im)^\W*fecha\s*:\s*(\d{4}-\d{2}-\d{2})", txt)
+        if not (comando and fecha):
+            h.append(("aviso", "R28", "docs/esquema/ no tiene un LEEME.md con «Comando:» y «Fecha: AAAA-MM-DD» (cómo y cuándo se generó)"))
+        elif (carpeta / ".git").exists():
+            generado = _fecha_en_nombre(fecha.group(1))
+            code, out = ejecutar_git("log", "-1", "--format=%cs", "--", ".", ":(exclude)docs", cwd=carpeta)
+            codigo_cambio = _fecha_en_nombre(out) if code == 0 and out else None
+            if generado and codigo_cambio and (codigo_cambio - generado).days > DIAS_ESQUEMA_VIEJO:
+                h.append(("aviso", "R28", f"docs/esquema/ se generó el {generado.isoformat()} y el código cambió después (el {codigo_cambio.isoformat()}): volver a generarlo"))
+    return h
+
+
+# ==============================================================================
 # 3b. CONTENIDO (R13-R18): que lo escrito en los archivos sea correcto, no solo que el archivo exista
 # ==============================================================================
 # Todo mecánico (sin IA). Lo que pide juicio (¿el CLAUDE.md dice algo contradictorio?) no se mide acá.
@@ -857,9 +1000,16 @@ def _agentes_conocidos(carpeta: Path) -> set:
     return nombres
 
 
+def _lineas_de_plantilla() -> set:
+    """Las líneas de las plantillas de PRD y decisiones (también la versión anterior, con la sección técnica adentro)."""
+    return {l.strip() for t in (PLANTILLA_PRD, LEGADO_PRD_TECNICO, PLANTILLA_DECISIONES) for l in t.splitlines() if l.strip()}
+
+
 def _sin_instrucciones(texto: str) -> str:
-    """El texto de un documento sin títulos ni citas (la plantilla sin completar queda vacía)."""
-    return "\n".join(l for l in texto.splitlines() if l.strip() and not l.lstrip().startswith(("#", ">", "<!--")))
+    """El texto de un documento sin títulos, citas ni líneas de la plantilla (la plantilla sin completar queda vacía)."""
+    plantilla = _lineas_de_plantilla()
+    return "\n".join(l for l in texto.splitlines()
+                     if l.strip() and not l.lstrip().startswith(("#", ">", "<!--")) and l.strip() not in plantilla)
 
 
 def revisar_contenido(carpeta: Path) -> list:
@@ -910,11 +1060,20 @@ def _contenido_claude_md(carpeta: Path) -> list:
 
 def _contenido_documentos(carpeta: Path) -> list:
     h = []
-    # R16: documentos vivos que siguen siendo la plantilla
+    # R16: documentos vivos que siguen siendo la plantilla (se compara contra las líneas de la plantilla, no solo contra
+    # títulos y citas: antes, las frases de ayuda de la sección técnica contaban como contenido propio)
     vacios = [rel for rel in ("docs/PRD.md", "docs/decisiones.md")
               if (carpeta / rel).is_file() and len(_sin_instrucciones(_lee(carpeta / rel))) < 40]
     if vacios:
         h.append(("aviso", "R16", "siguen sin completar (solo la plantilla): " + ", ".join(vacios)))
+    # R27: un PRD ya escrito dice quién lleva la caja, en qué estado está y dónde está su respaldo
+    prd = carpeta / "docs" / "PRD.md"
+    if prd.is_file() and "docs/PRD.md" not in vacios:
+        txt = _lee(prd)
+        sin = [etq for etq in ("Dueño", "Estado", "Respaldo", "Última revisión")
+               if not re.search(r"(?im)^[ \t\-*_]*" + etq + r"\**[ \t]*:[ \t]*\**[ \t]*\S", txt)]
+        if sin:
+            h.append(("aviso", "R27", "docs/PRD.md no dice: " + ", ".join(sin)))
     return h
 
 
@@ -1030,6 +1189,20 @@ def _revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
         except Exception:
             hallazgos.append(("error", "R4", ".claude/settings.json tiene JSON inválido"))
 
+    # R22: settings.json está subido a GitHub (existir en el disco no alcanza: si no se sube, no llega a otra persona,
+    # a la nube ni a una Mac nueva). Lo más común: un ignore global de la persona lo oculta.
+    # Un settings.json vacío ({}) no tiene nada que compartir: avisar por él sería ruido (28 de las 33 cajas lo tienen así).
+    if settings_json.is_file() and git_dir.exists() and shutil.which("git") and _settings_con_contenido(settings_json):
+        code, out = ejecutar_git("ls-files", "--", ".claude/settings.json", cwd=carpeta)
+        if code == 0 and not out:
+            c2, v = ejecutar_git("check-ignore", "-v", ".claude/settings.json", cwd=carpeta)
+            causa = ""
+            if c2 == 0 and v:
+                fuente = v.split("\t")[0].rsplit(":", 2)[0]   # «archivo:línea:patrón»
+                causa = (" (lo oculta la lista global de ignorados de esta Mac)" if Path(fuente).is_absolute()
+                         else " (lo oculta el .gitignore de la caja)")
+            hallazgos.append(("aviso", "R22", f".claude/settings.json existe pero no está subido a GitHub{causa}: no llega a otra persona, a la nube ni a una Mac nueva"))
+
     # R5: Tiene .gitignore
     gitignore = carpeta / ".gitignore"
     if not gitignore.is_file():
@@ -1110,7 +1283,13 @@ def _revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
     if faltan:
         hallazgos.append(("aviso", "R12", "faltan los documentos vivos: " + ", ".join(faltan)))
 
-    # R13-R18: el contenido de los archivos (rutas, conteos, agentes, documentos, pendientes, reanudación)
+    # R23-R26 y R28: las piezas de desarrollo (solo si hay código, despliegue o esquema generado)
+    try:
+        hallazgos.extend(revisar_desarrollo(carpeta))
+    except Exception as e:   # el control nunca rompe un arranque
+        hallazgos.append(("aviso", "R23", f"no se pudo revisar las piezas de desarrollo ({type(e).__name__})"))
+
+    # R13-R18 y R27: el contenido de los archivos (rutas, conteos, agentes, documentos, pendientes, reanudación)
     try:
         hallazgos.extend(revisar_contenido(carpeta))
     except Exception as e:   # el control nunca rompe un arranque
@@ -1394,6 +1573,69 @@ def comando_revisar(carpeta_arg=None, todas=False, nivel_arg=None, aviso=False, 
 
 
 # ==============================================================================
+# 3c. REMOTO: medir lo que hay en GitHub, no en la carpeta de esta computadora
+# ==============================================================================
+_BASE_REMOTO = ("CLAUDE.md", ".claude/settings.json", ".gitignore", "docs/PRD.md", "docs/decisiones.md")
+_DESARROLLO_REMOTO = ("README.md", "docs/arquitectura.md", "docs/flujo-de-la-app.md", ARCHIVO_CLAVES_EJEMPLO)
+
+
+def medir_remoto(carpeta: Path, traer: bool = True) -> dict:
+    """Lo que hay en la rama principal del repositorio de la caja EN GITHUB (`git fetch` + `git ls-tree`). Solo lee: no toca
+    archivos ni ramas de trabajo (el fetch actualiza las referencias remotas). {"estado": ..., "archivos": [...]}"""
+    if not (carpeta / ".git").exists():
+        return {"estado": "sin .git", "archivos": []}
+    code, url = ejecutar_git("remote", "get-url", "origin", cwd=carpeta)
+    if code != 0 or not url:
+        return {"estado": "sin remoto", "archivos": []}
+    if traer:
+        code, _ = ejecutar_git("fetch", "--quiet", "origin", cwd=carpeta, timeout=60)
+        if code != 0:
+            return {"estado": "no se pudo traer de GitHub", "archivos": []}
+    for ref in ("origin/main", "origin/master"):
+        code, _ = ejecutar_git("rev-parse", "--verify", "--quiet", ref, cwd=carpeta)
+        if code == 0:
+            code, out = ejecutar_git("ls-tree", "-r", "--name-only", ref, cwd=carpeta, timeout=60)
+            if code == 0:
+                return {"estado": "ok", "archivos": out.splitlines()}
+    return {"estado": "sin rama principal en GitHub", "archivos": []}
+
+
+def comando_remoto(raiz_arg=None, traer: bool = True) -> int:
+    """`estructura.py remoto`: cuántas cajas tienen en GITHUB el molde completo. Es la medida de «terminado»; `revisar` mira la
+    carpeta de la computadora, que puede ir atrasada respecto de GitHub."""
+    raiz = Path(raiz_arg).resolve() if raiz_arg else (Path.home() / "Proyectos")
+    medidas = completas = con_settings = con_codigo = codigo_completo = 0
+    for carpeta, _nivel, _parent in descubrir_cajas(raiz):
+        rel = str(carpeta.relative_to(raiz))
+        r = medir_remoto(carpeta, traer)
+        if r["estado"] != "ok":
+            print(f"• {rel}: no se pudo medir ({r['estado']})")
+            continue
+        medidas += 1
+        a = set(r["archivos"])
+        faltan = [x for x in _BASE_REMOTO if x not in a]
+        local_settings = carpeta / ".claude" / "settings.json"
+        if ".claude/settings.json" in faltan and local_settings.is_file() and not _settings_con_contenido(local_settings):
+            faltan.remove(".claude/settings.json")   # un settings.json vacío ({}) no tiene nada que compartir (igual que R22)
+        if not any(x.startswith("docs/planes/") for x in a):
+            faltan.append("docs/planes/")
+        con_settings += ".claude/settings.json" in a
+        codigo = hay_codigo_propio(carpeta)
+        if codigo:
+            con_codigo += 1
+            falta_dev = [x for x in _DESARROLLO_REMOTO if x not in a]
+            codigo_completo += not falta_dev
+            faltan += falta_dev
+        if not faltan:
+            completas += 1
+        else:
+            print(f"• {rel}: falta en GitHub: {', '.join(faltan)}")
+    print(f"En GitHub: {medidas} cajas medidas · {completas} con el molde completo · {con_settings} con settings.json subido · "
+          f"{con_codigo} con código ({codigo_completo} con README, arquitectura, flujo y claves de ejemplo)")
+    return 0
+
+
+# ==============================================================================
 # 4. COMPLETAR (CREAR LO OBLIGATORIO)
 # ==============================================================================
 
@@ -1428,8 +1670,15 @@ def nombres_de_env(env_file: Path) -> list:
 PLANTILLA_PRD = """# {nombre} — PRD
 
 > Documento vivo: qué es esta caja. Lo completa quien la lleva con Claude; no se inventa nada.
-> Acá se guarda: qué es, para quién, cuándo está terminada y qué NO se hace. Una decisión va en docs/decisiones.md;
-> un plan de etapa, en docs/planes/.
+> Acá se guarda: quién la lleva, qué es, para quién, cuándo está terminada y qué NO se hace. Una decisión va en
+> docs/decisiones.md; un plan de etapa, en docs/planes/. Si la caja tiene código: cómo está armada va en
+> docs/arquitectura.md y cómo se mueve la persona por la app, en docs/flujo-de-la-app.md.
+> Estado: activa, dormida o archivada. Respaldo: dónde está la copia además de GitHub (Drive, disco externo, ninguna).
+
+- Dueño:
+- Estado:
+- Respaldo:
+- Última revisión:
 
 ## Qué es y para quién
 
@@ -1438,12 +1687,68 @@ PLANTILLA_PRD = """# {nombre} — PRD
 ## Qué NO se hace
 """
 
-PLANTILLA_PRD_TECNICO = """
+# Texto de las versiones anteriores de la plantilla (la sección técnica vivía dentro del PRD): sirve para reconocer
+# como «sin completar» los PRD ya creados con ese texto.
+LEGADO_PRD_TECNICO = """
 ## Sección técnica (TRD)
 Cómo está armado: piezas, dependencias, dónde corre. El esquema de datos se genera desde el código, no se escribe a mano.
 
 ## Flujo de la app
 Diagrama de cómo se mueve la persona por la app. Las pantallas van como mockups (Figma o HTML), no como texto.
+"""
+
+PLANTILLA_ARQUITECTURA = """# {nombre} — Arquitectura (TRD)
+
+> Cómo está armado por dentro. Lo completa quien lleva la caja a partir del código; no se inventa nada.
+> El esquema de datos NO se escribe a mano: se genera desde el código y va en docs/esquema/.
+> El recorrido de la persona por la app va en docs/flujo-de-la-app.md; el diseño de pantallas, en docs/diseno/.
+
+## Piezas
+Qué partes tiene y qué hace cada una.
+
+## Dependencias y servicios externos
+De qué depende y qué pasa si se cae.
+
+## Dónde corre
+Dónde vive (esta Mac, un servidor, un servicio en internet) y cómo se entra. Cómo se despliega va en docs/operacion.md.
+"""
+
+PLANTILLA_FLUJO = """# {nombre} — Flujo de la app
+
+> Cómo se mueve la persona por la app, paso a paso: por dónde entra, qué ve, qué decide, adónde llega.
+> Va como diagrama (Mermaid, que GitHub dibuja solo) o como lista de pasos. Las pantallas se dibujan en
+> docs/diseno/ (mockups: HTML o enlace a Figma), no acá.
+
+## Recorrido principal
+```mermaid
+flowchart TD
+    A[Entra] --> B[Hace algo] --> C[Llega a un resultado]
+```
+"""
+
+PLANTILLA_README = """# {nombre}
+
+Qué es, en una frase.
+
+## Cómo se levanta
+
+## Cómo se prueba
+
+## Dónde está cada cosa
+Ver `docs/PRD.md` (qué es), `docs/arquitectura.md` (cómo está armado) y `docs/decisiones.md` (qué se decidió y por qué).
+"""
+
+PLANTILLA_ENV_EJEMPLO = """# Nombres de las claves y variables que necesita esta caja, SIN los valores. Una por línea: NOMBRE=
+# Si no usa ninguna, dejar solo este comentario.
+"""
+
+DONDE_VA = """# Dónde va cada cosa en esta caja
+Qué es, para quién y quién la lleva → `docs/PRD.md` · Decisiones con fecha y el porqué → `docs/decisiones.md` · Un plan por etapa → `docs/planes/AAAA-MM-DD-tema.md`
+Cómo está armado (TRD) → `docs/arquitectura.md` · Cómo se mueve la persona por la app → `docs/flujo-de-la-app.md` · Pantallas (mockups, Figma) → `docs/diseno/`
+Esquema de datos y API, GENERADOS desde el código → `docs/esquema/` (con el comando y la fecha) · Qué debe hacer cada funcionalidad → `docs/specs/`
+Dónde corre, cómo se despliega y se vuelve atrás, claves (solo nombres), datos y respaldo → `docs/operacion.md`
+Revisiones de seguridad → `.claude/security-checks/AAAA-MM-DD.md` · Pruebas → `tests/` (y cómo correrlas, en el README) · Claves que hacen falta (sin valores) → `.env.example`
+Nunca: valores de claves en ningún archivo · un esquema de datos escrito a mano · un documento nuevo si ya hay uno para esa cosa.
 """
 
 PLANTILLA_DECISIONES = """# {nombre} — Decisiones
@@ -1472,6 +1777,7 @@ Reglas de trabajo.
 - Qué es esta caja, para quién, cuándo está terminada y qué NO se hace → `docs/PRD.md`
 - Una decisión (con fecha y el porqué) → `docs/decisiones.md`
 - El plan de una etapa → `docs/planes/AAAA-MM-DD-tema.md` (al terminar la etapa, se archiva)
+- Si la caja tiene código: cómo está armado → `docs/arquitectura.md`; cómo se mueve la persona por la app → `docs/flujo-de-la-app.md`; pantallas (mockups) → `docs/diseno/`; esquema de datos (generado, nunca a mano) → `docs/esquema/`; dónde corre y cómo se despliega → `docs/operacion.md`
 - Las claves nunca van en los documentos: van en `.env` (que no se sube a GitHub).
 """
 
@@ -1510,7 +1816,9 @@ def plan_seguro(carpeta: Path, nivel: str) -> list:
     if not (carpeta / ".claude" / "settings.json").exists():
         plan.append((".claude/settings.json", "{}\n", "R4"))
     if not (carpeta / ".gitignore").exists():
-        lineas_gi = [".env", ".claude/settings.local.json", "CLAUDE.local.md"]
+        lineas_gi = [".env", ".claude/settings.local.json", "CLAUDE.local.md",
+                     "# settings.json SÍ se sube (permisos y paquetes de la caja); esta línea le gana a un ignore global de la persona",
+                     "!.claude/settings.json"]
         if nivel in ("empresa", "area"):
             lineas_gi.extend(["", "# Cajas de adentro: cada una tiene su propio repositorio",
                               "/*/", "!/.claude/", "!/plugins/", "!/docs/"])
@@ -1524,14 +1832,24 @@ def plan_seguro(carpeta: Path, nivel: str) -> list:
     if raiz_repo is not None:
         exceptuado = ("R12", ruta_en_repo(raiz_repo, carpeta)) in excepciones
     if not exceptuado and not (carpeta / "docs" / "PRD.md").exists():
-        prd = PLANTILLA_PRD.format(nombre=nombre_limpio(carpeta))
-        if tiene_codigo(carpeta):
-            prd += PLANTILLA_PRD_TECNICO
-        plan.append(("docs/PRD.md", prd, "R12"))
+        plan.append(("docs/PRD.md", PLANTILLA_PRD.format(nombre=nombre_limpio(carpeta)), "R12"))
     if not exceptuado and not (carpeta / "docs" / "decisiones.md").exists():
         plan.append(("docs/decisiones.md", PLANTILLA_DECISIONES.format(nombre=nombre_limpio(carpeta)), "R12"))
     if not exceptuado and not (carpeta / "docs" / "planes").exists():
         plan.append(("docs/planes/README.md", README_PLANES, "R12"))
+    # Piezas de desarrollo (R23): solo en una caja con código propio. Son esqueletos para `arreglar --si` / `completar`
+    # (la persona los pide); el bucle de orden NO los crea solos: un esqueleto vacío es un archivo más que nadie lee.
+    exceptuado23 = raiz_repo is not None and ("R23", ruta_en_repo(raiz_repo, carpeta)) in excepciones
+    if not exceptuado23 and hay_codigo_propio(carpeta):
+        nombre = nombre_limpio(carpeta)
+        for rel, plantilla in (("docs/arquitectura.md", PLANTILLA_ARQUITECTURA), ("docs/flujo-de-la-app.md", PLANTILLA_FLUJO),
+                               ("README.md", PLANTILLA_README)):
+            if not (carpeta / rel).exists():
+                plan.append((rel, plantilla.format(nombre=nombre), "R23"))
+        if not (carpeta / ARCHIVO_CLAVES_EJEMPLO).exists() and not (carpeta / ARCHIVO_CLAVES).exists():   # con claves reales ya lo cubre R7
+            plan.append((ARCHIVO_CLAVES_EJEMPLO, PLANTILLA_ENV_EJEMPLO, "R23"))
+        if not (carpeta / ".claude" / "rules" / "donde-va-cada-cosa.md").exists():
+            plan.append((".claude/rules/donde-va-cada-cosa.md", DONDE_VA, "R23"))
     return plan
 
 
@@ -1685,6 +2003,10 @@ def main():
     p_arreglar.add_argument("--origen", default=None, help="Ruta de ESTRUCTURA.md")
     p_arreglar.add_argument("--si", action="store_true", help="Aplica el plan (sin esto solo lo muestra)")
 
+    p_remoto = subparsers.add_parser("remoto", help="Mide cuántas cajas tienen el molde completo EN GITHUB (no en la carpeta de esta computadora)")
+    p_remoto.add_argument("--raiz", default=None, help="Raíz de proyectos (por defecto ~/Proyectos)")
+    p_remoto.add_argument("--sin-traer", action="store_true", help="No hace git fetch: usa lo último que se trajo")
+
     p_brief = subparsers.add_parser("brief", help="Brief listo para una sesión secundaria con lo que vale arreglar")
     p_brief.add_argument("carpeta", nargs="?", default=None, help="Carpeta (por defecto la actual)")
     p_desc = subparsers.add_parser("descartar", help="Anota que un aviso se decidió no hacer (no vuelve a aparecer)")
@@ -1720,6 +2042,8 @@ def main():
             sys.exit(O.comando_resumen(raiz_arg=args.raiz))
         sys.exit(O.comando_config(args.encender, args.apagar))
 
+    if args.comando == "remoto":
+        sys.exit(comando_remoto(args.raiz, traer=not args.sin_traer))
     if args.comando == "brief":
         sys.exit(comando_brief(args.carpeta))
     if args.comando == "descartar":

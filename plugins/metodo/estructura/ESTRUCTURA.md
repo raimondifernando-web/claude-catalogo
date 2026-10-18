@@ -30,16 +30,28 @@ persona) · **Obligatorio** (sí · no · condición) · **Baja** (llega a las c
 |---|---|---|---|---|---|---|
 | `.git/` | la conexión con GitHub (carpeta oculta): sabe de qué repositorio vino y adónde subir; se crea al descargar | E A P | — | sí, con remoto | no | git |
 | `CLAUDE.md` | reglas de esa caja | E A P | sí | sí | sí | memory |
-| `.claude/settings.json` | permisos de esa caja y qué paquetes activa | E A P | sí | sí | no | settings |
+| `.claude/settings.json` | permisos de esa caja y qué paquetes activa; **tiene que estar subido a GitHub**: si queda solo en el disco, no llega a otra persona, a la nube ni a una Mac nueva | E A P | sí | sí | no | settings |
 | `.claude/skills/` | habilidades para trabajar en esa caja | E A P | sí | no | no | skills |
 | `.claude/agents/` | asistentes para trabajar en esa caja | E A P | sí | no | no | sub-agents |
 | `.claude/rules/` | reglas por tema, que se leen cuando hacen falta | E A P | sí | no | no | memory |
 | `.mcp.json` | conectores para trabajar en esa caja | E A P | sí | no | no | mcp |
 | `docs/` | documentos | E A P | sí | no | no | — |
-| `docs/PRD.md` | el documento vivo de la caja: qué es, para quién, cuándo está terminada y qué NO se hace. Si la caja tiene código, lleva además una sección técnica (cómo está armado: es el TRD) y un diagrama de flujo (cómo se mueve la persona por la app) | E A P | sí | sí | no | — |
+| `docs/PRD.md` | el documento vivo de la caja: quién la lleva, en qué estado está (activa, dormida o archivada), dónde está su respaldo, qué es, para quién, cuándo está terminada y qué NO se hace | E A P | sí | sí | no | — |
 | `docs/decisiones.md` | el registro de decisiones: cada una con fecha y el porqué, para no volver a discutirla | E A P | sí | sí | no | — |
 | `docs/planes/` | un plan por etapa de trabajo, nombrado `AAAA-MM-DD-tema.md`; cuando la etapa termina, el plan se archiva | E A P | sí | sí | no | — |
-| `.env.example` | qué claves hacen falta, sin los valores | E A P | sí | si hay .env | no | — |
+| `docs/arquitectura.md` | cómo está armado por dentro (es el TRD): piezas, dependencias, dónde corre | P | sí | si hay código | no | — |
+| `docs/flujo-de-la-app.md` | cómo se mueve la persona por la app, paso a paso, en un diagrama | P | sí | si hay código | no | — |
+| `docs/diseno/` | el diseño de pantallas: mockups (HTML) y enlaces a Figma; nunca texto | P | sí | no (si hay pantallas) | no | — |
+| `docs/esquema/` | el esquema de datos y el contrato de la API, generados desde el código, con el comando que los genera y la fecha | P | sí | no (si hay base de datos o API) | no | — |
+| `docs/operacion.md` | dónde corre, cómo se despliega y se vuelve atrás, qué claves usa (solo los nombres), dónde están los datos y su respaldo | P | sí | si se despliega | no | — |
+| `docs/specs/` | una especificación por funcionalidad, `AAAA-MM-DD-tema.md` (qué debe hacer; los pasos van en `planes/`) | P | sí | no | no | — |
+| `README.md` | para personas: qué es y cómo se levanta y se prueba | P | sí | si hay código | no | — |
+| `tests/` | las pruebas; el README o el `CLAUDE.md` dice cómo correrlas | P | sí | si hay código | no | — |
+| `.claude/security-checks/` | registro de las revisiones de seguridad, `AAAA-MM-DD.md`, sin valores de claves | P | sí | si se despliega o usa claves | no | — |
+| `.claude/rules/donde-va-cada-cosa.md` | el mapa de la caja: dónde se guarda cada pieza y con qué nombre | P | sí | si hay código | no | memory |
+| `.claude/PENDIENTES.md` | la lista de pendientes de la caja; la crea y mantiene `/pendientes`, no se escribe a mano | E A P | sí | no | no | — |
+| `.claude/prompts/REANUDAR.md` | el texto de reanudación de la sesión; lo deja `/cerrar`, no se escribe a mano | E A P | sí | no | no | — |
+| `.env.example` | qué claves hacen falta, sin los valores | E A P | sí | si hay .env o si hay código | no | — |
 | `.gitignore` | lo que no se sube a GitHub; en empresa y área, además, las carpetas de adentro | E A P | sí | sí | no | git |
 | `plugins/<paquete>/` | el paquete: skills, agentes, avisos automáticos y conectores comunes (en el área, opcional) | E A | sí | no | sí | plugins-reference |
 | `.claude-plugin/marketplace.json` | la vidriera: avisa que en esta caja hay un paquete para instalar | E A | sí | si hay paquete | no | plugin-marketplaces |
@@ -47,15 +59,21 @@ persona) · **Obligatorio** (sí · no · condición) · **Baja** (llega a las c
 | `.claude/settings.local.json` | mis ajustes | E A P | no | no | no | settings |
 | `.env` | las claves | E A P | no | no | no | — |
 
-### Tres documentos vivos en toda caja
-Toda caja (empresa, área y proyecto), tenga código o no, lleva los mismos tres documentos. Así, quien abre Claude en cualquier caja, aunque no sepa de desarrollo, sabe siempre **dónde guarda cada cosa y con qué nombre**; la sesión no tiene que adivinar ni decidir si algo «es desarrollo». En vez de seis documentos fijos (PRD, TRD, flujo de la app, UI/UX, esquema de datos, plan), son tres, que se mantienen al día:
-- `docs/PRD.md`: qué es la caja, para quién, cuándo está terminada y qué NO se hace. Si hay código, suma la sección técnica (el TRD) y el diagrama de flujo de la app.
-- `docs/decisiones.md`: el registro de decisiones, cada una con fecha y el porqué.
-- `docs/planes/`: un plan por etapa, nombrado `AAAA-MM-DD-tema.md`; al terminar la etapa, el plan se archiva.
+### Los documentos de cada caja
+Los seis documentos de desarrollo que se pidieron (PRD, TRD, flujo de la app, UI/UX, esquema de datos, plan) tienen **cada uno su lugar, con nombre fijo**. Así, quien abre Claude en cualquier caja sabe **dónde guarda cada cosa y con qué nombre**, sin decidir si algo «es desarrollo». Tres son para toda caja; el resto, para la que tiene código:
+- `docs/PRD.md` (toda caja): quién la lleva, estado, respaldo, qué es, para quién, cuándo está terminada y qué NO se hace.
+- `docs/decisiones.md` (toda caja): el registro de decisiones, cada una con fecha y el porqué.
+- `docs/planes/` (toda caja): un plan por etapa, nombrado `AAAA-MM-DD-tema.md`; al terminar la etapa, el plan se archiva.
+- `docs/arquitectura.md` (caja con código): el TRD, cómo está armado por dentro.
+- `docs/flujo-de-la-app.md` (caja con código): el flujo de la app, en un diagrama (Mermaid, que GitHub dibuja solo) o en pasos.
+- `docs/diseno/` (si hay pantallas): el diseño de pantallas son **mockups** (HTML o Figma), nunca texto.
+- `docs/esquema/` (si hay base de datos o API): el esquema de datos **se genera desde el código, nunca a mano**; un `LEEME.md` dice con qué comando y cuándo se generó.
 
-Lo demás no es un documento de texto: **el diseño de pantallas (UI/UX) son mockups** (Figma o HTML), no texto, y **el esquema de datos se genera desde el código, nunca a mano**.
+Que un documento tenga lugar no obliga a llenarlo de golpe: **los documentos de toda caja se crean cuando la caja tiene algo que registrar** (el aviso de apertura calla en una caja sin código ni historia propia), y los de desarrollo, cuando hay código. Nada se crea vacío solo: el bucle de orden crea los tres de toda caja (donde hay producto), y las piezas de desarrollo las pide la persona con `estructura.py arreglar --si`.
 
-**«Tiene código»** ya no decide si la caja lleva los tres documentos (los lleva siempre). Solo decide el contenido del PRD: con código, la plantilla incluye la sección técnica y el flujo de la app. Se decide con señales baratas, sin leer el código: la caja tiene `package.json`, `pyproject.toml`, `requirements.txt` o `Package.swift` en su raíz, o una carpeta `src/` o `app/` que contenga al menos un archivo de código (`.py`, `.js`, `.ts`, `.tsx`, `.jsx`, `.swift`, `.go`, `.rs`, `.java`, `.php`, `.rb`). Con una sola señal alcanza.
+**«Tiene código»** decide qué piezas de desarrollo se piden. Se decide con señales baratas, sin leer el código: la caja tiene `package.json`, `pyproject.toml`, `requirements.txt` o `Package.swift` en su raíz, o una carpeta `src/` o `app/` con código, o al menos cinco archivos de código (`.py`, `.js`, `.ts`, `.tsx`, `.jsx`, `.swift`, `.go`, `.rs`, `.java`, `.php`, `.rb`) a dos niveles, sin contar `scripts/`, `docs/` ni `tests/`. Con una sola señal alcanza.
+
+**Piezas por caso** (opcionales, con nombre fijo para que no se inventen otros): `CHANGELOG.md` si otras personas instalan o usan lo que sale de la caja · `SECURITY.md` y `LICENSE` si el repositorio es público · `.github/workflows/` (pruebas y robots) si hay código y despliegue · `CODEOWNERS` solo cuando más de una persona escribe en la caja · alertas de dependencias (se prenden en GitHub; no son un archivo).
 
 Fuera de las cajas:
 
@@ -83,18 +101,27 @@ Fuera de las cajas:
 | R13 | Las rutas que cita el `CLAUDE.md` entre comillas (`docs/…`, `scripts/…`, `~/…`) existen | toda caja | aviso | corregir la ruta o sacar la mención; si la ruta es de otra caja, escribirla completa. Lo decide quien lleva la caja |
 | R14 | El `CLAUDE.md` no tiene conteos escritos a mano («12 agentes», «40 skills»): se desactualizan | toda caja | aviso | reemplazar el número por el comando que lo cuenta (por ejemplo, contarlo con `ls`) |
 | R15 | Los agentes `pm-…` que nombra el `CLAUDE.md` existen | toda caja | aviso | corregir el nombre o crear el agente |
-| R16 | `docs/PRD.md` y `docs/decisiones.md` están completados (no son solo la plantilla) | toda caja | aviso | completarlos con la sesión de la caja: nunca se inventa el contenido |
+| R16 | `docs/PRD.md` y `docs/decisiones.md` están completados: se compara con las líneas de la plantilla (la actual y la anterior), no solo con títulos y citas | toda caja | aviso | completarlos con la sesión de la caja: nunca se inventa el contenido |
 | R17 | `.claude/PENDIENTES.md`, si existe, tiene el formato que lee el panel (8 columnas, estados válidos, sin IDs repetidos) | toda caja | aviso | corregir las filas que indica el aviso (las mide `pendientes-check.py`) |
 | R18 | `.claude/prompts/REANUDAR.md`, si existe, es coherente: la rama y la carpeta que dice son las de la caja, las rutas que cita existen, no pasa de 120 líneas y su cierre no tiene más de 30 días | toda caja | aviso | volver a cerrar la sesión con `/cerrar` (reescribe el texto de reanudación) |
 | R19 | El PM de la caja: el `pm-…` que nombra el `CLAUDE.md` existe y su cuerpo no es una cáscara (menos de 15 líneas con contenido); y si la caja no nombra ningún PM y hay uno instalado que cita su carpeta, se lo señala | toda caja | aviso | nombrar al PM en el `CLAUDE.md`, o completar el cuerpo del agente con `agent-creator` |
 | R20 | Las skills que el PM precarga (`skills:` de su encabezado) existen | toda caja | aviso | quitar la que no existe del encabezado del PM o instalarla (`skills: []` es válido: es una decisión) |
 | R21 | Los conectores: si el `CLAUDE.md` dice usar un MCP o conector, está configurado y habilitado (configurar ≠ habilitar), y las herramientas `mcp__…` del PM existen. Solo mira nombres, nunca llaves; los conectores de la nube no se juzgan | toda caja | aviso | configurar y habilitar el conector, o aclarar en el `CLAUDE.md` que se usa por script o API |
+| R22 | `.claude/settings.json`, si tiene contenido (permisos, paquetes, hooks; un `{}` vacío no tiene nada que compartir), está subido a GitHub: existir en el disco no alcanza, y lo común es que lo oculte una lista global de ignorados de la Mac | toda caja | aviso | agregar `!.claude/settings.json` al `.gitignore` de la caja (le gana al ignore global, sin tocar la configuración de la Mac), mirar que no tenga claves (en `env`) y subirlo |
+| R23 | Si la caja tiene código: tiene `README.md`, `docs/arquitectura.md`, `docs/flujo-de-la-app.md` y `.env.example` | caja con código | aviso | `estructura.py arreglar --si` deja los esqueletos con instrucciones; el contenido lo escribe la sesión de la caja a partir del código, nunca se inventa |
+| R24 | Si tiene código: hay pruebas y el README o el `CLAUDE.md` dice cómo correrlas | caja con código | aviso | escribir el comando |
+| R25 | Si la caja se despliega (`Dockerfile`, `vercel.json`, `fly.toml`, un workflow de despliegue, un `.plist`…): existe `docs/operacion.md` con sus cuatro partes (dónde corre · cómo se despliega · claves · datos y respaldo) | caja que se despliega | aviso | completarlo con la sesión de la caja |
+| R26 | Si se despliega o usa claves: hay una revisión de seguridad registrada en `.claude/security-checks/` de menos de 90 días | caja que se despliega o usa claves | aviso | correr el chequeo de seguridad y guardar el informe, sin valores de claves |
+| R27 | El PRD ya completado dice Dueño, Estado, Respaldo y Última revisión | toda caja | aviso | agregar las cuatro líneas |
+| R28 | Si existe `docs/esquema/`: su `LEEME.md` dice «Comando:» y «Fecha:», y el código no cambió más de 30 días después de esa fecha | caja con esquema | aviso | volver a generarlo con ese comando |
 
 **Excepciones:** lo que se decidió dejar así, con su motivo, no queda como ✗ para siempre: se anota en
 `.estructura-excepciones.json` en la raíz del repositorio, una lista de
 `{"regla": "R8", "ruta": "mi-caja", "motivo": "por qué se deja", "fecha": "AAAA-MM-DD"}` (`ruta` es la carpeta de la que
 habla el aviso, relativa a esa raíz; `.` es la raíz misma). El control la muestra como `• excepción …` y no la cuenta como
 falla. Sin motivo o sin fecha no vale (se ignora y se avisa). R6 y R11 no se pueden exceptuar.
+
+**«Terminado» se mide en GitHub, no en la carpeta de la Mac:** `estructura.py remoto` hace `git fetch` de cada caja y cuenta qué hay en la rama principal del repositorio; `revisar` mira la carpeta del disco, que puede ir atrasada.
 
 El control (`revisar`) **solo avisa**; lo que se arregla solo es el *bucle de orden* de abajo, y únicamente donde la persona lo encendió. Para completar lo que falta: `estructura.py completar <carpeta>`, que
 agrega lo que no está y nunca pisa un archivo existente.
@@ -163,7 +190,7 @@ Textos que muestra el dibujo para cada nivel. El molde define qué archivos exis
 | CLAUDE.md | proyecto | CLAUDE.md | reglas del proyecto: qué es y cómo se trabaja |
 | .claude/settings.json | empresa | .claude/settings.json | permisos para trabajar acá · activa el paquete de la empresa |
 | .claude/settings.json | area | .claude/settings.json | permisos para trabajar acá · activa el paquete de la empresa |
-| .claude/settings.json | proyecto | .claude/settings.json | permisos del proyecto · activa el paquete de la empresa (y el del área, si hay) |
+| .claude/settings.json | proyecto | .claude/settings.json | permisos del proyecto · activa el paquete de la empresa (y el del área, si hay) · tiene que estar subido a GitHub |
 | .claude/skills/ | empresa | .claude/skills/ | habilidades para trabajar acá |
 | .claude/skills/ | area | .claude/skills/ | habilidades para trabajar acá |
 | .claude/skills/ | proyecto | .claude/skills/ | habilidades para trabajar acá |
@@ -191,6 +218,22 @@ Textos que muestra el dibujo para cada nivel. El molde define qué archivos exis
 | docs/planes/ | empresa | docs/planes/ | un plan por etapa (AAAA-MM-DD-tema.md); al terminar, se archiva |
 | docs/planes/ | area | docs/planes/ | un plan por etapa (AAAA-MM-DD-tema.md); al terminar, se archiva |
 | docs/planes/ | proyecto | docs/planes/ | un plan por etapa (AAAA-MM-DD-tema.md); al terminar, se archiva. Las pantallas van como mockups y el esquema de datos sale del código |
+| docs/arquitectura.md | proyecto | docs/arquitectura.md | cómo está armado por dentro (TRD): piezas, dependencias, dónde corre. Si hay código |
+| docs/flujo-de-la-app.md | proyecto | docs/flujo-de-la-app.md | cómo se mueve la persona por la app, en un diagrama. Si hay código |
+| docs/diseno/ | proyecto | docs/diseno/ | las pantallas como mockups (HTML o Figma), nunca texto |
+| docs/esquema/ | proyecto | docs/esquema/ | esquema de datos y API generados desde el código, con comando y fecha |
+| docs/operacion.md | proyecto | docs/operacion.md | dónde corre, cómo se despliega y se vuelve atrás, claves (nombres) y respaldo |
+| docs/specs/ | proyecto | docs/specs/ | una especificación por funcionalidad (AAAA-MM-DD-tema.md) |
+| README.md | proyecto | README.md | para personas: qué es y cómo se levanta y se prueba. Si hay código |
+| tests/ | proyecto | tests/ | las pruebas y cómo correrlas. Si hay código |
+| .claude/security-checks/ | proyecto | .claude/security-checks/ | registro de revisiones de seguridad, sin valores de claves |
+| .claude/rules/donde-va-cada-cosa.md | proyecto | .claude/rules/donde-va-cada-cosa.md | el mapa de la caja: dónde va cada pieza |
+| .claude/PENDIENTES.md | empresa | .claude/PENDIENTES.md | la lista de pendientes (la mantiene /pendientes) |
+| .claude/PENDIENTES.md | area | .claude/PENDIENTES.md | la lista de pendientes (la mantiene /pendientes) |
+| .claude/PENDIENTES.md | proyecto | .claude/PENDIENTES.md | la lista de pendientes (la mantiene /pendientes) |
+| .claude/prompts/REANUDAR.md | empresa | .claude/prompts/REANUDAR.md | el texto de reanudación (lo deja /cerrar) |
+| .claude/prompts/REANUDAR.md | area | .claude/prompts/REANUDAR.md | el texto de reanudación (lo deja /cerrar) |
+| .claude/prompts/REANUDAR.md | proyecto | .claude/prompts/REANUDAR.md | el texto de reanudación (lo deja /cerrar) |
 | .gitignore | empresa | .gitignore | no guarda las carpetas de adentro (cada una tiene su repositorio) |
 | .gitignore | area | .gitignore | no guarda las carpetas de los proyectos |
 | .gitignore | proyecto | .gitignore | lo que no se sube a GitHub |

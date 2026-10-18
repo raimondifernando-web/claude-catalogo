@@ -124,7 +124,7 @@ class TestControl(unittest.TestCase):
             (caja / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
             (caja / ".gitignore").write_text(".env\n.claude/settings.local.json\nCLAUDE.local.md\n", encoding="utf-8")
             (caja / "docs" / "planes").mkdir(parents=True)
-            (caja / "docs" / "PRD.md").write_text("# PRD\n\nQué se construye: una herramienta para ordenar pedidos de clientes.\n", encoding="utf-8")
+            (caja / "docs" / "PRD.md").write_text("# PRD\n\n" + CABECERA_PRD + "\nQué se construye: una herramienta para ordenar pedidos de clientes.\n", encoding="utf-8")
             (caja / "docs" / "decisiones.md").write_text("# Decisiones\n\n2026-10-17: se usa una base simple, por costo y mantenimiento.\n", encoding="utf-8")
 
             # Ejecutar revisión
@@ -166,7 +166,10 @@ class TestControl(unittest.TestCase):
             (caja / "package.json").write_text("{}\n", encoding="utf-8")
             _, sal = _correr(fn=estructura.comando_revisar, carpeta_arg=str(caja), nivel_arg="proyecto", aviso=True)
             self.assertNotIn("Falta: 0", sal)
-            self.assertIn("Sin errores, pero con 1 aviso pendiente ⚠", sal)
+            # con código se suman las piezas de desarrollo (R23: README, arquitectura…) y las pruebas (R24)
+            self.assertIn("Sin errores, pero con 3 avisos pendientes ⚠", sal)
+            self.assertIn("[R12:mi_proyecto]", sal)
+            self.assertIn("[R23:mi_proyecto]", sal)
             self.assertIn("Cuesta dejarlo así:", sal)
 
     def test_fallas_plantadas(self):
@@ -463,10 +466,13 @@ def _correr(**kw):
     return code, buf.getvalue()
 
 
+CABECERA_PRD = "- Dueño: Fer\n- Estado: activa\n- Respaldo: GitHub\n- Última revisión: 2026-10-18\n"
+
+
 def _docs_vivos(caja):
     """Deja en la caja los tres documentos vivos (R12) para las pruebas que miran otra cosa."""
     (caja / "docs" / "planes").mkdir(parents=True, exist_ok=True)
-    (caja / "docs" / "PRD.md").write_text("# PRD\n\nEs una caja de prueba para el control, con su texto completo.\n", encoding="utf-8")
+    (caja / "docs" / "PRD.md").write_text("# PRD\n\n" + CABECERA_PRD + "\nEs una caja de prueba para el control, con su texto completo.\n", encoding="utf-8")
     (caja / "docs" / "decisiones.md").write_text("# Decisiones\n\n## 2026-10-16 — Prueba\nDecisión de prueba, con su porqué escrito y su fecha.\n", encoding="utf-8")
 
 
@@ -778,14 +784,30 @@ class TestR12DocumentosVivos(unittest.TestCase):
             self.assertEqual((caja / "docs" / "PRD.md").read_text(encoding="utf-8"), "mío\n")
             self.assertEqual((caja / "docs" / "decisiones.md").read_text(encoding="utf-8"), "mías\n")
 
-    def test_prd_con_codigo_suma_la_parte_tecnica(self):
+    def test_prd_ya_no_lleva_la_parte_tecnica_y_con_codigo_se_crean_las_piezas_aparte(self):
         with tempfile.TemporaryDirectory() as td:
             caja = self._caja(td)
             (caja / "pyproject.toml").write_text("", encoding="utf-8")
             _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
             prd = (caja / "docs" / "PRD.md").read_text(encoding="utf-8")
-            self.assertIn("## Sección técnica (TRD)", prd)
-            self.assertIn("## Flujo de la app", prd)
+            self.assertNotIn("Sección técnica", prd)
+            self.assertIn("- Dueño:", prd)
+            arq = (caja / "docs" / "arquitectura.md").read_text(encoding="utf-8")
+            self.assertIn("Arquitectura (TRD)", arq)
+            flujo = (caja / "docs" / "flujo-de-la-app.md").read_text(encoding="utf-8")
+            self.assertIn("Flujo de la app", flujo)
+            self.assertIn("mermaid", flujo)
+            self.assertTrue((caja / "README.md").is_file())
+            self.assertTrue((caja / ".env.example").is_file())
+            self.assertIn("docs/esquema/", (caja / ".claude" / "rules" / "donde-va-cada-cosa.md").read_text(encoding="utf-8"))
+
+    def test_sin_codigo_no_se_crean_las_piezas_de_desarrollo(self):
+        with tempfile.TemporaryDirectory() as td:
+            caja = self._caja(td)
+            _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
+            for rel in ("docs/arquitectura.md", "docs/flujo-de-la-app.md", "README.md", ".env.example",
+                        ".claude/rules/donde-va-cada-cosa.md"):
+                self.assertFalse((caja / rel).exists(), rel)
 
     def test_arreglar_crea_planes_aunque_ya_haya_otros_documentos(self):
         with tempfile.TemporaryDirectory() as td:
