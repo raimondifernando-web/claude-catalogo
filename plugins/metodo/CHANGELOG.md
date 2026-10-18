@@ -2,7 +2,7 @@
 
 ## 0.50.2 — 2026-10-17
 **Al cerrar una sesión, ya no te pide correr un comando para unir el trabajo.** Se aplica solo con la actualización; no hay nada que correr.
-- **El problema:** en un repo sin controles en GitHub, el cierre te dejaba «corré este comando» para unir tu trabajo, y era un pedido que nadie entendía.
+- **El problema:** en un repo sin controles en GitHub, el cierre te dejaba un comando para pegar y unir tu trabajo, y era un pedido que nadie entendía.
 - **El arreglo:** un programa nuevo (`unir-pr`) une el trabajo solo, o lo deja programado si hay controles. Solo te avisa si algo falló de verdad (conflicto, controles en rojo) o si el cambio toca algo que corre solo en tu compu, y lo dice en una línea.
 
 ## 0.50.1 — 2026-10-17
