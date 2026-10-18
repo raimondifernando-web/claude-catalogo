@@ -68,7 +68,7 @@ class Entorno(unittest.TestCase):
         lista = Path(self.td) / "ignore_global"
         lista.write_text(patron + "\n", encoding="utf-8")
         cfg = Path(self.td) / "gitconfig_global"
-        cfg.write_text(f"[core]\n\texcludesFile = {lista}\n", encoding="utf-8")
+        cfg.write_text(f"[core]\n\texcludesFile = {lista.as_posix()}\n", encoding="utf-8")   # barras normales: también vale en Windows
         os.environ["GIT_CONFIG_GLOBAL"] = str(cfg)
 
 
@@ -379,6 +379,7 @@ class TestRevisionExterna(Entorno):
         self.assertNotIn("R23", {r for t, r, _m in h if t == "aviso"})
         self.assertTrue(any(t == "excepcion" and r == "R23" for t, r, _m in h))
 
+    @unittest.skipIf(sys.platform == "win32", "el hook de la prueba es un script de sh")
     def test_remoto_no_ejecuta_los_hooks_del_repositorio(self):
         origen = Path(self.td) / "origen"
         origen.mkdir()
