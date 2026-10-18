@@ -442,7 +442,8 @@ class TestRevisionExternaRaiz(Base):
 class TestCerrarCheck(Base):
     def test_cerrar_check_tiene_la_linea_del_molde_y_frena_si_falta_algo(self):
         c = self.caja("cierre", archivos={"CLAUDE.md": "# x\n"})
-        r = subprocess.run([sys.executable, str(SCRIPTS_DIR / "cerrar-check.py"), str(c)], capture_output=True, text=True, timeout=120,
+        r = subprocess.run([sys.executable, str(SCRIPTS_DIR / "cerrar-check.py"), str(c)], capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=120,
                            env={**os.environ, "CLAUDE_CONFIG_DIR": str(self.td / "config")})
         self.assertIn("Molde de la caja", r.stdout)
         self.assertIn("✗ Molde de la caja", r.stdout)
