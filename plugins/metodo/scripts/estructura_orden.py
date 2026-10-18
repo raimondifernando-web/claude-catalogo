@@ -643,7 +643,8 @@ def resumen_semanal(raiz_arg=None, hs=None) -> list:
         " (" + ", ".join(f"{n} {t.replace('_', ' ')}" for t, n in por_tipo.items()) + ")" if hechos else "") + "."
     l2 = (f"Quedan {quedan2} de juicio que decido con evidencia y una segunda IA." if quedan2 else "Nada de juicio pendiente.")
     l3 = (f"Tenés {len(quedan3)} pregunta(s) de sí/no (te las hago de a una)." if quedan3 else "Nada pendiente para vos.")
-    return [l1, l2, l3]
+    numero = E.numero_guardado()   # «X de N cajas completas»: lo mide `estructura.py remoto` en segundo plano (ver _refrescar_numero)
+    return [l1, l2, l3] + ([numero] if numero else [])
 
 
 def comando_resumen(raiz_arg=None) -> int:
@@ -670,8 +671,24 @@ def comando_config(encender: bool, apagar: bool) -> int:
     return 0
 
 
+def _refrescar_numero(raiz: Path):
+    """Mide «X de N cajas completas» EN GITHUB en segundo plano (un proceso suelto, 4 minutos de tope): no demora el arranque y
+    el resumen de la próxima apertura lo muestra. Solo lee (git fetch sin hooks + ls-tree). Se apaga con METODO_SIN_REFRESCO=1
+    (las pruebas lo usan). Disparador: automático — la primera apertura de cada semana (el mismo aviso de arranque)."""
+    if os.environ.get("METODO_SIN_REFRESCO") == "1":
+        return
+    try:
+        extra = {"creationflags": getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)} \
+            if os.name == "nt" else {"start_new_session": True}
+        subprocess.Popen([sys.executable, str(Path(E.__file__).resolve()), "remoto", "--numero", "--raiz", str(raiz), "--tope", "240"],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **extra)
+    except Exception:
+        pass
+
+
 def semanal(raiz: Path):
     """Lo que corre la primera vez de cada semana, desde el aviso de arranque. Nunca rompe el arranque."""
+    _refrescar_numero(raiz)
     try:
         if not aplicar_encendido() and not leer_registro():
             return   # apagado y sin historia: no recorre las carpetas en el arranque

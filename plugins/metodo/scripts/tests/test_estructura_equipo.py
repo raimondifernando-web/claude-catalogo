@@ -13,6 +13,8 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 import estructura_equipo as eq
 
+os.environ.setdefault("METODO_SIN_REFRESCO", "1")   # `semanal` lanza la medición del número «X de N» en segundo plano: no en las pruebas (en Windows deja la carpeta temporal tomada)
+
 CUERPO = "\n".join(f"Regla {i} del proyecto, con contenido real." for i in range(20))
 
 

@@ -118,7 +118,7 @@ Fuera de las cajas:
 **Excepciones:** lo que se decidió dejar así, con su motivo, no queda como ✗ para siempre: se anota en
 `.estructura-excepciones.json` en la raíz del repositorio, una lista de
 `{"regla": "R8", "ruta": "mi-caja", "motivo": "por qué se deja", "fecha": "AAAA-MM-DD"}` (`ruta` es la carpeta de la que
-habla el aviso, relativa a esa raíz; `.` es la raíz misma). El control la muestra como `• excepción …` y no la cuenta como
+habla el aviso, relativa a esa raíz; `.` es la raíz misma; `vence` es opcional: pasada esa fecha, la excepción deja de valer sola). **Excepción especial `EXENTA`:** `{"regla": "EXENTA", "ruta": "sandbox", …}` en el archivo de la caja de arriba saca esa carpeta **y todo lo que tiene adentro** del molde: no se revisa, no se arregla y no cuenta en el «X de N» (para un campo de pruebas descartable). El control la muestra como `• excepción …` y no la cuenta como
 falla. Sin motivo o sin fecha no vale (se ignora y se avisa). R6 y R11 no se pueden exceptuar.
 
 **«Terminado» se mide en GitHub, no en la carpeta de la Mac:** `estructura.py remoto` hace `git fetch` de cada caja y cuenta qué hay en la rama principal del repositorio; `revisar` mira la carpeta del disco, que puede ir atrasada.
@@ -137,6 +137,18 @@ La primera vez de cada semana, el aviso de arranque corre el bucle (si está enc
 
 **Cuándo corre (nadie tiene que acordarse):** al abrir sesión revisa la carpeta actual · al cerrar sesión también · una vez
 por semana, la primera sesión recorre todas las carpetas de `~/Proyectos/`.
+
+## Las garantías: que toda caja tenga SIEMPRE lo que le corresponde
+Un aviso informa y depende de que alguien lo lea. Estas tres garantías no dependen de eso (diseño y crítica: `docs/2026-10-18-molde-raiz.md` del repositorio de Tech):
+1. **Al nacer.** `estructura.py nueva <carpeta> [--nivel empresa|area|proyecto] [--codigo] [--dueno "…"]` crea la caja con el molde completo: carpeta, git, `CLAUDE.md` con «dónde se guarda cada cosa», `.gitignore`, los tres documentos con la cabecera del PRD, si hay código README, arquitectura, flujo y claves de ejemplo, y el primer commit. Comprueba que pasa `exigir` y deja **un comando** para crear el repositorio en GitHub. Es la única herramienta de caja nueva.
+2. **Al guardar.** `estructura.py exigir` mide el commit que se va a unir. Lo corren, antes de unir, `unir-a-main` y `unir-pr` (con el programa del plugin instalado, nunca el de la rama que se juzga) y `scripts/controles.sh` en el catálogo. **Frena solo por existencia** y dice qué falta y el comando que lo arregla (casi siempre `estructura.py arreglar --si`):
+   - **Duro, siempre:** `CLAUDE.md` (R2), `.gitignore` (R5), ningún archivo personal versionado: `.env`, `.claude/settings.local.json`, `CLAUDE.local.md` (R6, no se exceptúa).
+   - **De estructura, con plazo para lo que ya existía:** los tres documentos (R12) y, si hay código, `README.md`, `docs/arquitectura.md`, `docs/flujo-de-la-app.md` y `.env.example` (R23). Una caja cuyo primer commit tiene más de 7 días tiene **30 días** desde la primera vez que el control la ve (anotado en la carpeta de estado de la computadora, no en el repositorio); una caja nacida con `nueva` no tiene plazo.
+   - **De contenido, nunca frena una unión:** PRD y decisiones escritos (R16; las líneas «Por confirmar» y la cabecera no cuentan) y la cabecera del PRD (R27). Cuentan para «completa» y los deja escritos el cierre.
+   - Si el control falla por dentro, avisa y **no frena**. Cambiar `.estructura-excepciones.json` dentro de una rama es zona sensible (pide el OK de la persona), porque si no la propia rama podría saltearse la regla.
+3. **Al cerrar.** El paso 3 bis de `/cerrar` deja `docs/decisiones.md` y `docs/planes/` al día con lo hecho en la sesión y **escribe** el PRD si seguía siendo plantilla (hechos comprobables; lo que no se sabe va como «Por confirmar»). `cerrar-check` lo comprueba (`estructura.py exigir --contenido`): en una caja con producto propio, un PRD o unas decisiones en plantilla hacen que el cierre no esté completo.
+
+**El número único.** `estructura.py remoto --numero` cuenta cuántas cajas están **completas en GitHub** (duro + estructura + contenido, medido en `origin/main` tras un `git fetch` sin hooks): «7 de 32 cajas completas». Se guarda y lo muestran el resumen semanal del arranque (que lo refresca en segundo plano la primera apertura de cada semana) y `cerrar-check`.
 
 ## Ejemplo del dibujo
 Personas: **Vos** (dueño, todo) · **Lucía** (socia, toda la Empresa A) · **Beto** (solo el área Ventas) · **Caro** (solo el

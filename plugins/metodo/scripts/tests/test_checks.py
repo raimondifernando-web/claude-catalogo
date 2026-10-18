@@ -64,6 +64,15 @@ class ChecksTest(unittest.TestCase):
         git(self.proyecto, "init", "-q", "-b", "main")
         (self.proyecto / "REANUDAR.md").write_text(REANUDAR_OK, encoding="utf-8")
         self.confiar()
+        # el molde de la caja (lo obligatorio que ahora mide el cierre)
+        for rel in ("CLAUDE.md", ".gitignore", "docs/PRD.md", "docs/decisiones.md", "docs/planes/README.md"):
+            (self.proyecto / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.proyecto / rel).write_text("# x\n", encoding="utf-8")
+        git(self.proyecto, "add", "CLAUDE.md", ".gitignore", "docs")
+        # aparte y con fecha vieja: «archivos tocados hoy» sigue contando solo el REANUDAR (si no, pediría un handoff)
+        subprocess.run(["git", "-C", str(self.proyecto), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false",
+                        "commit", "-q", "-m", "molde de la caja"], check=True,
+                       env={**os.environ, "GIT_AUTHOR_DATE": "2026-01-02T12:00:00", "GIT_COMMITTER_DATE": "2026-01-02T12:00:00"})
         git(self.proyecto, "add", "REANUDAR.md")
         git(self.proyecto, "commit", "-q", "-m", "cierre 2026-10-09-prueba")
 

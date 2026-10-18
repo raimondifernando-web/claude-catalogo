@@ -27,6 +27,8 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 import estructura
 
+os.environ.setdefault("METODO_SIN_REFRESCO", "1")   # `semanal` lanza la medición del número «X de N» en segundo plano: no en las pruebas (en Windows deja la carpeta temporal tomada)
+
 
 def extraer_texto_visible(html: str) -> str:
     """Extrae todo el texto visible de un documento HTML, normalizando espacios."""

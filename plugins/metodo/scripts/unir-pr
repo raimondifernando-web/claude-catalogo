@@ -19,6 +19,7 @@ import fnmatch
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 for _f in (sys.stdout, sys.stderr):  # Windows: consola cp1252
     try:
@@ -32,7 +33,29 @@ SENSIBLE = [
     ".claude/settings*.json", "settings.json", "settings.local.json", ".claude/hooks/*", "hooks/*", "*hooks/hooks.json",
     ".github/*", ".git-hooks/*", ".claude/zona-sensible.txt", ".claude/pruebas.sh", ".claude/unir-a-main*",
     "unir-a-main.txt", "scripts/unir-a-main", "scripts/unir-pr", "mods/*", "keybindings.json",
+    ".estructura-excepciones.json", "*/.estructura-excepciones.json",   # las excepciones al molde (la propia rama no se las auto-aprueba)
 ]
+
+ESTRUCTURA = Path(__file__).resolve().parent / "estructura.py"   # el del plugin instalado, nunca el de la rama
+_EJECUTA_ESTRUCTURA = ("import sys; sys.path.insert(0, sys.argv[1]); sys.argv = ['estructura.py'] + sys.argv[2:]; "
+                       "import estructura; estructura.main()")
+
+
+def molde(numero, repo_pedido):
+    """Garantía 2 del molde: el commit del PR tiene lo OBLIGATORIO (existencia, con 30 días de plazo para lo viejo). Devuelve
+    (frena, texto). Si el control falla por dentro o el PR es de otro repositorio que la carpeta actual, NO frena."""
+    if not ESTRUCTURA.is_file():
+        return False, ""
+    if repo_pedido:
+        r = subprocess.run(["git", "remote", "get-url", "origin"], capture_output=True, text=True)
+        if r.returncode != 0 or not r.stdout.strip().lower().removesuffix(".git").endswith(repo_pedido.lower()):
+            return False, "Molde: el PR es de otro repositorio que esta carpeta; no se pudo medir."
+    try:
+        r = subprocess.run([sys.executable, "-I", "-c", _EJECUTA_ESTRUCTURA, str(ESTRUCTURA.parent), "exigir", "--pr", str(numero)],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return False, "Molde: no se pudo medir; no frena."
+    return r.returncode == 1, "\n".join((r.stdout or "").strip().splitlines()[-12:])
 
 
 def gh(*a):
@@ -73,6 +96,12 @@ def main():
               f"(etiqueta ok-fernando-{sha7}). No se une solo. {url}", 5)
     if pr["mergeStateStatus"] == "DIRTY":
         falta(f"el PR #{n} tiene conflicto con la rama principal: lo resuelve quien lo hizo (traer lo nuevo de main a la rama). {url}", 6)
+
+    frena, texto = molde(n, a.repo)
+    if frena:
+        falta(f"a la caja le falta lo obligatorio del molde (PR #{n}):\n{texto}", 11)
+    if texto:
+        print(texto)
 
     # Controles. La llave limitada a veces no puede leerlos (403): entonces manda el estado de GitHub.
     rc, out, _ = gh("pr", "checks", str(n), *base, "--json", "name,bucket")

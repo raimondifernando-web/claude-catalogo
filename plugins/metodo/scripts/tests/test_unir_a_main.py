@@ -59,6 +59,13 @@ class UnirAMain(unittest.TestCase):
         for c in (["config", "user.email", "t@t"], ["config", "user.name", "t"], ["config", "commit.gpgsign", "false"]):
             sh("git", *c, cwd=self.repo)
         self.escribir("README.md", "hola\n")
+        # el molde de la caja (lo obligatorio que ahora exige el programa antes de unir)
+        self.escribir("CLAUDE.md", "# cerebro\n")
+        self.escribir(".gitignore", ".env\n")
+        self.escribir("docs/PRD.md", "# PRD\n")
+        self.escribir("docs/decisiones.md", "# Decisiones\n")
+        self.escribir("docs/planes/README.md", "# Planes\n")
+        self.m.CONFIG = self.config   # el estado del molde (plazos) va a la carpeta de prueba, no a la real
         (self.repo / "tests").mkdir()
         self.escribir("tests/test_ok.py", "import unittest\nclass T(unittest.TestCase):\n    def test_a(self): pass\n")
         self.commit("base")
@@ -235,9 +242,38 @@ class UnirAMain(unittest.TestCase):
         self.escribir("instalar.sh", "echo hola\n")
         self.commit("instalador")
         sh("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo)
-        (self.repo / "docs").mkdir()
+        (self.repo / "docs").mkdir(exist_ok=True)
         sh("git", "mv", "instalar.sh", "docs/instalar.txt", cwd=self.repo)
         self.commit("lo escondo")
+        self.assertEqual(self.unir(persona=False), 3)
+
+    # ---- el molde de la caja (garantía 2 de docs/2026-10-18-molde-raiz.md)
+    def test_molde_una_caja_a_la_que_le_falta_lo_obligatorio_no_se_une(self):
+        sh("git", "rm", "-q", "docs/PRD.md", cwd=self.repo)
+        self.commit("saco el PRD")
+        sh("git", "rm", "-q", ".gitignore", cwd=self.repo)
+        self.commit("saco el .gitignore")
+        self.escribir("cosa.md", "algo\n")
+        self.commit("cambio común")
+        antes = self.main_remoto()
+        codigo = self.unir()
+        self.assertEqual(codigo, 1)
+        self.assertEqual(self.main_remoto(), antes)   # no se subió nada
+        texto = self.salida
+        self.assertIn("molde", texto.lower())
+        self.assertIn("R12", texto)
+        self.assertIn("R5", texto)
+        self.assertIn("estructura.py arreglar --si", texto)
+
+    def test_molde_una_caja_completa_se_une(self):
+        self.escribir("cosa.md", "algo\n")
+        self.commit("cambio común")
+        self.assertEqual(self.unir(), 0)
+
+    def test_molde_cambiar_las_excepciones_pide_a_la_persona(self):
+        # si la rama pudiera agregar su propia excepción, se saltearía la regla sola
+        self.escribir(".estructura-excepciones.json", '[{"regla": "R12", "ruta": ".", "motivo": "x", "fecha": "2026-10-18"}]\n')
+        self.commit("excepción")
         self.assertEqual(self.unir(persona=False), 3)
 
     def test_nombre_raro_frena(self):

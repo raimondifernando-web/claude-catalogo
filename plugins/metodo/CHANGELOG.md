@@ -1,5 +1,15 @@
 # metodo — qué cambia para vos
 
+## 0.52.0 — 2026-10-18
+**Una carpeta nueva nace completa, no se une a `main` si le falta lo obligatorio, y el cierre deja los documentos escritos.** Se aplica solo con la actualización; no hay nada que correr.
+- **Al nacer:** `estructura.py nueva <carpeta>` crea la carpeta con todo el molde (reglas, `.gitignore`, PRD con su cabecera, decisiones, planes, y si hay código README, arquitectura, flujo de la app y claves de ejemplo), hace el primer commit y te deja **un** comando para crear el repositorio en GitHub. Antes no había ninguna herramienta de carpeta nueva.
+- **Al guardar:** `unir-a-main` y `unir-pr` miran el molde antes de unir y frenan si falta `CLAUDE.md`, el `.gitignore`, los tres documentos (o, con código, README, arquitectura, flujo y claves de ejemplo), o si hay un archivo personal (`.env`) subido. Frena solo por **existencia** y dice el comando que lo arregla. Las carpetas que ya existían tienen **30 días** de plazo desde que el control las ve por primera vez (se anota en tu computadora, no en el repositorio). Si el control falla por dentro, avisa y no frena. Cambiar las excepciones al molde dentro de una rama pide el OK de la persona.
+- **Al cerrar:** el cierre tiene un paso nuevo (3 bis): deja `docs/decisiones.md` y `docs/planes/` al día con lo hecho y **escribe** el PRD si seguía siendo plantilla, con hechos comprobables (lo que no se sabe va como «Por confirmar»). `cerrar-check` suma la línea «Molde de la caja» y, en una carpeta con producto propio, el cierre no está completo si el PRD o las decisiones siguen en plantilla.
+- **Un número a la vista:** `estructura.py remoto --numero` cuenta cuántas carpetas están completas **en GitHub** («7 de 32») y lo muestran el resumen semanal y el cierre. Las excepciones al molde pueden llevar una fecha `vence`.
+- **Una carpeta puede quedar fuera del molde:** una excepción `EXENTA` (con motivo y fecha) en el archivo de la caja de arriba saca esa carpeta, y todo lo que tiene adentro, del control, de los arreglos y del conteo. Pensada para un campo de pruebas descartable.
+- **Un cambio chico:** las líneas «Por confirmar» y la cabecera del PRD (Dueño, Estado…) no cuentan como texto escrito.
+- **Lo que no cambia:** el contenido nunca frena una unión; el aviso de apertura sigue aconsejando con su costo, sin repetirse.
+
 ## 0.51.0 — 2026-10-18
 **Cada carpeta con código tiene ahora un lugar con nombre para cada documento de desarrollo, y el revisor de carpetas los vigila.** Se aplica solo con la actualización; no hay nada que correr.
 - **Los seis documentos de desarrollo que se pidieron (PRD, TRD, flujo de la app, UI/UX, esquema de datos, plan) ya tienen su lugar:** `docs/PRD.md`, `docs/arquitectura.md` (cómo está armado), `docs/flujo-de-la-app.md`, `docs/diseno/` (pantallas como mockups), `docs/esquema/` (generado desde el código, nunca a mano) y `docs/planes/`. Más `README.md`, pruebas, `docs/operacion.md` (dónde corre, cómo se despliega y se vuelve atrás, respaldo) y las revisiones de seguridad en `.claude/security-checks/`. El PRD ahora dice quién lleva la carpeta, en qué estado está y dónde está su respaldo.
