@@ -18,6 +18,8 @@ if str(SCRIPTS_DIR) not in sys.path:
 import estructura as E  # noqa: E402
 import estructura_orden as O  # noqa: E402
 
+os.environ.setdefault("METODO_SIN_REFRESCO", "1")   # `semanal` lanza la medición del número «X de N» en segundo plano: no en las pruebas (en Windows deja la carpeta temporal tomada)
+
 
 def _git(cwd, *a, check=True):
     return subprocess.run(["git", "-C", str(cwd), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *a],

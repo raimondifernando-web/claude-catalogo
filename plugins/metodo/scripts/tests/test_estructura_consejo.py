@@ -17,6 +17,8 @@ if str(SCRIPTS_DIR) not in sys.path:
 import estructura
 import estructura_consejo as C
 
+os.environ.setdefault("METODO_SIN_REFRESCO", "1")   # `semanal` lanza la medición del número «X de N» en segundo plano: no en las pruebas (en Windows deja la carpeta temporal tomada)
+
 
 def _caja(td, lineas_claude=3, codigo=False):
     caja = Path(td) / "mi_proyecto"
