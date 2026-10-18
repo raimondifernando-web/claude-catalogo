@@ -1,0 +1,108 @@
+#!/usr/bin/env -S python3 -I
+"""unir-pr — une un PR de cierre a la rama principal SIN pedirle nada a la persona (Mand. V.5, C158, 2026-10-17).
+
+Disparador: encadenado — el paso de unión de /cerrar (y /metodo:cerrar) lo corre cuando el repo no une solo
+(`cerrar-check` imprime «REPO SIN UNIÓN AUTOMÁTICA»). También a mano:  unir-pr [N] [--repo dueño/repo]
+
+Por qué existe: en un repo sin controles en GitHub, `gh pr merge --auto` responde «auto-merge no está habilitado» y el
+cierre le dejaba a la persona «corré este comando». Este programa decide solo y nunca fuerza nada:
+  1. PR ya unido o cerrado → lo dice y termina.
+  2. Toca zona sensible (lo que corre solo en la compu) → NO une; hace falta la etiqueta `ok-fernando-<7 del commit>`
+     que pone la persona. Es el único caso en que se pide algo.
+  3. Conflicto con la rama principal → no une; lo dice (lo resuelve quien hizo el PR).
+  4. Controles en rojo → no une; los nombra. En curso → unión programada (`--auto`) si el repo la admite.
+  5. Todo bien → `--auto` si el repo lo admite; si no, unión directa (squash). No borra la rama.
+Salida: última línea «Unido ✓ …», «Unión programada ✓ …» o «Falta: …» (código 0 / 0 / distinto de 0).
+"""
+import argparse
+import fnmatch
+import json
+import subprocess
+import sys
+
+for _f in (sys.stdout, sys.stderr):  # Windows: consola cp1252
+    try:
+        _f.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+# Lo que corre solo en la computadora (mismo criterio que unir-a-main; fnmatch: «*» cruza carpetas).
+SENSIBLE = [
+    "*.plist", "*LaunchAgents/*", "instalar*.sh", "*/instalar*.sh", "desinstalar*.sh", "*/desinstalar*.sh",
+    ".claude/settings*.json", "settings.json", "settings.local.json", ".claude/hooks/*", "hooks/*", "*hooks/hooks.json",
+    ".github/*", ".git-hooks/*", ".claude/zona-sensible.txt", ".claude/pruebas.sh", ".claude/unir-a-main*",
+    "unir-a-main.txt", "scripts/unir-a-main", "scripts/unir-pr", "mods/*", "keybindings.json",
+]
+
+
+def gh(*a):
+    r = subprocess.run(["gh", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+    return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
+
+
+def falta(msg, code=2):
+    print(f"Falta: {msg}")
+    sys.exit(code)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("numero", nargs="?")
+    ap.add_argument("--repo")
+    a = ap.parse_args()
+    base = ["--repo", a.repo] if a.repo else []
+    campos = "number,state,isDraft,mergeStateStatus,headRefOid,files,labels,url"
+    rc, out, err = gh("pr", "view", *([a.numero] if a.numero else []), *base, "--json", campos)
+    if rc != 0:
+        falta(f"no pude leer el PR ({err[:200] or 'sin PR en esta rama'})", 3)
+    pr = json.loads(out)
+    n, url = pr["number"], pr["url"]
+    if pr["state"] == "MERGED":
+        print(f"Unido ✓ #{n} (ya estaba unido)")
+        return
+    if pr["state"] != "OPEN":
+        falta(f"el PR #{n} está cerrado sin unir ({url})", 4)
+    if pr["isDraft"]:
+        falta(f"el PR #{n} es un borrador: pasalo a «listo» y reintento ({url})", 4)
+
+    sha7 = pr["headRefOid"][:7]
+    etiquetas = {l["name"] for l in pr.get("labels", [])}
+    sens = [f["path"] for f in pr.get("files", []) if any(f["path"] == p or fnmatch.fnmatch(f["path"], p) for p in SENSIBLE)]
+    if sens and f"ok-fernando-{sha7}" not in etiquetas:
+        falta(f"el PR #{n} toca cosas que corren solas en la compu ({', '.join(sens[:3])}) y necesita el OK de la persona "
+              f"(etiqueta ok-fernando-{sha7}). No se une solo. {url}", 5)
+    if pr["mergeStateStatus"] == "DIRTY":
+        falta(f"el PR #{n} tiene conflicto con la rama principal: lo resuelve quien lo hizo (traer lo nuevo de main a la rama). {url}", 6)
+
+    # Controles. La llave limitada a veces no puede leerlos (403): entonces manda el estado de GitHub.
+    rc, out, _ = gh("pr", "checks", str(n), *base, "--json", "name,bucket")
+    rojos, curso, legible = [], [], rc in (0, 8)  # 8 = hay controles pendientes
+    if legible and out:
+        try:
+            for c in json.loads(out):
+                if c["bucket"] in ("fail", "cancel"):
+                    rojos.append(c["name"])
+                elif c["bucket"] == "pending":
+                    curso.append(c["name"])
+        except ValueError:
+            legible = False
+    if rojos:
+        falta(f"controles en rojo en el PR #{n}: {', '.join(rojos)}. {url}", 7)
+    if pr["mergeStateStatus"] in ("BLOCKED", "BEHIND", "UNSTABLE") and not curso:
+        falta(f"GitHub no deja unir el PR #{n} todavía (estado {pr['mergeStateStatus']}): revisar reglas o traer lo nuevo de main. {url}", 8)
+
+    rc, _, err = gh("pr", "merge", str(n), *base, "--squash", "--auto")
+    if rc == 0:
+        print(f"Unión programada ✓ #{n}: la hace GitHub apenas pasen los controles" + (f" ({', '.join(curso)})" if curso else ""))
+        return
+    if curso:
+        falta(f"el PR #{n} espera controles ({', '.join(curso)}) y el repo no admite unión programada: correr unir-pr de nuevo al terminar. {url}", 9)
+    rc, _, err = gh("pr", "merge", str(n), *base, "--squash")
+    if rc == 0:
+        print(f"Unido ✓ #{n}" + ("" if legible else " (no pude leer los controles; mandó el estado limpio de GitHub)"))
+        return
+    falta(f"GitHub rechazó la unión del PR #{n}: {err[:200]}", 10)
+
+
+if __name__ == "__main__":
+    main()

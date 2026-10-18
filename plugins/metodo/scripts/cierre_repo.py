@@ -2,7 +2,7 @@
 """cierre_repo — qué hace /cerrar con el repositorio de la carpeta según cómo se une a main (metodo 0.46.0).
 
 Dos modos: «auto» (el repo está en ~/.claude/unir-a-main.txt: lo une `unir-a-main` solo, con los controles) y «pr» (cualquier otro:
-se abre un PR y, si el repo tiene controles en GitHub, se une con `gh pr merge --squash --auto`; si no, la persona recibe UN comando).
+se abre un PR y, si el repo tiene controles en GitHub, lo une `unir-pr` solo: unión programada si hay controles, directa si no; la persona no recibe ningún comando).
 Antes, en un repo «pr» el cierre se frenaba o quedaba a medias en la rama de cierre; ahora dice una vez qué hacer.
 
 Uso:  cierre_repo.py estado [carpeta]             imprime lo que cerrar-check muestra (nada si el repo une solo)
@@ -82,8 +82,7 @@ def lineas_cierre(repo):
     slug = f"{dueno_repo(repo)}/{n}" if dueno_repo(repo) else n
     out = [f"• REPO SIN UNIÓN AUTOMÁTICA: «{n}» no está en ~/.claude/unir-a-main.txt → une por PR. Hacelo VOS, en este orden: "
            f"(1) push de la rama y `gh pr create --fill --repo {slug}` si no hay PR; (2) bind_pr + set_monitor(auto_fix) si la app los tiene; "
-           f"(3) `gh pr merge <N> --squash --auto --repo {slug}`; si GitHub no lo admite (el repo no tiene controles), dejale a la persona UN solo comando en el chat: "
-           f"`gh pr merge <N> --squash --repo {slug}` y en el REANUDAR «ese repo une por PR; el cierre queda en el PR <N>»; "
+           f"(3) `python3 unir-pr <N> --repo {slug}` (está junto a cerrar-check.py; decide solo: unión programada o directa, sin OK de la persona). Si termina con «Falta: …», avisá ESA línea en criollo y ponela en el REANUDAR con dueño; nunca le pidas a la persona que corra `gh pr merge`; "
            f"(4) `cierre_repo.py volver` (no te quedes en la rama de cierre); (5) seguí con el paso 10: abrir la sesión siguiente y archivarte"]
     if rama and b and rama != b:
         out.append(f"• RAMA DE CIERRE: estás en «{rama}», no en «{b}» → al terminar el PR: `python3 cierre_repo.py volver` (está junto a cerrar-check.py)")
