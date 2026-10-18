@@ -1,5 +1,9 @@
 # base-segura
 
+## 0.14.4 — 2026-10-18
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.14.3 — 2026-10-15
 - La plantilla `CLAUDE-empresa.md` suma una sección «Dónde se guarda cada cosa»: qué es la carpeta → `docs/PRD.md`; decisiones con fecha y porqué → `docs/decisiones.md`; plan de cada etapa → `docs/planes/AAAA-MM-DD-tema.md`. Es solo una plantilla que copiás vos; no cambia nada en lo que ya tenés.
 
