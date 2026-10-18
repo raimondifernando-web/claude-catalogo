@@ -458,7 +458,7 @@ class TestExenta(Base):
         return raiz
 
     def nombres(self, raiz):
-        return {str(c.relative_to(raiz)) for c, _n, _p in E.descubrir_cajas(raiz)}
+        return {c.relative_to(raiz).as_posix() for c, _n, _p in E.descubrir_cajas(raiz)}   # con «/» también en Windows
 
     def test_sin_excepcion_el_campo_de_pruebas_se_revisa(self):
         self.assertEqual(self.nombres(self.armar(None)), {"madre", "madre/sandbox", "madre/sandbox/herramienta"})
@@ -481,9 +481,10 @@ class TestExenta(Base):
         raiz = self.armar([{"regla": "EXENTA", "ruta": "sandbox", "motivo": "campo de pruebas", "fecha": "2026-10-18"}])
         rc, sal = _correr(E.comando_revisar, todas=True, raiz_arg=str(raiz))
         self.assertIn("madre", sal)                # la caja de arriba sí se revisa
-        self.assertNotIn("madre/sandbox", sal)     # la carpeta exenta (y lo de adentro) no
+        self.assertNotIn("sandbox:", sal.replace("\\", "/").replace("madre/sandbox/", "madre/sandbox"))   # ninguna línea habla de la carpeta exenta
+        self.assertNotRegex(sal.replace("\\", "/"), r"madre/sandbox[ :/]")
         rc, sal = _correr(E.comando_remoto, str(raiz), False, False, 0, str(self.estado))
-        self.assertNotIn("madre/sandbox", sal)
+        self.assertNotRegex(sal.replace("\\", "/"), r"madre/sandbox[ :/]")
 
 
 class TestCerrarCheck(Base):
