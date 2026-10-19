@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.51.1 — 2026-10-19
+**Cuando lanzás tareas en otras sesiones, la sesión principal ya no te llena de mensajes: a cada aviso de una sesión hija contesta con un solo mensaje corto y, cuando llegó la última, con un resumen fijo.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema, medido:** después de un aviso de una sesión hija, la gente decía «no entiendo / resumime / me perdí» el 19 % de las veces (contra 8 % sin avisos). En todos esos casos la sesión había mandado varios mensajes seguidos, casi siempre largos y con palabras técnicas.
+- **Qué hace ahora:** si todavía trabajan otras sesiones hijas, una sola línea («Llegó lo de X. Falta Y; por ahora no tenés que decidir nada»). Cuando llega la última, un bloque fijo que junta todo: **Resumen** (2-3 líneas, sin jerga) · **Mi sugerencia** (una) · **Qué tenés que decidir vos** (una pregunta con recomendación, o «Nada, no tenés que hacer nada»). Un aviso de plata, datos o algo que no se puede deshacer va antes y nunca se recorta.
+- **No depende de que Claude se acuerde:** un programa (`cierre-hijas.py`) detecta el aviso, mira qué hijas siguen trabajando y da la orden en ese momento; al terminar el turno comprueba que el mensaje cumple y, si no, pide reescribirlo una sola vez. Cada intervención queda anotada en `<carpeta de Claude>/state/cierre-hijas/registro.jsonl`.
+- **Si molesta:** se apaga con la variable `CIERRE_HIJAS=0` o creando el archivo `<carpeta de Claude>/metodo/cierre-hijas.apagado`. No toca ninguno de tus archivos.
+
 ## 0.51.0 — 2026-10-18
 **Cada carpeta con código tiene ahora un lugar con nombre para cada documento de desarrollo, y el revisor de carpetas los vigila.** Se aplica solo con la actualización; no hay nada que correr.
 - **Los seis documentos de desarrollo que se pidieron (PRD, TRD, flujo de la app, UI/UX, esquema de datos, plan) ya tienen su lugar:** `docs/PRD.md`, `docs/arquitectura.md` (cómo está armado), `docs/flujo-de-la-app.md`, `docs/diseno/` (pantallas como mockups), `docs/esquema/` (generado desde el código, nunca a mano) y `docs/planes/`. Más `README.md`, pruebas, `docs/operacion.md` (dónde corre, cómo se despliega y se vuelve atrás, respaldo) y las revisiones de seguridad en `.claude/security-checks/`. El PRD ahora dice quién lleva la carpeta, en qué estado está y dónde está su respaldo.
