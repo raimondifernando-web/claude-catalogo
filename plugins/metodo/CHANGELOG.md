@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.51.2 — 2026-10-19
+**El panel «Tareas» de la derecha vuelve a llenarse y a ponerse en verde.** Se aplica solo: «Poner todo al día» (que corre sola una vez por día) agrega una línea a tu configuración; no tenés que correr nada. Rige para las sesiones **nuevas** (las que ya están abiertas no cambian).
+- **El problema, medido:** con los modelos nuevos (Sonnet 5.5, Opus 5.5) Claude Code deja afuera las herramientas con las que Claude arma y tilda su lista de tareas. Sin ellas, el panel quedaba vacío en todas las sesiones y nada se ponía en verde. Medido en una sesión limpia: sin el ajuste no traía `TaskCreate`/`TaskUpdate`/`TaskList`; con el ajuste, sí.
+- **Qué cambia:** `al-dia` deja prendida `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` en la sección `env` de tu `settings.json` (con copia de cómo estaba, y queda en el aviso diario). Es una variable oficial de Claude Code que solo lee él.
+- **Costo:** las definiciones de esas herramientas ocupan un poco de espacio en cada sesión.
+- **Si molesta:** borrá esa línea de `env` en tu `settings.json`.
+
 ## 0.51.1 — 2026-10-19
 **Cuando lanzás tareas en otras sesiones, la sesión principal ya no te llena de mensajes: a cada aviso de una sesión hija contesta con un solo mensaje corto y, cuando llegó la última, con un resumen fijo.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema, medido:** después de un aviso de una sesión hija, la gente decía «no entiendo / resumime / me perdí» el 19 % de las veces (contra 8 % sin avisos). En todos esos casos la sesión había mandado varios mensajes seguidos, casi siempre largos y con palabras técnicas.
