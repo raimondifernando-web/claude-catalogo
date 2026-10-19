@@ -126,6 +126,15 @@ if [ -f "$S" ]; then
     || ajustar "prendí la actualización automática de paquetes en la app (FORCE_AUTOUPDATE_PLUGINS=1 en tu settings.json): se actualizan solos los paquetes de los catálogos que tengas agregados; para apagarla, borrá esa línea de env" e_force
   [ "$(plutil -extract env.FORCE_AUTOUPDATE_PLUGINS raw "$S" 2>/dev/null)" = "1" ] || falta+=("actualización de paquetes en la app")
 fi
+# Con los modelos nuevos (Sonnet 5.5, Opus 5.5) Claude Code deja afuera las herramientas de tareas (TaskCreate/TaskUpdate/TaskList):
+# sin ellas el panel «Tareas» queda vacío y nada se tilda en verde. CLAUDE_CODE_ENABLE_TODO_TOOLS=1 las vuelve a traer
+# (la lee solo Claude Code; code.claude.com/docs/en/tools-reference.md#task-tool-availability). Rige para sesiones NUEVAS.
+if [ -f "$S" ]; then
+  e_tareas() { con_env "$1" && plutil -replace env.CLAUDE_CODE_ENABLE_TODO_TOOLS -string 1 "$1"; }
+  [ "$(plutil -extract env.CLAUDE_CODE_ENABLE_TODO_TOOLS raw "$S" 2>/dev/null)" = "1" ] \
+    || ajustar "prendí las herramientas de tareas (CLAUDE_CODE_ENABLE_TODO_TOOLS=1 en tu settings.json): con los modelos nuevos faltaban y el panel Tareas quedaba vacío; rige para las sesiones nuevas; para apagarlas, borrá esa línea de env" e_tareas
+  [ "$(plutil -extract env.CLAUDE_CODE_ENABLE_TODO_TOOLS raw "$S" 2>/dev/null)" = "1" ] || falta+=("herramientas de tareas del panel")
+fi
 # /arrancar archiva la sesión anterior de la misma serie; sin este permiso el modo automático lo frena (Orquesta, 2026-10-09).
 # Archivar es reversible (se desarchiva desde la barra lateral). Solo agrega la línea si falta; no toca el resto.
 if [ -f "$S" ]; then

@@ -167,6 +167,7 @@ class AlDiaAjustesL5(unittest.TestCase):
             self.assertTrue(enlace.is_symlink(), "el enlace tiene que seguir siendo un enlace")
             datos = json.loads(real.read_text())
             self.assertEqual(datos["env"]["FORCE_AUTOUPDATE_PLUGINS"], "1")
+            self.assertEqual(datos["env"]["CLAUDE_CODE_ENABLE_TODO_TOOLS"], "1")
             self.assertEqual(datos["env"]["OTRA"], "x")
             self.assertTrue(datos["extraKnownMarketplaces"]["claude-catalogo"]["autoUpdate"])
             self.assertIn("mcp__ccd_session_mgmt__archive_session", datos["permissions"]["allow"])
@@ -347,6 +348,7 @@ class AlDiaAvisaCambios(unittest.TestCase):
     def test_cambios_de_ajustes_y_permisos_van_al_aviso_diario(self):
         # En --auto el echo no lo ve nadie: tienen que quedar en avisos (al-dia.aviso, que se muestra al abrir sesión).
         self.assertRegex(TEXTO, r'\|\| ajustar "prendí la actualización automática de paquetes en la app \(FORCE_AUTOUPDATE_PLUGINS=1[^"]*" e_force')
+        self.assertRegex(TEXTO, r'\|\| ajustar "prendí las herramientas de tareas \(CLAUDE_CODE_ENABLE_TODO_TOOLS=1[^"]*" e_tareas')
         self.assertRegex(TEXTO, r'\|\| ajustar "agregué a tu settings.json el permiso \$AP[^"]*" e_archivar')
         self.assertIn('avisos+=("$1${CAJ:+ (copia de cómo estaba: $CAJ)}")', TEXTO)
 
