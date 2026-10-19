@@ -158,6 +158,49 @@ def consejo(r_id: str, msg: str, ctx: dict) -> dict:
         conviene = ("decidir cuál es la verdad: si se usa, configurarlo y habilitarlo (configurar ≠ habilitar); si no se usa por MCP, "
                     "aclararlo en el CLAUDE.md («se usa por script/API»). Sin llaves en el chat.")
         hecho = "cada conector que cita el CLAUDE.md está habilitado o aclarado como «por script/API»."
+    elif r_id == "R22":
+        que = "el archivo de permisos y paquetes de la caja (`.claude/settings.json`) no está subido a GitHub"
+        accion, rinde = "sesion", 55
+        cuesta = ("existe solo en esta Mac: otra persona, la nube o una Mac nueva arrancan esta carpeta sin sus permisos ni su paquete, "
+                  "y R10 (activar el paquete de arriba) no se cumple donde importa.")
+        conviene = ("agregar la línea `!.claude/settings.json` al `.gitignore` de la caja (le gana al ignore global de esta Mac), "
+                    "mirar que el archivo no tenga claves (en `env`) y subirlo. No hace falta tocar la configuración global.")
+        hecho = "`git ls-files .claude/settings.json` lo muestra, sin claves adentro."
+    elif r_id == "R23":
+        que = msg
+        accion, rinde = "sesion", 45
+        cuesta = ("quien abre la caja (otra persona, la nube, una sesión nueva) no encuentra cómo se levanta, cómo está armada ni qué claves necesita, "
+                  "y lo redescubre leyendo código en cada sesión.")
+        conviene = ("escribir SOLO los que se vayan a usar y con contenido real, a partir del código (nunca inventar): `estructura.py arreglar --si` "
+                    "deja los esqueletos con instrucciones. Si algo no aplica (no hay pantallas, no usa claves), anotarlo con `estructura.py descartar`.")
+        hecho = "cada archivo tiene contenido real o se anotó por qué no hace falta."
+    elif r_id == "R24":
+        que = msg
+        accion, rinde = "al_pasar", 30
+        cuesta = "sin pruebas, un cambio se rompe en silencio; sin el comando, cada sesión busca cómo se corren."
+        conviene = "una línea en el README o el CLAUDE.md con el comando que las corre. Si no hay pruebas, empezar por lo que más plata o datos mueve."
+    elif r_id == "R25":
+        que = msg
+        accion, rinde = "sesion", 40
+        cuesta = "si algo se cae de noche, nadie sabe dónde corre, cómo se vuelve atrás ni dónde está el respaldo; se paga en horas y a veces en datos."
+        conviene = "completar `docs/operacion.md` con lo que de verdad hay (dónde corre, cómo se despliega y se vuelve atrás, nombres de claves y vencimientos, dónde están los datos y la última restauración probada). Sin valores de claves."
+        hecho = "las cuatro partes están y dicen cosas verificadas."
+    elif r_id == "R26":
+        que = msg
+        accion, rinde = "sesion", 50
+        cuesta = "una caja que corre en internet o usa claves sin revisión reciente acumula riesgo sin que nadie lo vea; los escáneres de secretos de GitHub no son gratis en repos privados."
+        conviene = "correr el chequeo de seguridad de la caja y guardar el informe (sin valores de claves) en `.claude/security-checks/AAAA-MM-DD.md`."
+        hecho = "hay un informe de menos de 90 días."
+    elif r_id == "R27":
+        que = msg
+        accion, rinde = "al_pasar", 15
+        cuesta = "nadie sabe quién lleva la caja, si sigue viva ni dónde está su respaldo; se descubre tarde, cuando hace falta."
+        conviene = "agregar las líneas faltantes (Dueño, Estado, Respaldo, Última revisión) la próxima vez que abras el PRD."
+    elif r_id == "R28":
+        que = msg
+        accion, rinde = "al_pasar", 20
+        cuesta = "un esquema viejo parece verdadero y no lo es: la sesión decide sobre datos que ya cambiaron."
+        conviene = "volver a generarlo con el comando que dice el LEEME (el esquema sale del código, nunca a mano)."
     elif r_id == "R7":
         que = msg
         cuesta = "quien clone la carpeta no sabe qué variables necesita."
