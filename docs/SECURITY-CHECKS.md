@@ -1255,3 +1255,15 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Metadatos | Versión 0.5.4 en `plugin.json` coincide con el título. |
 | Límites (lo NO comprobado) | Las pruebas del panel (TypeScript) no se ejecutaron en esta revisión: las corre el CI del catálogo. No se abrió el panel en la app de un cliente. |
 | Veredicto | **PASS**: sin hallazgos; cambio de presentación sin superficie nueva. |
+
+### 2026-10-19 · metodo 0.50.2 → 0.51.2 (commit d38b7ea; PR #59, #61 y #62) — PASS con condiciones
+
+*Informe completo (alcance, qué corre solo, revisor independiente y límites) en `.claude/security-checks/2026-10-19-metodo-0.51.md`. `paneles` no cambió (0.5.4).*
+| Ítem | Resultado |
+|---|---|
+| Qué corre solo | Dos hooks nuevos (`UserPromptSubmit` y `Stop` → `cierre-hijas.py`): sin red, sin shell, sin `eval`; escriben solo contadores y una marca por sesión en `<config>/state/cierre-hijas/`; el `Stop` corta con `stop_hook_active` y consume la marca (una sola corrección). `al-dia.sh` agrega `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` al `env` de `settings.json` con copia y validación (zona sensible: PR #62 con etiqueta `ok-fernando`). |
+| Red / secretos / clientes | Único tráfico nuevo: `estructura.py remoto` (`git fetch`, a pedido). 0 valores secretos en las líneas agregadas; 0 nombres de clientes en el árbol. |
+| Pruebas | 71 pasan (`test_cierre_hijas`, `test_estructura_molde`, `test_al_dia`). |
+| Revisor independiente | Gemini (solo lectura): PASS con condiciones, sin críticos ni altos. |
+| Límites | Hooks no probados dentro de la app real ni en Windows (el bloque de `al-dia.sh` usa `plutil`, solo Mac). |
+| Veredicto | **PASS con condiciones**. Sin hallazgos altos ni críticos. |
