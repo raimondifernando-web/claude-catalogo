@@ -65,6 +65,16 @@ class T(unittest.TestCase):
         cache["total"] = 2500
         self.assertIn("ALTO", self._aviso(cache).stdout)
 
+    def test_no_lanza_medicion_si_la_config_es_temporal(self):
+        # PATH con un «gh» falso que anotaría su ejecución: en una config temporal (las pruebas) no debe lanzarse nada
+        bin_ = Path(tempfile.mkdtemp()); marca = Path(self.d, "gh-llamado")
+        gh = bin_ / "gh"; gh.write_text(f"#!/bin/sh\ntouch '{marca}'\n"); gh.chmod(0o755)
+        Path(self.d, "actions-consumo.json").write_text(json.dumps({"ts": 1, "desde": "x", "total": 0, "cupo": 3000}))
+        subprocess.run([sys.executable, str(SCRIPT), "--aviso"], capture_output=True, text=True,
+                       env=dict(os.environ, CEREBRO_HOME=self.d, PATH=f"{bin_}:/usr/bin:/bin"))
+        time.sleep(1.0)
+        self.assertFalse(marca.exists())
+
     def test_aviso_sin_cache_calla(self):
         r = subprocess.run([sys.executable, str(SCRIPT), "--aviso"], capture_output=True, text=True,
                            env=dict(os.environ, CEREBRO_HOME=self.d, PATH="/usr/bin:/bin"))

@@ -26,6 +26,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -190,10 +191,13 @@ def aviso():
         c = json.load(open(ARCHIVO, encoding="utf-8"))
     except Exception:
         c = {}
-    if shutil.which("gh") and time.time() - float(c.get("ts", 0)) > TTL_H * 3600:
+    # No se lanza la medición si la config vive en una carpeta temporal (pruebas): un proceso suelto trabaría su borrado en Windows.
+    en_temporal = os.path.realpath(DIR).startswith(os.path.realpath(tempfile.gettempdir()))
+    if shutil.which("gh") and not en_temporal and time.time() - float(c.get("ts", 0)) > TTL_H * 3600:
         try:
-            subprocess.Popen([sys.executable, os.path.abspath(__file__)], stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL, start_new_session=True)
+            extra = {"creationflags": 0x00000008 | 0x00000200} if os.name == "nt" else {"start_new_session": True}
+            subprocess.Popen([sys.executable, os.path.abspath(__file__)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             stdin=subprocess.DEVNULL, cwd=HOME, **extra)   # cwd=HOME: no deja trabada la carpeta de quien lo llamó
         except Exception:
             pass
     if not c.get("total") and c.get("total") != 0:
