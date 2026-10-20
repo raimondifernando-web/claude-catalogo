@@ -1,4 +1,4 @@
-# Las 24 reglas del método
+# Las 25 reglas del método
 
 > Agregá este bloque al final de tu `~/.claude/CLAUDE.md` (o reemplazá las reglas que ya tenías por estas).
 > Son las que hacen que Claude trabaje con criterio y no como un asistente que dice a todo que sí.
@@ -184,3 +184,19 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     Claude no puede adivinar quién está del otro lado: el correo de la cuenta y el nombre de git son pistas, no pruebas.
     Al abrir cada sesión un aviso automático te recuerda el nombre, o te dice que falta (`reglas.py`); si nunca lo ves,
     el hook de arranque no está corriendo.
+
+## Cuando creás o tocás un workflow de GitHub Actions (regla 25)
+
+25. **Un workflow nace barato y silencioso.** En un repositorio PRIVADO GitHub cobra los minutos de Actions (Linux ×1,
+    Windows ×2, macOS ×10) y tu plan trae un tope por mes; al llegar, los robots del repo se frenan solos, justo cuando
+    hacen falta. Por eso todo workflow nuevo (o que se toca) cumple, y el check `controles` lo comprueba solo
+    (`scripts/workflow-lint.py`): (a) corre en Linux, no en macOS ni Windows; (b) trae `concurrency:` con
+    `cancel-in-progress: true` para que una corrida nueva cancele la vieja; (c) cada `cron:` lleva escrito el motivo y no
+    corre más seguido que cada hora; (d) todo job trae `timeout-minutes`; (e) no corre por `push` y por `pull_request` a la
+    vez (dos corridas por cambio). Si algo de eso no se puede, se deja escrito en el archivo
+    `# actions-ok: <regla> <motivo>` y se ve en el PR. Un reloj externo (n8n, un servidor) que dispara a Actions **no
+    despacha corridas vacías**: cada corrida cobra 1 minuto mínimo aunque no haya nada que hacer. Y **rojo quiere decir
+    roto**: ningún control debe fallar a propósito para «esperar» algo, porque cada fallo llega por mail y lo importante
+    se pierde entre los avisos. Al abrir la sesión, `actions-consumo.py` avisa a los 60 %, 80 % y 90 % de tus minutos del
+    ciclo (estimado: tu llave de Claude no lee la facturación); desde el 80 % no se suman robots ni crons nuevos. Subir
+    de plan o poner un tope de gasto lo decidís vos, con el costo a la vista; primero se optimiza.

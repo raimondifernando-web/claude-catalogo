@@ -39,7 +39,7 @@ class ReglasTest(unittest.TestCase):
 
     def test_plantilla_tiene_24_reglas(self):
         primera = PLANTILLA.read_text(encoding="utf-8").splitlines()[0]
-        self.assertEqual(primera, "# Las 24 reglas del método")
+        self.assertEqual(primera, "# Las 25 reglas del método")
         self.assertIn("\n19. **Una pieza por función; buscar antes de crear.**", PLANTILLA.read_text(encoding="utf-8"))
 
     def test_bloque_viejo_entre_marcas_se_actualiza_sin_tocar_lo_propio(self):
@@ -57,7 +57,7 @@ class ReglasTest(unittest.TestCase):
         self.assertEqual(texto[-3:], propio_abajo)
         a, b = texto.index(reglas.INI), texto.index(reglas.FIN)
         self.assertEqual(texto[a:b + 1], reglas.bloque_nuevo(PLANTILLA))
-        self.assertIn("# Las 24 reglas del método", texto)
+        self.assertIn("# Las 25 reglas del método", texto)
         self.assertTrue(any(l.startswith("19. **Una pieza por función") for l in texto))
         self.assertEqual(len(list(self.cfg.glob("CLAUDE.md.antes-reglas-*"))), 1)
 
@@ -125,7 +125,7 @@ class NombreTest(unittest.TestCase):
         self.assertIn("Falta cómo querés que te llame", reglas.aviso_nombre(self.ficha(None)))
 
     def test_el_ejemplo_dentro_del_bloque_no_cuenta(self):
-        s = reglas.aviso_nombre(self.ficha("\n".join([reglas.INI, "# Las 24 reglas del método", "Llamame: Ejemplo", reglas.FIN]) + "\n"))
+        s = reglas.aviso_nombre(self.ficha("\n".join([reglas.INI, "# Las 25 reglas del método", "Llamame: Ejemplo", reglas.FIN]) + "\n"))
         self.assertIn("Falta cómo querés que te llame", s)
 
     def test_arranque_completo_imprime_la_linea(self):

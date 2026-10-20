@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.51.3 — 2026-10-19
+**Tus robots de GitHub no se comen los minutos del mes, y te enterás antes de llegar al tope.** Se aplica solo; no hay nada que correr.
+- **Regla 25 (nueva):** un workflow de GitHub Actions nace barato y silencioso. En un repositorio privado GitHub cobra los minutos y, al llegar al tope del plan, los robots se frenan justo cuando hacen falta. Ahora todo workflow nuevo (o que se toca) corre en Linux, cancela la corrida vieja cuando llega una nueva, explica por qué tiene un reloj (`cron`) y no corre más seguido que cada hora, trae un tiempo máximo y no corre dos veces por cada cambio. Si algo no se puede, se deja escrito el motivo en el mismo archivo y se ve en el PR.
+- **Lo comprueba solo:** el programa `workflow-lint.py` revisa los workflows que cambia cada PR (en el control `controles` del catálogo y, si tu repo lo usa, en el tuyo). Para revisar todo un repo a pedido: `workflow-lint.py --todo`.
+- **Aviso temprano de minutos:** al arrancar cada sesión, `actions-consumo.py` te avisa cuando llevás el 60 %, el 80 % y el 90 % de los minutos del ciclo (una vez por escalón). Es una estimación hecha sumando las corridas de tus repos privados: la llave de Claude no puede leer la facturación de GitHub. Asume plan Pro (3.000 min) y que el ciclo se renueva el día 4; si tu plan o tu fecha son otros, se cambian con `ACTIONS_CUPO_MIN` y `ACTIONS_CICLO_DIA`. Si no tenés `gh` instalado o con sesión iniciada, no avisa nada.
+- **Receta nueva `workflows-baratos`** (la muestra `herramientas-para` cuando vas a crear un workflow o un robot programado): cuándo no hace falta Actions, la plantilla mínima y qué hacer si ya estás cerca del tope. Subir de plan o poner un tope de gasto lo decidís vos, con el costo a la vista.
+
 ## 0.51.2 — 2026-10-19
 **El panel «Tareas» de la derecha vuelve a llenarse y a ponerse en verde.** Se aplica solo: «Poner todo al día» (que corre sola una vez por día) agrega una línea a tu configuración; no tenés que correr nada. Rige para las sesiones **nuevas** (las que ya están abiertas no cambian).
 - **El problema, medido:** con los modelos nuevos (Sonnet 5.5, Opus 5.5) Claude Code deja afuera las herramientas con las que Claude arma y tilda su lista de tareas. Sin ellas, el panel quedaba vacío en todas las sesiones y nada se ponía en verde. Medido en una sesión limpia: sin el ajuste no traía `TaskCreate`/`TaskUpdate`/`TaskList`; con el ajuste, sí.
