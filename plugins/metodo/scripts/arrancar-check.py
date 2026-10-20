@@ -348,6 +348,19 @@ try:
 except Exception as e:
     print(f"• Sesiones citadas por el REANUDAR: no se pudo medir ({type(e).__name__})")
 
+# Regla 25: minutos de GitHub Actions (aviso a los 60/80/90 %, una vez por escalón; en segundo plano refresca la medición).
+# Se salta si el entorno lo apaga (las pruebas lo hacen) o si el programa no está.
+_ac = os.path.join(os.path.dirname(os.path.abspath(__file__)), "actions-consumo.py")
+if os.path.isfile(_ac) and not os.environ.get("ACTIONS_CONSUMO_OFF"):
+    try:
+        _r = subprocess.run([sys.executable, _ac, "--aviso"], capture_output=True, text=True, encoding="utf-8",
+                            errors="replace", timeout=10)
+        for _l in _r.stdout.splitlines():
+            if _l.strip():
+                print("• " + _l.strip())
+    except Exception:
+        pass
+
 print("• MANUAL (modelo): mirá el próximo paso, compará con el ruteo que mostró el radar al abrir y decile a quien te "
       "acompaña en UNA línea: «este paso pide X, estás en Y». Si no coinciden, proponé cambiar ANTES de empezar "
       "(después se pierde la caché)")
