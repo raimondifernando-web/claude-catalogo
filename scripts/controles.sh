@@ -21,6 +21,7 @@ paso "pruebas de los controles" python3 -m unittest discover -s scripts/tests
 BASE_WL="$(git merge-base origin/main HEAD 2>/dev/null || true)"
 if [ -n "$BASE_WL" ] && [ "$BASE_WL" != "$(git rev-parse HEAD)" ]; then
   paso "workflows baratos y silenciosos (regla 25)" python3 plugins/metodo/scripts/workflow-lint.py --publico --solo-nuevos --base "$BASE_WL" --head HEAD
+  paso "automatizaciones de GitHub probadas antes en un repo privado (Probado-en)" env BASE="$BASE_WL" HEAD=HEAD REPO_PRIVADO=false python3 plugins/metodo/scripts/probado-en.py
 fi
 # En GitHub este control va en un paso aparte y ANTES (controles.yml): así las pruebas del PR nunca ven el secreto.
 if [ -z "${SIN_NOMBRES:-}" ]; then

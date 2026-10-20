@@ -43,6 +43,8 @@ jobs:
       - name: Controles (metadatos y pruebas)
         env:
           SIN_NOMBRES: "1"
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTOR: ${{ github.event.pull_request.user.login }}
         run: |
           set -euo pipefail
           git config --global user.email "controles@localhost"   # algunas pruebas crean repos de juguete

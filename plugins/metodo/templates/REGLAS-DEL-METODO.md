@@ -200,3 +200,9 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     se pierde entre los avisos. Al abrir la sesión, `actions-consumo.py` avisa a los 60 %, 80 % y 90 % de tus minutos del
     ciclo (estimado: tu llave de Claude no lee la facturación); desde el 80 % no se suman robots ni crons nuevos. Subir
     de plan o poner un tope de gasto lo decidís vos, con el costo a la vista; primero se optimiza.
+    **Y toda automatización de GitHub** (un workflow, un ruleset, un script que lo instala en varios repos) **se prueba
+    ANTES en un repositorio PRIVADO real, de punta a punta, y solo con eso en verde se despliega a los demás**: un repo
+    público o una prueba en tu computadora no reproducen lo que pasa en uno privado (allá, por ejemplo, leer el propio
+    repo pide credencial). La prueba no deja restos (borra la rama, el PR y las etiquetas que crea, aunque falle), se
+    puede repetir, y si el repo de prueba falla no se sigue con los otros. El check `controles` pide en el PR una línea
+    `Probado-en: <repo privado> (<qué corriste>)` cuando se toca una de estas piezas (`scripts/probado-en.py`).
