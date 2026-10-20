@@ -50,7 +50,7 @@ class ReglasTest(unittest.TestCase):
 
         r = correr(self.cfg)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("Reglas del método actualizadas a 24 ✓", r.stdout)
+        self.assertIn("Reglas del método actualizadas a 25 ✓", r.stdout)
 
         texto = self.ficha.read_text(encoding="utf-8").splitlines()
         self.assertEqual(texto[:3], propio_arriba)
@@ -69,7 +69,7 @@ class ReglasTest(unittest.TestCase):
     def test_ficha_sin_reglas_las_agrega_al_final(self):
         self.ficha.write_text("Lo mío.\n", encoding="utf-8")
         r = correr(self.cfg)
-        self.assertIn("Reglas del método agregadas (24) ✓", r.stdout)
+        self.assertIn("Reglas del método agregadas (25) ✓", r.stdout)
         texto = self.ficha.read_text(encoding="utf-8")
         self.assertTrue(texto.startswith("Lo mío.\n"))
         self.assertIn(reglas.INI, texto)
