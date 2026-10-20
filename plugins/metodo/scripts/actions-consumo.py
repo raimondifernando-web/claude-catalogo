@@ -38,7 +38,7 @@ MARCA = os.path.join(DIR, "actions-consumo-aviso.json")
 GH_CONFIG = os.environ.get("ACTIONS_GH_CONFIG") or (
     os.path.join(HOME, ".config/gh-claude") if os.path.isdir(os.path.join(HOME, ".config/gh-claude")) else "")
 CUPO = int(os.environ.get("ACTIONS_CUPO_MIN", "3000"))
-CICLO_DIA = int(os.environ.get("ACTIONS_CICLO_DIA", "4"))
+CICLO_DIA = min(max(int(os.environ.get("ACTIONS_CICLO_DIA", "4") or 4), 1), 28)  # 1-28: existe en todos los meses
 TTL_H = 3
 ESCALONES = ((90, "CRÍTICO: congelar robots y workflows nuevos"), (80, "ALTO: no sumar robots ni crons nuevos"),
              (60, "aviso temprano"))
@@ -151,6 +151,10 @@ def actualizar():
     os.makedirs(DIR, exist_ok=True)
     tmp = ARCHIVO + ".tmp"
     json.dump(cache, open(tmp, "w", encoding="utf-8"))
+    try:
+        os.chmod(tmp, 0o600)
+    except OSError:
+        pass
     os.replace(tmp, ARCHIVO)
     return cache
 

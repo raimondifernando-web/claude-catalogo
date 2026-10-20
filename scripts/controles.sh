@@ -17,10 +17,10 @@ paso "pruebas del vigía" python3 -m unittest discover -s plugins/metodo/scripts
 paso "pruebas del método (buzón, radar, estable, checks)" python3 -m unittest discover -s plugins/metodo/scripts/tests
 paso "pasos manuales / Windows (nada exige que el cliente corra algo a mano)" python3 scripts/pasos-manuales.py
 paso "pruebas de los controles" python3 -m unittest discover -s scripts/tests
-# Regla 25: los workflows que este PR agrega o cambia nacen baratos y silenciosos (el catálogo es público: la regla de sistema operativo no corre).
+# Regla 25: los workflows que este PR AGREGA (los viejos se ponen al día cuando se rediseñan) nacen baratos y silenciosos (el catálogo es público: la regla de sistema operativo no corre).
 BASE_WL="$(git merge-base origin/main HEAD 2>/dev/null || true)"
 if [ -n "$BASE_WL" ] && [ "$BASE_WL" != "$(git rev-parse HEAD)" ]; then
-  paso "workflows baratos y silenciosos (regla 25)" python3 plugins/metodo/scripts/workflow-lint.py --publico --base "$BASE_WL" --head HEAD
+  paso "workflows baratos y silenciosos (regla 25)" python3 plugins/metodo/scripts/workflow-lint.py --publico --solo-nuevos --base "$BASE_WL" --head HEAD
 fi
 # En GitHub este control va en un paso aparte y ANTES (controles.yml): así las pruebas del PR nunca ven el secreto.
 if [ -z "${SIN_NOMBRES:-}" ]; then

@@ -79,6 +79,35 @@ class T(unittest.TestCase):
         solo_push = BUENO.replace("pull_request:\n    branches: [main]", "push:")
         self.assertEqual(reglas(solo_push), [])
 
+    def test_hallazgos_de_la_revision(self):
+        # so: un paso o artefacto que NOMBRA macos no es un runner; un comentario al final tampoco
+        self.assertEqual(reglas(BUENO.replace("steps:\n", "steps:\n      - name: Build macos-tarball\n")), [])
+        self.assertEqual(reglas(BUENO.replace("ubuntu-latest", "ubuntu-latest # antes macos-latest")), [])
+        self.assertEqual(reglas(BUENO.replace("ubuntu-latest", "windows-2022")), ["so"])
+        # concurrencia con expresión (main no se corta, los PR sí)
+        self.assertEqual(reglas(BUENO.replace("true", "${{ github.ref != 'refs/heads/main' }}")), [])
+        # timeout: el de un paso no reemplaza al del job
+        sin_job = BUENO.replace("    timeout-minutes: 5\n    steps:\n      - run: echo hola", "    steps:\n      - run: echo hola\n        timeout-minutes: 5")
+        self.assertEqual(reglas(sin_job), ["timeout"])
+        # on con comentario, en lista, y branches con comodín
+        self.assertEqual(reglas(BUENO.replace("on:\n", "on: # disparadores\n  push:\n")), ["push-pr"])
+        self.assertEqual(reglas(BUENO.replace("on:\n  pull_request:\n    branches: [main]", "on:\n  - push\n  - pull_request")), ["push-pr"])
+        self.assertEqual(reglas(BUENO.replace("on:\n", "on:\n  push:\n    branches: ['**']\n")), ["push-pr"])
+        self.assertEqual(reglas(BUENO.replace("on:\n", "on:\n  push:\n    # branches\n")), ["push-pr"])
+        # cron concentrado: cada 5 min durante una hora
+        cron = BUENO.replace("pull_request:\n    branches: [main]", "schedule:\n    - cron: '*/5 14 * * *' # prueba")
+        self.assertEqual(reglas(cron), ["cron"])
+
+    def test_diff_sin_historia_falla_claro(self):
+        with tempfile.TemporaryDirectory() as d:
+            r = subprocess.run([sys.executable, str(SCRIPTS / "workflow-lint.py"), "--base", "0000000", "--head", "HEAD"],
+                               cwd=d, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("no pude comparar", r.stdout)
+            r = subprocess.run([sys.executable, str(SCRIPTS / "workflow-lint.py"), "--base", "--evil", "--head", "HEAD"],
+                               cwd=d, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 2)  # argparse rechaza lo que parece una opción
+
     def test_modo_diff_y_codigo_de_salida(self):
         with tempfile.TemporaryDirectory() as d:
             def git(*a):
