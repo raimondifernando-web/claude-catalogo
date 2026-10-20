@@ -1267,3 +1267,15 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Revisor independiente | Gemini (solo lectura): PASS con condiciones, sin críticos ni altos. |
 | Límites | Hooks no probados dentro de la app real ni en Windows (el bloque de `al-dia.sh` usa `plutil`, solo Mac). |
 | Veredicto | **PASS con condiciones**. Sin hallazgos altos ni críticos. |
+
+### 2026-10-20 · metodo 0.51.2 → 0.51.3 (commit 7d37cc5; PR #64) — PASS con condiciones
+
+*Informe completo en `.claude/security-checks/2026-10-20-metodo-0.51.3.md`. `paneles` no cambió (0.5.4).*
+| Ítem | Resultado |
+|---|---|
+| Qué corre solo | Un programa nuevo en la máquina del cliente: `actions-consumo.py --aviso` (encadenado desde `arrancar-check.py`, tope 10 s, se apaga con `ACTIONS_CONSUMO_OFF=1`); solo lectura de la API de GitHub vía el `gh` de la persona, sin red propia; escribe solo un cache 0600 con minutos y nombres de sus repos privados, local. Ningún hook nuevo. |
+| Inyección / secretos / clientes | `${{ }}` solo en `env:` de `controles.yml`; sin `eval`/`exec`; 0 valores secretos; 0 nombres de clientes en el árbol. Zona sensible (`.github/`): PR #64 con etiqueta `ok-fernando`. |
+| Pruebas | 33 pasan (`test_actions_consumo`, `test_probado_en`, `test_workflow_lint`, `test_reglas`). |
+| Revisor independiente | Gemini (solo lectura): PASS con condiciones, sin críticos ni altos. |
+| Límites | No probado en la cuenta de un cliente ni en un Windows real. |
+| Veredicto | **PASS con condiciones**. Sin hallazgos altos ni críticos. |
