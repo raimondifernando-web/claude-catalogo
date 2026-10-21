@@ -41,6 +41,8 @@ Códigos de salida:
         nada; no confíes en ese repo hasta revisarlo. También si Antigravity tocó .claude/ en su copia.
     73  El cambio de Antigravity no se pudo traer (el repo real cambió mientras trabajaba, o el parche no aplica).
     74  En modo revisar, Antigravity devolvió una respuesta vacía o casi (menos de 200 caracteres): no es una revisión.
+    75  Antigravity no se lanza ahora: está en pausa (pidió iniciar sesión o no respondió hace poco) o no hay conexión. Se lo evita a propósito, porque
+        sin red `agy` abre el navegador de Google y queda esperando. Corré «agy» una vez y, si fue la red, reintentá.
     124 La herramienta no terminó a tiempo (METODO_DELEGAR_TOPE, 3600 s por defecto) y se cortó con sus hijos.
 
 Antigravity trabaja sobre una COPIA del repo: solo los archivos versionados o nuevos no ignorados, sin .git, sin archivos
@@ -1194,6 +1196,13 @@ def main(argv=None):
             if args.dry_run:   # sin ejecutar nada: el modelo se confirma contra `agy models` al lanzar
                 modelo, aviso_modelo = args_modelo_agy(plan), None
             else:
+                puede, motivo_agy = radar.agy_puede_correr()
+                if not puede:
+                    sys.stderr.write("No se lanza Antigravity: %s.\n" % (
+                        "está en pausa (pidió iniciar sesión o no respondió hace poco; si sigue, corré «agy» una vez: se reanuda solo)"
+                        if motivo_agy == "login" else
+                        "no hay conexión con Google ahora (sin red, agy abriría el navegador para entrar); reintentá cuando vuelva"))
+                    return 75
                 cupo_ok = (cupos or {}).get("antigravity", ("sin_dato",))[0] == "ok"
                 modelo, aviso_modelo = resolver_modelo_agy(plan, bin_cli, consultar=cupo_ok)
         except ValueError as e:

@@ -71,6 +71,7 @@ class Base(unittest.TestCase):
         os.environ["RADAR_HOY"] = "2026-10-10"
         os.environ.pop("RADAR_PROBAR", None)
         os.environ["CEREBRO_HOME"] = str(self.tmp / "cerebro")
+        (self.tmp / "cerebro").mkdir()   # la marca de Antigravity vive acá; sin esto caería en el ~/.cache real
         # aislado del cupo REAL de la máquina que corre los tests
         self.cupo_falso(0, "Codex: cupo desconocido (sin dato en los registros recientes)")
         self.claude_falso(0, "Current session: 0% used\n")
@@ -308,6 +309,138 @@ class TestLectoresCupo(Base):
         (estado / "history.jsonl").write_text("", encoding="utf-8")   # ya se usó: ahora sí se le pregunta
         self.assertEqual(R.cupo_antigravity(), ("ok", "Antigravity: 50% usado"))
         self.assertTrue(marca.exists())
+
+    # ---- Antigravity: que una llamada automática no abra el navegador (2026-10-21) ----
+    def _agy_con_rastro(self, codigo=0, salida=None, err=""):
+        """agy falso que anota cada vez que lo llaman; devuelve la ruta de la marca de llamada."""
+        rastro = self.tmp / "agy-llamado"
+        cuerpo = salida if salida is not None else json.dumps(
+            {"command": {"data": {"groups": [{"name": "Gemini", "buckets": [{"remaining_fraction": 0.5}]}]}}})
+        ruta = self.tmp / "agy-rastro"
+        ruta.write_text("#!/bin/sh\necho x >> '%s'\necho '%s' >&2\ncat << 'EOF'\n%s\nEOF\nexit %d\n" % (rastro, err, cuerpo, codigo),
+                        encoding="utf-8")
+        ruta.chmod(0o755)
+        os.environ["RADAR_AGY_BIN"] = str(ruta)
+        return rastro
+
+    def test_antigravity_sin_red_no_se_llama(self):
+        """Sin red, `agy` no puede renovar su token y abriría el navegador: ni se lo ejecuta, ni se anota «login»."""
+        rastro = self._agy_con_rastro()
+        os.environ["RADAR_AGY_RED"] = "no"
+        nivel, texto = R.cupo_antigravity()
+        self.assertEqual(nivel, "desconocido")
+        self.assertIn("sin conexión", texto)
+        self.assertFalse(rastro.exists(), "se llamó a agy sin red")
+        self.assertFalse(R._marca_agy().exists(), "la falta de red no es «necesita login»")
+        os.environ["RADAR_AGY_RED"] = "si"   # vuelve la red: se reanuda solo
+        self.assertEqual(R.cupo_antigravity(), ("ok", "Antigravity: 50% usado"))
+        self.assertTrue(rastro.exists())
+
+    def _colgar(self, rastro):
+        """Corre cupo_antigravity con un agy que se cuelga (TimeoutExpired); devuelve (nivel, texto)."""
+        original = R.subprocess.run
+        def colgado(*a, **k):
+            rastro.write_text("x\n")
+            raise R.subprocess.TimeoutExpired(a[0], 30)
+        R.subprocess.run = colgado
+        try:
+            return R.cupo_antigravity()
+        finally:
+            R.subprocess.run = original
+
+    def _log_de_agy(self, segundos_desde_ahora, texto):
+        estado = self.tmp / "agy-estado"
+        (estado / "log").mkdir(parents=True, exist_ok=True)
+        os.environ["RADAR_AGY_STATE"] = str(estado)
+        nombre = time.strftime("cli-%Y%m%d_%H%M%S.log", time.localtime(time.time() + segundos_desde_ahora))
+        (estado / "log" / nombre).write_text(texto)
+
+    def test_antigravity_colgado_sin_dato_marca_corto_y_no_se_reintenta(self):
+        """Si agy se cuelga y no hay registro que explique por qué, se anota un plazo CORTO (30 min): casi siempre fue la red."""
+        rastro = self._agy_con_rastro()
+        nivel, texto = self._colgar(rastro)
+        self.assertEqual(nivel, "no_disponible")
+        self.assertIn("en pausa", texto)
+        m = json.loads(R._marca_agy().read_text())
+        self.assertAlmostEqual(m["hasta"] - m["ts"], 1800, delta=5)
+        rastro.unlink()
+        for _ in range(3):   # las llamadas siguientes no ejecutan nada
+            self.assertEqual(R.cupo_antigravity()[0], "no_disponible")
+        self.assertFalse(rastro.exists(), "se volvió a llamar a agy dentro del plazo")
+
+    def test_antigravity_colgado_por_red_marca_15_min(self):
+        rastro = self._agy_con_rastro()
+        self._log_de_agy(1, "browser.go:256] token refresh failed due to network error: lookup oauth2.googleapis.com: no such host\n"
+                            "browser.go:56] consumerOAuth: starting OAuth flow\n")
+        self._colgar(rastro)
+        m = json.loads(R._marca_agy().read_text())
+        self.assertAlmostEqual(m["hasta"] - m["ts"], 900, delta=5)
+
+    def test_antigravity_colgado_pidiendo_navegador_sin_error_de_red_marca_24h(self):
+        rastro = self._agy_con_rastro()
+        self._log_de_agy(1, "browser.go:56] consumerOAuth: starting OAuth flow\n")
+        self._colgar(rastro)
+        m = json.loads(R._marca_agy().read_text())
+        self.assertGreater(m["hasta"] - m["ts"], 23 * 3600)
+
+    def test_antigravity_colgado_pero_entro_bien_no_marca(self):
+        rastro = self._agy_con_rastro()
+        self._log_de_agy(1, "auth.go:157] ChainedAuth: authenticated via keyring (effective: keyring)\n")
+        self._colgar(rastro)
+        self.assertFalse(R._marca_agy().exists(), "un /usage lento con la sesión bien no debe bloquear")
+
+    def test_antigravity_error_que_pide_login_se_anota(self):
+        rastro = self._agy_con_rastro(codigo=1, salida="", err="You are not logged into Antigravity. Please log in")
+        self.assertEqual(R.cupo_antigravity()[0], "no_disponible")
+        self.assertTrue(R._marca_agy().exists())
+        rastro.unlink()
+        R.cupo_antigravity()
+        self.assertFalse(rastro.exists())
+
+    def test_antigravity_error_comun_no_anota_login(self):
+        rastro = self._agy_con_rastro(codigo=1, salida="", err="error interno")
+        self.assertEqual(R.cupo_antigravity()[0], "no_disponible")
+        self.assertFalse(R._marca_agy().exists(), "un error cualquiera no debe bloquear 24 h")
+
+    def test_antigravity_marca_vencida_se_borra_y_se_llama(self):
+        rastro = self._agy_con_rastro()
+        ahora = time.time()
+        R._marca_agy().parent.mkdir(parents=True, exist_ok=True)
+        R._marca_agy().write_text(json.dumps({"ts": ahora - 90000, "hasta": ahora - 3600, "avisado": True}))
+        self.assertEqual(R.cupo_antigravity(), ("ok", "Antigravity: 50% usado"))
+        self.assertTrue(rastro.exists())
+        self.assertFalse(R._marca_agy().exists())
+
+    def test_antigravity_si_alguien_entra_a_mano_se_reanuda(self):
+        """Con la marca vigente, un registro de agy que ARRANCÓ después y muestra entrada correcta la borra (sin pasos extra)."""
+        rastro = self._agy_con_rastro()
+        estado = self.tmp / "agy-estado"
+        (estado / "log").mkdir(parents=True)
+        os.environ["RADAR_AGY_STATE"] = str(estado)
+        # una sesión abierta desde ANTES de la marca sigue escribiendo y dice «authenticated via»: no cuenta (arrancó antes)
+        antes = estado / "log" / time.strftime("cli-%Y%m%d_%H%M%S.log", time.localtime(time.time() - 3600))
+        antes.write_text("ChainedAuth: authenticated via keyring\n")
+        R.agy_marcar_login(24 * 3600)
+        self.assertEqual(R.cupo_antigravity()[0], "no_disponible")
+        self.assertFalse(rastro.exists())
+        # una corrida posterior que pidió el navegador y quedó colgada NO reanuda
+        self._log_de_agy(5, "browser.go:56] consumerOAuth: starting OAuth flow\n")
+        self.assertEqual(R.cupo_antigravity()[0], "no_disponible")
+        # una corrida posterior donde alguien entró a mano (flujo y después éxito) SÍ reanuda
+        self._log_de_agy(10, "browser.go:56] consumerOAuth: starting OAuth flow\nauth.go:157] ChainedAuth: authenticated via oauth\n")
+        self.assertEqual(R.cupo_antigravity(), ("ok", "Antigravity: 50% usado"))
+        self.assertTrue(rastro.exists())
+
+    def test_antigravity_texto_comun_no_cuenta_como_pedido_de_login(self):
+        self.assertIsNone(R.RE_PIDE_LOGIN.search("error en catalog init failed; dialog interno"))
+        self.assertIsNotNone(R.RE_PIDE_LOGIN.search("Please log in again"))
+
+    def test_antigravity_aviso_de_login_una_sola_vez(self):
+        self.assertEqual(R.agy_aviso_login_una_vez(), "")   # sin marca, nada
+        R.agy_marcar_login()
+        self.assertIn("en pausa", R.agy_aviso_login_una_vez())
+        self.assertEqual(R.agy_aviso_login_una_vez(), "", "el aviso se repitió")
+        self.assertTrue(R._marca_agy().exists(), "avisar no borra la marca")
 
     def test_codex_no_instalada_o_sin_sesion_se_salta(self):
         os.environ.pop("RADAR_CODEX_CUPO", None)

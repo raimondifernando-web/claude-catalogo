@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.51.4 — 2026-10-21
+**Antigravity (Gemini) ya no te abre el navegador de Google cuando vuelve la conexión o se despierta la computadora.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema, medido:** `agy` renueva su permiso de Google cada hora. Si en ese momento no hay internet (la compu recién despierta, el wifi se cayó), en vez de esperar abría el login de Google en el navegador y se quedaba colgado. Pasó 29 veces en 16 días, con la sesión perfectamente vigente.
+- **Qué cambia:** `radar.py` y `delegar.py` no llaman a `agy` si no hay conexión con Google. Si `agy` igual se cuelga o pide iniciar sesión, lo dejan en pausa un rato y no lo vuelven a llamar: 15 minutos si el registro de esa corrida muestra un error de red (lo habitual), 30 si no hay dato, 24 horas solo si pidió el navegador sin error de red. Si entrás a mano con `agy`, se reanuda solo, sin pasos extra.
+- **Un solo aviso:** si queda en pausa, `radar.py hoy` te lo dice una vez («corré `agy` una vez en la terminal»). `delegar.py` sale con el código 75 y dice por qué en vez de abrir el navegador.
+- **Qué NO cambia:** nada de tu sesión ni de tus claves; solo se mira si hay conexión y se anota la hora del último pedido de login en `~/.cerebro` (o en `~/.cache/metodo` si no existe).
+
 ## 0.51.3 — 2026-10-19
 **Tus robots de GitHub no se comen los minutos del mes, y te enterás antes de llegar al tope.** Se aplica solo; no hay nada que correr.
 - **Regla 25 (nueva):** un workflow de GitHub Actions nace barato y silencioso. En un repositorio privado GitHub cobra los minutos y, al llegar al tope del plan, los robots se frenan justo cuando hacen falta. Ahora todo workflow nuevo (o que se toca) corre en Linux, cancela la corrida vieja cuando llega una nueva, explica por qué tiene un reloj (`cron`) y no corre más seguido que cada hora, trae un tiempo máximo y no corre dos veces por cada cambio. Si algo no se puede, se deja escrito el motivo en el mismo archivo y se ve en el PR.
