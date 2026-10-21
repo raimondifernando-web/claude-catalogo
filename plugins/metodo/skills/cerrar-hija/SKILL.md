@@ -55,6 +55,8 @@ Un freno automático (`freno-hija.py`) bloquea lo de git y el `REANUDAR.md` ajen
    intacto, traspaso presente y sellado, nada tuyo sin subir. Si da ✗, resolvelo y repetilo. Pegá su salida.
 7. **Terminar:** `CIERRE DE HIJA ✓ — traspaso: <ruta>` + 2-3 líneas en criollo (qué quedó, qué proponés) + «La sesión que me abrió lo
    verifica y decide si sigue». **No abras sesiones ni te archives.**
+   **Si la coordinadora ya cerró** (`detectar --json` da `padre_vivo: false`, o te avisaron que la reemplazó otra): tu aviso automático le llegaría a una sesión cerrada.
+   Mandá el mismo mensaje `CIERRE DE HIJA ✓ — traspaso: <ruta>` con `send_message` a la sesión que la reemplazó (la que te avisó, o la de número más alto de su serie en `list_sessions`).
 
 ## Lado de la coordinadora
 Cuando llega la nota `CIERRE DE HIJA ✓`, su aviso automático le pide: (1) `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sesion_hija.py" recibir <id de la hija>`,
