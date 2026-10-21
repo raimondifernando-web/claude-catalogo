@@ -936,6 +936,8 @@ def recibir(sid_hija):
                             meta_json = json.loads(m_json.group(1))
                         except Exception:
                             meta_json = {}
+                            ok = False
+                            lineas.append("✗ El bloque de datos del traspaso está roto (no se puede leer qué se subió): repetí sesion_hija.py traspaso")
                         borrador_t = texto_t[m_json.end():].strip()
                     else:
                         borrador_t = texto_t.strip()

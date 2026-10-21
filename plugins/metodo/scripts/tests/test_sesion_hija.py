@@ -495,7 +495,7 @@ class TestSesionHija(unittest.TestCase):
         texto_original = prompts_copia.read_text(encoding="utf-8")
         texto_sha_falso = texto_original.replace(
             '"subidas": []',
-            f'"subidas": [{{"repo": "{self.repo}", "destino": "main", "sha": "1111222233334444555566667777888899990000"}}]',
+            '"subidas": [' + json.dumps({"repo": str(self.repo), "destino": "main", "sha": "1111222233334444555566667777888899990000"}) + ']',
         )
         prompts_copia.write_text(texto_sha_falso, encoding="utf-8")
         notas_copia.write_text(texto_sha_falso, encoding="utf-8")
