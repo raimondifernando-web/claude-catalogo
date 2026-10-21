@@ -44,7 +44,10 @@ class Casos(unittest.TestCase):
 
     def tearDown(self):
         os.environ.pop("CLAUDE_SESIONES_DIR", None)
-        self.tmp.cleanup()
+        try:
+            self.tmp.cleanup()
+        except OSError:  # Windows: git deja el repo temporal tomado un instante; es solo limpieza
+            pass
 
     def commit(self, repo, nombre, texto, msg):
         (Path(repo) / nombre).write_text(texto, encoding="utf-8")

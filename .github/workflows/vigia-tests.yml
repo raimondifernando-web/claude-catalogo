@@ -4,6 +4,7 @@ name: vigia-tests
 
 on:
   push:
+    branches: [main]
     paths:
       - "plugins/metodo/**"
       - "scripts/radar-fuentes.py"
@@ -23,6 +24,11 @@ on:
 
 permissions:
   contents: read
+
+# Una rama de trabajo corre una vez (en el PR, no también en el push) y una corrida nueva cancela la vieja.
+concurrency:
+  group: vigia-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   tests:

@@ -36,7 +36,10 @@ class Archivado(unittest.TestCase):
 
     def tearDown(self):
         os.environ.pop("CLAUDE_SESIONES_DIR", None)
-        self.tmp.cleanup()
+        try:
+            self.tmp.cleanup()
+        except OSError:  # Windows: git deja el repo temporal tomado un instante; es solo limpieza
+            pass
 
     def sesion(self, sid, titulo, **kw):
         d = {"sessionId": sid, "cliSessionId": "cli-" + sid, "title": titulo, "cwd": str(self.repo),
