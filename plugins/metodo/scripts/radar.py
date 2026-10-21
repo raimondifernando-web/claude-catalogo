@@ -38,6 +38,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import tempfile
 import sys
@@ -458,6 +459,164 @@ def cupo_claude():
     return "desconocido", "Claude: cupo desconocido"
 
 
+# --------------------------------------------------------------------------- #
+# Antigravity: que una llamada automática no abra el navegador por error
+# --------------------------------------------------------------------------- #
+# Medido en los registros de `agy` (2026-10-21): el token de Google dura 1 hora y `agy` lo renueva solo, pero si al renovar
+# NO hay red (la Mac recién despierta, el wifi cayó: «no such host»), el modo `-p` dispara el login interactivo y abre el
+# navegador; sin nadie que lo atienda queda colgado. 29 pestañas de Google en 16 días, todas por eso (la sesión estaba
+# vigente). La doc oficial no trae un modo «sin navegador», así que se evita desde afuera: (1) sin red no se lo llama,
+# (2) si igual pidió login (se colgó o lo dice), se anota y no se lo vuelve a llamar por 24 h, (3) se avisa UNA vez.
+AGY_HOST_LOGIN = "oauth2.googleapis.com"
+AGY_ESPERA_LOGIN = 24 * 3600
+
+
+def _dir_marca_agy():
+    """Carpeta de la marca «necesita login». Igual que el Bicho: CEREBRO_HOME o ~/.cerebro si existe; si no, ~/.cache/metodo."""
+    cerebro = os.environ.get("CEREBRO_HOME", "").strip()
+    base = Path(cerebro) if cerebro and os.path.isabs(cerebro) else Path.home() / ".cerebro"
+    return base if base.is_dir() else Path.home() / ".cache" / "metodo"
+
+
+def _marca_agy():
+    return _dir_marca_agy() / "agy-necesita-login.json"
+
+
+def _estado_agy():
+    estado = os.environ.get("RADAR_AGY_STATE", "").strip()
+    return Path(estado) if estado and os.path.isabs(estado) else Path.home() / ".gemini" / "antigravity-cli"
+
+
+def agy_hay_red():
+    """True si se puede llegar al servidor donde `agy` renueva su token. RADAR_AGY_RED=si|no fuerza la respuesta (pruebas);
+    con un agy falso (RADAR_AGY_BIN) no se toca la red real."""
+    forzado = os.environ.get("RADAR_AGY_RED", "").strip().lower()
+    if forzado in ("si", "no"):
+        return forzado == "si"
+    if os.environ.get("RADAR_AGY_BIN", "").strip():
+        return True
+    try:
+        with socket.create_connection((AGY_HOST_LOGIN, 443), timeout=3):
+            return True
+    except OSError:
+        return False
+
+
+def _leer_marca_agy():
+    try:
+        m = json.loads(_marca_agy().read_text(encoding="utf-8"))
+        return m if isinstance(m, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def agy_marcar_login(segundos=AGY_ESPERA_LOGIN):
+    """Anota que `agy` no se pudo consultar: no se lo llama hasta que pase el plazo o alguien entre a mano. Escritura atómica
+    (otro programa puede leer a la vez)."""
+    try:
+        ruta = _marca_agy()
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        ahora = time.time()
+        tmp = ruta.with_name(".%s.%d.tmp" % (ruta.name, os.getpid()))
+        tmp.write_text(json.dumps({"ts": ahora, "hasta": ahora + segundos, "avisado": False}), encoding="utf-8")
+        os.replace(str(tmp), str(ruta))
+    except OSError:
+        pass
+
+
+def _agy_inicio_del_log(nombre):
+    """Hora (epoch) en que arrancó la corrida de agy, sacada del nombre «cli-AAAAMMDD_HHMMSS.log» (hora local)."""
+    m = re.match(r"cli-(\d{8})_(\d{6})\.log$", nombre)
+    try:
+        return time.mktime(time.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S")) if m else None
+    except (ValueError, OverflowError):
+        return None
+
+
+def _agy_logs_desde(ts, maximo=5):
+    """[(texto)] de los registros de `agy` que ARRANCARON después de `ts` (los más nuevos primero). Se mira la hora de arranque
+    (no la de modificación): una sesión de agy abierta desde antes sigue escribiendo y no cuenta. Solo se leen registros ≤2 MB."""
+    log = _estado_agy() / "log"
+    out = []
+    try:
+        nombres = sorted(n for n in os.listdir(str(log)) if n.startswith("cli-") and n.endswith(".log"))[-maximo:]
+        for n in reversed(nombres):
+            ini = _agy_inicio_del_log(n)
+            ruta = log / n
+            if ini is None or ini <= ts or ruta.stat().st_size > 2_000_000:
+                continue
+            out.append(ruta.read_text(encoding="utf-8", errors="replace"))
+    except OSError:
+        pass
+    return out
+
+
+def _agy_entro_bien(texto):
+    """True si «authenticated via» aparece DESPUÉS del último «starting OAuth flow» (o si no hubo flujo): entró de verdad."""
+    return texto.rfind("authenticated via") > texto.rfind("starting OAuth flow")
+
+
+def _agy_entro_despues_de(ts):
+    """True si un registro de `agy` que arrancó después de `ts` muestra una entrada correcta (alguien inició sesión a mano o
+    la renovación anduvo). Solo se buscan dos frases fijas; no se lee ninguna credencial."""
+    return any(_agy_entro_bien(t) for t in _agy_logs_desde(ts))
+
+
+def agy_marcar_tras_cuelgue(desde):
+    """`agy` no terminó en 30 s. Medido (29 casos): casi siempre fue la red, no la sesión; por eso el plazo depende del registro
+    de ESA corrida: entró bien → no se anota · error de red → 15 min · pidió el navegador sin error de red → 24 h · sin dato → 30 min."""
+    logs = _agy_logs_desde(desde - 5, maximo=1)
+    if not logs:
+        agy_marcar_login(1800)
+    elif _agy_entro_bien(logs[0]):
+        return
+    elif "network error" in logs[0] or "no such host" in logs[0]:
+        agy_marcar_login(900)
+    elif "starting OAuth flow" in logs[0]:
+        agy_marcar_login(AGY_ESPERA_LOGIN)
+    else:
+        agy_marcar_login(1800)
+
+
+def agy_puede_correr():
+    """(ok, motivo). motivo: «login» (pidió iniciar sesión hace poco) o «sin_red». No ejecuta agy."""
+    m = _leer_marca_agy()
+    if m is not None:
+        try:
+            vigente = time.time() < float(m.get("hasta", 0))
+            ts = float(m.get("ts", 0))
+        except (TypeError, ValueError):
+            vigente, ts = False, 0.0
+        if vigente and not _agy_entro_despues_de(ts):
+            return False, "login"
+        try:
+            _marca_agy().unlink()
+        except OSError:
+            pass
+    if not agy_hay_red():
+        return False, "sin_red"
+    return True, ""
+
+
+def agy_aviso_login_una_vez():
+    """Frase para `hoy` si hay una marca de login que todavía no se avisó (la marca se anota como avisada); si no, ''."""
+    m = _leer_marca_agy()
+    if not m or m.get("avisado"):
+        return ""
+    ok, motivo = agy_puede_correr()
+    if ok or motivo != "login":
+        return ""
+    try:
+        m["avisado"] = True
+        _marca_agy().write_text(json.dumps(m), encoding="utf-8")
+    except OSError:
+        pass
+    return "Antigravity (Gemini) está en pausa porque pidió iniciar sesión o no respondió: si sigue así, corré «agy» una vez en la terminal (se reanuda solo)"
+
+
+RE_PIDE_LOGIN = re.compile(r"not logged in|\b(?:log ?in|sign ?in)\b|unauthenticated|not authenticated|authorization code", re.I)
+
+
 def cupo_antigravity():
     """(nivel, texto). nivel: ok | alto | agotado | desconocido | no_disponible.
     `no_disponible` = la CLI no está instalada o `agy -p /usage` falla (sin sesión iniciada): el plan se salta."""
@@ -473,6 +632,13 @@ def cupo_antigravity():
         if not (base / "history.jsonl").is_file():
             return "no_disponible", "Antigravity: sin usar todavía (corré «agy» una vez e iniciá sesión)"
 
+    ok, motivo = agy_puede_correr()
+    if not ok:
+        if motivo == "login":
+            return "no_disponible", "Antigravity: en pausa (pidió iniciar sesión o no respondió; si sigue, corré «agy» una vez)"
+        return "desconocido", "Antigravity: sin conexión ahora (no se lo consulta)"
+
+    t0 = time.time()
     try:
         r = subprocess.run(
             [bin_agy, "-p", "/usage", "--output-format", "json"],
@@ -483,6 +649,8 @@ def cupo_antigravity():
             timeout=30
         )
         if r.returncode != 0:
+            if RE_PIDE_LOGIN.search((r.stderr + r.stdout).decode("utf-8", "replace")):
+                agy_marcar_login()
             return "no_disponible", "Antigravity: sin sesión iniciada o con error (corré «agy» una vez e iniciá sesión)"
         raiz = json.loads(r.stdout.decode("utf-8", "replace"))
         if isinstance(raiz, dict) and str(raiz.get("status", "")).upper() == "ERROR":
@@ -504,6 +672,10 @@ def cupo_antigravity():
             max_usado = max(usados)
             nivel = "agotado" if max_usado >= 90 else "alto" if max_usado >= 70 else "ok"
             return nivel, "Antigravity: %d%% usado" % round(max_usado)
+    except subprocess.TimeoutExpired:
+        # colgado: la corrida decide el plazo (casi siempre fue la red; 24 h solo si pidió el navegador sin error de red)
+        agy_marcar_tras_cuelgue(t0)
+        return "no_disponible", "Antigravity: en pausa (no respondió; si sigue, corré «agy» una vez)"
     except Exception:
         pass
     return "desconocido", "Antigravity: cupo desconocido"
@@ -928,6 +1100,9 @@ def hoy_lineas(radar, cupos=None):
     if otra:
         lineas.append(otra)
     avisos = []
+    login = agy_aviso_login_una_vez()
+    if login:
+        avisos.append(login)
     base = _limpio(aviso_linea(radar), 300)
     if base:
         avisos.append(base[len("Radar: "):] if base.startswith("Radar: ") else base)

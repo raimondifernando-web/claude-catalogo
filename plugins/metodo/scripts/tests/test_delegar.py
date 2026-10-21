@@ -341,6 +341,22 @@ class TestRevisar(BaseDelegar):
         esperado = ["exec", "-C", str(repo_sucio), "--sandbox", "read-only", "-"]
         self.assertEqual(args, esperado)
 
+    def test_antigravity_que_pidio_login_no_se_lanza_75(self):
+        """Con la marca «necesita login» (o sin red) delegar no ejecuta agy: sin sesión abriría el navegador de Google.
+        Sin red el radar no sabe el cupo (no salta el plan) y la guarda de delegar corta con 75."""
+        self.cupo_codex_falso(2, "Codex: 95% del cupo mensual — NO lanzar")
+        repo = self.crear_repo_git("repo-agy-login", sucio=True)
+        R.agy_marcar_login()   # el radar ya no lo ofrece: el plan se salta y, sin otro, le toca a Claude (3), con el motivo a la vista
+        cod, out, err = self.correr("desarrollo", str(repo), "analizá seguridad", "--revisar")
+        self.assertEqual(cod, 3)
+        self.assertIn("en pausa", err + out)
+        self.assertFalse((self.tmp / "agy_args.json").exists(), "se ejecutó agy con la marca puesta")
+        R._marca_agy().unlink()
+        os.environ["RADAR_AGY_RED"] = "no"
+        cod, out, err = self.correr("desarrollo", str(repo), "analizá seguridad", "--revisar")
+        self.assertEqual(cod, 75)
+        self.assertIn("sin red", err + out)
+
     def test_revisar_antigravity_mode_plan(self):
         self.cupo_codex_falso(2, "Codex: 95% del cupo mensual — NO lanzar")
         repo_sucio = self.crear_repo_git("repo-sucio-agy", sucio=True)
