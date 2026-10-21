@@ -21,6 +21,7 @@ import os
 import re
 import shlex
 import sys
+import tempfile
 
 AQUI = os.path.dirname(os.path.realpath(__file__))
 TEMPORALES = ("/tmp/", "/private/tmp/", "/private/var/folders/", "/var/folders/")
@@ -43,7 +44,7 @@ def apagado():
 def _dentro(ruta, base):
     try:
         r, b = os.path.realpath(ruta), os.path.realpath(base)
-        return r == b or r.startswith(b.rstrip("/") + "/")
+        return r == b or r.startswith(b.rstrip(os.sep) + os.sep)
     except Exception:
         return False
 
@@ -54,7 +55,9 @@ def libre(ruta, cwd, propia):
     real = os.path.realpath(p)
     if _dentro(real, cwd):
         return False  # la carpeta compartida misma (o algo adentro): nunca es libre, esté donde esté
-    return real.startswith(TEMPORALES) or bool(propia and _dentro(real, propia))
+    unix = re.sub(r"^[A-Za-z]:", "", real.replace("\\", "/"))  # Windows: C:\…\tmp → /…/tmp
+    tmp = re.sub(r"^[A-Za-z]:", "", os.path.realpath(tempfile.gettempdir()).replace("\\", "/")).rstrip("/") + "/"
+    return unix.startswith(TEMPORALES) or unix.startswith(tmp) or bool(propia and _dentro(real, propia))
 
 
 def peligro_git(comando, cwd, propia):

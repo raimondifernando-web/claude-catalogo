@@ -182,8 +182,8 @@ def _repo_y_dueno(repo):
     m = re.search(r"[:/]([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?/?$", url)
     if m:
         return m.group(1), m.group(2)
-    m2 = re.search(r"[:/]([^/:]+?)(?:\.git)?/?$", url)
-    nombre = m2.group(1) if m2 else os.path.basename(repo)
+    # remoto local (ruta de carpeta, también con barras de Windows): el nombre es la última carpeta, sin .git
+    nombre = re.sub(r"\.git$", "", os.path.basename(url.replace("\\", "/").rstrip("/"))) or os.path.basename(repo)
     return "dueno", nombre
 
 
@@ -795,7 +795,7 @@ def _sin_subir_de(cli, carpeta):
     out, por_repo = [], {}
     raiz = ed._norm(carpeta)
     for ruta, sesiones in reg.items():
-        if cli in sesiones and (ruta == raiz or ruta.startswith(raiz.rstrip("/") + "/")):
+        if cli in sesiones and (ruta == raiz or ruta.startswith(raiz.rstrip(os.sep) + os.sep)):
             top = _g(ruta if os.path.isdir(ruta) else os.path.dirname(ruta), "rev-parse", "--show-toplevel")
             if top:
                 por_repo.setdefault(top, []).append(ruta)
@@ -1022,6 +1022,8 @@ def recibir(sid_hija):
 
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")  # Windows: la consola en cp1252 no puede escribir ✓/✗
     parser = argparse.ArgumentParser(description="sesion_hija — mecánica de cierre de sesión hija")
     subparsers = parser.add_subparsers(dest="subcomando")
 
