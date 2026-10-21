@@ -102,6 +102,27 @@ class CierreHijas(unittest.TestCase):
             self.assertIn("«%s»" % t, c)
         self.assertIn("**Qué tenés que decidir vos:**", c)
 
+    def test_cierre_de_hija_pide_verificar_y_archivar_la_coordinadora(self):
+        self.e = Entorno([hija(H1, "Hija uno", resumen=True)])
+        self.e.transcrip("arrancá")
+        c = contexto(self.e.correr("entrada", prompt=nota("Hija uno", H1) + " CIERRE DE HIJA ✓ — traspaso: /x/TRASPASO-2026-10-21-uno.md"))
+        self.assertIn("sesion_hija.py\" recibir " + H1, c)
+        self.assertIn("archivala vos", c)
+        self.assertIn("**Qué tenés que decidir vos:**", c)  # el molde de siempre sigue después
+        self.assertTrue(self.e.registro()[-1]["cierre_hija"])
+
+    def test_cierre_de_hija_incompleto_no_archiva(self):
+        self.e = Entorno([hija(H1, "Hija uno", resumen=True)])
+        self.e.transcrip("arrancá")
+        c = contexto(self.e.correr("entrada", prompt=nota("Hija uno", H1) + " CIERRE DE HIJA ✗ — falta: subir la rama"))
+        self.assertIn("No la archives", c)
+        self.assertNotIn("recibir", c)
+
+    def test_nota_comun_no_pide_recibir(self):
+        self.e = Entorno([hija(H1, "Hija uno", resumen=True)])
+        self.e.transcrip("arrancá")
+        self.assertNotIn("CIERRE DE HIJA", contexto(self.e.correr("entrada", prompt=nota("Hija uno", H1))))
+
     def test_hija_vieja_sin_resumen_no_cuenta_como_trabajando(self):
         self.e = Entorno([hija(H2, "Hija abandonada", edad_s=3 * 3600)])
         self.e.transcrip("x")

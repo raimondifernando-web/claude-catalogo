@@ -756,9 +756,10 @@ class TestHooksJson(unittest.TestCase):
         self.assertEqual(len([c for c in inicio if "radar.py\" hoy " in c]), 1)
         # el recordatorio del radar nunca bloquea; el freno anti-secretos (matcher Bash|PowerShell|Read|Grep|Write|Edit|MultiEdit) y el de la regla 22
         # (consultar-ecosistema, matcher Write|Agent|Task|Workflow) y el del instalador de skills (skills-cli-tranca, matcher Bash|PowerShell)
-        # son aparte y sí pueden frenar
+        # y el freno de sesiones hijas (freno-hija, matcher Bash|Write|Edit|MultiEdit; metodo 0.52.0) son aparte y sí pueden frenar
         previos = [g for g in datos["hooks"]["PreToolUse"]
-                   if g.get("matcher") not in ("Bash|PowerShell|Read|Grep|Write|Edit|MultiEdit", "Write|Agent|Task|Workflow", "Bash|PowerShell")]
+                   if g.get("matcher") not in ("Bash|PowerShell|Read|Grep|Write|Edit|MultiEdit", "Write|Agent|Task|Workflow", "Bash|PowerShell",
+                                               "Bash|Write|Edit|MultiEdit")]
         self.assertEqual(len(previos), 1)
         self.assertEqual(sorted(previos[0]["matcher"].split("|")), ["Agent", "Task", "mcp__ccd_session__start_session"])
         orden = previos[0]["hooks"][0]

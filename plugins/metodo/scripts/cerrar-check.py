@@ -43,6 +43,15 @@ cwd = os.path.abspath(args[0]) if args else os.getcwd()
 declaradas = [os.path.join(cwd, p) for p in declaradas]
 faltan = []
 A_MANO = []  # archivos que se dieron por ajenos con --ajeno: el veredicto final lo dice
+# Sesión HIJA (la abrió otra sesión): mismo rigor, otro camino (skill cerrar-hija). En carpeta compartida el REANUDAR.md es del
+# hilo principal y no se mide; se mide el TRASPASO, que lo ajeno siga intacto (foto) y que lo propio esté subido.
+try:
+    import sesion_hija as _hija
+    HIJA = _hija.detectar()
+except Exception as _e:
+    _hija, HIJA = None, {"modo": "normal", "motivo": f"no se pudo medir ({type(_e).__name__})"}
+MODO_HIJA = HIJA.get("modo") == "hija" and HIJA.get("en_su_carpeta", True)  # solo en la carpeta de la sesión (no al medir otra)
+COMPARTIDA = MODO_HIJA and HIJA.get("carpeta") == "compartida"
 
 
 def git(*a):
@@ -103,11 +112,25 @@ def anotar_confiable(ruta):
         pass
 
 
+# (hija) lo que solo vale para una sesión hija
+if MODO_HIJA:
+    print(f"• MODO HIJA · carpeta {HIJA.get('carpeta')} · la abrió la sesión {HIJA.get('padre')}: se mide el cierre de hija (/metodo:cerrar-hija)")
+    try:
+        for _ok, _t in _hija.chequeo_cierre(cwd):
+            if _ok is None:
+                print("• " + _t)
+            else:
+                linea(_ok, _t)
+    except Exception as _e:
+        linea(False, f"Cierre de hija: no se pudo medir ({type(_e).__name__})", "cierre de hija sin medir")
+
 # (b) REANUDAR: existe, encabezado, largo
 reanudar = next((p for p in (os.path.join(cwd, "REANUDAR.md"), os.path.join(cwd, ".claude", "prompts", "REANUDAR.md"))
                  if os.path.isfile(p)), None)
-texto = leer(reanudar) if reanudar else ""
-if not texto:
+texto = "" if COMPARTIDA else (leer(reanudar) if reanudar else "")
+if COMPARTIDA:
+    print("• El REANUDAR.md de esta carpeta es del hilo principal: una hija no lo escribe ni se mide (lo tuyo va en el TRASPASO)")
+elif not texto:
     linea(False, f"No existe REANUDAR.md en {cwd} (paso 8 de /metodo:cerrar)", "REANUDAR.md")
 else:
     m = re.match(r"\s*<!--\s*cierre\s+(\d{4}-\d{2}-\d{2}-\S+?)\s", texto)
@@ -204,9 +227,13 @@ else:
     if "..." not in cab:
         linea(False, f"La rama {rama} no tiene remoto: el avance no se subió", "rama sin remoto (avance sin subir)")
     else:
-        linea(not adelante, "Rama al día con el remoto (nada sin subir)" if not adelante
-              else f"{adelante.group(1)} guardado(s) sin subir",
-              f"{adelante.group(1) if adelante else 0} guardado(s) sin subir")
+        if COMPARTIDA:  # pueden ser de otras sesiones, o la copia local de lo que subiste con `sesion_hija.py subir`
+            print(f"• Carpeta compartida: {adelante.group(1) if adelante else 0} guardado(s) locales sin subir en {rama} "
+                  "(no se miden acá: lo tuyo se mide en «subidas» arriba)")
+        else:
+            linea(not adelante, "Rama al día con el remoto (nada sin subir)" if not adelante
+                  else f"{adelante.group(1)} guardado(s) sin subir",
+                  f"{adelante.group(1) if adelante else 0} guardado(s) sin subir")
         if atras:
             print(f"• El remoto tiene {atras.group(1)} guardado(s) que no traés (pull --rebase --autostash antes de seguir)")
     ult = (git("show", "--stat", "--format=", "HEAD") or "").splitlines()
@@ -373,6 +400,10 @@ print()
 if faltan:
     print("Falta: " + " · ".join(faltan) + " ✗")
     sys.exit(1)
-print("• MANUAL (paso 10, LO ÚLTIMO): en la app de escritorio, después del prompt y EN LA MISMA respuesta: start_session → detach → move → archive; no cierres el turno sin hacerlo o sin decir por qué no (en terminal o Cowork: «no aplica»)")
+if MODO_HIJA:
+    print("• MANUAL (fin de hija, LO ÚLTIMO): NO abras sesiones ni te archives. Tu último mensaje empieza con «CIERRE DE HIJA ✓ — traspaso: <ruta>»; "
+          "la sesión que te abrió lo verifica (sesion_hija.py recibir) y decide si sigue")
+else:
+    print("• MANUAL (paso 10, LO ÚLTIMO): en la app de escritorio, después del prompt y EN LA MISMA respuesta: start_session → detach → move → archive; no cierres el turno sin hacerlo o sin decir por qué no (en terminal o Cowork: «no aplica»)")
 print("Cierre completo ✓ (más los ítems MANUAL, que reporta la sesión)"
       + (f" — OJO: {len(A_MANO)} archivo(s) sin guardar declarados ajenos A MANO (--ajeno): {', '.join(A_MANO[:5])}" if A_MANO else ""))

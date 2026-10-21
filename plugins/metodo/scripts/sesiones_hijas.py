@@ -77,7 +77,7 @@ RUIDO = re.compile(r"(^|/)(\.omc|__pycache__|\.pytest_cache|node_modules)(/|$)|(
 
 # Qué hace la sesión SOLA con cada pendiente de una hija (C127): nada de esto es una pregunta para la persona.
 ACCIONES = {
-    "sin_guardar": 'SendMessage a la hija: «guardá (commit) lo tuyo, subí tu rama y avisame "listo"»; esperá a que termine su turno',
+    "sin_guardar": 'SendMessage a la hija: «guardá y subí lo tuyo (si compartís carpeta: sesion_hija.py subir; si no, commit y push de tu rama) y avisame "listo"»; esperá a que termine su turno',
     "informe_debido": "esperá a que entregue (la app te avisa cuando termina su turno) o pedíselo con SendMessage; si tarda, ScheduleWakeup, nunca una tarea para la persona",
     "informe_sin_leer": "leé su informe (get_session) y pasá lo que sirva a PENDIENTES.md; recién ahí archivá",
 }

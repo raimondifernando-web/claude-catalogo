@@ -8,6 +8,8 @@ reescribirlo UNA vez. No depende de que el modelo «se acuerde»: lo inyecta y l
 
 Molde (negritas, no títulos):  **Resumen:** · **Mi sugerencia:** · **Qué tenés que decidir vos:** (o «Nada, no tenés que hacer nada.»).
 Si todavía trabajan otras hijas de esta sesión, el molde es UNA línea corta («⏳ Llegó lo de …; falta …»).
+Si la nota es el cierre de una hija («CIERRE DE HIJA ✓ — traspaso: …», skill cerrar-hija), antes del molde se agrega la orden de verificarla
+(`sesion_hija.py recibir <id>`), archivarla y decidir si el trabajo sigue: la que archiva y decide es la coordinadora, no la hija.
 
 Solo LEE el disco de la app (claude-code-sessions/*/*/local_*.json) y el transcript; escribe solo su estado en
 <config de Claude>/state/cierre-hijas/ (marca por sesión + registro). Sin red. Nada con nombres de personas.
@@ -177,6 +179,26 @@ def orden(llegaron, faltan):
         "en una línea que empiece con ⚠ (nunca se recorta)." % (len(llegaron), ya))
 
 
+CIERRE_HIJA = re.compile(r"CIERRE DE HIJA\s*([✓✗])|(TRASPASO-\d{4}-\d{2}-\d{2}-[\w-]+\.md)")
+
+
+def recibir_orden(prompt):
+    """Nota de cierre de una hija (skill cerrar-hija): la coordinadora verifica ANTES de contestar, archiva ella y decide si sigue."""
+    m = CIERRE_HIJA.search(prompt or "")
+    if not m:
+        return ""
+    _, hid = titulo_y_id(prompt)
+    prog = os.path.join(os.path.dirname(os.path.realpath(__file__)), "sesion_hija.py")
+    if m.group(1) == "✗":
+        return ("CIERRE DE HIJA INCOMPLETO: la hija avisó que su cierre quedó con algo pendiente. No la archives. Leé qué falta (get_session) "
+                "y resolvelo con ella por mensaje directo; a la persona solo le llega lo que decide ella.\n\n")
+    return ("CIERRE DE HIJA: antes de contestar, callado, verificá en el disco y en GitHub (lo que cuenta la hija no es la prueba): "
+            "python3 \"%s\" recibir %s . Con «Hija lista para archivar ✓»: pasá sus pendientes a tu PENDIENTES.md, decidí si el trabajo "
+            "sigue (si el traspaso propone continuar y está claro, abrí la sesión nueva con el traspaso como pedido; si no está claro, es UNA "
+            "pregunta a la persona con tu recomendación) y archivala vos (archive_session). Con «Falta: … ✗»: mandale a la hija qué falta "
+            "(send_message) y NO la archives. Las independizadas que liste: decidí si las seguís.\n\n" % (prog, hid or "<id de la hija>"))
+
+
 def entrada(datos):
     prompt = datos.get("prompt") or ""
     sid = seguro(datos.get("session_id"))
@@ -201,8 +223,10 @@ def entrada(datos):
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump({"huella": huella, "t": time.time(), "faltan": len(faltan), "llegaron": len(llegaron)}, fh)
     os.replace(tmp, marca)
-    registrar(ev="entrada", sesion=sid, llegaron=len(llegaron), faltan=len(faltan))
-    print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": orden(llegaron, faltan)}}, ensure_ascii=False))
+    extra = recibir_orden(prompt)
+    registrar(ev="entrada", sesion=sid, llegaron=len(llegaron), faltan=len(faltan), cierre_hija=bool(extra))
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": extra + orden(llegaron, faltan)}},
+                     ensure_ascii=False))
     return 0
 
 

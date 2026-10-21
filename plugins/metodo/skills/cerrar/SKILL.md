@@ -16,7 +16,15 @@ saltear: el prompt de reanudación copiable**, que el usuario pega al abrir la p
 ## ⛔ Regla de oro
 **El ÚLTIMO mensaje de la sesión SIEMPRE es el prompt de reanudación copiable** (en la app de escritorio, el paso 10 sigue en esa misma
 respuesta: son llamadas, no un mensaje nuevo). Pase lo que pase
-con los demás pasos, nunca termines sin emitir ese bloque.
+con los demás pasos, nunca termines sin emitir ese bloque. (Excepción: una sesión hija, ver Paso −1: su último mensaje es el aviso
+`CIERRE DE HIJA ✓ — traspaso: …`.)
+
+## ⛔ Paso −1 — ¿Esta sesión es una hija? (lo PRIMERO, antes de todo)
+Corré `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sesion_hija.py" detectar` (en Windows, `py -3`). Si dice **MODO HIJA** (otra sesión la
+abrió), **seguí la skill `/metodo:cerrar-hija` y no el resto de este archivo**: cierra igual de completo, pero sin escribir el
+`REANUDAR.md` de la carpeta, sin `pull --rebase` sobre una carpeta compartida y sin abrir sesiones ni archivarse (eso lo decide la
+sesión que la abrió). Si dice MODO NORMAL, seguí acá. Si el programa no está o falla y esta sesión la abrió otra (su pedido inicial
+lo dice), tratala como hija: es lo seguro.
 
 ## ⛔ Paso 0 — No se cierra con sesiones hijas trabajando ni con ramas sin resolver
 **Antes de cualquier otro paso**, y también antes de ofrecerle el cierre al usuario: si en esta sesión abriste otras
@@ -30,7 +38,7 @@ sesiones (las ves en la barra lateral de la app) o copias de trabajo con rama pr
    resuelve (la juntás con el OK del usuario, regla 13) o queda anotada en `PENDIENTES.md` con su dueño.
 **Lo que frena el cierre se RESUELVE ACÁ, no se le pasa a quien te acompaña** (2026-10-15: «si lo frena, que haga el trabajo y después cierre»).
 `cerrar-check` imprime, por cada hija con algo pendiente, una línea `✗ hija … → <acción>`. Hacela y repetí el chequeo hasta que caiga el ✗:
-- hija con **trabajo sin guardar** → `SendMessage` a la hija («guardá lo tuyo, subí tu rama y avisame "listo"») y esperá a que termine su turno (la app te avisa; si tarda, `ScheduleWakeup`; nunca una tarea para la persona);
+- hija con **trabajo sin guardar** → `SendMessage` a la hija («guardá y subí lo tuyo —si compartís carpeta, con `sesion_hija.py subir`; si no, commit y push de tu rama— y avisame "listo"») y esperá a que termine su turno (la app te avisa; si tarda, `ScheduleWakeup`; nunca una tarea para la persona);
 - hija que **no entregó el informe** → esperá que lo entregue o pedíselo; **informe sin leer** → leelo (`get_session`) y pasá lo que sirva a `PENDIENTES.md`;
 - la caché de herramientas (`.omc/`, `__pycache__`, `.DS_Store`) en la copia de una hija **no es trabajo**: el chequeo ya no la cuenta.
 Solo le llega a la persona, en UNA línea y en criollo, lo que **solo ella** puede decidir (un permiso, un OK) o el comando de unión de un repo que no une solo. Si algo de 1, 2 o 3 sigue abierto después de intentarlo (p. ej. la hija no responde): decí cuál y por qué en esa línea; **no emitas el prompt ni te archives**. Solo si el usuario decide cerrar igual, el `REANUDAR.md` lista cada sesión o rama abierta con su dueño.
