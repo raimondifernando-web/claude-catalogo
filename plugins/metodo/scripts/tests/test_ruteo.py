@@ -329,7 +329,7 @@ class TestRecordar(Base):
 
     def test_ofrece_otra_ia_si_tiene_cupo(self):
         d = self.tmp / "cerebro"
-        d.mkdir()
+        d.mkdir(exist_ok=True)
         (d / "cupo-agy.json").write_text(json.dumps({"ts": time.time(), "five_hour": {"pct": 0}, "seven_day": {"pct": 10}}), encoding="utf-8")
         msg = self.pedir(description="buscar los archivos viejos", model="opus")
         self.assertIn("Gemini tiene cupo", msg)
