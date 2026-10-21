@@ -4,7 +4,7 @@
 **Antigravity (Gemini) ya no te abre el navegador de Google cuando vuelve la conexión o se despierta la computadora.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema, medido:** `agy` renueva su permiso de Google cada hora. Si en ese momento no hay internet (la compu recién despierta, el wifi se cayó), en vez de esperar abría el login de Google en el navegador y se quedaba colgado. Pasó 29 veces en 16 días, con la sesión perfectamente vigente.
 - **Qué cambia:** `radar.py` y `delegar.py` no llaman a `agy` si no hay conexión con Google. Si `agy` igual se cuelga o pide iniciar sesión, lo dejan en pausa un rato y no lo vuelven a llamar: 15 minutos si el registro de esa corrida muestra un error de red (lo habitual), 30 si no hay dato, 24 horas solo si pidió el navegador sin error de red. Si entrás a mano con `agy`, se reanuda solo, sin pasos extra.
-- **Un solo aviso:** si queda en pausa, `radar.py hoy` te lo dice una vez («corré `agy` una vez en la terminal»). `delegar.py` sale con el código 75 y dice por qué en vez de abrir el navegador.
+- **Un solo aviso:** si queda en pausa, `radar.py hoy` te lo dice una vez; si de verdad hace falta volver a entrar a Google, abrís `agy` una vez y se reanuda solo [manual-ok: iniciar sesión en Google solo puede hacerlo la persona]. `delegar.py` sale con el código 75 y dice por qué en vez de abrir el navegador.
 - **Qué NO cambia:** nada de tu sesión ni de tus claves; solo se mira si hay conexión y se anota la hora del último pedido de login en `~/.cerebro` (o en `~/.cache/metodo` si no existe).
 
 ## 0.51.3 — 2026-10-19
