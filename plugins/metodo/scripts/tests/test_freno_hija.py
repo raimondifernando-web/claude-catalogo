@@ -22,7 +22,7 @@ spec.loader.exec_module(f)
 MADRE, HIJA = "local_aaaaaaaa-0000-4000-8000-000000000001", "local_bbbbbbbb-0000-4000-8000-000000000002"
 CLI_MADRE, CLI_HIJA = "aaaaaaaa-1111-4000-8000-000000000001", "bbbbbbbb-1111-4000-8000-000000000002"
 
-PELIGROSOS = ["git pull --rebase --autostash", "git -C sub pull", "git stash", "git checkout -b tech/x", "git checkout -- a.txt",
+PELIGROSOS = ["git pull --rebase --autostash", "git -C sub pull", "git stash", "git checkout -b rama/x", "git checkout -- a.txt",
               "git switch main", "git reset --hard", "git rebase main", "git merge otra", "git add -A", "git add .",
               "git commit -m x", "git commit -am x", "git push", "git push -f origin x", "GIT_DIR=x git rebase main",
               "ls && git pull", "git restore a.txt", "git clean -fd", "git commit --amend -m x -- a.txt", "git cherry-pick abc",
@@ -31,7 +31,7 @@ PELIGROSOS = ["git pull --rebase --autostash", "git -C sub pull", "git stash", "
 INOFENSIVOS = ["git status --short", "git log --oneline -3", "git stash list", "git merge-base --is-ancestor a b", "git add docs/x.md",
                "git commit -m x -- docs/x.md", "git fetch -q", "git diff", "echo \"git pull\"", "git worktree add /tmp/w -b x origin/main",
                "git -C /private/tmp/w push origin x", "git -C /tmp/w rebase main", "ls -la", "git commit -m \"fix\" src/foo.py",
-               "git commit -F msg.txt docs/a.md", "cd /tmp/copia && git pull --rebase", "git branch tech/nueva origin/main",
+               "git commit -F msg.txt docs/a.md", "cd /tmp/copia && git pull --rebase", "git branch rama/nueva origin/main",
                "git branch --show-current", "git worktree list"]
 
 
