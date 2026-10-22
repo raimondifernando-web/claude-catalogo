@@ -1,0 +1,5 @@
+origen: github:unclecatvn/agent-skills//skills/odoo-17.0@3039ef3
+licencia: MIT (autor externo, 145 estrellas; entra por el camino 3 de Mand. XVI: puro texto leído entero)
+actualizado: 2026-10-12 por el flujo buscar-skill-externa (C56/C57): cuarentena-skills + lectura entera de Gemini (22 de 22 archivos, CON OBSERVACIONES) + barrido determinista del 100 % + lectura de SKILL.md
+modificado: no se copiaron AGENTS.md ni CLAUDE.md del autor (instrucciones para otros agentes; Mand. XVI); SKILL.md con una línea más en el encabezado: sync: no
+nota: SKILL.md manda al agente a correr la skill hermana `odoo-workflow` si está instalada (no la traemos: no se leyó); 3 guías citan rutas del autor (/Users/unclecat/...), solo texto

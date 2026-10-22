@@ -1,5 +1,9 @@
 # escala-desarrollo
 
+## 0.14.5 — 2026-10-22
+**Nueva skill `odoo-17`:** guía para programar módulos de Odoo 17 (modelos, vistas, seguridad, reportes, pruebas). Útil si tu empresa usa Odoo y armás herramientas sobre él. Se aplica sola con la actualización.
+
+
 ## 0.14.4 — 2026-10-12
 - **`/escala-desarrollo:revision-seguridad` se activa sola con más pedidos.** Claude la usa cuando le pedís revisar la seguridad, auditar el código, buscar vulnerabilidades o claves sueltas, hacer un pentest liviano o «chequear que sea seguro antes de publicar», también si lo decís de forma indirecta («me preocupa que roben datos», «¿se puede publicar sin riesgos?»). En las pruebas la usó en todas esas frases y en ninguna que no era de seguridad.
 - **Si pedís el revisor de seguridad directamente** (sin pasar por el comando), su informe termina con una línea destacada: «NO CORRIERON ESCÁNERES — esta revisión está incompleta», con el comando que falta correr. Así nunca queda la sensación de que se revisó todo cuando no se corrieron los escáneres.

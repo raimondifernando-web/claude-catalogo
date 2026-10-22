@@ -1,12 +1,15 @@
 # metodo — qué cambia para vos
 
-## 0.52.0 — 2026-10-22
+## 0.53.0 — 2026-10-22
 **Nuevo comando `mapa`: te dice qué skills, agentes, conectores, reglas y programas tenés instalados, siempre al día y sin gastar IA.** Se aplica solo con la actualización; no hay nada que correr y no se instala nada que arranque solo.
 - **Para qué sirve:** antes de armar algo, `mapa buscar <tema>` te muestra qué hay ya hecho (nombre, qué hace en una línea y dónde vive). `mapa` a secas da un resumen corto (cuántas piezas de cada tipo y las últimas que cambiaron); `mapa ver <pieza>` abre la ficha de una; `mapa --al-dia` dice si el mapa coincide con tu disco.
 - **Cómo se mantiene fresco sin que nadie avise:** cada vez que lo consultás compara una «huella» de lo que miró la vez anterior (cuesta una décima de segundo); solo si algo cambió se rehace (unos 2 segundos). Detecta una skill nueva, un plugin instalado desde la app, un conector agregado, un proyecto nuevo con su carpeta `.claude`. No hay vigilantes ni tareas programadas.
 - **Qué guarda y dónde:** una carpeta `mapa/` dentro de la carpeta de Claude, con permisos solo para vos. Solo nombres, descripciones y fechas: nunca claves, variables de entorno ni argumentos de los conectores, y tapa cualquier cosa con forma de clave. Dos sesiones a la vez no se pisan (candado y escritura a un archivo temporal que se renombra).
 - **Qué NO cambia todavía:** nada de lo que ya usás. En una próxima versión `herramientas-para` y el aviso de piezas nuevas pasan a leer este mapa; hoy conviven.
 - **Si molesta:** no hay nada que apagar; si no lo invocás, no corre.
+
+## 0.52.0 — 2026-10-22
+**Regla 13: cuando lo que hiciste lo usa otra sesión, se le avisa por escrito.** Si trabajás con varias sesiones a la vez, una puede cambiar algo que otra necesita (una regla, algo publicado). Ahora la regla 13 pide dejarle un aviso en su carpeta (`.claude/prompts/`, qué cambió y qué le toca hacer) y, si está abierta, un mensaje directo: la otra sesión no revisa su carpeta sola. Se aplica solo con la actualización; no hay nada que correr.
 
 ## 0.51.4 — 2026-10-21
 **Antigravity (Gemini) ya no te abre el navegador de Google cuando vuelve la conexión o se despierta la computadora.** Se aplica solo con la actualización; no hay nada que correr.
