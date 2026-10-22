@@ -449,7 +449,7 @@ Fields with `copy=False` (e.g. `state`, dates, sequence numbers) are excluded au
 
 ### Logical Operators
 
-Polish prefix notation. `&` / `|` take the next two terms; `!` takes the next one.
+Polish prefix notation. `&` / `|` take the next two terms; the negation `'!'` takes the next one.
 
 ```python
 # AND is implicit between consecutive terms
