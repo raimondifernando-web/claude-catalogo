@@ -141,6 +141,8 @@ def ejecutar_mapa(args: list, home: Path, claude_dir: Path) -> subprocess.Comple
         cmd,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         env=env,
         timeout=15,
     )
@@ -285,8 +287,8 @@ class TestMapa(unittest.TestCase):
             env["MAPA_HOME"] = str(home)
             env["CLAUDE_CONFIG_DIR"] = str(claude_dir)
 
-            p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
-            p2 = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+            p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", env=env)
+            p2 = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", env=env)
 
             out1, err1 = p1.communicate(timeout=15)
             out2, err2 = p2.communicate(timeout=15)
