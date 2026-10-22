@@ -8,6 +8,8 @@ Por qué existe: si la sesión principal de una carpeta está cerrando (mudanza 
 mandarle un mensaje por SendMessage (o por mcp__ccd_session_mgmt__send_message), el mensaje se perdería al
 archivarse la sesión vieja. Este hook intercepta esos intentos y los deniega (deny) con un aviso en castellano que
 dice dejar una carta en la carpeta (<carpeta>/.claude/cartas/, con `cartas.py dejar`), para que la sesión nueva la lea al arrancar.
+Deja pasar el envío cuando quien manda es una sesión HIJA de la que cierra y sigue colgada de ella (la madre espera su respuesta durante
+el cierre); una hija ya independizada (detach) sí se frena y deja su carta. Si no se puede saber quién manda, se frena como siempre.
 Mira solo el destino y el estado de la mudanza: no lee ni guarda el contenido del mensaje.
 
 Falla abierto: cualquier fallo, JSON inválido o excepción anota en hook.log y
@@ -98,12 +100,15 @@ def main():
 
     try:
         ses = hs.cargar()
+        # quién manda: `session_id` del JSON del hook = id del CLI de la sesión que escribe
+        yo = next((x for x in ses if data.get("session_id") and data.get("session_id") in (x.get("cliSessionId"), x.get("sessionId"))), None)
         if destino == "parent":
-            # una hija que le escribe a «parent»: se resuelve por quién la abrió (la sesión que manda es `session_id` = id del CLI)
-            yo = next((x for x in ses if data.get("session_id") and data.get("session_id") in (x.get("cliSessionId"), x.get("sessionId"))), None)
+            # una hija que le escribe a «parent»: se resuelve por quién la abrió
             destino = hs.padre_de(yo) if yo else None
         if not destino or not destino.startswith("local_"):
             sys.exit(0)
+        if yo and hs.padre_de(yo) == destino and not yo.get("lineageDetached"):
+            sys.exit(0)  # una hija todavía colgada le contesta a su propia madre (p. ej. en el Paso 0 del cierre): la madre la espera, no se frena
         carpeta = cierre_estado.destino_congelado(destino, ses)
         if carpeta:
             motivo = (

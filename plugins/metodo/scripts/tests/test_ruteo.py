@@ -757,10 +757,10 @@ class TestHooksJson(unittest.TestCase):
         # el recordatorio del radar nunca bloquea; el freno anti-secretos (matcher Bash|PowerShell|Read|Grep|Write|Edit|MultiEdit) y el de la regla 22
         # (consultar-ecosistema, matcher Write|Agent|Task|Workflow) y el del instalador de skills (skills-cli-tranca, matcher Bash|PowerShell)
         # son aparte y sí pueden frenar; igual los dos controles del cierre de sesiones (envíos a una sesión que se muda: SendMessage|…send_message;
-        # hijas en carpeta compartida: Bash|Write|Edit|MultiEdit)
+        # hijas en carpeta compartida: Bash|PowerShell|Write|Edit|MultiEdit)
         previos = [g for g in datos["hooks"]["PreToolUse"]
                    if g.get("matcher") not in ("Bash|PowerShell|Read|Grep|Write|Edit|MultiEdit", "Write|Agent|Task|Workflow", "Bash|PowerShell",
-                                               "SendMessage|mcp__ccd_session_mgmt__send_message", "Bash|Write|Edit|MultiEdit")]
+                                               "SendMessage|mcp__ccd_session_mgmt__send_message", "Bash|PowerShell|Write|Edit|MultiEdit")]
         self.assertEqual(len(previos), 1)
         self.assertEqual(sorted(previos[0]["matcher"].split("|")), ["Agent", "Task", "mcp__ccd_session__start_session"])
         orden = previos[0]["hooks"][0]

@@ -16,7 +16,11 @@ en castellano:
 Deja pasar todo lo demás, y también git sobre una carpeta temporal o el worktree propio de la sesión (`git -C <ruta>`).
 Sesiones que no son hijas (o ya sueltas con detach: la sucesora de una mudanza lo está): no cambia nada. Guardarraíl, no muro.
 
-Disparador: automático (hook PreToolUse del plugin metodo, hooks/hooks.json, matcher Bash|Write|Edit|MultiEdit).
+Límite (guardarraíl, no muro): los alias de git que la persona tiene en su propia configuración no se pueden conocer; solo se frena
+`git -c alias.<x>=… <x>` (cualquier `-c alias.`) y las formas escritas completas. En Windows se mira también la herramienta PowerShell
+(`git.exe`, mayúsculas o minúsculas), sin haberse probado en un Windows real.
+
+Disparador: automático (hook PreToolUse del plugin metodo, hooks/hooks.json, matcher Bash|PowerShell|Write|Edit|MultiEdit).
 Apagar: FRENO_HIJA=0 o el archivo <config de Claude>/metodo/freno-hija.apagado.
 Si algo falla adentro, deja pasar (nunca traba una sesión). Solo lee: datos de sesiones de la app y el JSON del hook. Sin red.
 """
@@ -69,7 +73,9 @@ def peligro_git(comando, cwd, propia):
     dir_actual = cwd  # se sigue el `cd` entre tramos (cd /tmp/copia && git pull sí pasa)
     for tramo in SEPARADORES.split(comando or ""):
         try:
-            pal = shlex.split(tramo, comments=True)
+            pal = shlex.split(tramo, comments=True, posix=(os.name != "nt"))
+            if os.name == "nt":  # sin modo POSIX las comillas quedan pegadas a cada palabra
+                pal = [p.strip("\"'") for p in pal]
         except ValueError:
             pal = tramo.split()
         while pal and re.match(r"^\w+=", pal[0]):
@@ -78,7 +84,7 @@ def peligro_git(comando, cwd, propia):
             dir_actual = os.path.join(dir_actual, os.path.expanduser(pal[1])) if len(pal) > 1 else os.path.expanduser("~")
             continue
         destino = dir_actual
-        if not pal or os.path.basename(pal[0]) != "git":
+        if not pal or re.sub(r"\.exe$", "", os.path.basename(pal[0].replace("\\", "/")), flags=re.I).lower() != "git":
             continue
         i, sub = 1, None
         while i < len(pal):
@@ -87,6 +93,10 @@ def peligro_git(comando, cwd, propia):
                 destino = os.path.join(destino, os.path.expanduser(pal[i + 1]))
                 i += 2
                 continue
+            if a == "-c" and i + 1 < len(pal) and pal[i + 1].lower().startswith("alias."):
+                return "`git -c alias.…` (un alias puede esconder cualquier operación de git)"
+            if a.lower().startswith("-calias."):
+                return "`git -c alias.…` (un alias puede esconder cualquier operación de git)"
             if a in ("-c", "--git-dir", "--work-tree") and i + 1 < len(pal):
                 i += 2
                 continue
@@ -104,7 +114,8 @@ def peligro_git(comando, cwd, propia):
             return "`git stash`"
         if "--autostash" in resto:
             return "`--autostash`"
-        if sub == "add" and any(x in ("-A", "--all", ".", "./", ":/", "-u", "--update") or any(c in x for c in "*?[") for x in resto):
+        if sub == "add" and any(x in ("--all", ".", "./", ":/", "--update") or (re.match(r"^-[a-zA-Z]+$", x) and ("A" in x or "u" in x))
+                                or any(c in x for c in "*?[") for x in resto):
             return "`git add` de todo o con comodines (se llevaría archivos de otras sesiones)"
         if sub == "branch" and any(x in ("-d", "-D", "--delete", "-f", "--force", "-m", "-M", "--move", "-c", "-C") for x in resto):
             return "`git branch` que borra, mueve o pisa ramas"
@@ -178,6 +189,8 @@ def main():
     entrada = datos.get("tool_input") or {}
     cwd = datos.get("cwd") or os.getcwd()
     # Camino rápido: solo se miran los datos de la app si el pedido puede ser peligroso.
+    if herramienta == "PowerShell":
+        herramienta = "Bash"  # mismo tratamiento: el comando se lee igual
     if herramienta in ("Bash",):
         if not re.search(r"\bgit\b|REANUDAR\.md", entrada.get("command") or ""):
             return 0

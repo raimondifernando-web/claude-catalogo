@@ -162,7 +162,7 @@ class Registro(unittest.TestCase):
         self.assertEqual(len(e), 1)
         evento, matcher, h = e[0]
         self.assertEqual(evento, "PreToolUse")
-        self.assertEqual(set(matcher.split("|")), {"Bash", "Write", "Edit", "MultiEdit"})
+        self.assertEqual(set(matcher.split("|")), {"Bash", "PowerShell", "Write", "Edit", "MultiEdit"})
         self.assertEqual(h["timeout"], 5)
         self.assertTrue((SCRIPTS / "freno-hija.py").is_file())
 

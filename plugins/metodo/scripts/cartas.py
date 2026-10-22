@@ -39,20 +39,42 @@ def _utf8():
             pass
 
 
-def comando(carpeta, de="<tu nombre>"):
-    """El comando exacto (con la ruta de este programa) para dejar una carta en `carpeta`. Lo imprimen los avisos a otras sesiones."""
+METACARACTERES = set("\"'`$&|;<>\n\r")
+
+
+def ruta_segura(ruta):
+    """False si la ruta trae comillas o metacaracteres de shell: armar un comando con ella podría ejecutar otra cosa."""
+    return not (set(str(ruta)) & METACARACTERES)
+
+
+def _python():
+    return "py -3" if os.name == "nt" else "python3"
+
+
+def _entre_comillas(ruta):
+    return '"{}"'.format(ruta) if os.name == "nt" else shlex.quote(ruta)
+
+
+def _programa():
+    """El programa entre comillas, o solo «cartas.py» (para correrlo parado en su carpeta) si su ruta trae metacaracteres."""
     yo = os.path.abspath(__file__)
-    if os.name == "nt":
-        return 'py -3 "{}" dejar "{}" "{}" <texto>'.format(yo, carpeta, de)
-    return 'python3 {} dejar {} "{}" <texto>'.format(shlex.quote(yo), shlex.quote(carpeta), de)
+    return _entre_comillas(yo) if ruta_segura(yo) else "cartas.py"
+
+
+def comando(carpeta, de="<tu nombre>"):
+    """El comando exacto (con la ruta de este programa) para dejar una carta en `carpeta`. Lo imprimen los avisos a otras sesiones.
+    Si la carpeta trae comillas o metacaracteres de shell NO se arma el comando con esa ruta: se sugiere sin ella («.»), para correrlo
+    parado en la carpeta."""
+    if ruta_segura(carpeta):
+        return '{} {} dejar {} "{}" <texto>'.format(_python(), _programa(), _entre_comillas(carpeta), de)
+    return '{} {} dejar . "{}" <texto>   (parado en la carpeta)'.format(_python(), _programa(), de)
 
 
 def comando_leer(carpeta):
-    """El comando exacto para leer (y marcar como leídas) las cartas de `carpeta`."""
-    yo = os.path.abspath(__file__)
-    if os.name == "nt":
-        return 'py -3 "{}" leer "{}"'.format(yo, carpeta)
-    return "python3 {} leer {}".format(shlex.quote(yo), shlex.quote(carpeta))
+    """El comando exacto para leer (y marcar como leídas) las cartas de `carpeta` (mismas reglas de ruta que `comando`)."""
+    if ruta_segura(carpeta):
+        return "{} {} leer {}".format(_python(), _programa(), _entre_comillas(carpeta))
+    return "{} {} leer .   (parado en la carpeta)".format(_python(), _programa())
 
 
 def _limpiar_controles(texto, permitir_nl=True):

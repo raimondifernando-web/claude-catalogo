@@ -110,23 +110,37 @@ class TestFrenoEnvioCerrando(unittest.TestCase):
         self.assertIn("cartas.py", hso2["permissionDecisionReason"])
         self.assertIn("dejar", hso2["permissionDecisionReason"])
 
-    def test_hija_que_le_escribe_a_parent_tambien_se_frena(self):
-        """Una hija que manda a «parent» (sin id) se resuelve por quién la abrió: si el padre está cerrando, deny."""
+    def test_hija_colgada_le_contesta_a_su_madre_que_cierra(self):
+        """La respuesta de una hija a su propia madre (p. ej. en el Paso 0 del cierre) pasa: la madre la espera."""
         self.sesion("local_vieja", "Vieja principal", cwd=str(self.carpeta))
         self.sesion("local_hija", "Hija", cwd=str(self.carpeta), spawnedFrom={"sessionId": "local_vieja"})
         cierre_estado.congelar(str(self.carpeta), "local_vieja")
-        p = json.dumps({
-            "tool_name": "mcp__ccd_session_mgmt__send_message",
-            "session_id": "cli-local_hija",
-            "tool_input": {"session_id": "parent", "message": "listo"},
-        })
-        rc, out, _ = self.correr_hook(p)
-        self.assertEqual(rc, 0)
-        self.assertEqual(json.loads(out)["hookSpecificOutput"]["permissionDecision"], "deny")
-        # sin congelar → pasa
-        (self.carpeta / ".claude" / "cerrando.json").unlink()
-        rc, out, _ = self.correr_hook(p)
-        self.assertEqual((rc, out), (0, ""))
+        directo = json.dumps({"tool_name": "SendMessage", "session_id": "cli-local_hija", "tool_input": {"to": "local_vieja", "message": "listo"}})
+        mcp = json.dumps({"tool_name": "mcp__ccd_session_mgmt__send_message", "session_id": "cli-local_hija",
+                          "tool_input": {"session_id": "local_vieja", "message": "listo"}})
+        a_parent = json.dumps({"tool_name": "mcp__ccd_session_mgmt__send_message", "session_id": "cli-local_hija",
+                               "tool_input": {"session_id": "parent", "message": "listo"}})
+        for p in (directo, mcp, a_parent):
+            self.assertEqual(self.correr_hook(p)[:2], (0, ""))
+
+    def test_hija_independizada_o_sesion_ajena_si_se_frena(self):
+        """Una hija ya suelta (detach) deja su carta; otra sesión (no hija) y un remitente desconocido se frenan como siempre."""
+        self.sesion("local_vieja", "Vieja principal", cwd=str(self.carpeta))
+        self.sesion("local_suelta", "Hija suelta", cwd=str(self.carpeta), spawnedFrom={"sessionId": "local_vieja"}, lineageDetached=True)
+        self.sesion("local_otra", "Otra", cwd=str(self.carpeta))
+        cierre_estado.congelar(str(self.carpeta), "local_vieja")
+        for sid in ("cli-local_suelta", "cli-local_otra", "cli-desconocida", None):
+            datos = {"tool_name": "SendMessage", "tool_input": {"to": "local_vieja", "message": "hola"}}
+            if sid:
+                datos["session_id"] = sid
+            rc, out, _ = self.correr_hook(json.dumps(datos))
+            self.assertEqual(json.loads(out)["hookSpecificOutput"]["permissionDecision"], "deny", sid)
+
+    def test_a_parent_sin_saber_quien_manda_deja_pasar(self):
+        self.sesion("local_vieja", "Vieja", cwd=str(self.carpeta))
+        cierre_estado.congelar(str(self.carpeta), "local_vieja")
+        p = json.dumps({"tool_name": "mcp__ccd_session_mgmt__send_message", "tool_input": {"session_id": "parent", "message": "x"}})
+        self.assertEqual(self.correr_hook(p)[:2], (0, ""))
 
     def test_envio_otra_sesion_sin_salida(self):
         """Envío a otra sesión no congelada deja pasar sin salida."""

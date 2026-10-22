@@ -53,6 +53,21 @@ class Analisis(unittest.TestCase):
         self.assertFalse(f.es_reanudar(".claude/prompts/TRASPASO-2026-10-21-x.md", "/tmp/p"))
 
 
+class Evasiones(unittest.TestCase):
+    """Formas que antes se escapaban: grupo de flags con A, alias de git por -c y git.exe de Windows (PowerShell)."""
+
+    def test_add_con_grupo_de_flags_y_alias(self):
+        for c in ("git add -Av", "git add -vA", "git add -Au", "git -c alias.x=add x -A", "git -calias.pp=push pp", "git -c ALIAS.p=push p"):
+            self.assertTrue(f.peligro_git(c, "/proyecto", None), c)
+        for c in ("git add -v docs/x.md", "git add -n docs/x.md", "git -c core.quotepath=false status"):
+            self.assertIsNone(f.peligro_git(c, "/proyecto", None), c)
+
+    def test_git_exe_con_cualquier_mayuscula(self):
+        for c in ("git.exe pull", "GIT.EXE push", "Git.Exe stash", '"C:\\Program Files\\Git\\cmd\\git.exe" pull'):
+            self.assertTrue(f.peligro_git(c, "/proyecto", None), c)
+        self.assertIsNone(f.peligro_git("git.exe status", "/proyecto", None))
+
+
 class DePuntaAPunta(unittest.TestCase):
     """El freno corre como lo corre la app: JSON por la entrada estándar."""
 
@@ -92,6 +107,23 @@ class DePuntaAPunta(unittest.TestCase):
         self.assertEqual(self.correr(CLI_HIJA, "Bash", command="echo x > .claude/prompts/REANUDAR.md"), "deny")
         self.assertEqual(self.correr(CLI_HIJA, "Bash", command="cat .claude/prompts/REANUDAR.md"), "pasa")
         self.assertEqual(self.correr(CLI_HIJA, "Write", file_path=str(self.carpeta / "docs.md")), "pasa")
+
+    def test_powershell_se_trata_como_bash(self):
+        self.armar()
+        self.assertEqual(self.correr(CLI_HIJA, "PowerShell", command="git.exe pull --rebase"), "deny")
+        self.assertEqual(self.correr(CLI_HIJA, "PowerShell", command="git.exe status"), "pasa")
+        self.assertEqual(self.correr(CLI_HIJA, "PowerShell", command="git add -Av"), "deny")
+
+    def test_carpeta_con_metacaracteres_no_arma_el_comando_con_la_ruta(self):
+        mala = self.carpeta.parent / "raro$(x)"
+        mala.mkdir()
+        self.carpeta = mala
+        self.armar()
+        datos = {"session_id": CLI_HIJA, "cwd": str(mala), "tool_name": "Write", "tool_input": {"file_path": str(mala / "REANUDAR.md")}}
+        r = subprocess.run([sys.executable, str(FRENO)], input=json.dumps(datos), env=self.env, capture_output=True, text=True, encoding="utf-8")
+        motivo = json.loads(r.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertNotIn("raro", motivo)
+        self.assertIn("parado en la carpeta", motivo)
 
     def test_el_aviso_manda_el_informe_como_carta(self):
         self.armar()
