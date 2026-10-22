@@ -22,6 +22,9 @@ import re
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import sesiones_hijas as sh  # noqa: E402  (una sola definición de «trabajando»: la misma de cierre-mudanza y arrancar-check)
+
 NOTA = re.compile(r"you started \((local_[0-9a-f-]+)\)\s+finished a turn|side-sessions-event", re.I)
 TITULO = re.compile(r'The session "(.+?)" you started', re.S)
 ID_LOCAL = re.compile(r"local_[0-9a-f]{8}-[0-9a-f-]{27}")
@@ -136,7 +139,6 @@ def hijas_trabajando(cli_id, ya_llegaron):
     yo = next((s for s in ses if s.get("cliSessionId") == cli_id), None)
     if not yo:
         return []
-    ahora = time.time() * 1000
     out = []
     for s in ses:
         sf = s.get("spawnedFrom")
@@ -144,9 +146,7 @@ def hijas_trabajando(cli_id, ya_llegaron):
             continue
         if s.get("isArchived") or s.get("lineageDetached") or s["sessionId"] in ya_llegaron:
             continue
-        resumen_listo = bool(s.get("postTurnSummary")) and s.get("postTurnSummaryFor") == s.get("lastAssistantUuid")
-        reciente = (ahora - (s.get("lastActivityAt") or 0)) < HIJA_ACTIVA_S * 1000
-        if reciente and not resumen_listo:
+        if sh.estado(s) == "trabajando":
             out.append(s.get("title") or s["sessionId"])
     return out
 
