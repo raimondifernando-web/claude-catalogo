@@ -627,6 +627,15 @@ def recolectar_piezas_para_busqueda(inv: Dict[str, Any]) -> List[Dict[str, Any]]
     return piezas
 
 
+def listar_piezas(claude_dir: Path, home: Path, proyectos_dir: Path) -> List[Dict[str, Any]]:
+    """API para otros programas (herramientas-para, el Bicho): las piezas del mapa YA AL DÍA, sin que nadie abra
+    ni rehaga archivos a mano. Cada pieza: tipo, nombre, descripcion, donde_vive (+ raw con la ficha)."""
+    asegurar_al_dia(claude_dir, home, proyectos_dir)
+    with open(claude_dir / "mapa" / "mapa.json", "r", encoding="utf-8") as f:
+        inv = json.load(f)
+    return recolectar_piezas_para_busqueda(inv)
+
+
 def comando_buscar(tema_lista: List[str], claude_dir: Path, home: Path, proyectos_dir: Path) -> None:
     """Subcomando buscar: lista hasta 25 piezas que coinciden con el tema."""
     asegurar_al_dia(claude_dir, home, proyectos_dir)

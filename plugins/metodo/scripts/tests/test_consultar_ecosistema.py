@@ -146,7 +146,7 @@ class TestFreno(unittest.TestCase):
         self.assertEqual(correr(self.agente("Evaluá e instalá Ponytail como plugin de reglas"), self.cfg, self.cwd).returncode, 0)
 
     def test_herramientas_para_devuelve_la_lista_por_tema(self):
-        env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg))
+        env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg), MAPA_HOME=self.tmp.name)
         for tema in (["gateway", "de", "IA"], ["instalar", "un", "plugin", "de", "reglas"], ["omniroute"]):
             with self.subTest(tema=tema):
                 r = subprocess.run([sys.executable, str(SCRIPTS / "herramientas-para.py")] + tema,
@@ -162,11 +162,45 @@ class TestFreno(unittest.TestCase):
             self.assertIn(herramienta, txt)
 
     def test_herramientas_para_sin_receta_lo_dice_y_no_rompe(self):
-        env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg))
+        env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg), MAPA_HOME=self.tmp.name)
         r = subprocess.run([sys.executable, str(SCRIPTS / "herramientas-para.py"), "tema", "inexistente", "zzqq"],
                            capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, cwd=self.cwd, timeout=20)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("Sin receta", r.stdout)
+
+    def _skill(self, nombre, descripcion):
+        d = self.cfg / "skills" / nombre
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text(f"---\nname: {nombre}\ndescription: {descripcion}\n---\n# {nombre}\n", encoding="utf-8")
+
+    def test_herramientas_para_lee_las_piezas_del_mapa_y_se_actualiza_sola(self):
+        """Las piezas salen del mapa único (mapa.py): una skill creada después aparece sin hacer nada más."""
+        env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg), MAPA_HOME=self.tmp.name)
+
+        def buscar():
+            return subprocess.run([sys.executable, str(SCRIPTS / "herramientas-para.py"), "planilla", "zorzal"],
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, cwd=self.cwd, timeout=60)
+
+        self._skill("planillas-zorzal", "Arma planillas zorzal para el contador")
+        r = buscar()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("planillas-zorzal", r.stdout)
+        self.assertTrue((self.cfg / "mapa" / "mapa.json").is_file(), "no pasó por el mapa")
+        self._skill("zorzal-nuevo", "Otra herramienta zorzal recién creada")
+        self.assertIn("zorzal-nuevo", buscar().stdout)  # el mapa se rehízo solo
+
+    def test_herramientas_para_sin_mapa_cae_al_recorrido_directo(self):
+        """Si mapa.py no está (o falla), herramientas-para sigue andando con el recorrido viejo."""
+        solo = Path(self.tmp.name) / "solo-herramientas"
+        solo.mkdir()
+        (solo / "herramientas-para.py").write_bytes((SCRIPTS / "herramientas-para.py").read_bytes())
+        self._skill("planillas-zorzal", "Arma planillas zorzal para el contador")
+        env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), TMPDIR=str(self.cfg), MAPA_HOME=self.tmp.name)
+        r = subprocess.run([sys.executable, str(solo / "herramientas-para.py"), "planilla", "zorzal"],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, cwd=self.cwd, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("planillas-zorzal", r.stdout)
+        self.assertFalse((self.cfg / "mapa").exists(), "no debía usar el mapa")
 
 
 if __name__ == "__main__":
