@@ -4,7 +4,7 @@
 > **Cómo se edita:** cambiar la fila (prioridad, estado) y agregar una línea en «Cambios» al final, con fecha. Nunca renumerar:
 > un ID cerrado pasa a «Hechos». Cada sesión toca solo SUS filas. Respetar el formato de las tablas (8 columnas).
 >
-> Prio = la cuenta impacto − esfuerzo (Bajo 1 · Medio 2 · Alto 3): 1 = Alta (más de 0) · 2 = Media (0) · 3 = Baja (menos de 0).
+> Prio = la cuenta 2 × impacto − esfuerzo (Bajo 1 · Medio 2 · Alto 3): 1 = Alta (3 o más) · 2 = Media (1 o 2) · 3 = Baja (0 o menos).
 > Las fechas límite van en «Fechas», no en Prio. Esf. = Bajo/Medio/Alto: una tarea, Bajo hasta 1 h · Medio 1-3 h · Alto más de 3 h;
 > un proyecto, Bajo hasta 2 días · Medio hasta 2 semanas · Alto más, o depende de otros. Impacto de una tarea, contra su proyecto
 > (Alto = sin ella no se cumple · Medio = ayuda o ahorra tiempo · Bajo = mejora menor); el de un proyecto, contra tus objetivos.

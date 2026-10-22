@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.54.1 — 2026-10-22
+**La lista de pendientes calcula la prioridad con una cuenta que da más peso a lo que rinde, y el control avisa de dos descuidos.** Se aplica solo con la actualización; no hay nada que correr y tus listas siguen funcionando igual.
+- **La cuenta:** la prioridad (Prio) sale de `2 × impacto − esfuerzo`, con Bajo 1 · Medio 2 · Alto 3 (antes era `impacto − esfuerzo`). Se sigue escribiendo el dígito: 1 = Alta (3 o más), 2 = Media (1 o 2), 3 = Baja (0 o menos). Así lo de impacto Alto sale Alta aunque cueste, y lo de impacto Bajo no sale Alta. La plantilla de la lista y el paso «Pendientes» de `/metodo:cerrar` ya lo explican.
+- **Dos avisos nuevos en el control de la lista** (solo avisan, nunca frenan un cierre): una fila que dice `parte de X` cuando X no es un proyecto de la tabla (no existe, se cerró o no empieza con `Proyecto:`), y una tarea abierta con esfuerzo Alto («¿es un proyecto?»). Los valores viejos (chico, grande) no avisan.
+- **Qué NO cambia:** las 8 columnas, los estados y lo que ya escribiste. Revisás tus filas una vez, en tu próximo cierre.
+
 ## 0.54.0 — 2026-10-22
 **Cerrar una sesión ya no pierde mensajes ni deja sesiones colgadas: todo pasa en una sola vuelta.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema, medido:** cerrar la sesión principal de una carpeta era una mudanza hecha a mano, en muchos pasos sueltos (abrir la sesión nueva, soltarla de la vieja, avisarle a cada sesión el número nuevo, archivar la vieja). La app tiene reglas propias que no se pueden cambiar: no deja abrir una sesión desde una vuelta que empezó otro aviso, ata cada hija a la sesión que la abrió para siempre, no archiva una sesión que está trabajando o vigilando algo y no permite cerrarle la puerta a los mensajes que llegan. Resultado: mensajes dirigidos a una sesión que ya se había ido, hijas que seguían avisándole a la vieja y cierres que se cortaban a la mitad.
