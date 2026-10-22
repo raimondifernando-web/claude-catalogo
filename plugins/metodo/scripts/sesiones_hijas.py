@@ -58,6 +58,10 @@ def padre_de(s):
     return sf.get("sessionId") if isinstance(sf, dict) else (sf if isinstance(sf, str) else None)
 
 
+def pr_abierto(s):
+    return any(isinstance(p, dict) and str(p.get("state", "")).upper() in ("OPEN", "DRAFT") for p in s.get("prs") or [])
+
+
 def hijas_de(sid, ses, excluir=()):
     """Descendientes vivas (hijas, nietas…) de `sid`: sin detach y sin PR abierto propio. `excluir` saca a una sesión y a su rama (p. ej. la actual)."""
     out, vistos, cola = [], {sid, *excluir}, [sid]
@@ -141,3 +145,32 @@ def citadas_en(texto, ses, excluir=()):
     """Sesiones VIVAS cuyo id aparece en el texto. Las ya archivadas no se mencionan."""
     ids = set(re.findall(r"local_" + UUID, texto or ""))
     return [s for s in ses if s["sessionId"] in ids and not s.get("isArchived") and s["sessionId"] not in excluir]
+
+
+ACTIVA_S = 20 * 60   # misma ventana que cierre-hijas.HIJA_ACTIVA_S
+
+
+def estado(s, ahora=None):
+    """'trabajando' | 'esperando' | 'terminada' — LA definición única de en qué está una sesión hija: los controles del cierre
+    (cierre-mudanza, cierre-hijas, arrancar-check) la importan de acá y ninguno cuenta a su manera. Se mide solo con los datos
+    que la app guarda en disco (el dict `s` de local_*.json), sin red ni git.
+    - terminada: está archivada, o está quieta (ni trabajando ni esperando).
+    - trabajando: NO archivada, con última actividad (`lastActivityAt`, milisegundos) de hace menos de ACTIVA_S segundos y SIN
+      resumen de turno listo (`postTurnSummary` y `postTurnSummaryFor` == `lastAssistantUuid`).
+    - esperando: NO archivada, NO trabajando, y con un PR abierto o un informe debido (`sideSessionReportOwed`, si no pasaron
+      más de VIEJO_DIAS días: una abandonada hace semanas ya no espera a nadie).
+    Prioridad: archivada > trabajando > esperando > terminada."""
+    if s.get("isArchived"):
+        return "terminada"
+    ahora_s = time.time() if ahora is None else ahora
+    act = s.get("lastActivityAt")
+    if not isinstance(act, (int, float)):
+        act = 0
+    es_reciente = bool(act > 0 and (ahora_s * 1000 - act) < (ACTIVA_S * 1000))
+    resumen_listo = bool(s.get("postTurnSummary")) and (s.get("postTurnSummaryFor") == s.get("lastAssistantUuid"))
+    if es_reciente and not resumen_listo:
+        return "trabajando"
+    debe_informe = bool(s.get("sideSessionReportOwed")) and (act == 0 or (ahora_s * 1000 - act) <= VIEJO_DIAS * 86400000)
+    if pr_abierto(s) or debe_informe:
+        return "esperando"
+    return "terminada"

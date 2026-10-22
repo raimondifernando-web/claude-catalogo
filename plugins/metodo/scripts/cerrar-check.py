@@ -322,7 +322,7 @@ print("• MANUAL (verificación propia): ¿qué PROBASTE del resultado de lo qu
 print("• MANUAL (Paso 0, PRIMERO): si esta sesión abrió otras (barra lateral de la app), ¿alguna sigue trabajando o entregó algo que "
       "nadie revisó? → NO se cierra: archivar esta sesión corta a las hijas y pierden el canal por el que te entregan. "
       "Mirá `list_sessions` con `linked: true` y leé la entrega de cada una antes de seguir")
-# Hijas que figuran en disco: sin trabajo pendiente se archivan sin preguntar (la app las archiva sola cuando te archivás en el paso 10)
+# Hijas que figuran en disco: sin trabajo pendiente se archivan sin preguntar (`cierre-mudanza.py hijas`, paso 10, te da la acción de cada una)
 try:
     import sesiones_hijas as _sh
     _todas = _sh.cargar()
@@ -335,8 +335,8 @@ try:
                       f"hija «{_h.get('title', '')}» con trabajo o informe pendiente (resolvelo VOS con la acción indicada y repetí el chequeo)")
         if _libres and not _ret:
             print("• HIJAS A ARCHIVAR (sin preguntarle a nadie): " + ", ".join(f"{_h['sessionId']} «{_h.get('title', '')}»" for _h, _b in _libres)
-                  + " → comprobá con list_sessions {linked:true} que figuren «idle»; la app las archiva sola con vos (paso 10). "
-                  "Si no hay paso 10, archive_session(id) a cada una. No las ofrezcas ni las anotes en el REANUDAR")
+                  + " → en el paso 10, `cierre-mudanza.py hijas` te da la acción de cada una (archive_session(id) para las terminadas). "
+                  "No las ofrezcas ni las anotes en el REANUDAR")
 except Exception:
     pass
 try:
@@ -373,6 +373,8 @@ print()
 if faltan:
     print("Falta: " + " · ".join(faltan) + " ✗")
     sys.exit(1)
-print("• MANUAL (paso 10, LO ÚLTIMO): en la app de escritorio, después del prompt y EN LA MISMA respuesta: start_session → detach → move → archive; no cierres el turno sin hacerlo o sin decir por qué no (en terminal o Cowork: «no aplica»)")
+print("• MANUAL (paso 10, LO ÚLTIMO): en la app de escritorio, después del prompt y EN LA MISMA respuesta, terminá la mudanza con `cierre-mudanza.py` "
+      "(Paso A al empezar: congelar → start_session → detach → abierta; paso 10 al final: guardado → hijas → archivar → «traspaso listo» a la nueva → archive_session self); "
+      "no cierres el turno sin hacerlo o sin decir por qué no (en terminal o Cowork: «no aplica»); `cierre-mudanza.py estado` dice en qué paso quedó")
 print("Cierre completo ✓ (más los ítems MANUAL, que reporta la sesión)"
       + (f" — OJO: {len(A_MANO)} archivo(s) sin guardar declarados ajenos A MANO (--ajeno): {', '.join(A_MANO[:5])}" if A_MANO else ""))

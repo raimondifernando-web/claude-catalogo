@@ -63,6 +63,17 @@ class CheckTest(Base):
         r = correr(CHECK, self.dir)
         self.assertEqual(r.returncode, 0, r.stdout)
 
+    def test_proyectos_con_tareas_y_esfuerzo_por_horas_o_dias(self):
+        """Criterio nuevo: fila de proyecto («Proyecto:») con sus tareas («parte de <ID>»), Esf. Bajo/Medio/Alto y Prio = impacto − esfuerzo."""
+        self.escribir(lista([
+            "| A1 | Proyecto: mudar la tienda | 1 | en curso | — | Alto | C | plantilla |",
+            "| A2 | Pasos: ☐ armar la lista ☑ elegir fecha | 2 | pendiente | parte de A1 | Bajo | C | plantilla |",
+            "| A3 | Cargar los precios | 3 | espera OK | parte de A1 | Medio | Ana | plantilla |",
+        ]))
+        r = correr(CHECK, self.dir)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("3 filas", r.stdout)
+
     def test_estados_validos_y_viejos_con_de(self):
         for est in ("pendiente", "en curso", "hecho", "espera dato", "espera OK", "espera dato de Ana", "espera OK de F"):
             with self.subTest(estado=est):
@@ -74,6 +85,42 @@ class CheckTest(Base):
         r = correr(CHECK, self.dir)
         self.assertEqual(r.returncode, 1)
         self.assertIn("estado", r.stdout)
+
+    def fila_c(self, i, texto, depende="—", esf="Bajo", estado="pendiente"):
+        return f"| {i} | {texto} | 1 | {estado} | {depende} | {esf} | C | prueba |"
+
+    def avisos(self, filas):
+        self.escribir(lista(filas))
+        r = correr(CHECK, self.dir)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        return [l for l in r.stdout.splitlines() if l.startswith("• AVISO")]
+
+    def test_criterio_bien_armado_no_avisa(self):
+        av = self.avisos([self.fila_c("A1", "Proyecto: armar algo", esf="Alto"),
+                          self.fila_c("A2", "paso uno", depende="parte de A1"),
+                          self.fila_c("A3", "paso dos", depende="parte de A1 · B5", esf="Medio")])
+        self.assertEqual([a for a in av if "A1" in a or "A2" in a or "A3" in a], [])
+
+    def test_parte_de_una_fila_que_no_existe_avisa_sin_error(self):
+        av = self.avisos([self.fila_c("A1", "paso", depende="parte de A9")])
+        self.assertTrue(any("A1" in a and "A9" in a and "no es una fila" in a for a in av), av)
+
+    def test_parte_de_algo_que_no_es_proyecto_avisa_sin_error(self):
+        av = self.avisos([self.fila_c("A1", "tarea común"), self.fila_c("A2", "paso", depende="parte de A1")])
+        self.assertTrue(any("A2" in a and "Proyecto:" in a for a in av), av)
+
+    def test_tarea_con_esfuerzo_alto_avisa_sin_error(self):
+        av = self.avisos([self.fila_c("A1", "algo largo", esf="Alto")])
+        self.assertTrue(any("A1" in a and "¿es un proyecto?" in a for a in av), av)
+
+    def test_esfuerzo_alto_cerrado_o_de_proyecto_no_avisa(self):
+        av = self.avisos([self.fila_c("A1", "algo largo", esf="Alto", estado="hecho"),
+                          self.fila_c("A2", "Proyecto: grande", esf="Alto")])
+        self.assertEqual([a for a in av if "esfuerzo Alto" in a], [])
+
+    def test_valores_viejos_de_esfuerzo_no_avisan(self):
+        av = self.avisos([self.fila_c("A1", "viejo", esf="grande"), self.fila_c("A2", "viejo", esf="chico")])
+        self.assertEqual([a for a in av if "esfuerzo" in a], [])
 
     def test_prioridad_invalida(self):
         self.escribir(lista([fila("A1", prio="9")]))

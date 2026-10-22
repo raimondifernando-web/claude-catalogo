@@ -18,12 +18,30 @@ saltear: el prompt de reanudación copiable**, que el usuario pega al abrir la p
 respuesta: son llamadas, no un mensaje nuevo). Pase lo que pase
 con los demás pasos, nunca termines sin emitir ese bloque.
 
-## ⛔ Paso 0 — No se cierra con sesiones hijas trabajando ni con ramas sin resolver
+## Paso A — La mudanza empieza AHORA, en tu primera vuelta (solo en la app de escritorio)
+La sesión principal de una carpeta es un puesto fijo, no un número de sesión. Cerrarla es **una mudanza de una vuelta con orden fijo**, y la
+ordena un programa: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cierre-mudanza.py" <paso>` (en Windows, `py -3`; de acá en más, `CM`). Guarda el paso en
+`<carpeta>/.claude/cerrando.json`, comprueba cada uno contra los datos que la app guarda en disco y dice qué sigue; si se corta a la mitad,
+`CM estado` muestra el paso exacto. La app NO deja abrir una sesión en una vuelta que empezó otro aviso u otra sesión: por eso la sesión nueva se
+abre **primero**, mientras la vuelta es tuya (tu `/cerrar`). Hacelo ANTES del Paso 0 y de los pasos 1-9:
+1. `CM congelar` → ✓ (si no detecta tu sesión, pasale `--vieja <id>` con el id de `get_session("self")`). Desde ahora, si otra sesión le escribe a esta, un control automático
+   frena el mensaje y le dice que lo deje como carta en la carpeta (`cartas.py dejar …`); la sesión nueva las lee al arrancar.
+2. `start_session`, una sola llamada: `initiation: "user_asked"` (tu `/cerrar` es el pedido), `context: "fresh"`, `use_worktree: false` (la sesión nueva trabaja en la MISMA
+   carpeta), `cwd` = esta carpeta, `model` = el de la línea «Modelo para abrir» de tu REANUDAR anterior (por defecto el mismo que usás), `title` = el siguiente de la serie
+   (mismo ancho: «03» → «04»), `prompt`: «Sesión abierta por la mudanza de <slug>. NO ejecutes nada todavía: esperá el mensaje "traspaso listo" de la sesión que cierra y
+   recién ahí ejecutá la skill /arrancar en esta carpeta.». Enseguida `detach_session(<id nuevo>)` (nace colgada de esta y al archivar esta se archivaría con ella) y, si esta
+   sesión tiene grupo en la barra lateral (`get_session("self")`), `move_sessions([<id nuevo>], group_id = el de esta)`.
+3. `CM abierta <id nuevo>` → ✓ (comprueba que existe, es de esta carpeta y está suelta; con ✗ lo arreglás y repetís: la mudanza no sigue sin esto).
+Sin las herramientas de sesiones de la app (terminal, Cowork, otra máquina) este paso y el paso 10 no aplican: decilo en una línea y el usuario abre la ventana y escribe `/arrancar`.
+Si `start_session` falla o la app lo rechaza: decí cuál y por qué, corré `CM cancelar` (descongela la carpeta) y seguí con un cierre normal; nunca dejes la carpeta congelada sin sucesora.
+
+## ⛔ Paso 0 — Antes de cerrar: las sesiones hijas y las ramas, resueltas
 **Antes de cualquier otro paso**, y también antes de ofrecerle el cierre al usuario: si en esta sesión abriste otras
 sesiones (las ves en la barra lateral de la app) o copias de trabajo con rama propia, **no se abandonan**.
 1. Llamá `list_sessions` con `{"linked": true}` (herramienta de la app de escritorio; si viene diferida, buscala con
    ToolSearch; en terminal o Cowork no existe: anotá «no aplica»). Si alguna sesión que abriste figura trabajando
-   (no «idle»), **no se cierra**: archivar esta sesión corta a la hija y pierde el canal por el que te entrega su resultado.
+   (no «idle»), **no la cortes**: en el paso 10, `CM hijas` la suelta de esta sesión (`detach_session`) y su informe llega como carta a la sesión nueva. Solo esperás si
+   `cerrar-check` la marca ✗ por trabajo sin guardar.
 2. Si todas están «idle», **leé el último mensaje de cada una y mirá su entrega en el disco** (regla 1) antes de cerrar:
    una hija «idle» puede tener un resultado que nadie revisó.
 3. Corré `git branch --no-merged main` y `git worktree list` en cada repo que tocaste. Cada rama o copia abierta se
@@ -35,10 +53,10 @@ sesiones (las ves en la barra lateral de la app) o copias de trabajo con rama pr
 - la caché de herramientas (`.omc/`, `__pycache__`, `.DS_Store`) en la copia de una hija **no es trabajo**: el chequeo ya no la cuenta.
 Solo le llega a la persona, en UNA línea y en criollo, lo que **solo ella** puede decidir (un permiso, un OK) o el comando de unión de un repo que no une solo. Si algo de 1, 2 o 3 sigue abierto después de intentarlo (p. ej. la hija no responde): decí cuál y por qué en esa línea; **no emitas el prompt ni te archives**. Solo si el usuario decide cerrar igual, el `REANUDAR.md` lista cada sesión o rama abierta con su dueño.
 
-**Repo que no une solo.** Si el repo de la carpeta **no está en `~/.claude/unir-a-main.txt`**, `cerrar-check` lo dice UNA vez (`• REPO SIN UNIÓN AUTOMÁTICA: …`; también `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cierre_repo.py" estado`) y el cierre NO queda a medias: después del push hacés vos, en este orden: (1) `gh pr create --fill` desde la rama de cierre si no hay PR (y `bind_pr` + `set_monitor` si la app los tiene; informá los controles consultándolos, nunca «pendientes» sin mirar); (2) `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/unir-pr" <N>` (C158): decide solo —unión programada si hay controles, directa si no— y termina en «Unido ✓» / «Unión programada ✓» / «Falta: …». **A la persona no se le deja ningún comando de unión.** Solo con «Falta: …» avisás esa línea en criollo y va al `REANUDAR.md` con dueño (zona sensible = único caso que pide OK; conflicto o rojo = lo arregla quien hizo el PR); (3) `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cierre_repo.py" volver` → vuelve a la rama base **sin perder el `REANUDAR.md`** (se niega si hay commits sin subir o cambios sin guardar); no te quedes parado en la rama de cierre; (4) seguí con el paso 10 (abrir la sesión siguiente y archivarte): un PR abierto con dueño no es motivo para saltearlo. Una rama ya subida a GitHub que figura en el chequeo con `•` tampoco lo impide.
+**Repo que no une solo.** Si el repo de la carpeta **no está en `~/.claude/unir-a-main.txt`**, `cerrar-check` lo dice UNA vez (`• REPO SIN UNIÓN AUTOMÁTICA: …`; también `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cierre_repo.py" estado`) y el cierre NO queda a medias: después del push hacés vos, en este orden: (1) `gh pr create --fill` desde la rama de cierre si no hay PR (y `bind_pr` + `set_monitor` si la app los tiene; informá los controles consultándolos, nunca «pendientes» sin mirar); (2) `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/unir-pr" <N>` (C158): decide solo —unión programada si hay controles, directa si no— y termina en «Unido ✓» / «Unión programada ✓» / «Falta: …». **A la persona no se le deja ningún comando de unión.** Solo con «Falta: …» avisás esa línea en criollo y va al `REANUDAR.md` con dueño (zona sensible = único caso que pide OK; conflicto o rojo = lo arregla quien hizo el PR); (3) `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cierre_repo.py" volver` → vuelve a la rama base **sin perder el `REANUDAR.md`** (se niega si hay commits sin subir o cambios sin guardar); no te quedes parado en la rama de cierre; (4) seguí con el paso 10 (terminar la mudanza y archivarte): un PR abierto con dueño no es motivo para saltearlo. Una rama ya subida a GitHub que figura en el chequeo con `•` tampoco lo impide.
 `cerrar-check` (paso 8 bis) imprime las ramas y copias abiertas y repite este punto como ítem MANUAL.
 
-**Archivar hijas NO es una pregunta (C123, 2026-10-15).** Una hija que `cerrar-check` lista en «HIJAS A ARCHIVAR» (idle, trabajo unido, informe leído) se archiva sola: la app la archiva junto con vos en el paso 10 (abrir la sesión siguiente) (idle y sin PR abierto); si ese paso no corre, `archive_session(id)` a cada una. Si la app pide su aprobación por llamada, esa tarjeta es de la app: no se la trasladás a la persona en el chat. **El REANUDAR no afirma ni ofrece estados de sesiones** (ni «siguen en la barra lateral» ni «ofrecer archivarlas»): el estado cambia y lo mide `/arrancar` desde el disco; si una hija quedó con trabajo, va a PENDIENTES con dueño. `cerrar-check` marca ✗ el REANUDAR que lo diga.
+**Archivar hijas NO es una pregunta (C123, 2026-10-15).** Una hija que `cerrar-check` lista en «HIJAS A ARCHIVAR» (idle, trabajo unido, informe leído) se archiva sola: en el paso 10, `CM hijas` te da la acción de cada una (`archive_session(id)` para las terminadas). Si la app pide su aprobación por llamada, esa tarjeta es de la app: no se la trasladás a la persona en el chat. **El REANUDAR no afirma ni ofrece estados de sesiones** (ni «siguen en la barra lateral» ni «ofrecer archivarlas»): el estado cambia y lo mide `/arrancar` desde el disco; si una hija quedó con trabajo, va a PENDIENTES con dueño. `cerrar-check` marca ✗ el REANUDAR que lo diga.
 
 ## Secuencia
 1. **Fecha + tema.** Fecha de hoy (`date +%F`) y tema en minúsculas con guiones. El archivo del handoff se
@@ -57,6 +75,9 @@ Solo le llega a la persona, en UNA línea y en criollo, lo que **solo ella** pue
    `cerrar-check` avisa si el cierre es más nuevo que la lista. Si otra sesión puede estar editando: releé el archivo
    antes de crear un ID, no reescribas líneas ajenas, `git pull --rebase --autostash` y guardá solo ese archivo
    (por nombre, nunca `git add -A`). Esa lista es la fuente única: el `REANUDAR.md` la apunta, no la copia.
+   **Prio y proyectos (criterio de la plantilla):** Prio = 2 × impacto − esfuerzo, con Bajo 1 · Medio 2 · Alto 3 (3 o más → 1 Alta · 1 o 2 → 2 Media · 0 o menos → 3 Baja), Esf. = Bajo/Medio/Alto con la vara de una tarea (horas) o de un
+   proyecto (días); la fila de un proyecto empieza con `Proyecto:` y sus tareas dicen `parte de <ID>` en «Depende de». La primera vez que cerrás con este criterio, revisá tus filas
+   abiertas una vez (Prio, Esf., cuáles son proyectos) y anotalo en «Cambios».
 4. **Handoff** (obligatorio si se modificaron 3 o más archivos o se tomaron 2 o más decisiones): escribí
    `handoffs/YYYY-MM-DD-tema.md` con la plantilla `metodo/templates/handoff.md`: estado, decisiones (con el
    porqué), próximos pasos en orden, dudas abiertas.
@@ -172,28 +193,25 @@ Solo le llega a la persona, en UNA línea y en criollo, lo que **solo ella** pue
    Aunque ya esté guardado, se emite igual: si el archivo se pierde o la ventana se abre en otra carpeta, el chat es el
    respaldo, y por eso tiene que ser idéntico. Cerrá con una línea afuera del bloque: «Guardado en `REANUDAR.md`. La próxima
    vez, abrí Claude en esta carpeta y escribí `/arrancar`: no hace falta pegar nada.»
-10. **Abrí la sesión siguiente sola (solo en la app de escritorio).** Condiciones: `cerrar-check` dio todo ✓, el avance
-   está subido y existen las herramientas de sesiones de la app (`start_session`, `detach_session`, `archive_session`;
-   búscalas con ToolSearch si vienen diferidas). Si no existen (terminal, Cowork, otra máquina) → salteá este paso y
-   decilo en una línea; el usuario abre la ventana y escribe `/arrancar`.
-   **NO termines el turno después del prompt** (vista en la práctica: una sesión cerró en el paso 9 y nunca abrió la
-   siguiente). El `REANUDAR.md` ya está en disco y subido antes del paso 9, así que la sesión nueva no puede leer algo a
-   medias. Orden: escribí el prompt del paso 9 y su línea «Guardado en…» y, en ESA MISMA respuesta, sin dejar de trabajar,
-   seguí con una línea («Abrí <título>; archivo esta.») y las llamadas (`start_session`, `detach_session`,
-   `move_sessions`, `archive_session`). Pasá siempre `use_worktree: false`: la sesión nueva trabaja en la MISMA carpeta (si esta está en una copia con rama propia, omitirlo la crearía en otra y `/arrancar` frenaría por copia equivocada). Nunca cierres tu respuesta sin haber hecho este paso. Solo se saltea si falla una condición de arriba (`cerrar-check` con ✗, avance sin subir, herramientas de sesiones ausentes o llamada rechazada por la app): decí cuál. **El cupo de Claude y «quiero seguir después» no son razones**: si el cupo preocupa, abrí igual y avisalo en una línea; lo decide el usuario, no la sesión que cierra.
-   - `start_session` con `initiation: "user_asked"` (el `/cerrar` que escribió el usuario es el pedido), `context: "fresh"`,
-     `cwd` = la carpeta actual, `model` = el de la línea «Modelo para abrir» de la PARTE B (por defecto el mismo que usás),
-     `title` = el título siguiente de la serie (mismo ancho: «03» → «04»), `prompt`: «Ejecutá la skill /arrancar en esta
-     carpeta.» y `background`: «Sesión abierta sola por /cerrar del cierre <slug>; el estado está en REANUDAR.md, que
-     /arrancar levanta.». Una sola llamada.
-   - **Enseguida, `detach_session(<id nuevo>)`**: `start_session` crea la nueva como sesión HIJA, colgada de esta en la barra
-     lateral, y al archivar esta se archivaría junto con ella. Si esta sesión tiene grupo en la barra lateral
-     (`get_session("self")`), después `move_sessions([<id nuevo>], group_id = el de esta)`. Si el detach falla, decilo.
-   - **Archivate al final:** la nueva NO puede archivar esta (mientras corre /arrancar, esta sigue «trabajando» y la app
-     rechaza el archivado). Si `start_session` + detach salieron bien, la ÚLTIMA llamada del cierre es
-     `archive_session("self")`. Si la app la rechaza por «still working», es normal: queda abierta y `/arrancar` de la sesión nueva la archiva sola, sin preguntar. El `/cerrar` del usuario es su OK; es reversible desde la barra lateral. Si algo falló
-     antes, no te archives.
-   - Si la llamada falla o la app la rechaza, decilo tal cual y dejá la línea de siempre (`/arrancar` a mano).
+10. **Terminá la mudanza (solo en la app de escritorio).** Condiciones: el Paso A está hecho, `cerrar-check` dio todo ✓, el avance está subido y existen las herramientas de
+   sesiones de la app (`detach_session`, `archive_session`, `send_message`; buscalas con ToolSearch si vienen diferidas). Si no existen (terminal, Cowork, otra máquina) → salteá este
+   paso y decilo en una línea; el usuario abre la ventana y escribe `/arrancar`.
+   **NO termines el turno después del prompt del paso 9** (vista en la práctica: una sesión cerró en el paso 9 y nunca abrió la siguiente). Seguí en ESA MISMA respuesta, sin
+   dejar de trabajar, con estas llamadas en orden (cada una de `CM` imprime ✓/✗; con ✗ no se sigue: se resuelve y se repite):
+   1. `CM guardado` → ✓ (el `REANUDAR.md` es posterior a la congelada, o sea que la sesión nueva no puede leer algo a medias).
+   2. `CM hijas` → imprime una acción por cada hija viva y verifica. Ejecutalas vos, sin preguntarle a nadie (el `/cerrar` del usuario es su OK): **terminada** → `archive_session(id)`;
+      **esperando** (solo espera un OK o una prueba de la persona) → `SendMessage` a la hija para que deje su pedido y el PR en `PENDIENTES.md` (sin vigilar el PR) y se archive;
+      **trabajando** → `detach_session(id)` y avisarle que su informe lo deje como carta en la carpeta. Una hija con trabajo sin guardar sale con la acción de resolverlo primero
+      (Paso 0). Repetí el comando hasta ✓. Las hijas **no se heredan**: el REANUDAR no les afirma estado.
+   3. `CM archivar` → ✓.
+   4. **Recién ahora**, avisale a la sesión nueva con `send_message` de la app (siempre lo permite; confirmá «delivered» o «queued»): «Traspaso listo: ejecutá la skill /arrancar en esta carpeta.»
+      Si se lo mandás antes, la nueva arranca mientras esta todavía resuelve hijas.
+   5. Una línea («Abrí <título>; archivo esta.») y **la ÚLTIMA llamada del cierre es `archive_session("self")`**. Si la app la rechaza por «still working», es normal: queda abierta y
+      `/arrancar` de la sesión nueva ve que sigue viva y la archiva sola, sin preguntar. El `/cerrar` del usuario es su OK; es reversible desde la barra lateral.
+   Si algo falla a mitad: `CM estado` dice el paso exacto y `CM cancelar` descongela la carpeta (los mensajes a la sesión vieja vuelven a pasar). Nunca cierres tu respuesta sin haber
+   hecho este paso. Solo se saltea si falla una condición de arriba (`cerrar-check` con ✗, avance sin subir, herramientas de sesiones ausentes o llamada rechazada por la app): decí cuál.
+   **El cupo de Claude y «quiero seguir después» no son razones**: si el cupo preocupa, abrí igual y avisalo en una línea; lo decide el usuario, no la sesión que cierra. Una rama ya
+   subida con PR o dueño (sale como `•`) tampoco impide este paso.
 
 ## Plantilla del prompt de reanudación
 ````
@@ -215,7 +233,7 @@ PENDIENTES (en este orden):
 1. [próximo paso exacto, con detalle: qué, dónde, qué cuidado]
 2. ...
 A VERIFICAR (si aplica): [dudas técnicas que Claude resuelve solo al arrancar]
-Modelo para abrir: [alias: haiku, sonnet u opus] (lo usa el paso 10)
+Modelo para abrir: [alias: haiku, sonnet u opus] (lo usa el Paso A)
 Arrancá con /arrancar (o /metodo:arrancar) y confirmá: "Leí el estado. El próximo paso es [X]. ¿Arrancamos?"
 ````
 

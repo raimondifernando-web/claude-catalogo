@@ -50,9 +50,11 @@ def buscar(cwd):
     return ""
 
 
-def analizar(texto):
-    """→ (problemas, ids, ultima_fecha_de_cambios)"""
+def analizar(texto, filas=None):
+    """→ (problemas, ids, ultima_fecha_de_cambios). Si se pasa un dict en `filas`, lo llena con {id: (texto, depende, esfuerzo, estado)}."""
     prob, ids, donde = [], set(), {}
+    if filas is None:
+        filas = {}
     modo, cab, ultima, libre = "otro", False, "", True
     for i, l in enumerate(texto.split("\n"), 1):
         if re.match(r"^(<{7}|>{7})", l):
@@ -98,7 +100,29 @@ def analizar(texto):
             prob.append(f"{c[0]}: repetido (líneas {donde[c[0]]} y {i}): dos sesiones lo crearon a la vez, cambiale el número a la más nueva")
         ids.add(c[0])
         donde.setdefault(c[0], i)
+        filas.setdefault(c[0], (c[1], c[4], c[5], c[3]))
     return prob, ids, ultima
+
+
+def es_proyecto(texto):
+    return bool(re.match(r"^[\s*_`]*Proyecto:", texto, re.I))
+
+
+def avisos_criterio(filas):
+    """Avisos del criterio de tareas (nunca errores): `parte de X` apunta a algo que no es un proyecto de la tabla,
+    y una tarea abierta con esfuerzo Alto (tal vez es un proyecto). Los valores viejos (chico/grande) no avisan."""
+    out = []
+    for id_, (texto, depende, esf, estado) in filas.items():
+        m = re.search(r"parte de\s+([A-Z]\d+)", depende, re.I)
+        if m:
+            padre = m.group(1).upper()
+            if padre not in filas:
+                out.append(f"{id_} dice «parte de {padre}», pero {padre} no es una fila de la tabla (¿se cerró o está mal escrito?)")
+            elif not es_proyecto(filas[padre][0]):
+                out.append(f"{id_} dice «parte de {padre}», pero {padre} no empieza con «Proyecto:»")
+        if not es_proyecto(texto) and esf.strip().lower() == "alto" and not re.match(r"^hecho$", estado.strip(), re.I):
+            out.append(f"{id_} tiene esfuerzo Alto (más de 3 horas): ¿es un proyecto? Si lo es, empezá su texto con «Proyecto:»")
+    return out
 
 
 def main():
@@ -112,7 +136,8 @@ def main():
     except Exception as e:
         print(f"✗ PENDIENTES.md: no se pudo leer ({type(e).__name__})")
         return 1
-    prob, ids, ultima = analizar(texto)
+    filas = {}
+    prob, ids, ultima = analizar(texto, filas)
     if prob:
         print(f"✗ PENDIENTES.md tiene {len(prob)} problema(s): " + " | ".join(prob[:4]))
         return 1
@@ -128,6 +153,7 @@ def main():
                 aviso.append(f"el último cierre ({cierre}) es más nuevo que la última línea de «Cambios» ({ultima}): se cerró sin tocar la lista")
         except Exception:
             pass
+    aviso += avisos_criterio(filas)
     print(f"✓ PENDIENTES.md: {len(ids)} filas, formato correcto")
     for a in aviso:
         print("• AVISO PENDIENTES.md: " + a)
