@@ -753,7 +753,14 @@ def _huella_nombres(pares: List[Tuple[str, int]]) -> str:
 def podar_recorrido_proyectos_claude(actual: str, dirs: List[str], prof_raiz: int) -> None:
     """Regla de poda para buscar carpetas .claude dentro de Proyectos (hasta 4 niveles)."""
     rel_parts = Path(actual).parts[prof_raiz:]
-    dirs[:] = sorted(d for d in dirs if d not in SALTAR_DIRS and d != "clientes")
+    # Descartar carpetas que empiezan con '.' (salvo exactamente '.claude') o con '_':
+    # las copias temporales duplican las piezas del proyecto real.
+    dirs[:] = sorted(
+        d for d in dirs
+        if d not in SALTAR_DIRS
+        and d != "clientes"
+        and (d == ".claude" or (not d.startswith(".") and not d.startswith("_")))
+    )
     if len(rel_parts) >= 4:
         dirs[:] = []
 
@@ -833,6 +840,118 @@ def inventariar_proyectos(io: IO, raiz: Union[str, Path], skills_personales: Opt
             "claude_md": info_md,
             "huella": _huella_nombres(pares) if pares else "",
         })
+    return items
+
+
+def inventariar_carpetas(io: IO, raiz: Union[str, Path]) -> List[Dict[str, Any]]:
+    """
+    Inventaria las carpetas de proyecto (cajas) bajo ~/Proyectos.
+    Devuelve lista de diccionarios ordenada por ruta (sin distinguir mayúsculas) con:
+    ruta, ruta_tilde, nombre, grupo, area, nivel, tipo, es_checkout_git, tiene_claude_md, tiene_claude.
+    Todo acceso al disco pasa por io.
+    """
+    raiz_path = io.expandir_ruta(raiz) if hasattr(io, "expandir_ruta") else Path(raiz)
+    if not io.es_dir(raiz_path) or io.es_symlink(raiz_path):
+        return []
+
+    cajas_nivel1: List[Path] = []
+    for e1 in io.listar(raiz_path):
+        if e1.nombre.startswith((".", "_")):
+            continue
+        if io.es_symlink(e1.ruta) or not e1.es_dir:
+            continue
+        cajas_nivel1.append(e1.ruta)
+
+    arbol: Dict[Path, Dict[Path, List[Path]]] = {}
+    for c1 in cajas_nivel1:
+        arbol[c1] = {}
+        for e2 in io.listar(c1):
+            if e2.nombre.startswith((".", "_")):
+                continue
+            if io.es_symlink(e2.ruta) or not e2.es_dir:
+                continue
+            if not (io.existe(e2.ruta / ".git") or io.es_archivo(e2.ruta / "CLAUDE.md")):
+                continue
+            c2 = e2.ruta
+            arbol[c1][c2] = []
+            for e3 in io.listar(c2):
+                if e3.nombre.startswith((".", "_")):
+                    continue
+                if io.es_symlink(e3.ruta) or not e3.es_dir:
+                    continue
+                if io.existe(e3.ruta / ".git") or io.es_archivo(e3.ruta / "CLAUDE.md"):
+                    arbol[c1][c2].append(e3.ruta)
+
+    cajas_archivo: List[Path] = []
+    p_archivo = raiz_path / "_archivo"
+    if io.es_dir(p_archivo) and not io.es_symlink(p_archivo):
+        for ea in io.listar(p_archivo):
+            if ea.nombre.startswith((".", "_")):
+                continue
+            if io.es_symlink(ea.ruta) or not ea.es_dir:
+                continue
+            cajas_archivo.append(ea.ruta)
+
+    items: List[Dict[str, Any]] = []
+
+    def armar_ficha(
+        p: Path,
+        rel: str,
+        nivel_arbol: int,
+        tiene_cajas: bool,
+        es_archivo: bool,
+    ) -> Dict[str, Any]:
+        nombre = p.name.replace("-", " ").replace("_", " ")
+        partes = rel.split("/")
+        if es_archivo or rel.startswith("_archivo/"):
+            grupo = "Archivo"
+            tipo = "archivo"
+        elif rel.startswith("Personal/"):
+            grupo = "Personal"
+            tipo = "dormido"
+        else:
+            grupo = partes[0].replace("-", " ").replace("_", " ")
+            tipo = "activo"
+
+        area = partes[1].replace("-", " ").replace("_", " ") if len(partes) == 3 else ""
+
+        if tiene_cajas:
+            nivel = "empresa" if nivel_arbol == 1 else "area"
+        else:
+            nivel = "proyecto"
+
+        return {
+            "ruta": rel,
+            "ruta_tilde": io.con_tilde(p),
+            "nombre": nombre,
+            "grupo": grupo,
+            "area": area,
+            "nivel": nivel,
+            "tipo": tipo,
+            "es_checkout_git": bool(io.existe(p / ".git")),
+            "tiene_claude_md": bool(io.es_archivo(p / "CLAUDE.md")),
+            "tiene_claude": bool(io.es_dir(p / ".claude")),
+        }
+
+    for c1, subcajas in arbol.items():
+        tiene_cajas_c1 = bool(subcajas)
+        rel1 = c1.name
+        items.append(armar_ficha(c1, rel1, nivel_arbol=1, tiene_cajas=tiene_cajas_c1, es_archivo=False))
+
+        for c2, subcajas3 in subcajas.items():
+            tiene_cajas_c2 = bool(subcajas3)
+            rel2 = f"{c1.name}/{c2.name}"
+            items.append(armar_ficha(c2, rel2, nivel_arbol=2, tiene_cajas=tiene_cajas_c2, es_archivo=False))
+
+            for c3 in subcajas3:
+                rel3 = f"{c1.name}/{c2.name}/{c3.name}"
+                items.append(armar_ficha(c3, rel3, nivel_arbol=3, tiene_cajas=False, es_archivo=False))
+
+    for ca in cajas_archivo:
+        rel_a = f"_archivo/{ca.name}"
+        items.append(armar_ficha(ca, rel_a, nivel_arbol=2, tiene_cajas=False, es_archivo=True))
+
+    items.sort(key=lambda x: x["ruta"].lower())
     return items
 
 
@@ -1849,6 +1968,7 @@ def leer_disco(io: IO, proyectos_dir: Union[str, Path]) -> Dict[str, Any]:
         "claude_md_global": inventariar_claude_md(io),
         "proyectos": inventariar_proyectos(io, proyectos_dir,
                                            {sk["nombre"] for sk in skills_personales} | {sk["carpeta"] for sk in skills_personales}),
+        "carpetas": inventariar_carpetas(io, proyectos_dir),
         "memoria": inventariar_memoria(io),
         "rutinas_registradas": inventariar_rutinas(io),
     }

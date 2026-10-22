@@ -11,6 +11,7 @@ Uso:
   mapa [resumen]                                Imprime MAPA.md y estado calculado al momento
   mapa buscar <tema...>                         Busca hasta 25 piezas que coincidan con el tema
   mapa ver <pieza>                              Muestra la ficha completa de una pieza
+  mapa carpetas [--tipo TIPO] [--grupo TEXTO] [--json]  Lista las carpetas de proyecto
   mapa sin-registrar [--catalogo RUTA]          Cruza piezas locales con el catálogo compartido
   mapa --al-dia (o mapa al-dia)                 Verifica si el mapa en disco está actualizado
   mapa --json                                   Emite mapa.json completo por stdout para programas
@@ -262,6 +263,12 @@ def armar_mapa_md(inv: Dict[str, Any], huella: str) -> str:
     gen_iso = inv.get("generado_en") or datetime.now(timezone.utc).isoformat()
     fecha_fmt = _hora_local(gen_iso)
 
+    carpetas = inv.get("carpetas", [])
+    total_c = len(carpetas)
+    activas_c = sum(1 for c in carpetas if c.get("tipo") == "activo")
+    dormidas_c = sum(1 for c in carpetas if c.get("tipo") == "dormido")
+    archivo_c = sum(1 for c in carpetas if c.get("tipo") == "archivo")
+
     lineas = [
         f"# Mapa de arneses · huella {huella} · generado {fecha_fmt}",
         "Se consulta con `mapa` (buscar, ver, sin-registrar, --al-dia). No se abre este archivo a mano ni se rehace a mano.",
@@ -278,6 +285,7 @@ def armar_mapa_md(inv: Dict[str, Any], huella: str) -> str:
         f"- Reglas: {r.get('reglas_de_proyecto_total', 0) + len(inv.get('otros', {}).get('rules_globales', []))}",
         f"- Tareas programadas: {r.get('tareas_programadas', 0)}",
         f"- Plugins instalados: {r.get('plugins_instalados', 0)}",
+        f"- Carpetas de proyecto: {total_c} (activas {activas_c}, dormidas {dormidas_c}, archivo {archivo_c})",
         "",
         "## Últimos 10 cambiados",
     ]
@@ -319,9 +327,10 @@ def armar_mapa_md(inv: Dict[str, Any], huella: str) -> str:
 
     # Si se pasa de 4096 bytes, recortar la sección más larga (Últimos 10 cambiados)
     if len(resultado.encode("utf-8")) > 4096:
+        idx_ult = lineas.index("## Últimos 10 cambiados") + 1
         while len(resultado.encode("utf-8")) > 4096 and ultimos:
             ultimos.pop()
-            lineas_recortadas = lineas[:15] + [
+            lineas_recortadas = lineas[:idx_ult] + [
                 f"- {t} · {n} · {(_hora_local(f) if f else '-')}" for t, n, f in ultimos
             ] + [""]
             resultado = "\n".join(lineas_recortadas)
@@ -636,6 +645,28 @@ def listar_piezas(claude_dir: Path, home: Path, proyectos_dir: Path) -> List[Dic
     return recolectar_piezas_para_busqueda(inv)
 
 
+def listar_carpetas(
+    claude_dir: Union[str, Path],
+    home: Union[str, Path],
+    proyectos_dir: Union[str, Path],
+) -> List[Dict[str, Any]]:
+    """API para otros programas (Energía, etc.): las carpetas de proyecto del mapa YA AL DÍA.
+    Devuelve la lista de carpetas de mapa.json."""
+    c_dir = Path(os.path.abspath(str(claude_dir)))
+    h_dir = Path(os.path.abspath(str(home)))
+    p_dir = Path(os.path.abspath(str(proyectos_dir)))
+    asegurar_al_dia(c_dir, h_dir, p_dir)
+    ruta_mapa = c_dir / "mapa" / "mapa.json"
+    if not ruta_mapa.is_file():
+        return []
+    try:
+        with open(ruta_mapa, "r", encoding="utf-8") as f:
+            inv = json.load(f)
+        return inv.get("carpetas", [])
+    except Exception:
+        return []
+
+
 def comando_buscar(tema_lista: List[str], claude_dir: Path, home: Path, proyectos_dir: Path) -> None:
     """Subcomando buscar: lista hasta 25 piezas que coinciden con el tema."""
     asegurar_al_dia(claude_dir, home, proyectos_dir)
@@ -946,6 +977,59 @@ def comando_al_dia(claude_dir: Path, home: Path) -> None:
         sys.exit(1)
 
 
+def comando_carpetas(
+    claude_dir: Path,
+    home: Path,
+    proyectos_dir: Path,
+    tipo: Optional[str] = None,
+    grupo: Optional[str] = None,
+    como_json: bool = False,
+) -> None:
+    """Subcomando carpetas: lista carpetas de proyectos asegurando mapa al día."""
+    asegurar_al_dia(claude_dir, home, proyectos_dir)
+    ruta_mapa = claude_dir / "mapa" / "mapa.json"
+    carpetas: List[Dict[str, Any]] = []
+    if ruta_mapa.is_file():
+        try:
+            with open(ruta_mapa, "r", encoding="utf-8") as f:
+                inv = json.load(f)
+            carpetas = inv.get("carpetas", [])
+        except Exception:
+            carpetas = []
+
+    filtradas = carpetas
+    if tipo:
+        t_norm = tipo.strip().lower()
+        filtradas = [c for c in filtradas if c.get("tipo", "").lower() == t_norm]
+    if grupo:
+        g_norm = grupo.replace("-", " ").replace("_", " ").strip().lower()
+        filtradas = [
+            c for c in filtradas
+            if c.get("grupo", "").replace("-", " ").replace("_", " ").strip().lower() == g_norm
+            or g_norm in c.get("grupo", "").replace("-", " ").replace("_", " ").strip().lower()
+        ]
+
+    if not filtradas:
+        if como_json:
+            print(json.dumps([], indent=1, ensure_ascii=False))
+        else:
+            print("ninguna carpeta coincide")
+        sys.exit(0)
+
+    if como_json:
+        print(json.dumps(filtradas, indent=1, ensure_ascii=False))
+    else:
+        for c in filtradas:
+            t = c.get("tipo", "")
+            g = c.get("grupo", "")
+            a = c.get("area", "")
+            nom = c.get("nombre", "")
+            rt = c.get("ruta_tilde", "")
+            ga = f"{g}/{a}" if a else g
+            print(f"{t} · {ga} · {nom} · {rt}")
+    sys.exit(0)
+
+
 def comando_json(claude_dir: Path, home: Path, proyectos_dir: Path) -> None:
     """Subcomando --json: emite mapa.json por stdout."""
     asegurar_al_dia(claude_dir, home, proyectos_dir)
@@ -1080,6 +1164,12 @@ def main(argv: Optional[List[str]] = None) -> None:
     sub_ver = subparsers.add_parser("ver", parents=[padre], help="Muestra ficha completa de una pieza")
     sub_ver.add_argument("pieza", help="Nombre o identificador de la pieza")
 
+    # Subcomando carpetas
+    sub_carpetas = subparsers.add_parser("carpetas", parents=[padre], help="Lista las carpetas de proyecto de ~/Proyectos")
+    sub_carpetas.add_argument("--tipo", type=str, choices=["activo", "dormido", "archivo"], default=None, help="Filtra por tipo de carpeta (activo, dormido, archivo)")
+    sub_carpetas.add_argument("--grupo", type=str, default=None, help="Filtra por grupo de carpetas")
+    sub_carpetas.add_argument("--json", action="store_true", dest="json_carpetas", help="Emite la lista de carpetas en formato JSON")
+
     # Subcomando sin-registrar
     sub_sin = subparsers.add_parser("sin-registrar", parents=[padre], help="Cruza piezas locales con CATALOGO.yaml")
     sub_sin.add_argument("--catalogo", type=str, default=None, help="Ruta alternativa a CATALOGO.yaml")
@@ -1102,6 +1192,13 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     if args.flag_al_dia or args.subcomando == "al-dia":
         comando_al_dia(claude_dir, home)
+    elif args.subcomando == "carpetas":
+        comando_carpetas(
+            claude_dir, home, proyectos_dir,
+            tipo=getattr(args, "tipo", None),
+            grupo=getattr(args, "grupo", None),
+            como_json=(getattr(args, "json_carpetas", False) or args.flag_json),
+        )
     elif args.flag_json:
         comando_json(claude_dir, home, proyectos_dir)
     elif args.subcomando == "buscar":
