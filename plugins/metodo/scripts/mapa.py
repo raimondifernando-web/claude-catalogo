@@ -870,7 +870,7 @@ def calcular_sin_registrar(
             archivos_cat = obtener_archivos_catalogo()
             # misma regla que usaba aviso-piezas-nuevas: una skill es una carpeta skills/<nom>/, un agente es agents/<nom>.md
             encontrado = any(
-                f"/skills/{nom}/" in "/" + p or p.endswith(f"/agents/{nom}.md")
+                f"/skills/{nom}/" in "/" + p.replace("\\", "/") or p.replace("\\", "/").endswith(f"/agents/{nom}.md")
                 for p in archivos_cat
             )
             if not encontrado:
@@ -1036,6 +1036,12 @@ def obtener_directorios(
 def main(argv: Optional[List[str]] = None) -> None:
     if argv is None:
         argv = sys.argv[1:]
+    # Windows: la consola usa cp1252 y no puede imprimir ✓ ni ✗ ni acentos raros; se fuerza UTF-8 en la salida.
+    for _flujo in (sys.stdout, sys.stderr):
+        try:
+            _flujo.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
 
     # Parser base para opciones comunes
     padre = ParserEspanol(add_help=False)

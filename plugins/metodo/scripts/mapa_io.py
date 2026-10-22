@@ -13,6 +13,7 @@ from collections import namedtuple
 import hashlib
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -412,7 +413,9 @@ def cambios(registro: Registro, home: Union[str, Path]) -> List[Tuple[str, str]]
     # 2. Carpetas
     for p, val in sorted(registro.dirs.items()):
         f_guardada, huella_nombres_guardada = val[0], val[1]
-        if firma(p) != f_guardada:
+        # En Windows (NTFS) la fecha de una carpeta se actualiza con retraso o no se actualiza al agregar/borrar un archivo:
+        # no sirve de aviso. Ahí siempre se vuelven a leer los nombres (cuesta unos cientos de ms más; en Mac/Linux alcanza la fecha).
+        if sys.platform == "win32" or firma(p) != f_guardada:
             nombres_actuales = obtener_nombres_relevantes(p, home_abs)
             if huella_claves(nombres_actuales) != huella_nombres_guardada:
                 difs.append(("carpeta", p))

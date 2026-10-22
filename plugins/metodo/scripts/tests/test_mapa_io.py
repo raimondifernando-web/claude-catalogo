@@ -203,5 +203,23 @@ class TestMapaIO(unittest.TestCase):
         self.assertIn("k2", r1.contenido)
 
 
+class TestWindowsCarpetas(unittest.TestCase):
+    def test_en_windows_no_se_confia_en_la_fecha_de_la_carpeta(self):
+        """NTFS puede no actualizar la fecha de una carpeta al agregar un archivo: en Windows siempre se releen los nombres."""
+        import mapa_io
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            carpeta = home / ".claude" / "skills"
+            carpeta.mkdir(parents=True)
+            io = IO(home=home, claude_dir=home / ".claude")
+            io.listar(carpeta)
+            fecha = os.stat(carpeta).st_mtime_ns
+            (carpeta / "nueva").mkdir()
+            os.utime(carpeta, ns=(fecha, fecha))   # como si el sistema no hubiera actualizado la fecha
+            with mock.patch.object(mapa_io.sys, "platform", "win32"):
+                self.assertEqual(cambios(io.registro, home), [("carpeta", str(carpeta))])
+
+
 if __name__ == "__main__":
     unittest.main()
