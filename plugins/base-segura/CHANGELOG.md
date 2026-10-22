@@ -1,5 +1,9 @@
 # base-segura
 
+## 0.14.5 — 2026-10-22
+**Nueva skill `council`:** ante una decisión dudosa con varias salidas, arma un consejo de 4 voces que discuten las opciones y marcan en qué no están de acuerdo antes de que elijas. Se aplica sola con la actualización.
+
+
 ## 0.14.4 — 2026-10-18
 - Sincronizadas skills desde ~/.claude/skills.
 

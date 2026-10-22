@@ -1,0 +1,5 @@
+origen: github:affaan-m/ECC//skills/council@db7f2a6
+instalada: 2026-10-10 (Orquesta, PM Tech - 67, OK de Fernando). Repo ECC: 276K★, MIT, activo (Mand. XVI camino 1). Copia textual, sin cambios.
+auditoria-2026-10-10: skill-security-auditor PASS (0 hallazgos; 1 archivo, 0 scripts) + lectura completa (puro texto, sin red ni comandos).
+uso previsto: cuestionar las reglas de la limpieza del ecosistema (4 voces) junto con PAL consensus (otras IA).
+nota: nombra skills de ECC que acá no existen (knowledge-ops, save-session, santa-method): equivalentes locales = handoff/ORQUESTA, critic.

@@ -9,7 +9,7 @@
       "name": "base-segura",
       "source": "./plugins/base-segura",
       "description": "Base segura (L1): skills transversales (incluye humanizalo: que tus textos no suenen a IA, y modo-directo: respuestas del largo que corresponde) + auditor de skills externas + academy-guide (te sugiere cursos oficiales cuando aprendés a usar Claude) + agentes básicos + plantillas de CLAUDE.md. Día 1 para cualquier empresa.",
-      "version": "0.14.4",
+      "version": "0.14.5",
       "category": "productivity",
       "tags": [
         "l1",
@@ -49,7 +49,7 @@
       "name": "escala-desarrollo",
       "source": "./plugins/escala-desarrollo",
       "description": "Capa L4 para desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive, investigación profunda) y 14 agentes. Revisores de solo lectura de verdad (no escriben ni ejecutan nada): code-reviewer y security-reviewer, con el método de agent-skills (se instala solo), revisan tu app entera y explican en castellano qué puede pasar y en qué orden arreglarlo. El comando /escala-desarrollo:revision-seguridad suma los escáneres (npm audit, pip-audit, claves en el historial de git) con tu aprobación. Para construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer, documentation-engineer. Para decidir: product-manager, technology-scout. Investigación: research-analyst y afines.",
-      "version": "0.14.4",
+      "version": "0.14.5",
       "category": "development",
       "tags": [
         "l4",
@@ -347,8 +347,8 @@
     {
       "name": "rubro-marketing",
       "source": "./plugins/rubro-marketing",
-      "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (38 skills y 1 agente: marketing-analyst, que mide qué canal trae clientes y cuánto cuestan). Requiere base-segura.",
-      "version": "0.2.7",
+      "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (40 skills y 1 agente: marketing-analyst, que mide qué canal trae clientes y cuánto cuestan). Requiere base-segura.",
+      "version": "0.2.8",
       "category": "productivity",
       "tags": [
         "l2",

@@ -1,5 +1,9 @@
 # rubro-marketing
 
+## 0.2.8 — 2026-10-22
+**Dos skills nuevas para mails:** `email-html-mjml` (mails en HTML que se ven bien en Gmail y Outlook, armados con MJML) y `ecommerce-email-marketing-builder` (secuencias de mails para tiendas online: bienvenida, carrito abandonado, recompra). Se aplican solas con la actualización.
+
+
 ## 0.2.7 — 2026-10-18
 - Sincronizadas skills desde ~/.claude/skills.
 
