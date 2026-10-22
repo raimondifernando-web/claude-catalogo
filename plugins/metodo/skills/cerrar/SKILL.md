@@ -75,7 +75,7 @@ Solo le llega a la persona, en UNA línea y en criollo, lo que **solo ella** pue
    `cerrar-check` avisa si el cierre es más nuevo que la lista. Si otra sesión puede estar editando: releé el archivo
    antes de crear un ID, no reescribas líneas ajenas, `git pull --rebase --autostash` y guardá solo ese archivo
    (por nombre, nunca `git add -A`). Esa lista es la fuente única: el `REANUDAR.md` la apunta, no la copia.
-   **Prio y proyectos (criterio de la plantilla):** Prio = impacto − esfuerzo (1 Alta · 2 Media · 3 Baja), Esf. = Bajo/Medio/Alto con la vara de una tarea (horas) o de un
+   **Prio y proyectos (criterio de la plantilla):** Prio = 2 × impacto − esfuerzo, con Bajo 1 · Medio 2 · Alto 3 (3 o más → 1 Alta · 1 o 2 → 2 Media · 0 o menos → 3 Baja), Esf. = Bajo/Medio/Alto con la vara de una tarea (horas) o de un
    proyecto (días); la fila de un proyecto empieza con `Proyecto:` y sus tareas dicen `parte de <ID>` en «Depende de». La primera vez que cerrás con este criterio, revisá tus filas
    abiertas una vez (Prio, Esf., cuáles son proyectos) y anotalo en «Cambios».
 4. **Handoff** (obligatorio si se modificaron 3 o más archivos o se tomaron 2 o más decisiones): escribí
