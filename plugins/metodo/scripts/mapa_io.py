@@ -130,6 +130,9 @@ def obtener_nombres_relevantes(p: Union[str, Path], home: Union[str, Path]) -> L
                 except OSError:
                     es_dir = False
                 nombre = de.name
+                # Marcas ocultas que la app pone y saca sola (p. ej. .in_use en cada plugin cargado): no son piezas.
+                if nombre.startswith(".") and nombre not in (".claude", ".claude-plugin", ".mcp.json"):
+                    continue
                 if modo_proy:
                     if es_dir:
                         nombres.append(f"{nombre}/")
