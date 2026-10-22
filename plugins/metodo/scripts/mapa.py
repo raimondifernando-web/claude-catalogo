@@ -152,6 +152,17 @@ class CandadoMapa:
         self.liberar()
 
 
+
+def _hora_local(iso: Optional[str]) -> str:
+    """Fecha ISO (UTC) → «AAAA-MM-DD HH:MM» en la hora de esta computadora (para quien lee el mapa)."""
+    if not iso:
+        return "-"
+    try:
+        return datetime.fromisoformat(str(iso)).astimezone().strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return str(iso)[:16].replace("T", " ")
+
+
 def escribir_archivo_atomico(ruta_destino: Path, contenido: Union[str, bytes]) -> None:
     """
     Escribe un archivo de forma atómica en ruta_destino usando un archivo temporal
@@ -240,7 +251,7 @@ def armar_mapa_md(inv: Dict[str, Any], huella: str) -> str:
     """
     r = inv.get("resumen", {})
     gen_iso = inv.get("generado_en") or datetime.now(timezone.utc).isoformat()
-    fecha_fmt = gen_iso[:16].replace("T", " ")
+    fecha_fmt = _hora_local(gen_iso)
 
     lineas = [
         f"# Mapa de arneses · huella {huella} · generado {fecha_fmt}",
@@ -291,7 +302,7 @@ def armar_mapa_md(inv: Dict[str, Any], huella: str) -> str:
         lineas.append("_Sin cambios registrados._")
     else:
         for tipo, nombre, f_str in ultimos:
-            fecha_legible = f_str[:16].replace("T", " ") if f_str else "-"
+            fecha_legible = _hora_local(f_str) if f_str else "-"
             lineas.append(f"- {tipo} · {nombre} · {fecha_legible}")
 
     lineas.append("")
@@ -302,7 +313,7 @@ def armar_mapa_md(inv: Dict[str, Any], huella: str) -> str:
         while len(resultado.encode("utf-8")) > 4096 and ultimos:
             ultimos.pop()
             lineas_recortadas = lineas[:15] + [
-                f"- {t} · {n} · {(f[:16].replace('T', ' ') if f else '-')}" for t, n, f in ultimos
+                f"- {t} · {n} · {(_hora_local(f) if f else '-')}" for t, n, f in ultimos
             ] + [""]
             resultado = "\n".join(lineas_recortadas)
 
@@ -482,7 +493,7 @@ def comando_resumen(claude_dir: Path, home: Path, proyectos_dir: Path) -> None:
                 uso_data = json.load(f)
             medido = uso_data.get("medido_en")
             if medido:
-                print(f"uso medido el {mapa_lector.formatear_fecha(medido)}")
+                print(f"uso medido el {_hora_local(medido)}")
             else:
                 print("uso sin medir")
         except Exception:
@@ -911,7 +922,7 @@ def comando_al_dia(claude_dir: Path, home: Path) -> None:
     difs = cambios(reg, home)
     if not difs:
         huella = vig.get("huella", "-")
-        generado = mapa_lector.formatear_fecha(vig.get("generado_en"))
+        generado = _hora_local(vig.get("generado_en"))
         print(f"✓ mapa al día (huella {huella}, generado {generado})")
         sys.exit(0)
     else:
