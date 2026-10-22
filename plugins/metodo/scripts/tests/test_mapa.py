@@ -582,6 +582,44 @@ class TestMapa(unittest.TestCase):
             self.assertEqual(r2.returncode, 1)
             self.assertIn("✗ mapa viejo:", r2.stdout)
 
+    def test_07b_vigilancia_se_escribe_al_final(self):
+        """Si la reconstrucción muere después de leer el disco, la huella vieja queda: la próxima consulta rehace."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            claude_dir, proyectos_dir = crear_mundo_minimo(home)
+            ejecutar_mapa(["resumen"], home, claude_dir)
+            vig_orig = (claude_dir / "mapa" / "vigilancia.json").read_text(encoding="utf-8")
+            (claude_dir / "skills" / "uno" / "SKILL.md").write_text("# Modificacion", encoding="utf-8")
+            orig_cerrar = mapa_lector.cerrar
+
+            def fallo_cerrar(*a, **k):
+                raise RuntimeError("Fallo forzado en el cruce")
+
+            mapa.mapa_lector.cerrar = fallo_cerrar
+            try:
+                with self.assertRaises(SystemExit):
+                    mapa.asegurar_al_dia(claude_dir, home, proyectos_dir)
+            finally:
+                mapa.mapa_lector.cerrar = orig_cerrar
+            self.assertEqual((claude_dir / "mapa" / "vigilancia.json").read_text(encoding="utf-8"), vig_orig)
+            r = ejecutar_mapa(["--al-dia"], home, claude_dir)
+            self.assertEqual(r.returncode, 1)  # sigue «viejo»: la próxima consulta rehace
+
+    def test_07c_mapa_disco_sin_nombres_de_clientes_ni_claves(self):
+        """mapa-disco.json también sale depurado (no solo mapa.json)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            claude_dir, proyectos_dir = crear_mundo_minimo(home)
+            (claude_dir / "nombres-prohibidos.txt").write_text("ClienteSecreto\n", encoding="utf-8")
+            clave = "s" + "k-" + "a" * 24
+            (claude_dir / "skills" / "uno" / "SKILL.md").write_text(
+                "---\nname: uno\ndescription: Conector de ClienteSecreto con " + clave + "\n---\n", encoding="utf-8")
+            ejecutar_mapa(["resumen"], home, claude_dir)
+            for nombre in ("mapa-disco.json", "mapa.json", "vigilancia.json", "MAPA.md"):
+                texto = (claude_dir / "mapa" / nombre).read_text(encoding="utf-8")
+                self.assertNotIn("ClienteSecreto", texto, nombre)
+                self.assertNotIn(clave, texto, nombre)
+
     def test_10_sin_registrar_catalogo(self):
         """10. mapa sin-registrar: cruce bidireccional con CATALOGO.yaml."""
         with tempfile.TemporaryDirectory() as tmpdir:

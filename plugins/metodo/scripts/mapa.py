@@ -197,7 +197,15 @@ def escribir_archivo_atomico(ruta_destino: Path, contenido: Union[str, bytes]) -
                 os.fsync(f.fileno())
             except OSError:
                 pass
-        os.replace(tmp_path, ruta_destino)
+        # En Windows el reemplazo falla si otro proceso tiene el destino abierto un instante: se reintenta.
+        for intento in range(6):
+            try:
+                os.replace(tmp_path, ruta_destino)
+                break
+            except PermissionError:
+                if intento == 5:
+                    raise
+                time.sleep(0.05)
     except Exception:
         if tmp_path.exists():
             try:
@@ -333,11 +341,10 @@ def ejecutar_reconstruccion(
     Reconstruye el mapa en el orden estricto de seguridad:
     1. IO nuevo con registro fresco
     2. mapa_lector.leer_disco
-    3. escribir mapa-disco.json
-    4. escribir vigilancia.json con io.registro
-    5. cruzar con el uso guardado (o vacío)
-    6. escribir mapa.json
-    7. escribir MAPA.md
+    3. cruzar con el uso guardado (o vacío)
+    4. escribir mapa-disco.json (depurado: sin nombres de clientes ni claves), mapa.json y MAPA.md
+    5. escribir vigilancia.json AL FINAL: es la marca de «terminé». Si el proceso muere antes, queda la huella
+       vieja y la próxima consulta rehace (nunca queda una huella nueva con archivos viejos).
     """
     mapa_dir = claude_dir / "mapa"
     os.makedirs(mapa_dir, mode=0o700, exist_ok=True)
@@ -345,22 +352,6 @@ def ejecutar_reconstruccion(
 
     # 1. Leer disco
     inv_disco = mapa_lector.leer_disco(io, proyectos_dir)
-
-    # 2. Escribir mapa-disco.json
-    inv_disco_data = copy.deepcopy(inv_disco)
-    inv_disco_data["generado_en"] = datetime.now(timezone.utc).isoformat()
-    escribir_json_atomico(mapa_dir / "mapa-disco.json", inv_disco_data)
-
-    # 3. Escribir vigilancia.json
-    huella = hashlib.sha1(json.dumps(io.registro, sort_keys=True).encode("utf-8")).hexdigest()[:10]
-    vig_data = {
-        "version": 1,
-        "huella": huella,
-        "generado_en": datetime.now(timezone.utc).isoformat(),
-        "reconstrucciones": reconstrucciones,
-        "registro": io.registro,
-    }
-    escribir_json_atomico(mapa_dir / "vigilancia.json", vig_data)
 
     # 4. Obtener uso guardado (o argumentos pasados, o vacío)
     if stats_uso is None:
@@ -381,13 +372,26 @@ def ejecutar_reconstruccion(
             }
             contador_uso = {}
 
-    # 5. Cruzar con mapa_lector.cerrar
+    # 5. Cruzar con mapa_lector.cerrar (lee nombres-prohibidos.txt: queda en el registro)
     inv_completo = mapa_lector.cerrar(inv_disco, stats_uso, metricas_uso, contador_uso, io)
-    escribir_json_atomico(mapa_dir / "mapa.json", inv_completo)
 
-    # 6. Escribir MAPA.md
-    contenido_md = armar_mapa_md(inv_completo, huella)
-    escribir_archivo_atomico(mapa_dir / "MAPA.md", contenido_md)
+    # 6. Escribir los archivos del mapa; vigilancia.json va ÚLTIMO
+    inv_disco_data = mapa_lector.tapar_claves(
+        mapa_lector.depurar_clientes(copy.deepcopy(inv_disco), mapa_lector.cargar_patron_clientes(io), [0])
+    )
+    inv_disco_data["generado_en"] = datetime.now(timezone.utc).isoformat()
+    escribir_json_atomico(mapa_dir / "mapa-disco.json", inv_disco_data)
+    escribir_json_atomico(mapa_dir / "mapa.json", inv_completo)
+    huella = hashlib.sha1(json.dumps(io.registro, sort_keys=True).encode("utf-8")).hexdigest()[:10]
+    escribir_archivo_atomico(mapa_dir / "MAPA.md", armar_mapa_md(inv_completo, huella))
+    vig_data = {
+        "version": 1,
+        "huella": huella,
+        "generado_en": datetime.now(timezone.utc).isoformat(),
+        "reconstrucciones": reconstrucciones,
+        "registro": io.registro,
+    }
+    escribir_json_atomico(mapa_dir / "vigilancia.json", vig_data)
 
     return inv_completo
 

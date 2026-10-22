@@ -199,7 +199,9 @@ def medir_uso_real(claude_dir: Path) -> Tuple[Dict[str, Dict[str, Any]], Dict[st
                                 cmd = m.group(1).strip()
                                 if not cmd.startswith("/"):
                                     cmd = "/" + cmd
-                                registrar("slash_commands", cmd, dt, sesion, es_sub)
+                                # Un nombre de comando es corto y sin signos raros; lo demás (parámetros pegados) no entra al mapa.
+                                if re.fullmatch(r"/[A-Za-z0-9_:.\-/]{1,64}", cmd):
+                                    registrar("slash_commands", cmd, dt, sesion, es_sub)
         except Exception:
             metricas["lineas_no_parseadas"] += 1
 
