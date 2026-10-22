@@ -1,5 +1,8 @@
 # metodo — qué cambia para vos
 
+## 0.52.0 — 2026-10-22
+**Regla 13: cuando lo que hiciste lo usa otra sesión, se le avisa por escrito.** Si trabajás con varias sesiones a la vez, una puede cambiar algo que otra necesita (una regla, algo publicado). Ahora la regla 13 pide dejarle un aviso en su carpeta (`.claude/prompts/`, qué cambió y qué le toca hacer) y, si está abierta, un mensaje directo: la otra sesión no revisa su carpeta sola. Se aplica solo con la actualización; no hay nada que correr.
+
 ## 0.51.4 — 2026-10-21
 **Antigravity (Gemini) ya no te abre el navegador de Google cuando vuelve la conexión o se despierta la computadora.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema, medido:** `agy` renueva su permiso de Google cada hora. Si en ese momento no hay internet (la compu recién despierta, el wifi se cayó), en vez de esperar abría el login de Google en el navegador y se quedaba colgado. Pasó 29 veces en 16 días, con la sesión perfectamente vigente.

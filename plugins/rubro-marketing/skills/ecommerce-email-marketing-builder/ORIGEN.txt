@@ -1,0 +1,5 @@
+origen: github:nexscope-ai/eCommerce-Skills//skills/ecommerce-email-marketing-builder@ee0fb29433d02ccc22e3e6cea9ab4586d49fd42e
+licencia: MIT (autor externo: empresa Nexscope; 1.192 estrellas, push 2026-08-26; entra por el camino 3 de Mand. XVI: puro texto leído entero por Tech el 2026-10-19)
+actualizado: 2026-10-19 por el flujo buscar-skill-externa: cuarentena-skills (auditor PASS, barrido sin hallazgos, auditorías públicas ath/socket safe, snyk low) + lectura entera de SKILL.md (1 archivo, 25 KB)
+modificado: SKILL.md con una línea más (Disparador) después del encabezado; NOTA-LOCAL.md agregada (calendario EE.UU. → Argentina). OK de Fer: «sí, instalar» dicho por él directamente en esta sesión el 2026-10-19.
+nota: menciona 2 skills hermanas (ecommerce-ppc-strategy-planner, ecommerce-marketing-strategy-builder) con comando de instalar: no se traen ni se ejecutan.

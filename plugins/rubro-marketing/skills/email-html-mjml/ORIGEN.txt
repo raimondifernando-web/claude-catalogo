@@ -1,0 +1,5 @@
+origen: github:framix-team/skill-email-html-mjml@c756db3
+licencia: MIT (Framix, 76 estrellas; camino 3 de Mand. XVI: puro texto leído entero)
+actualizado: 2026-10-19 por el flujo buscar-skill-externa (C171): cuarentena-skills (auditor PASS, sin symlinks ni scripts) + lectura entera de Gemini (14 de 14 archivos, veredicto LIMPIA) + barrido determinista + grep propio
+modificado: SKILL.md con una línea más tras el título: «Disparador:» (Mand. XXIX). Nada más.
+nota: el aviso «NO ENTRA» de la cuarentena era solo por la extensión .mjml (son texto). Pide `npm install -D mjml` en el proyecto del usuario (con su confirmación); no instala nada solo.
