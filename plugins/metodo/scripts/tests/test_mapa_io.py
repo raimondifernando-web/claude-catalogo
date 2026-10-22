@@ -221,5 +221,69 @@ class TestWindowsCarpetas(unittest.TestCase):
                 self.assertEqual(cambios(io.registro, home), [("carpeta", str(carpeta))])
 
 
+class TestRuidoQueNoCuenta(unittest.TestCase):
+    """Cosas que la app o git cambian todo el tiempo y NO deben rehacer el mapa (medido: 91 % de falsas alarmas)."""
+
+    def test_preguntar_si_existe_no_vigila_la_fecha(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            repo = home / "Proyectos" / "P"
+            (repo / ".git").mkdir(parents=True)
+            io = IO(home=home, claude_dir=home / ".claude")
+            self.assertTrue(io.existe(repo / ".git"))
+            (repo / ".git" / "index").write_text("x", encoding="utf-8")   # un commit toca la fecha de .git
+            self.assertEqual(cambios(io.registro, home), [])
+            import shutil
+            shutil.rmtree(repo / ".git")                                    # pero que deje de existir sí cuenta
+            self.assertEqual([k for k, _ in cambios(io.registro, home)], ["archivo"])
+
+    def test_leer_despues_de_preguntar_conserva_la_firma_completa(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            f = home / "a.json"
+            f.write_text("{}", encoding="utf-8")
+            io = IO(home=home, claude_dir=home / ".claude")
+            io.leer_json(f)
+            io.existe(f)                                                    # no debe degradar la firma ya tomada
+            f.write_text('{"x": 1}', encoding="utf-8")
+            self.assertEqual([k for k, _ in cambios(io.registro, home)], ["archivo"])
+
+    def test_json_de_la_app_solo_cuenta_por_nombres(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cfg = home / ".claude" / "plugins" / "known_marketplaces.json"
+            cfg.parent.mkdir(parents=True)
+            cfg.write_text(json.dumps({"mkt1": {"lastUpdated": "2026-10-22T10:00"}}), encoding="utf-8")
+            io = IO(home=home, claude_dir=home / ".claude")
+            io.nombres_json(cfg, [], "claude:marketplaces_conocidos")
+            cfg.write_text(json.dumps({"mkt1": {"lastUpdated": "2026-10-22T11:00"}}), encoding="utf-8")
+            self.assertEqual(cambios(io.registro, home), [])                # solo cambió una fecha
+            cfg.write_text(json.dumps({"mkt1": {}, "mkt2": {}}), encoding="utf-8")
+            self.assertEqual(cambios(io.registro, home), [("contenido", "claude:marketplaces_conocidos")])
+            # y la fuente viaja en el registro guardado (vigilancia.json): otra instancia lo recalcula igual
+            reg2 = json.loads(json.dumps(io.registro))
+            r = Registro(arch=reg2["arch"], dirs=reg2["dirs"], contenido=reg2["contenido"], fuentes=reg2["fuentes"])
+            self.assertEqual(cambios(r, home), [("contenido", "claude:marketplaces_conocidos")])
+
+    def test_profundidad_en_proyectos(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            raiz = home / "Proyectos"
+            n3 = raiz / "A" / "B" / "C"
+            n3.mkdir(parents=True)
+            io = IO(home=home, claude_dir=home / ".claude")
+            for _ in io.caminar(raiz):
+                pass
+            (n3 / "carpeta-temporal").mkdir()                                # nivel 3: una subcarpeta cualquiera no importa
+            self.assertEqual(cambios(io.registro, home), [])
+            (n3 / ".claude").mkdir()                                         # pero una carpeta .claude sí
+            self.assertEqual([k for k, _ in cambios(io.registro, home)], ["carpeta"])
+            io2 = IO(home=home, claude_dir=home / ".claude")
+            for _ in io2.caminar(raiz):
+                pass
+            (raiz / "A" / "nuevo").mkdir()                                   # nivel 1: una carpeta nueva sí cuenta
+            self.assertEqual([k for k, _ in cambios(io2.registro, home)], ["carpeta"])
+
+
 if __name__ == "__main__":
     unittest.main()

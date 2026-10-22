@@ -247,6 +247,7 @@ def obtener_registro_de_vigilancia(vig: Dict[str, Any]) -> Registro:
         arch=reg_dict.get("arch"),
         dirs=reg_dict.get("dirs"),
         contenido=reg_dict.get("contenido"),
+        fuentes=reg_dict.get("fuentes"),
     )
 
 
