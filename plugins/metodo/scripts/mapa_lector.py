@@ -1,23 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-inventario.py - Inventario mecánico, determinista y seguro del ecosistema de Claude Code (~/.claude)
-                junto con la medición de uso real a partir de conversaciones (.jsonl).
+mapa_lector.py - Lector del mapa del ecosistema Claude Code (~/.claude).
+Disparador: encadenado — lo usa mapa.py (el comando `mapa`).
 
-Uso:
-    python3 inventario.py --out <carpeta_destino> [--solo-disco] [--claude-dir <ruta_a_.claude>]
-
-Compatibilidad: Python 3.9+ estándar, sin librerías externas.
+Recorre el disco registrando todo acceso mediante IO (mapa_io) y cruza
+los metadatos de estructura con el uso real (mapa_uso).
+Python 3.9 estándar, sin librerías externas.
 """
 
 import argparse
+import copy
 from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
 import re
 import sys
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
+
+from mapa_io import (
+    IO,
+    Entrada,
+    crear_directorio,
+    escribir_json,
+    escribir_texto,
+    io_por_defecto,
+)
+import mapa_uso
 
 
 # ==============================================================================
@@ -39,7 +49,6 @@ def formatear_fecha(iso_str: Optional[str]) -> str:
     if not iso_str:
         return "-"
     try:
-        # Simplificar fecha ISO para tablas
         return iso_str[:16].replace("T", " ")
     except Exception:
         return str(iso_str)
@@ -151,33 +160,35 @@ def parse_yaml_frontmatter(contenido: str) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 2. INVENTARIO MECÁNICO DESDE EL DISCO
+# 2. INVENTARIO MECÁNICO DESDE EL DISCO (CON IO)
 # ==============================================================================
 
 SALTAR_DIRS = {"node_modules", ".git", "__pycache__", ".venv", "venv"}
-# Agentes que trae Claude Code de fábrica: no están en disco, pero se usan.
-AGENTES_DE_FABRICA = {
-    "general-purpose", "Explore", "Plan", "statusline-setup", "claude-code-guide",
-    "claude", "output-style-setup",
-}
+AGENTES_DE_FABRICA = mapa_uso.AGENTES_DE_FABRICA
+SKILLS_DE_FABRICA = mapa_uso.SKILLS_DE_FABRICA
+COMANDOS_DE_FABRICA = mapa_uso.COMANDOS_DE_FABRICA
+CATEGORIAS_USO = mapa_uso.CATEGORIAS_USO
 
 
-def con_tilde(ruta: Any) -> str:
+def con_tilde(ruta: Any, home: Optional[Union[str, Path]] = None) -> str:
     """Muestra una ruta con `~` en vez de la carpeta personal (el inventario no lleva el nombre de usuario)."""
-    return str(ruta).replace(str(Path.home()), "~") if ruta else ""
+    if not ruta:
+        return ""
+    if home is not None:
+        return str(ruta).replace(str(home), "~")
+    return str(ruta)
 
 
-def cargar_patron_clientes(claude_dir: Path) -> Optional["re.Pattern[str]"]:
+def cargar_patron_clientes(io: IO) -> Optional["re.Pattern[str]"]:
     """
     Patrón con los nombres de clientes/personas que NO deben salir del equipo (~/.claude/nombres-prohibidos.txt,
     una por línea, `#` = comentario). Si el archivo no existe, no se depura nada.
     """
-    archivo = claude_dir / "nombres-prohibidos.txt"
-    try:
-        nombres = [l.strip() for l in archivo.read_text(encoding="utf-8", errors="replace").splitlines()
-                   if l.strip() and not l.strip().startswith("#")]
-    except Exception:
+    archivo = io.claude_dir / "nombres-prohibidos.txt"
+    txt = io.leer_texto(archivo)
+    if not txt:
         return None
+    nombres = [l.strip() for l in txt.splitlines() if l.strip() and not l.strip().startswith("#")]
     if not nombres:
         return None
     return re.compile(r"\b(?:" + "|".join(re.escape(n) for n in sorted(nombres, key=len, reverse=True)) + r")\b", re.IGNORECASE)
@@ -196,15 +207,6 @@ def depurar_clientes(obj: Any, patron: Optional["re.Pattern[str]"], contador: Li
     if isinstance(obj, dict):
         return {depurar_clientes(k, patron, contador) if isinstance(k, str) else k: depurar_clientes(v, patron, contador) for k, v in obj.items()}
     return obj
-
-
-def leer_json(ruta: Path) -> Any:
-    """Lee un JSON de forma tolerante; devuelve None si no se puede."""
-    try:
-        with open(ruta, "r", encoding="utf-8", errors="replace") as f:
-            return json.load(f)
-    except Exception:
-        return None
 
 
 def lista_str(v: Any) -> List[str]:
@@ -227,14 +229,17 @@ def parse_tools(v: Any) -> List[str]:
     return []
 
 
-def fecha_de(ruta: Path) -> str:
-    try:
-        return datetime.fromtimestamp(ruta.stat().st_mtime, tz=timezone.utc).isoformat()
-    except Exception:
-        return ""
+def fecha_de(io: IO, ruta: Path) -> str:
+    mt = io.mtime(ruta)
+    if mt is not None:
+        try:
+            return datetime.fromtimestamp(mt, tz=timezone.utc).isoformat()
+        except Exception:
+            return ""
+    return ""
 
 
-def ficha_md(ruta: Path, nombre_defecto: str) -> Dict[str, Any]:
+def ficha_md(io: IO, ruta: Path, nombre_defecto: str) -> Dict[str, Any]:
     """
     Lee el frontmatter de un SKILL.md / agente .md. Devuelve solo metadatos:
     nombre, descripción (recortada a 300), bytes de la descripción completa, tamaño,
@@ -246,20 +251,21 @@ def ficha_md(ruta: Path, nombre_defecto: str) -> Dict[str, Any]:
         "herramientas": [], "skills_precargadas": [], "frontmatter_ok": False,
     }
     try:
-        ficha["tamano_bytes"] = ruta.stat().st_size
-        ficha["fecha_modificacion"] = fecha_de(ruta)
-        with open(ruta, "r", encoding="utf-8", errors="replace") as f:
-            contenido = f.read()
-        fm = parse_yaml_frontmatter(contenido)
-        # parse_yaml_frontmatter recorta a 300; para el peso real se mide aparte
-        desc_completa = _descripcion_completa(contenido)
-        ficha["frontmatter_ok"] = bool(fm)
-        ficha["nombre"] = str(fm.get("name") or nombre_defecto)
-        ficha["descripcion"] = str(fm.get("description") or "")[:300]
-        ficha["descripcion_bytes"] = len((desc_completa or str(fm.get("description") or "")).encode("utf-8"))
-        ficha["modelo"] = str(fm.get("model") or "")
-        ficha["herramientas"] = parse_tools(fm.get("tools"))
-        ficha["skills_precargadas"] = parse_tools(fm.get("skills"))
+        t_bytes = io.tamano(ruta)
+        ficha["tamano_bytes"] = t_bytes if t_bytes is not None else 0
+        ficha["fecha_modificacion"] = fecha_de(io, ruta)
+        contenido = io.leer_texto(ruta)
+        if contenido is not None:
+            fm = parse_yaml_frontmatter(contenido)
+            # parse_yaml_frontmatter recorta a 300; para el peso real se mide aparte
+            desc_completa = _descripcion_completa(contenido)
+            ficha["frontmatter_ok"] = bool(fm)
+            ficha["nombre"] = str(fm.get("name") or nombre_defecto)
+            ficha["descripcion"] = str(fm.get("description") or "")[:300]
+            ficha["descripcion_bytes"] = len((desc_completa or str(fm.get("description") or "")).encode("utf-8"))
+            ficha["modelo"] = str(fm.get("model") or "")
+            ficha["herramientas"] = parse_tools(fm.get("tools"))
+            ficha["skills_precargadas"] = parse_tools(fm.get("skills"))
     except Exception:
         pass
     return ficha
@@ -293,28 +299,17 @@ def _descripcion_completa(contenido: str) -> str:
     return texto
 
 
-def skills_en_dir(base: Path) -> List[Path]:
+def skills_en_dir(io: IO, base: Path) -> List[Path]:
     """Carpetas hijas directas de `base` que tienen SKILL.md (sigue symlinks)."""
     salida: List[Path] = []
-    if not base.is_dir():
+    if not io.es_dir(base):
         return salida
-    try:
-        hijos = sorted(base.iterdir(), key=lambda p: p.name)
-    except Exception:
-        return salida
-    for h in hijos:
-        if h.name.startswith(".") or h.name in SALTAR_DIRS:
+    for e in io.listar(base):
+        if e.nombre.startswith(".") or e.nombre in SALTAR_DIRS:
             continue
-        if h.is_dir() and (h / "SKILL.md").is_file():
-            salida.append(h)
+        if e.es_dir and io.es_archivo(e.ruta / "SKILL.md"):
+            salida.append(e.ruta)
     return salida
-
-
-def contar_archivos(carpeta: Path) -> int:
-    try:
-        return sum(1 for p in carpeta.rglob("*") if p.is_file() and not p.name.startswith("."))
-    except Exception:
-        return 0
 
 
 def campos_uso_vacios() -> Dict[str, Any]:
@@ -328,24 +323,24 @@ def campos_uso_vacios() -> Dict[str, Any]:
     }
 
 
-def inventariar_skills_personales(claude_dir: Path) -> List[Dict[str, Any]]:
+def inventariar_skills_personales(io: IO) -> List[Dict[str, Any]]:
     """Inventaria ~/.claude/skills/*/SKILL.md (activas personales; _archivo y synced van aparte)."""
-    skills_dir = claude_dir / "skills"
+    skills_dir = io.claude_dir / "skills"
     items: List[Dict[str, Any]] = []
-    for carpeta in skills_en_dir(skills_dir):
+    for carpeta in skills_en_dir(io, skills_dir):
         if carpeta.name in ("_archivo", "synced"):
             continue
-        f = ficha_md(carpeta / "SKILL.md", carpeta.name)
+        f = ficha_md(io, carpeta / "SKILL.md", carpeta.name)
         item = {
             "nombre": f["nombre"],
             "carpeta": carpeta.name,
-            "es_symlink": carpeta.is_symlink(),
+            "es_symlink": io.es_symlink(carpeta),
             "descripcion": f["descripcion"],
             "descripcion_bytes": f["descripcion_bytes"],
             "tamano_bytes": f["tamano_bytes"],
             "fecha_modificacion": f["fecha_modificacion"],
-            "tiene_nota_local": (carpeta / "NOTA-LOCAL.md").exists(),
-            "cantidad_archivos": contar_archivos(carpeta),
+            "tiene_nota_local": io.existe(carpeta / "NOTA-LOCAL.md"),
+            "cantidad_archivos": io.contar_archivos(carpeta),
             "precargada_por": [],
         }
         item.update(campos_uso_vacios())
@@ -353,20 +348,20 @@ def inventariar_skills_personales(claude_dir: Path) -> List[Dict[str, Any]]:
     return items
 
 
-def inventariar_skills_sincronizadas(claude_dir: Path) -> List[Dict[str, Any]]:
+def inventariar_skills_sincronizadas(io: IO) -> List[Dict[str, Any]]:
     """
     ~/.claude/skills/synced/<cuenta>/*/SKILL.md: skills que claude.ai/Cowork sincroniza
     (se invocan como `anthropic-skills:<nombre>`).
     """
     items: List[Dict[str, Any]] = []
-    base = claude_dir / "skills" / "synced"
-    if not base.is_dir():
+    base = io.claude_dir / "skills" / "synced"
+    if not io.es_dir(base):
         return items
-    for cuenta in sorted(base.iterdir(), key=lambda p: p.name):
-        if cuenta.name.startswith(".") or not cuenta.is_dir():
+    for e_cuenta in io.listar(base):
+        if e_cuenta.nombre.startswith(".") or not e_cuenta.es_dir:
             continue
-        for carpeta in skills_en_dir(cuenta):
-            f = ficha_md(carpeta / "SKILL.md", carpeta.name)
+        for carpeta in skills_en_dir(io, e_cuenta.ruta):
+            f = ficha_md(io, carpeta / "SKILL.md", carpeta.name)
             item = {
                 "plugin": "anthropic-skills",
                 "fuente": "skills/synced",
@@ -376,7 +371,7 @@ def inventariar_skills_sincronizadas(claude_dir: Path) -> List[Dict[str, Any]]:
                 "descripcion": f["descripcion"],
                 "descripcion_bytes": f["descripcion_bytes"],
                 "tamano_bytes": f["tamano_bytes"],
-                "cantidad_archivos": contar_archivos(carpeta),
+                "cantidad_archivos": io.contar_archivos(carpeta),
                 "precargada_por": [],
             }
             item.update(campos_uso_vacios())
@@ -384,34 +379,40 @@ def inventariar_skills_sincronizadas(claude_dir: Path) -> List[Dict[str, Any]]:
     return items
 
 
-def inventariar_archivo(claude_dir: Path) -> Dict[str, Any]:
+def inventariar_archivo(io: IO) -> Dict[str, Any]:
     """Lo archivado (no se carga): solo conteos y nombres."""
     res: Dict[str, Any] = {}
-    sk = claude_dir / "skills-archive"
-    res["skills_archive"] = sorted(p.name for p in skills_en_dir(sk))
-    ag = claude_dir / "agents-archive"
-    res["agents_archive"] = sorted(p.stem for p in ag.glob("*.md")) if ag.is_dir() else []
-    arch = claude_dir / "skills" / "_archivo"
+    sk = io.claude_dir / "skills-archive"
+    res["skills_archive"] = sorted(p.name for p in skills_en_dir(io, sk))
+    ag = io.claude_dir / "agents-archive"
+    ag_list: List[str] = []
+    if io.es_dir(ag):
+        for e in io.listar(ag):
+            if not e.es_dir and e.nombre.endswith(".md") and not e.nombre.startswith("."):
+                ag_list.append(e.ruta.stem)
+    res["agents_archive"] = sorted(ag_list)
+    arch = io.claude_dir / "skills" / "_archivo"
     internas: List[str] = []
-    if arch.is_dir():
-        for grupo in sorted(arch.iterdir(), key=lambda p: p.name):
-            if grupo.is_dir() and not grupo.name.startswith("."):
-                for s in skills_en_dir(grupo):
-                    internas.append(f"{grupo.name}/{s.name}")
+    if io.es_dir(arch):
+        for e_grupo in io.listar(arch):
+            if e_grupo.es_dir and not e_grupo.nombre.startswith("."):
+                for s in skills_en_dir(io, e_grupo.ruta):
+                    internas.append(f"{e_grupo.nombre}/{s.name}")
     res["skills__archivo"] = internas
     return res
 
 
-def inventariar_agentes(claude_dir: Path) -> List[Dict[str, Any]]:
+def inventariar_agentes(io: IO) -> List[Dict[str, Any]]:
     """Inventaria ~/.claude/agents/*.md (agentes personales)."""
-    agents_dir = claude_dir / "agents"
+    agents_dir = io.claude_dir / "agents"
     items: List[Dict[str, Any]] = []
-    if not agents_dir.is_dir():
+    if not io.es_dir(agents_dir):
         return items
-    for agente_file in sorted(agents_dir.glob("*.md"), key=lambda p: p.name):
-        if not agente_file.is_file() or agente_file.name.startswith("."):
+    for e in io.listar(agents_dir):
+        if e.es_dir or not e.nombre.endswith(".md") or e.nombre.startswith("."):
             continue
-        f = ficha_md(agente_file, agente_file.stem)
+        agente_file = e.ruta
+        f = ficha_md(io, agente_file, agente_file.stem)
         item = {
             "nombre": f["nombre"],
             "archivo": agente_file.name,
@@ -499,117 +500,126 @@ def modulos_desde_cfg(cfg: Any) -> List[str]:
     return []
 
 
-def inventariar_hooks(claude_dir: Path) -> List[Dict[str, Any]]:
+def inventariar_hooks(io: IO) -> List[Dict[str, Any]]:
     """settings.json -> hooks (anidados: evento -> reglas -> hooks)."""
-    data = leer_json(claude_dir / "settings.json")
+    data = io.leer_json(io.claude_dir / "settings.json")
     if not isinstance(data, dict):
         return []
     return hooks_desde_cfg(data.get("hooks"), "settings.json")
 
 
-def inventariar_hooks_dir(claude_dir: Path, hooks_settings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def inventariar_hooks_dir(io: IO, hooks_settings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Archivos de ~/.claude/hooks y si están registrados en settings.json."""
-    base = claude_dir / "hooks"
+    base = io.claude_dir / "hooks"
     registrados = {h["script"] for h in hooks_settings if h.get("script")}
     items: List[Dict[str, Any]] = []
-    if not base.is_dir():
+    if not io.es_dir(base):
         return items
-    for p in sorted(base.iterdir(), key=lambda x: x.name):
-        if p.name.startswith(".") or p.name in SALTAR_DIRS or not p.is_file():
+    for e in io.listar(base):
+        if e.nombre.startswith(".") or e.nombre in SALTAR_DIRS or e.es_dir:
             continue
+        t_bytes = io.tamano(e.ruta)
         items.append({
-            "nombre": p.name,
-            "tamano_bytes": p.stat().st_size,
-            "registrado_en_settings": p.name in registrados,
+            "nombre": e.nombre,
+            "tamano_bytes": t_bytes if t_bytes is not None else 0,
+            "registrado_en_settings": e.nombre in registrados,
         })
     return items
 
 
-def inventariar_mods(claude_dir: Path) -> List[Dict[str, Any]]:
+def inventariar_mods(io: IO) -> List[Dict[str, Any]]:
     """~/.claude/mods/*: agregados propios a la pantalla (con sus hooks)."""
-    base = claude_dir / "mods"
+    base = io.claude_dir / "mods"
     items: List[Dict[str, Any]] = []
-    if not base.is_dir():
+    if not io.es_dir(base):
         return items
-    for mod in sorted(base.iterdir(), key=lambda p: p.name):
-        if mod.name.startswith(".") or not mod.is_dir():
+    for e_mod in io.listar(base):
+        if e_mod.nombre.startswith(".") or not e_mod.es_dir:
             continue
-        pj = leer_json(mod / "plugin.json") or leer_json(mod / ".claude-plugin" / "plugin.json") or {}
-        hk = leer_json(mod / "hooks" / "hooks.json")
-        hooks = hooks_desde_cfg(hk, f"mod:{mod.name}") if hk else []
+        mod = e_mod.ruta
+        pj = io.leer_json(mod / "plugin.json") or io.leer_json(mod / ".claude-plugin" / "plugin.json") or {}
+        hk = io.leer_json(mod / "hooks" / "hooks.json")
+        hooks = hooks_desde_cfg(hk, f"mod:{e_mod.nombre}") if hk else []
         modulos = modulos_desde_cfg(hk)
         items.append({
-            "nombre": mod.name,
+            "nombre": e_mod.nombre,
             "version": str(pj.get("version") or "") if isinstance(pj, dict) else "",
             "descripcion": str(pj.get("description") or "")[:300] if isinstance(pj, dict) else "",
             "hooks": len(hooks),
             "modulos": modulos,
-            "cantidad_archivos": contar_archivos(mod),
+            "cantidad_archivos": io.contar_archivos(mod),
         })
     return items
 
 
-def inventariar_tareas_programadas(claude_dir: Path) -> List[Dict[str, Any]]:
+def inventariar_tareas_programadas(io: IO) -> List[Dict[str, Any]]:
     """~/.claude/scheduled-tasks/*/SKILL.md."""
     items: List[Dict[str, Any]] = []
-    base = claude_dir / "scheduled-tasks"
-    for carpeta in skills_en_dir(base):
-        f = ficha_md(carpeta / "SKILL.md", carpeta.name)
+    base = io.claude_dir / "scheduled-tasks"
+    for carpeta in skills_en_dir(io, base):
+        f = ficha_md(io, carpeta / "SKILL.md", carpeta.name)
         items.append({"nombre": f["nombre"], "carpeta": carpeta.name, "descripcion": f["descripcion"]})
     return items
 
 
-def inventariar_recetas_y_otros(claude_dir: Path) -> Dict[str, Any]:
+def inventariar_recetas_y_otros(io: IO) -> Dict[str, Any]:
     """Recetas, templates y servidores MCP propios de ~/.claude (solo nombres)."""
-    def nombres(base: Path, patron: str = "*") -> List[str]:
-        if not base.is_dir():
+    def nombres(base: Path, solo_md: bool = False) -> List[str]:
+        if not io.es_dir(base):
             return []
-        return sorted(p.name for p in base.glob(patron) if not p.name.startswith("."))
+        res = []
+        for e in io.listar(base):
+            if e.nombre.startswith("."):
+                continue
+            if solo_md:
+                if not e.es_dir and e.nombre.endswith(".md"):
+                    res.append(e.nombre)
+            else:
+                res.append(e.nombre)
+        return sorted(res)
+
     return {
-        "recetas": nombres(claude_dir / "recetas", "*.md"),
-        "templates": nombres(claude_dir / "templates"),
-        "mcp_servers_propios": nombres(claude_dir / "mcp-servers"),
-        "commands_globales": nombres(claude_dir / "commands", "*.md"),
-        "rules_globales": nombres(claude_dir / "rules", "*.md"),
-        "output_styles": nombres(claude_dir / "output-styles"),
+        "recetas": nombres(io.claude_dir / "recetas", solo_md=True),
+        "templates": nombres(io.claude_dir / "templates", solo_md=False),
+        "mcp_servers_propios": nombres(io.claude_dir / "mcp-servers", solo_md=False),
+        "commands_globales": nombres(io.claude_dir / "commands", solo_md=True),
+        "rules_globales": nombres(io.claude_dir / "rules", solo_md=True),
+        "output_styles": nombres(io.claude_dir / "output-styles", solo_md=False),
     }
 
 
-def inventariar_scripts(claude_dir: Path) -> List[Dict[str, Any]]:
+def inventariar_scripts(io: IO) -> List[Dict[str, Any]]:
     """
     Inventaria ~/.claude/scripts/*: archivos (tipo 'archivo') y carpetas (tipo 'carpeta').
     Para archivos: primera línea de comentario (# ...).
     Para carpetas: cantidad de archivos dentro y primera línea del README si existe.
     """
-    scripts_dir = claude_dir / "scripts"
+    scripts_dir = io.claude_dir / "scripts"
     items: List[Dict[str, Any]] = []
-    if not scripts_dir.is_dir():
+    if not io.es_dir(scripts_dir):
         return items
 
-    for f_path in sorted(scripts_dir.iterdir(), key=lambda p: p.name):
-        if f_path.name.startswith(".") or f_path.name in SALTAR_DIRS:
+    for e in io.listar(scripts_dir):
+        if e.nombre.startswith(".") or e.nombre in SALTAR_DIRS:
             continue
+        f_path = e.ruta
 
-        if f_path.is_file():
+        if not e.es_dir:  # archivo
             primer_comentario = ""
-            try:
-                stat = f_path.stat()
-                tamano = stat.st_size
-                mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
-                with open(f_path, "r", encoding="utf-8", errors="replace") as sf:
-                    for linea in sf:
-                        linea_strip = linea.strip()
-                        if linea_strip.startswith("#"):
-                            if linea_strip.startswith("#!"):
-                                continue
-                            primer_comentario = linea_strip.lstrip("#").strip()[:300]
-                            break
-            except Exception:
-                tamano = 0
-                mtime = ""
+            tamano = io.tamano(f_path) or 0
+            mtime = fecha_de(io, f_path)
+            texto = io.leer_texto(f_path)
+            if texto:
+                for linea in texto.splitlines():
+                    linea_strip = linea.strip()
+                    if linea_strip.startswith("#"):
+                        if linea_strip.startswith("#!"):
+                            continue
+                        primer_comentario = linea_strip.lstrip("#").strip()[:300]
+                        break
 
             items.append({
-                "nombre": f_path.name,
+                "nombre": e.nombre,
                 "tipo": "archivo",
                 "comentario": primer_comentario,
                 "tamano_bytes": tamano,
@@ -617,31 +627,29 @@ def inventariar_scripts(claude_dir: Path) -> List[Dict[str, Any]]:
                 "cantidad_archivos": 1
             })
 
-        elif f_path.is_dir():
+        else:  # carpeta
             primer_comentario = ""
             tamano = 0
-            mtime = fecha_de(f_path)
-            cantidad_archivos = contar_archivos(f_path)
+            mtime = fecha_de(io, f_path)
+            cantidad_archivos = io.contar_archivos(f_path)
 
             readme_file = None
             for cand in ("README.md", "README", "readme.md", "Readme.md", "readme.txt", "README.txt"):
                 cand_path = f_path / cand
-                if cand_path.is_file():
+                if io.es_archivo(cand_path):
                     readme_file = cand_path
                     break
             if readme_file:
-                try:
-                    with open(readme_file, "r", encoding="utf-8", errors="replace") as rf:
-                        for linea in rf:
-                            linea_strip = linea.strip()
-                            if linea_strip:
-                                primer_comentario = linea_strip.lstrip("#").strip()[:300]
-                                break
-                except Exception:
-                    pass
+                rtxt = io.leer_texto(readme_file)
+                if rtxt:
+                    for linea in rtxt.splitlines():
+                        linea_strip = linea.strip()
+                        if linea_strip:
+                            primer_comentario = linea_strip.lstrip("#").strip()[:300]
+                            break
 
             items.append({
-                "nombre": f_path.name,
+                "nombre": e.nombre,
                 "tipo": "carpeta",
                 "comentario": primer_comentario,
                 "readme_primera_linea": primer_comentario,
@@ -653,13 +661,13 @@ def inventariar_scripts(claude_dir: Path) -> List[Dict[str, Any]]:
     return items
 
 
-def inventariar_permisos(claude_dir: Path) -> Dict[str, int]:
+def inventariar_permisos(io: IO) -> Dict[str, int]:
     """
     settings.json clave 'permissions': cuenta cantidad de reglas allow/deny/ask.
     REGLA DE SEGURIDAD: nunca guarda las reglas específicas.
     """
     conteo = {"allow": 0, "deny": 0, "ask": 0, "total": 0}
-    data = leer_json(claude_dir / "settings.json")
+    data = io.leer_json(io.claude_dir / "settings.json")
     perms = data.get("permissions") if isinstance(data, dict) else None
     if isinstance(perms, dict):
         for k in ("allow", "deny", "ask"):
@@ -674,13 +682,13 @@ def _claves_dict(d: Any) -> List[str]:
     return [str(k) for k in d.keys()] if isinstance(d, dict) else []
 
 
-def inventariar_ajustes(claude_dir: Path) -> Dict[str, Any]:
+def inventariar_ajustes(io: IO) -> Dict[str, Any]:
     """
     Otras claves de settings.json / settings.local.json. SOLO nombres de claves y conteos:
     nunca valores (el bloque env puede traer rutas o claves).
     """
-    s = leer_json(claude_dir / "settings.json") or {}
-    sl = leer_json(claude_dir / "settings.local.json") or {}
+    s = io.leer_json(io.claude_dir / "settings.json") or {}
+    sl = io.leer_json(io.claude_dir / "settings.local.json") or {}
     sl_perms = sl.get("permissions") if isinstance(sl, dict) else None
     return {
         "claves_settings": sorted(s.keys()) if isinstance(s, dict) else [],
@@ -690,7 +698,7 @@ def inventariar_ajustes(claude_dir: Path) -> Dict[str, Any]:
         "settings_local_claves": sorted(sl.keys()) if isinstance(sl, dict) else [],
         "settings_local_permisos": len(sl_perms) if isinstance(sl_perms, (list, dict)) else 0,
         "mcp_habilitados_settings_local": sorted(lista_str(sl.get("enabledMcpjsonServers"))) if isinstance(sl, dict) else [],
-        "mcp_necesitan_autenticacion": sorted(_claves_dict(leer_json(claude_dir / "mcp-needs-auth-cache.json"))),
+        "mcp_necesitan_autenticacion": sorted(_claves_dict(io.leer_json(io.claude_dir / "mcp-needs-auth-cache.json"))),
     }
 
 
@@ -706,60 +714,74 @@ def _huella_nombres(pares: List[Tuple[str, int]]) -> str:
     return h.hexdigest()[:12]
 
 
-def inventariar_proyectos(raiz: Path, skills_personales: Optional[Set[str]] = None) -> List[Dict[str, Any]]:
+def podar_recorrido_proyectos_claude(actual: str, dirs: List[str], prof_raiz: int) -> None:
+    """Regla de poda para buscar carpetas .claude dentro de Proyectos (hasta 4 niveles)."""
+    rel_parts = Path(actual).parts[prof_raiz:]
+    dirs[:] = sorted(d for d in dirs if d not in SALTAR_DIRS and d != "clientes")
+    if len(rel_parts) >= 4:
+        dirs[:] = []
+
+
+def podar_recorrido_proyectos_mcp(actual: str, dirs: List[str], prof_raiz: int) -> None:
+    """Regla de poda para buscar .mcp.json dentro de Proyectos (hasta 3 niveles, sin ocultos)."""
+    dirs[:] = [d for d in dirs if d not in SALTAR_DIRS and d != "clientes" and not d.startswith(".")]
+    if len(Path(actual).parts) - prof_raiz >= 3:
+        dirs[:] = []
+
+
+def inventariar_proyectos(io: IO, raiz: Union[str, Path], skills_personales: Optional[Set[str]] = None) -> List[Dict[str, Any]]:
     """
     Recorre ~/Proyectos buscando carpetas `.claude` (hasta 4 niveles, sin node_modules/.git
     ni carpetas llamadas `clientes`) y anota qué componentes propios de proyecto hay:
     skills, agentes, reglas, comandos, hooks. Solo nombres y conteos.
     """
     items: List[Dict[str, Any]] = []
-    if not raiz.is_dir():
+    raiz_path = Path(raiz)
+    if not io.es_dir(raiz_path):
         return items
-    prof_raiz = len(raiz.parts)
-    for actual, dirs, _files in os.walk(raiz):
-        rel_parts = Path(actual).parts[prof_raiz:]
-        dirs[:] = sorted(d for d in dirs if d not in SALTAR_DIRS and d != "clientes")
-        if len(rel_parts) >= 4:
-            dirs[:] = []
+    prof_raiz = len(raiz_path.parts)
+    for actual, dirs, _files in io.caminar(raiz_path):
+        podar_recorrido_proyectos_claude(actual, dirs, prof_raiz)
         if Path(actual).name != ".claude":
             continue
         dirs[:] = []  # no seguir dentro de .claude
         cdir = Path(actual)
         proyecto = cdir.parent
-        rel = str(proyecto.relative_to(raiz)) if proyecto != raiz else "."
-        skills = [p.name for p in skills_en_dir(cdir / "skills")]
-        agentes = sorted(p.stem for p in (cdir / "agents").glob("*.md")) if (cdir / "agents").is_dir() else []
-        reglas = sorted(p.name for p in (cdir / "rules").glob("*.md")) if (cdir / "rules").is_dir() else []
-        comandos = sorted(p.stem for p in (cdir / "commands").glob("*.md")) if (cdir / "commands").is_dir() else []
+        rel = str(proyecto.relative_to(raiz_path)) if proyecto != raiz_path else "."
+        skills = [p.name for p in skills_en_dir(io, cdir / "skills")]
+        agentes = [e.ruta.stem for e in io.listar(cdir / "agents") if not e.es_dir and e.nombre.endswith(".md") and not e.nombre.startswith(".")] if io.es_dir(cdir / "agents") else []
+        agentes.sort()
+        reglas = [e.nombre for e in io.listar(cdir / "rules") if not e.es_dir and e.nombre.endswith(".md") and not e.nombre.startswith(".")] if io.es_dir(cdir / "rules") else []
+        reglas.sort()
+        comandos = [e.ruta.stem for e in io.listar(cdir / "commands") if not e.es_dir and e.nombre.endswith(".md") and not e.nombre.startswith(".")] if io.es_dir(cdir / "commands") else []
+        comandos.sort()
         hooks: List[Dict[str, Any]] = []
         for nom in ("settings.json", "settings.local.json"):
-            d = leer_json(cdir / nom)
+            d = io.leer_json(cdir / nom)
             if isinstance(d, dict) and d.get("hooks"):
                 hooks += hooks_desde_cfg(d.get("hooks"), f"{rel}/.claude/{nom}")
         pares: List[Tuple[str, int]] = []
         for s in skills:
-            try:
-                pares.append((f"s:{s}", (cdir / "skills" / s / "SKILL.md").stat().st_size))
-            except Exception:
-                pares.append((f"s:{s}", 0))
+            t_bytes = io.tamano(cdir / "skills" / s / "SKILL.md")
+            pares.append((f"s:{s}", t_bytes if t_bytes is not None else 0))
         for a in agentes:
-            pares.append((f"a:{a}", (cdir / "agents" / f"{a}.md").stat().st_size))
+            t_bytes = io.tamano(cdir / "agents" / f"{a}.md")
+            pares.append((f"a:{a}", t_bytes if t_bytes is not None else 0))
         for r in reglas:
-            pares.append((f"r:{r}", (cdir / "rules" / r).stat().st_size))
+            t_bytes = io.tamano(cdir / "rules" / r)
+            pares.append((f"r:{r}", t_bytes if t_bytes is not None else 0))
         hooks_dir = cdir / "hooks"
-        n_hooks_archivos = sum(1 for p in hooks_dir.iterdir() if p.is_file() and not p.name.startswith(".")) if hooks_dir.is_dir() else 0
+        n_hooks_archivos = sum(1 for e in io.listar(hooks_dir) if not e.es_dir and not e.nombre.startswith(".")) if io.es_dir(hooks_dir) else 0
         en_comun = len(set(skills) & (skills_personales or set()))
         claude_md = proyecto / "CLAUDE.md"
         info_md = {}
-        if claude_md.is_file():
-            try:
-                txt = claude_md.read_text(encoding="utf-8", errors="replace")
-                info_md = {"bytes": claude_md.stat().st_size, "lineas": txt.count("\n") + 1}
-            except Exception:
-                pass
+        if io.es_archivo(claude_md):
+            txt = io.leer_texto(claude_md)
+            if txt is not None:
+                info_md = {"bytes": io.tamano(claude_md) or 0, "lineas": txt.count("\n") + 1}
         items.append({
             "ruta": rel,
-            "es_checkout_git": (proyecto / ".git").exists(),
+            "es_checkout_git": io.existe(proyecto / ".git"),
             "skills": skills,
             "agentes": agentes,
             "reglas": reglas,
@@ -769,51 +791,51 @@ def inventariar_proyectos(raiz: Path, skills_personales: Optional[Set[str]] = No
             "hooks_archivos": n_hooks_archivos,
             "skills_en_comun_con_personales": en_comun,
             "parece_copia_del_ecosistema": bool(skills) and len(skills) >= 20 and en_comun >= 0.5 * len(skills),
-            "tiene_settings": (cdir / "settings.json").is_file(),
-            "tiene_settings_local": (cdir / "settings.local.json").is_file(),
-            "tiene_mcp_json": (proyecto / ".mcp.json").is_file(),
+            "tiene_settings": io.es_archivo(cdir / "settings.json"),
+            "tiene_settings_local": io.es_archivo(cdir / "settings.local.json"),
+            "tiene_mcp_json": io.es_archivo(proyecto / ".mcp.json"),
             "claude_md": info_md,
             "huella": _huella_nombres(pares) if pares else "",
         })
     return items
 
 
-def inventariar_claude_md(claude_dir: Path) -> Dict[str, Any]:
+def inventariar_claude_md(io: IO) -> Dict[str, Any]:
     """Tamaño (bytes y líneas) del CLAUDE.md global y sus importados."""
     res: Dict[str, Any] = {}
     for nombre in ("CLAUDE.md", "CLAUDE-omc.md"):
-        p = claude_dir / nombre
-        if p.is_file():
-            try:
-                txt = p.read_text(encoding="utf-8", errors="replace")
-                res[nombre] = {"bytes": p.stat().st_size, "lineas": txt.count("\n") + 1}
-            except Exception:
-                pass
+        p = io.claude_dir / nombre
+        if io.es_archivo(p):
+            txt = io.leer_texto(p)
+            if txt is not None:
+                res[nombre] = {"bytes": io.tamano(p) or 0, "lineas": txt.count("\n") + 1}
     return res
 
 
-def inventariar_memoria(claude_dir: Path) -> Dict[str, Any]:
+def inventariar_memoria(io: IO) -> Dict[str, Any]:
     """
     Memoria automática por proyecto: ~/.claude/projects/<proyecto>/memory/*.md.
     SOLO conteos (la memoria es privada y no viaja a la nube). Las carpetas temporales
     (/private/tmp, scratch de pruebas) se cuentan aparte.
     """
-    base = claude_dir / "projects"
+    base = io.claude_dir / "projects"
     por_proyecto: Dict[str, int] = {}
     efimeros = 0
-    if base.is_dir():
-        for proy in sorted(base.iterdir(), key=lambda p: p.name):
-            mem = proy / "memory"
-            if not mem.is_dir():
+    if io.es_dir(base):
+        for e_proy in io.listar(base):
+            if not e_proy.es_dir:
                 continue
-            n = sum(1 for f in mem.glob("*.md") if f.name != "MEMORY.md")
+            mem = e_proy.ruta / "memory"
+            if not io.es_dir(mem):
+                continue
+            n = sum(1 for f in io.listar(mem) if not f.es_dir and f.nombre.endswith(".md") and f.nombre != "MEMORY.md")
             if n == 0:
                 continue
-            es_tmp = proy.name.startswith(("-private-", "-tmp-")) or "scratch" in proy.name
+            es_tmp = e_proy.nombre.startswith(("-private-", "-tmp-")) or "scratch" in e_proy.nombre
             if es_tmp:
                 efimeros += n
             else:
-                por_proyecto[proy.name] = n
+                por_proyecto[e_proy.nombre] = n
     return {
         "entradas_por_proyecto": por_proyecto,
         "total_entradas": sum(por_proyecto.values()),
@@ -821,26 +843,9 @@ def inventariar_memoria(claude_dir: Path) -> Dict[str, Any]:
     }
 
 
-def leer_contador_interno_skills() -> Dict[str, Dict[str, Any]]:
-    """
-    `skillUsage` de ~/.claude.json: el contador propio de Claude Code (cuenta tanto /slash como la herramienta Skill).
-    SOLO nombre, cantidad y fecha: no se toca nada más de ese archivo.
-    """
-    d = leer_json(Path.home() / ".claude.json")
-    su = d.get("skillUsage") if isinstance(d, dict) else None
-    out: Dict[str, Dict[str, Any]] = {}
-    if isinstance(su, dict):
-        for k, v in su.items():
-            if isinstance(v, dict) and isinstance(v.get("usageCount"), int):
-                ts = v.get("lastUsedAt")
-                fecha = datetime.fromtimestamp(ts / 1000.0, tz=timezone.utc).isoformat() if isinstance(ts, (int, float)) else None
-                out[str(k)] = {"usageCount": v["usageCount"], "ultima_vez": fecha}
-    return out
-
-
-def inventariar_rutinas() -> Dict[str, Any]:
+def inventariar_rutinas(io: IO) -> Dict[str, Any]:
     """Rutinas registradas en ~/.cerebro/rutinas-fuentes.json: solo conteos de claves."""
-    d = leer_json(Path.home() / ".cerebro" / "rutinas-fuentes.json")
+    d = io.leer_json(io.home / ".cerebro" / "rutinas-fuentes.json")
     if not isinstance(d, dict):
         return {}
     return {k: (len(v) if isinstance(v, (list, dict)) else None) for k, v in d.items() if isinstance(v, (list, dict))}
@@ -858,20 +863,21 @@ def nombres_mcp(data: Any) -> List[str]:
     return sorted(str(k) for k, v in srv.items() if isinstance(v, dict))
 
 
-def _rutas_declaradas(ruta: Path, decl: Any) -> List[Path]:
+def _rutas_declaradas(io: IO, ruta: Path, decl: Any) -> List[Path]:
     """Convierte una declaración de plugin.json (texto o lista) en rutas dentro del plugin."""
     salida: List[Path] = []
+    ruta_real = io.real(ruta)
     for e in lista_str(decl):
-        p = (ruta / e).resolve()
+        p = io.real(ruta / e)
         try:
-            p.relative_to(ruta.resolve())
+            p.relative_to(ruta_real)
         except ValueError:
             continue
         salida.append(p)
     return salida
 
 
-def componentes_de_plugin(ruta: Path, nombre_plugin: str, cargado: bool, fuente: str) -> Dict[str, Any]:
+def componentes_de_plugin(io: IO, ruta: Path, nombre_plugin: str, cargado: bool, fuente: str) -> Dict[str, Any]:
     """
     Lee los componentes REALES de un plugin tal como Claude Code los carga:
       - skills:   plugin.json "skills" (lista de carpetas o carpeta) o, por defecto, skills/*/SKILL.md
@@ -881,36 +887,35 @@ def componentes_de_plugin(ruta: Path, nombre_plugin: str, cargado: bool, fuente:
       - hooks:    plugin.json "hooks" (inline o ruta) o hooks/hooks.json
       - mcp:      .mcp.json o plugin.json "mcpServers"
     """
-    pj = leer_json(ruta / ".claude-plugin" / "plugin.json")
+    pj = io.leer_json(ruta / ".claude-plugin" / "plugin.json")
     if not isinstance(pj, dict):
-        pj = leer_json(ruta / "plugin.json")
+        pj = io.leer_json(ruta / "plugin.json")
     if not isinstance(pj, dict):
         pj = {}
-    # Claude Code nombra los componentes con el `name` de plugin.json (no con la clave de instalación)
     nombre_plugin = str(pj.get("name") or nombre_plugin)
 
     # ---- skills ----
     skills: List[Dict[str, Any]] = []
     carpetas_skill: List[Path] = []
     if "skills" in pj and pj["skills"]:
-        for p in _rutas_declaradas(ruta, pj["skills"]):
-            if (p / "SKILL.md").is_file():
+        for p in _rutas_declaradas(io, ruta, pj["skills"]):
+            if io.es_archivo(p / "SKILL.md"):
                 carpetas_skill.append(p)
             else:
-                carpetas_skill.extend(skills_en_dir(p))
+                carpetas_skill.extend(skills_en_dir(io, p))
     else:
-        carpetas_skill = skills_en_dir(ruta / "skills")
+        carpetas_skill = skills_en_dir(io, ruta / "skills")
     vistos: Set[str] = set()
     for c in carpetas_skill:
         if str(c) in vistos:
             continue
         vistos.add(str(c))
-        f = ficha_md(c / "SKILL.md", c.name)
+        f = ficha_md(io, c / "SKILL.md", c.name)
         item = {
             "plugin": nombre_plugin, "fuente": fuente, "cargado": cargado,
             "nombre": f["nombre"], "invocacion": f"{nombre_plugin}:{f['nombre']}",
             "descripcion": f["descripcion"], "descripcion_bytes": f["descripcion_bytes"],
-            "tamano_bytes": f["tamano_bytes"], "cantidad_archivos": contar_archivos(c),
+            "tamano_bytes": f["tamano_bytes"], "cantidad_archivos": io.contar_archivos(c),
             "precargada_por": [],
         }
         item.update(campos_uso_vacios())
@@ -918,7 +923,7 @@ def componentes_de_plugin(ruta: Path, nombre_plugin: str, cargado: bool, fuente:
     # SKILL.md que existen en el plugin pero que Claude Code no carga (anidados)
     skills_en_disco = 0
     try:
-        for r, ds, fs in os.walk(ruta):
+        for _r, ds, fs in io.caminar(ruta):
             ds[:] = [d for d in ds if d not in SALTAR_DIRS and not d.startswith(".")]
             if "SKILL.md" in fs:
                 skills_en_disco += 1
@@ -930,18 +935,20 @@ def componentes_de_plugin(ruta: Path, nombre_plugin: str, cargado: bool, fuente:
     declarados = False
     if "agents" in pj and pj["agents"]:
         declarados = True
-        for p in _rutas_declaradas(ruta, pj["agents"]):
-            if p.is_file():
+        for p in _rutas_declaradas(io, ruta, pj["agents"]):
+            if io.es_archivo(p):
                 archivos_agente.append(p)
-            elif p.is_dir():
-                archivos_agente.extend(sorted(p.glob("*.md")))
+            elif io.es_dir(p):
+                for e in io.listar(p):
+                    if not e.es_dir and e.nombre.endswith(".md"):
+                        archivos_agente.append(e.ruta)
     else:
         d = ruta / "agents"
-        if d.is_dir():
-            archivos_agente = sorted(x for x in d.glob("*.md") if not x.name.startswith("."))
+        if io.es_dir(d):
+            archivos_agente = [e.ruta for e in io.listar(d) if not e.es_dir and e.nombre.endswith(".md") and not e.nombre.startswith(".")]
     agentes: List[Dict[str, Any]] = []
     for a in archivos_agente:
-        f = ficha_md(a, a.stem)
+        f = ficha_md(io, a, a.stem)
         item = {
             "plugin": nombre_plugin, "fuente": fuente, "cargado": cargado,
             "nombre": f["nombre"], "archivo": a.name, "invocacion": f"{nombre_plugin}:{f['nombre']}",
@@ -952,17 +959,21 @@ def componentes_de_plugin(ruta: Path, nombre_plugin: str, cargado: bool, fuente:
         }
         item.update(campos_uso_vacios())
         agentes.append(item)
-    usados = {a.resolve() for a in archivos_agente}
+    usados = {io.real(a) for a in archivos_agente}
     sueltos_no_declarados: List[str] = []
-    for md in sorted(ruta.glob("*.md")):
+    for e in io.listar(ruta):
+        if e.es_dir or not e.nombre.endswith(".md"):
+            continue
+        md = e.ruta
         if md.name.upper() in ("README.MD", "CHANGELOG.MD", "CLAUDE.MD", "AGENTS.MD", "LICENSE.MD", "CONTRIBUTING.MD",
                                "CONNECTORS.MD", "ACCESS.MD", "CONTEXT.MD", "REQUISITOS.MD", "PLUGIN_SETTINGS.MD",
                                "SECURITY.MD", "THIRDPARTYNOTICES.MD") or md.name.startswith("README"):
             continue
-        if md.resolve() in usados:
+        if io.real(md) in usados:
             continue
         try:
-            if parse_yaml_frontmatter(md.read_text(encoding="utf-8", errors="replace")).get("name"):
+            txt = io.leer_texto(md)
+            if txt and parse_yaml_frontmatter(txt).get("name"):
                 sueltos_no_declarados.append(md.name)
         except Exception:
             pass
@@ -970,22 +981,24 @@ def componentes_de_plugin(ruta: Path, nombre_plugin: str, cargado: bool, fuente:
     # ---- comandos ----
     archivos_cmd: List[Path] = []
     if "commands" in pj and pj["commands"]:
-        for p in _rutas_declaradas(ruta, pj["commands"]):
-            if p.is_file():
+        for p in _rutas_declaradas(io, ruta, pj["commands"]):
+            if io.es_archivo(p):
                 archivos_cmd.append(p)
-            elif p.is_dir():
-                archivos_cmd.extend(sorted(x for x in p.glob("*.md") if not x.name.startswith(".")))
+            elif io.es_dir(p):
+                for e in io.listar(p):
+                    if not e.es_dir and e.nombre.endswith(".md") and not e.nombre.startswith("."):
+                        archivos_cmd.append(e.ruta)
     else:
         d = ruta / "commands"
-        if d.is_dir():
-            archivos_cmd = sorted(x for x in d.glob("*.md") if not x.name.startswith("."))
+        if io.es_dir(d):
+            archivos_cmd = [e.ruta for e in io.listar(d) if not e.es_dir and e.nombre.endswith(".md") and not e.nombre.startswith(".")]
     comandos: List[Dict[str, Any]] = []
     vistos_cmd: Set[str] = set()
     for c in archivos_cmd:
         if c.stem in vistos_cmd:
             continue
         vistos_cmd.add(c.stem)
-        f = ficha_md(c, c.stem)
+        f = ficha_md(io, c, c.stem)
         item = {
             "comando": f"/{nombre_plugin}:{c.stem}", "plugin": nombre_plugin, "fuente": fuente,
             "cargado": cargado, "nombre_corto": c.stem, "archivo": c.name,
@@ -1000,11 +1013,11 @@ def componentes_de_plugin(ruta: Path, nombre_plugin: str, cargado: bool, fuente:
     if isinstance(decl_hooks, dict):
         hooks = hooks_desde_cfg(decl_hooks, nombre_plugin)
     else:
-        candidatos = _rutas_declaradas(ruta, decl_hooks) if decl_hooks else []
+        candidatos = _rutas_declaradas(io, ruta, decl_hooks) if decl_hooks else []
         candidatos += [ruta / "hooks" / "hooks.json", ruta / "hooks.json"]
         for h in candidatos:
-            if h.is_file():
-                cfg = leer_json(h)
+            if io.es_archivo(h):
+                cfg = io.leer_json(h)
                 if cfg:
                     hooks = hooks_desde_cfg(cfg, nombre_plugin)
                     break
@@ -1013,8 +1026,8 @@ def componentes_de_plugin(ruta: Path, nombre_plugin: str, cargado: bool, fuente:
         h["cargado"] = cargado
     modulos: List[str] = []
     for cand in [ruta / "hooks" / "hooks.json", ruta / "hooks.json"]:
-        if cand.is_file():
-            modulos = modulos_desde_cfg(leer_json(cand))
+        if io.es_archivo(cand):
+            modulos = modulos_desde_cfg(io.leer_json(cand))
             if modulos:
                 break
 
@@ -1024,9 +1037,9 @@ def componentes_de_plugin(ruta: Path, nombre_plugin: str, cargado: bool, fuente:
     if isinstance(mj, dict):
         srv = nombres_mcp({"mcpServers": mj})
     else:
-        for cand in _rutas_declaradas(ruta, mj) + [ruta / ".mcp.json"]:
-            if cand.is_file():
-                srv = nombres_mcp(leer_json(cand))
+        for cand in _rutas_declaradas(io, ruta, mj) + [ruta / ".mcp.json"]:
+            if io.es_archivo(cand):
+                srv = nombres_mcp(io.leer_json(cand))
                 if srv:
                     break
     mcp = [{"plugin": nombre_plugin, "nombre": n, "id_en_uso": f"plugin_{nombre_plugin}_{n}",
@@ -1043,7 +1056,7 @@ def componentes_de_plugin(ruta: Path, nombre_plugin: str, cargado: bool, fuente:
     }
 
 
-def inventariar_plugins(claude_dir: Path, habilitados: Dict[str, bool]) -> Dict[str, Any]:
+def inventariar_plugins(io: IO, habilitados: Dict[str, bool]) -> Dict[str, Any]:
     """
     Plugins INSTALADOS (installed_plugins.json) y SINCRONIZADOS (plugins/synced/<cuenta>/*,
     los de claude.ai/Cowork: no figuran en enabledPlugins pero se cargan en las sesiones).
@@ -1077,7 +1090,7 @@ def inventariar_plugins(claude_dir: Path, habilitados: Dict[str, bool]) -> Dict[
         out["mcp_plugin"].extend(comp["mcp"])
 
     # ---- instalados ----
-    data = leer_json(claude_dir / "plugins" / "installed_plugins.json")
+    data = io.leer_json(io.claude_dir / "plugins" / "installed_plugins.json")
     plugins_dict: Dict[str, Any] = {}
     if isinstance(data, dict) and isinstance(data.get("plugins"), dict):
         plugins_dict = data["plugins"]
@@ -1087,12 +1100,12 @@ def inventariar_plugins(claude_dir: Path, habilitados: Dict[str, bool]) -> Dict[
         lst = install_val if isinstance(install_val, list) else [install_val]
         inst = next((i for i in lst if isinstance(i, dict) and i.get("installPath")), lst[0] if lst and isinstance(lst[0], dict) else {})
         ruta_str = str(inst.get("installPath") or "")
-        ruta = Path(os.path.expanduser(ruta_str)).resolve() if ruta_str else None
-        existe = bool(ruta and ruta.is_dir())
+        ruta = io.real(io.expandir_ruta(ruta_str)) if ruta_str else None
+        existe = bool(ruta and io.es_dir(ruta))
         cargado = bool(habilitados.get(clave))
         if existe and ruta is not None:
             rutas_instaladas.add(str(ruta))
-        comp = componentes_de_plugin(ruta, nombre, cargado, "instalado") if existe and ruta is not None else {
+        comp = componentes_de_plugin(io, ruta, nombre, cargado, "instalado") if existe and ruta is not None else {
             "version_declarada": "", "nombre_declarado": "", "nombre_efectivo": nombre, "skills": [], "agentes": [], "comandos": [], "hooks": [],
             "mcp": [], "modulos": [], "skills_en_disco": 0, "agentes_sueltos_no_declarados": []}
         meta = {
@@ -1101,27 +1114,29 @@ def inventariar_plugins(claude_dir: Path, habilitados: Dict[str, bool]) -> Dict[
             "habilitado": cargado, "cargado": cargado,
             "ruta_existe": existe,
             # compat con la versión anterior del inventario:
-            "ruta_instalacion": con_tilde(ruta),
+            "ruta_instalacion": con_tilde(ruta, io.home),
         }
         agregar(meta, comp)
 
     # ---- sincronizados (claude.ai / Cowork) ----
-    base = claude_dir / "plugins" / "synced"
-    if base.is_dir():
-        for cuenta in sorted(base.iterdir(), key=lambda p: p.name):
-            if not cuenta.is_dir() or cuenta.name.startswith("."):
+    base = io.claude_dir / "plugins" / "synced"
+    if io.es_dir(base):
+        for e_cuenta in io.listar(base):
+            if not e_cuenta.es_dir or e_cuenta.nombre.startswith("."):
                 continue
-            manifiesto = leer_json(cuenta / "manifest.json") or {}
+            cuenta = e_cuenta.ruta
+            manifiesto = io.leer_json(cuenta / "manifest.json") or {}
             por_nombre = {str(p.get("name")): p for p in manifiesto.get("plugins", []) if isinstance(p, dict)}
-            for pdir in sorted(cuenta.iterdir(), key=lambda p: p.name):
-                if not pdir.is_dir() or pdir.name.startswith("."):
+            for e_pdir in io.listar(cuenta):
+                if not e_pdir.es_dir or e_pdir.nombre.startswith("."):
                     continue
-                pj = leer_json(pdir / ".claude-plugin" / "plugin.json") or leer_json(pdir / "plugin.json") or {}
-                nombre_dir = re.sub(r"~g\d+$", "", pdir.name)
+                pdir = e_pdir.ruta
+                pj = io.leer_json(pdir / ".claude-plugin" / "plugin.json") or io.leer_json(pdir / "plugin.json") or {}
+                nombre_dir = re.sub(r"~g\d+$", "", e_pdir.nombre)
                 nombre = str(pj.get("name") or nombre_dir) if isinstance(pj, dict) else nombre_dir
-                mt = leer_json(pdir.parent / f"{pdir.name}.meta.json") or {}
+                mt = io.leer_json(cuenta / f"{e_pdir.nombre}.meta.json") or {}
                 info = por_nombre.get(nombre) or por_nombre.get(nombre_dir) or {}
-                comp = componentes_de_plugin(pdir, nombre, True, "sincronizado")
+                comp = componentes_de_plugin(io, pdir, nombre, True, "sincronizado")
                 meta = {
                     "nombre": nombre, "nombre_en_claude": nombre, "marketplace": str(mt.get("marketplace_name") or info.get("marketplaceName") or ""),
                     "clave": f"{nombre}@sincronizado", "fuente": "sincronizado",
@@ -1133,28 +1148,31 @@ def inventariar_plugins(claude_dir: Path, habilitados: Dict[str, bool]) -> Dict[
                 agregar(meta, comp)
 
     # ---- instalaciones viejas / clones temporales en la caché ----
-    cache = claude_dir / "plugins" / "cache"
+    cache = io.claude_dir / "plugins" / "cache"
     huerfanas = 0
     temporales = 0
-    if cache.is_dir():
-        for mkt in cache.iterdir():
-            if mkt.name.startswith("temp_"):
+    if io.es_dir(cache):
+        for e_mkt in io.listar(cache):
+            if e_mkt.nombre.startswith("temp_"):
                 temporales += 1
                 continue
-            if not mkt.is_dir():
+            if not e_mkt.es_dir:
                 continue
-            for pl in mkt.iterdir():
-                if not pl.is_dir():
+            for e_pl in io.listar(e_mkt.ruta):
+                if not e_pl.es_dir:
                     continue
-                for ver in pl.iterdir():
-                    if ver.is_dir() and str(ver.resolve()) not in rutas_instaladas:
+                for e_ver in io.listar(e_pl.ruta):
+                    if e_ver.es_dir and str(io.real(e_ver.ruta)) not in rutas_instaladas:
                         huerfanas += 1
     out["cache"] = {"versiones_viejas_no_instaladas": huerfanas, "clones_temporales": temporales}
     return out
 
 
-def inventariar_servidores_mcp(claude_dir: Path, plugins_mcp: List[Dict[str, Any]],
-                               ajustes: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[str]]:
+def inventariar_servidores_mcp(
+    io: IO,
+    plugins_mcp: List[Dict[str, Any]],
+    ajustes: Dict[str, Any],
+) -> Tuple[List[Dict[str, Any]], List[str]]:
     """
     Servidores MCP: ~/.mcp.json, settings.json ('mcpServers'), .mcp.json de proyectos y los de
     plugins (instalados y sincronizados). REGLA DE SEGURIDAD: solo nombres y estado. NUNCA env,
@@ -1171,47 +1189,46 @@ def inventariar_servidores_mcp(claude_dir: Path, plugins_mcp: List[Dict[str, Any
         s.update(campos_uso_vacios())
         servidores.append(s)
 
-    data = leer_json(Path.home() / ".mcp.json")
+    data = io.leer_json(io.home / ".mcp.json")
     if isinstance(data, dict) and isinstance(data.get("mcpServers"), dict):
         for n, v in data["mcpServers"].items():
             nuevo(str(n), "~/.mcp.json", not (isinstance(v, dict) and v.get("disabled") is True))
-    sdata = leer_json(claude_dir / "settings.json")
+    sdata = io.leer_json(io.claude_dir / "settings.json")
     if isinstance(sdata, dict) and isinstance(sdata.get("mcpServers"), dict):
         for n, v in sdata["mcpServers"].items():
             nuevo(str(n), "settings.json", not (isinstance(v, dict) and v.get("disabled") is True))
     for m in plugins_mcp:
         nuevo(m["nombre"], f"plugin:{m['plugin']} ({m['fuente']})", bool(m["cargado"]), m["plugin"], m["id_en_uso"])
+
     # ~/.claude.json (alcance usuario y por proyecto) y config de Claude Desktop/Cowork: SOLO nombres
-    cj = leer_json(Path.home() / ".claude.json")
-    if isinstance(cj, dict):
-        if isinstance(cj.get("mcpServers"), dict):
-            for n in cj["mcpServers"].keys():
-                nuevo(str(n), "~/.claude.json (usuario)", True)
-        proy = cj.get("projects")
-        if isinstance(proy, dict):
-            for ruta_p, pv in proy.items():
-                if isinstance(pv, dict) and isinstance(pv.get("mcpServers"), dict):
-                    rel_p = str(ruta_p).replace(str(Path.home()) + "/Proyectos/", "") if "/Proyectos" in str(ruta_p) else Path(str(ruta_p)).name
-                    for n in pv["mcpServers"].keys():
-                        nuevo(str(n), f"~/.claude.json (proyecto {rel_p})", True)
-    dc = leer_json(Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json")
-    if isinstance(dc, dict) and isinstance(dc.get("mcpServers"), dict):
-        for n in dc["mcpServers"].keys():
-            nuevo(str(n), "claude_desktop_config.json (Desktop/Cowork)", True)
+    cj_path = io.home / ".claude.json"
+    for n in io.nombres_json(cj_path, ["mcpServers"], "mcp_servers_usuario"):
+        nuevo(str(n), "~/.claude.json (usuario)", True)
+
+    proyectos_claves = io.nombres_json(cj_path, ["projects"], "mcp_proyectos_claude_json")
+    for ruta_p in proyectos_claves:
+        srvs = io.nombres_json(cj_path, ["projects", ruta_p, "mcpServers"], f"proyectos.{ruta_p}.mcpServers")
+        rel_p = str(ruta_p).replace(str(io.home) + "/Proyectos/", "") if "/Proyectos" in str(ruta_p) else Path(str(ruta_p)).name
+        for n in srvs:
+            nuevo(str(n), f"~/.claude.json (proyecto {rel_p})", True)
+
+    dc_path = io.home / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+    for n in io.nombres_json(dc_path, ["mcpServers"], "claude_desktop:mcpServers"):
+        nuevo(str(n), "claude_desktop_config.json (Desktop/Cowork)", True)
+
     # .mcp.json de proyectos
-    raiz = Path.home() / "Proyectos"
+    raiz = io.home / "Proyectos"
     proyectos_mcp: List[str] = []
-    if raiz.is_dir():
+    if io.es_dir(raiz):
         prof = len(raiz.parts)
-        for actual, dirs, files in os.walk(raiz):
-            dirs[:] = [d for d in dirs if d not in SALTAR_DIRS and d != "clientes" and not d.startswith(".")]
-            if len(Path(actual).parts) - prof >= 3:
-                dirs[:] = []
+        for actual, dirs, files in io.caminar(raiz):
+            podar_recorrido_proyectos_mcp(actual, dirs, prof)
             if ".mcp.json" in files:
                 rel = str(Path(actual).relative_to(raiz))
-                for n in nombres_mcp(leer_json(Path(actual) / ".mcp.json")):
+                for n in nombres_mcp(io.leer_json(Path(actual) / ".mcp.json")):
                     nuevo(n, f"proyecto:{rel}/.mcp.json", True)
                     proyectos_mcp.append(f"{rel}:{n}")
+
     # servidores que settings.local.json habilita pero que no están definidos en ninguna parte del disco
     conocidos = {s["nombre"] for s in servidores}
     sin_definicion = sorted(n for n in habil_local if n not in conocidos)
@@ -1219,216 +1236,7 @@ def inventariar_servidores_mcp(claude_dir: Path, plugins_mcp: List[Dict[str, Any
 
 
 # ==============================================================================
-# 3. MEDICIÓN DE USO REAL (CONVERSACIONES .JSONL)
-# ==============================================================================
-
-def parse_iso_o_mtime(ts_val: Any, mtime_dt: datetime) -> datetime:
-    """Parsea una marca de tiempo ISO de manera tolerante (Python 3.9+) o usa el mtime del archivo."""
-    if ts_val and isinstance(ts_val, str):
-        s = ts_val.strip()
-        if s.endswith("Z"):
-            s = s[:-1] + "+00:00"
-        try:
-            dt = datetime.fromisoformat(s)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt
-        except Exception:
-            pass
-    elif isinstance(ts_val, (int, float)):
-        try:
-            if ts_val > 1e11:  # milisegundos
-                return datetime.fromtimestamp(ts_val / 1000.0, tz=timezone.utc)
-            return datetime.fromtimestamp(ts_val, tz=timezone.utc)
-        except Exception:
-            pass
-
-    if mtime_dt.tzinfo is None:
-        return mtime_dt.replace(tzinfo=timezone.utc)
-    return mtime_dt
-
-
-# Skills y comandos que traen Claude Code o la app de fábrica (o por conector): aparecen en la lista de las
-# sesiones, pero no existen como carpeta en ~/.claude. Lista tomada de la lista de skills de una sesión real.
-SKILLS_DE_FABRICA = {
-    "update-config", "keybindings-help", "code-review", "simplify", "fewer-permission-prompts", "loop",
-    "claude-api", "workflow-authoring", "run", "plugin-authoring", "init", "security-review", "dataviz",
-    "artifact-design", "artifact-diagramming", "artifact-capabilities",
-    "anthropic-skills:consolidate-memory", "anthropic-skills:explain-usage",
-    "anthropic-skills:schedule", "anthropic-skills:setup-claude",
-}
-COMANDOS_DE_FABRICA = {"/model", "/doctor", "/mcp", "/usage", "/skill-doctor", "/auto-mode-setup", "/clear",
-                       "/compact", "/help", "/config", "/memory", "/agents", "/permissions", "/hooks", "/context",
-                       "/cost", "/resume", "/status", "/review", "/init"}
-
-CATEGORIAS_USO = ("skills", "agents", "mcp_servers", "mcp_tools", "herramientas_nativas", "slash_commands")
-
-
-def es_conversacion_de_subagente(archivo: Path) -> bool:
-    """Los .jsonl de subagentes y workflows viven bajo una carpeta `subagents/`."""
-    return "subagents" in archivo.parts
-
-
-def id_de_sesion(archivo: Path, es_sub: bool) -> str:
-    """Sesión = el UUID de la conversación principal (los subagentes se atribuyen a su sesión madre)."""
-    if es_sub:
-        partes = archivo.parts
-        i = partes.index("subagents")
-        return partes[i - 1] if i > 0 else archivo.stem
-    return archivo.stem
-
-
-def texto_de_mensaje_usuario(record: Dict[str, Any]) -> str:
-    """Texto plano de un mensaje de usuario (solo para detectar `<command-name>`; no se guarda)."""
-    msg = record.get("message")
-    c = msg.get("content") if isinstance(msg, dict) else record.get("content")
-    if isinstance(c, str):
-        return c
-    if isinstance(c, list):
-        return " ".join(str(b.get("text") or "") for b in c if isinstance(b, dict) and b.get("type") == "text")
-    return ""
-
-
-def medir_uso_real(claude_dir: Path) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, int]]:
-    """
-    Lee ~/.claude/projects/**/*.jsonl y extrae únicamente frecuencias y fechas.
-    NO retiene ningún texto de las conversaciones. Separa conversaciones principales
-    (las que abre Fernando, ámbito "p") de las de subagentes/workflows (ámbito "s").
-    Devuelve (stats_crudas, metricas). Las stats crudas guardan sets de sesiones y se
-    serializan después con `serializar_uso`.
-    """
-    projects_dir = claude_dir / "projects"
-    metricas: Dict[str, int] = {
-        "archivos_jsonl_leidos": 0, "archivos_principales": 0, "archivos_subagentes": 0,
-        "lineas_leidas": 0, "lineas_no_parseadas": 0,
-    }
-    stats: Dict[str, Dict[str, Dict[str, Any]]] = {c: {} for c in CATEGORIAS_USO}
-    if not projects_dir.is_dir():
-        return stats, metricas
-
-    archivos = sorted(projects_dir.rglob("*.jsonl"), key=lambda p: str(p))
-    ahora = datetime.now(timezone.utc)
-    s30 = 30 * 86400
-    s90 = 90 * 86400
-    # `<command-name>/algo</command-name>` al comienzo de un mensaje de usuario
-    regex_slash = re.compile(r"<command-name>\s*([^<\s]+)\s*</command-name>")
-
-    def ambito_vacio(dt: datetime) -> Dict[str, Any]:
-        return {"t": 0, "d30": 0, "d90": 0, "primera": dt, "ultima": dt, "ses": set()}
-
-    def registrar(cat: str, nombre: str, dt: datetime, sesion: str, es_sub: bool) -> None:
-        if not nombre:
-            return
-        d = stats[cat]
-        it = d.get(nombre)
-        if it is None:
-            it = {"p": ambito_vacio(dt), "s": ambito_vacio(dt)}
-            d[nombre] = it
-        a = it["s" if es_sub else "p"]
-        a["t"] += 1
-        delta = (ahora - dt).total_seconds()
-        if delta <= s30:
-            a["d30"] += 1
-        if delta <= s90:
-            a["d90"] += 1
-        a["ses"].add(sesion)
-        if dt < a["primera"] or a["t"] == 1:
-            a["primera"] = dt
-        if dt > a["ultima"] or a["t"] == 1:
-            a["ultima"] = dt
-
-    for archivo in archivos:
-        es_sub = es_conversacion_de_subagente(archivo)
-        metricas["archivos_jsonl_leidos"] += 1
-        metricas["archivos_subagentes" if es_sub else "archivos_principales"] += 1
-        sesion = id_de_sesion(archivo, es_sub)
-        try:
-            mtime_dt = datetime.fromtimestamp(archivo.stat().st_mtime, tz=timezone.utc)
-        except Exception:
-            mtime_dt = ahora
-        try:
-            with open(archivo, "r", encoding="utf-8", errors="replace") as f:
-                for linea in f:
-                    metricas["lineas_leidas"] += 1
-                    # Filtro rápido: solo interesan los tool_use y los comandos slash
-                    if "tool_use" not in linea and "<command-name>" not in linea:
-                        continue
-                    try:
-                        record = json.loads(linea)
-                    except Exception:
-                        metricas["lineas_no_parseadas"] += 1
-                        continue
-                    if not isinstance(record, dict):
-                        continue
-                    dt = parse_iso_o_mtime(record.get("timestamp") or record.get("time") or record.get("createdAt"), mtime_dt)
-
-                    msg = record.get("message")
-                    bloques = []
-                    if isinstance(msg, dict) and isinstance(msg.get("content"), list):
-                        bloques.extend(msg["content"])
-                    if isinstance(record.get("content"), list):
-                        bloques.extend(record["content"])
-                    for b in bloques:
-                        if not isinstance(b, dict) or b.get("type") != "tool_use":
-                            continue
-                        tool_name = str(b.get("name") or "")
-                        inp = b.get("input") if isinstance(b.get("input"), dict) else {}
-                        if tool_name == "Skill":
-                            if inp.get("skill"):
-                                registrar("skills", str(inp["skill"]), dt, sesion, es_sub)
-                        elif tool_name in ("Agent", "Task"):
-                            if inp.get("subagent_type"):
-                                registrar("agents", str(inp["subagent_type"]), dt, sesion, es_sub)
-                        elif tool_name.startswith("mcp__"):
-                            partes = tool_name.split("__")
-                            registrar("mcp_servers", partes[1] if len(partes) > 1 else tool_name, dt, sesion, es_sub)
-                            registrar("mcp_tools", tool_name, dt, sesion, es_sub)
-                        elif tool_name:
-                            registrar("herramientas_nativas", tool_name, dt, sesion, es_sub)
-
-                    # Slash commands: SOLO cuando el mensaje del usuario ARRANCA con la etiqueta
-                    # (así no se cuentan las veces que una respuesta o un archivo la mencionan).
-                    # Dentro de una conversación de subagente, el slash es la PRECARGA de una skill.
-                    if "<command-name>" in linea and record.get("type") == "user":
-                        texto = texto_de_mensaje_usuario(record).lstrip()
-                        if texto.startswith(("<command-message>", "<command-name>")):
-                            m = regex_slash.search(texto)
-                            if m:
-                                cmd = m.group(1).strip()
-                                if not cmd.startswith("/"):
-                                    cmd = "/" + cmd
-                                registrar("slash_commands", cmd, dt, sesion, es_sub)
-        except Exception:
-            metricas["lineas_no_parseadas"] += 1
-
-    return stats, metricas
-
-
-def serializar_uso(stats: Dict[str, Dict[str, Dict[str, Any]]]) -> Dict[str, Dict[str, Any]]:
-    """Convierte las stats crudas en estructura JSON (sin sets). Dos ámbitos: principal y subagentes."""
-    out: Dict[str, Dict[str, Any]] = {}
-    for cat, items in stats.items():
-        out[cat] = {}
-        for nombre, v in sorted(items.items()):
-            p, s = v["p"], v["s"]
-            fechas_p = [p["primera"], p["ultima"]] if p["t"] else []
-            fechas_s = [s["primera"], s["ultima"]] if s["t"] else []
-            todas = fechas_p + fechas_s
-            out[cat][nombre] = {
-                "usos_total": p["t"] + s["t"], "usos_30d": p["d30"] + s["d30"], "usos_90d": p["d90"] + s["d90"],
-                "usos_principal": p["t"], "usos_principal_30d": p["d30"], "usos_principal_90d": p["d90"],
-                "usos_subagentes": s["t"], "usos_subagentes_30d": s["d30"], "usos_subagentes_90d": s["d90"],
-                "primera_vez": min(todas).isoformat() if todas else None,
-                "ultima_vez": max(todas).isoformat() if todas else None,
-                "ultima_vez_principal": p["ultima"].isoformat() if p["t"] else None,
-                "sesiones_principal": len(p["ses"]), "sesiones_subagentes": len(s["ses"]),
-                "cantidad_sesiones": len(p["ses"] | s["ses"]),
-            }
-    return out
-
-
-# ==============================================================================
-# 4. CRUCE MECÁNICO (INVENTARIO + USO REAL)
+# 3. CRUCE MECÁNICO (INVENTARIO + USO REAL)
 # ==============================================================================
 
 def aplicar_uso(item: Dict[str, Any], entradas: List[Tuple[Dict[str, Any], bool]]) -> None:
@@ -1659,7 +1467,7 @@ def realizar_cruce_general(inv: Dict[str, Any], stats: Dict[str, Dict[str, Dict[
 
 
 # ==============================================================================
-# 5. RESUMEN Y GENERACIÓN DE REPORTES (JSON Y MARKDOWN)
+# 4. RESUMEN Y GENERACIÓN DE REPORTES (JSON Y MARKDOWN)
 # ==============================================================================
 
 def armar_resumen(inv: Dict[str, Any]) -> Dict[str, Any]:
@@ -1742,8 +1550,7 @@ def armar_resumen(inv: Dict[str, Any]) -> Dict[str, Any]:
 
 def generar_reporte_json(datos: Dict[str, Any], ruta_archivo: Path):
     """Escribe el archivo inventario.json estructurado y formateado."""
-    with open(ruta_archivo, "w", encoding="utf-8") as f:
-        json.dump(datos, f, ensure_ascii=False, indent=1)
+    escribir_json(ruta_archivo, datos)
 
 
 def generar_reporte_markdown(datos: Dict[str, Any], ruta_archivo: Path):
@@ -1941,69 +1748,45 @@ def generar_reporte_markdown(datos: Dict[str, Any], ruta_archivo: Path):
         L.append(f"| {i} | {e['tipo']} | `{e['nombre']}` | {e['p']} | {e['s']} | {formatear_fecha(e['u'])} |")
     L.append("")
 
-    with open(ruta_archivo, "w", encoding="utf-8") as f:
-        f.write("\n".join(L))
+    escribir_texto(ruta_archivo, "\n".join(L))
 
 
 # ==============================================================================
-# 6. EJECUCIÓN PRINCIPAL Y AUTOCONTROL POR CONSOLA
+# 5. FUNCIONES PÚBLICAS Y EJECUCIÓN PRINCIPAL
 # ==============================================================================
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Inventario mecánico y medición de uso del ecosistema Claude Code (~/.claude)."
-    )
-    parser.add_argument("--out", type=str, default="./inventario_resultado",
-                        help="Carpeta de destino para inventario.json e inventario.md.")
-    parser.add_argument("--solo-disco", action="store_true",
-                        help="Omitir el análisis de conversaciones .jsonl para ejecución rápida.")
-    parser.add_argument("--claude-dir", type=str, default=str(Path.home() / ".claude"),
-                        help="Ruta base del directorio de Claude (default: ~/.claude).")
-    parser.add_argument("--proyectos-dir", type=str, default=str(Path.home() / "Proyectos"),
-                        help="Carpeta de proyectos donde buscar .claude de proyecto (default: ~/Proyectos).")
-    args = parser.parse_args()
-
-    claude_dir = Path(os.path.expanduser(args.claude_dir)).resolve()
-    out_dir = Path(os.path.expanduser(args.out)).resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    # 1. Recolección de disco
-    settings = leer_json(claude_dir / "settings.json") or {}
+def leer_disco(io: IO, proyectos_dir: Union[str, Path]) -> Dict[str, Any]:
+    """
+    Recorre el disco e inventaria el ecosistema de Claude Code usando IO.
+    Devuelve la estructura de inventario previa a la medición de uso real,
+    incluyendo 'arranque' y 'resumen', sin 'generado_en' ni 'metricas_ejecucion'.
+    """
+    claude_dir = io.claude_dir
+    settings = io.leer_json(claude_dir / "settings.json") or {}
     en_plugins = settings.get("enabledPlugins") if isinstance(settings, dict) else {}
     habilitados = {str(k): bool(v) for k, v in en_plugins.items()} if isinstance(en_plugins, dict) else {}
     marketplaces: List[str] = []
     extra_m = settings.get("extraKnownMarketplaces") if isinstance(settings, dict) else None
     if isinstance(extra_m, dict):
         marketplaces = sorted(str(k) for k in extra_m.keys())
-    conocidos = leer_json(claude_dir / "plugins" / "known_marketplaces.json")
+    conocidos = io.leer_json(claude_dir / "plugins" / "known_marketplaces.json")
     marketplaces_conocidos = sorted(conocidos.keys()) if isinstance(conocidos, dict) else []
 
-    skills_personales = inventariar_skills_personales(claude_dir)
-    agentes = inventariar_agentes(claude_dir)
-    pl = inventariar_plugins(claude_dir, habilitados)
-    skills_plugin = pl["skills_plugin"] + inventariar_skills_sincronizadas(claude_dir)
-    hooks = inventariar_hooks(claude_dir)
-    ajustes = inventariar_ajustes(claude_dir)
-    servidores_mcp, mcp_sin_definicion = inventariar_servidores_mcp(claude_dir, pl["mcp_plugin"], ajustes)
-    mods = inventariar_mods(claude_dir)
+    skills_personales = inventariar_skills_personales(io)
+    agentes = inventariar_agentes(io)
+    pl = inventariar_plugins(io, habilitados)
+    skills_plugin = pl["skills_plugin"] + inventariar_skills_sincronizadas(io)
+    hooks = inventariar_hooks(io)
+    ajustes = inventariar_ajustes(io)
+    servidores_mcp, mcp_sin_definicion = inventariar_servidores_mcp(io, pl["mcp_plugin"], ajustes)
+    mods = inventariar_mods(io)
     hooks_mods: List[Dict[str, Any]] = []
     for md in mods:
-        hk = leer_json(claude_dir / "mods" / md["nombre"] / "hooks" / "hooks.json")
+        hk = io.leer_json(claude_dir / "mods" / md["nombre"] / "hooks" / "hooks.json")
         hooks_mods += hooks_desde_cfg(hk, f"mod:{md['nombre']}") if hk else []
 
-    # 2. Medición de uso real
-    if not args.solo_disco:
-        stats, metricas = medir_uso_real(claude_dir)
-    else:
-        stats = {c: {} for c in CATEGORIAS_USO}
-        metricas = {"archivos_jsonl_leidos": 0, "archivos_principales": 0, "archivos_subagentes": 0,
-                    "lineas_leidas": 0, "lineas_no_parseadas": 0}
-    metricas["solo_disco"] = args.solo_disco
-
     inv: Dict[str, Any] = {
-        "generado_en": datetime.now(timezone.utc).isoformat(),
-        "directorio_claude": con_tilde(claude_dir),
-        "metricas_ejecucion": metricas,
+        "directorio_claude": con_tilde(claude_dir, io.home),
         "skills_personales": skills_personales,
         "agentes": agentes,
         "plugins": pl["plugins"],
@@ -2013,7 +1796,7 @@ def main():
         "hooks": hooks,
         "hooks_plugin": pl["hooks_plugin"],
         "hooks_mods": hooks_mods,
-        "hooks_dir": inventariar_hooks_dir(claude_dir, hooks),
+        "hooks_dir": inventariar_hooks_dir(io, hooks),
         "servidores_mcp": servidores_mcp,
         "mcp_habilitados_sin_definicion_en_disco": mcp_sin_definicion,
         "plugins_habilitados_settings": [{"nombre": k, "habilitado": v} for k, v in sorted(habilitados.items())],
@@ -2021,52 +1804,115 @@ def main():
         "marketplaces_extra_settings": marketplaces,
         "cache_plugins": pl["cache"],
         "mods": mods,
-        "tareas_programadas": inventariar_tareas_programadas(claude_dir),
-        "scripts": inventariar_scripts(claude_dir),
-        "permisos": inventariar_permisos(claude_dir),
+        "tareas_programadas": inventariar_tareas_programadas(io),
+        "scripts": inventariar_scripts(io),
+        "permisos": inventariar_permisos(io),
         "ajustes": ajustes,
-        "otros": inventariar_recetas_y_otros(claude_dir),
-        "archivo": inventariar_archivo(claude_dir),
-        "claude_md_global": inventariar_claude_md(claude_dir),
-        "proyectos": inventariar_proyectos(Path(os.path.expanduser(args.proyectos_dir)).resolve(),
+        "otros": inventariar_recetas_y_otros(io),
+        "archivo": inventariar_archivo(io),
+        "claude_md_global": inventariar_claude_md(io),
+        "proyectos": inventariar_proyectos(io, proyectos_dir,
                                            {sk["nombre"] for sk in skills_personales} | {sk["carpeta"] for sk in skills_personales}),
-        "memoria": inventariar_memoria(claude_dir),
-        "rutinas_registradas": inventariar_rutinas(),
+        "memoria": inventariar_memoria(io),
+        "rutinas_registradas": inventariar_rutinas(io),
     }
     inv["arranque"] = [h for h in hooks if h["evento"] == "SessionStart"] + \
                       [h for h in inv["hooks_plugin"] if h["evento"] == "SessionStart" and h["cargado"]] + \
                       [h for h in hooks_mods if h["evento"] == "SessionStart"]
     inv["resumen"] = armar_resumen(inv)
-    contador = leer_contador_interno_skills()
+    return inv
 
-    # 3. Cruce mecánico
+
+def cerrar(
+    inv_disco: Dict[str, Any],
+    stats: Dict[str, Any],
+    metricas: Dict[str, Any],
+    contador: Dict[str, Any],
+    io: IO,
+) -> Dict[str, Any]:
+    """
+    Cruza el inventario de disco con las estadísticas de uso real, sin mutar inv_disco.
+    Devuelve `inv` completo con 'generado_en' y 'metricas_ejecucion'.
+    """
+    inv = copy.deepcopy(inv_disco)
+    metricas_out = copy.deepcopy(metricas)
+
+    # 1. Cruce mecánico
     uso_sin = realizar_cruce_general(inv, stats)
-    inv["uso_real"] = serializar_uso(stats)
+    inv["uso_real"] = mapa_uso.serializar_uso(stats)
     inv["uso_sin_inventario"] = uso_sin
     inv["contador_interno_skills"] = contador
+
     for it in inv["skills_personales"]:
         it["contador_interno_claude"] = contador.get(it["nombre"])
     for it in inv["skills_plugin"]:
         it["contador_interno_claude"] = contador.get(it["invocacion"])
-    # Totales de uso que dependen del cruce
+
+    # 2. Totales de uso que dependen del cruce
     def por_origen(items: List[Dict[str, Any]]) -> Dict[str, int]:
         c: Dict[str, int] = {}
         for it in items:
             c[it["origen_uso"]] = c.get(it["origen_uso"], 0) + 1
         return dict(sorted(c.items()))
+
     inv["resumen"]["skills_cargadas_por_origen_de_uso"] = por_origen(inv["skills_personales"] + [s for s in inv["skills_plugin"] if s["cargado"]])
     inv["resumen"]["agentes_cargados_por_origen_de_uso"] = por_origen(inv["agentes"] + [a for a in inv["agentes_plugin"] if a["cargado"]])
     inv["resumen"]["skills_cargadas_nunca_usadas"] = (
         sum(1 for s in inv["skills_personales"] if s["nunca_usado"]) +
-        sum(1 for s in inv["skills_plugin"] if s["cargado"] and s["nunca_usado"]))
+        sum(1 for s in inv["skills_plugin"] if s["cargado"] and s["nunca_usado"])
+    )
     inv["resumen"]["agentes_cargados_nunca_usados"] = (
         sum(1 for a in inv["agentes"] if a["nunca_usado"]) +
-        sum(1 for a in inv["agentes_plugin"] if a["cargado"] and a["nunca_usado"]))
+        sum(1 for a in inv["agentes_plugin"] if a["cargado"] and a["nunca_usado"])
+    )
 
-    # 3b. Depuración: ningún nombre de cliente de la lista de prohibidos sale en los archivos
+    # 3. Depuración de nombres de clientes
     contador_depurados = [0]
-    inv = depurar_clientes(inv, cargar_patron_clientes(claude_dir), contador_depurados)
-    inv["metricas_ejecucion"]["textos_depurados_de_nombres_de_clientes"] = contador_depurados[0]
+    inv = depurar_clientes(inv, cargar_patron_clientes(io), contador_depurados)
+    metricas_out["textos_depurados_de_nombres_de_clientes"] = contador_depurados[0]
+
+    inv["generado_en"] = datetime.now(timezone.utc).isoformat()
+    inv["metricas_ejecucion"] = metricas_out
+    return inv
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Inventario mecánico y medición de uso del ecosistema Claude Code (~/.claude)."
+    )
+    parser.add_argument("--out", type=str, default="./inventario_resultado",
+                        help="Carpeta de destino para inventario.json e inventario.md.")
+    parser.add_argument("--solo-disco", action="store_true",
+                        help="Omitir el análisis de conversaciones .jsonl para ejecución rápida.")
+    parser.add_argument("--claude-dir", type=str, default=None,
+                        help="Ruta base del directorio de Claude (default: ~/.claude).")
+    parser.add_argument("--proyectos-dir", type=str, default=None,
+                        help="Carpeta de proyectos donde buscar .claude de proyecto (default: ~/Proyectos).")
+    args = parser.parse_args()
+
+    io = io_por_defecto(args.claude_dir)
+    proyectos_dir = io.expandir_ruta(args.proyectos_dir) if args.proyectos_dir else io.home / "Proyectos"
+    out_dir = io.expandir_ruta(args.out)
+    crear_directorio(out_dir)
+
+    # 1. Recolección de disco
+    inv_disco = leer_disco(io, proyectos_dir)
+
+    # 2. Medición de uso real
+    if not args.solo_disco:
+        stats, metricas, contador = mapa_uso.medir(io.claude_dir, io.home)
+    else:
+        stats = {c: {} for c in CATEGORIAS_USO}
+        metricas = {
+            "archivos_jsonl_leidos": 0, "archivos_principales": 0, "archivos_subagentes": 0,
+            "lineas_leidas": 0, "lineas_no_parseadas": 0, "solo_disco": True
+        }
+        contador = mapa_uso.leer_contador_interno_skills(io.home)
+
+    metricas["solo_disco"] = args.solo_disco
+
+    # 3. Cierre y cruce mecánico
+    inv = cerrar(inv_disco, stats, metricas, contador, io)
 
     # 4. Salida
     json_salida = out_dir / "inventario.json"
@@ -2076,6 +1922,7 @@ def main():
     generar_reporte_markdown(inv, md_salida)
 
     r = inv["resumen"]
+    m = inv["metricas_ejecucion"]
     print("=" * 66)
     print("        RESUMEN DEL INVENTARIO DEL ECOSISTEMA CLAUDE")
     print("=" * 66)
@@ -2091,8 +1938,8 @@ def main():
     print(f"Scripts                   : {r['total_scripts']}")
     print(f"Memoria (entradas)        : {r['memoria_total_entradas']}")
     print("-" * 66)
-    print(f"Conversaciones .jsonl     : {metricas['archivos_jsonl_leidos']} ({metricas['archivos_principales']} principales + {metricas['archivos_subagentes']} subagentes)")
-    print(f"Líneas leídas / sin parsear: {metricas['lineas_leidas']} / {metricas['lineas_no_parseadas']}")
+    print(f"Conversaciones .jsonl     : {m['archivos_jsonl_leidos']} ({m['archivos_principales']} principales + {m['archivos_subagentes']} subagentes)")
+    print(f"Líneas leídas / sin parsear: {m['lineas_leidas']} / {m['lineas_no_parseadas']}")
     print("=" * 66)
     print(f"Archivos generados en '{out_dir}': {json_salida.name}, {md_salida.name}")
 
