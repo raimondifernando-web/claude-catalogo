@@ -83,7 +83,7 @@ def lineas_cierre(repo):
     out = [f"• REPO SIN UNIÓN AUTOMÁTICA: «{n}» no está en ~/.claude/unir-a-main.txt → une por PR. Hacelo VOS, en este orden: "
            f"(1) push de la rama y `gh pr create --fill --repo {slug}` si no hay PR; (2) bind_pr + set_monitor(auto_fix) si la app los tiene; "
            f"(3) `python3 unir-pr <N> --repo {slug}` (está junto a cerrar-check.py; decide solo: unión programada o directa, sin OK de la persona). Si termina con «Falta: …», avisá ESA línea en criollo y ponela en el REANUDAR con dueño; nunca le pidas a la persona que corra `gh pr merge`; "
-           f"(4) `cierre_repo.py volver` (no te quedes en la rama de cierre); (5) seguí con el paso 10: abrir la sesión siguiente y archivarte"]
+           f"(4) `cierre_repo.py volver` (no te quedes en la rama de cierre); (5) seguí con el paso 10: terminá la mudanza (`cierre-mudanza.py`) y archivate"]
     if rama and b and rama != b:
         out.append(f"• RAMA DE CIERRE: estás en «{rama}», no en «{b}» → al terminar el PR: `python3 cierre_repo.py volver` (está junto a cerrar-check.py)")
     return out

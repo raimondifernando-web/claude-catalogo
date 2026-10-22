@@ -63,6 +63,17 @@ class CheckTest(Base):
         r = correr(CHECK, self.dir)
         self.assertEqual(r.returncode, 0, r.stdout)
 
+    def test_proyectos_con_tareas_y_esfuerzo_por_horas_o_dias(self):
+        """Criterio nuevo: fila de proyecto («Proyecto:») con sus tareas («parte de <ID>»), Esf. Bajo/Medio/Alto y Prio = impacto − esfuerzo."""
+        self.escribir(lista([
+            "| A1 | Proyecto: mudar la tienda | 1 | en curso | — | Alto | C | plantilla |",
+            "| A2 | Pasos: ☐ armar la lista ☑ elegir fecha | 2 | pendiente | parte de A1 | Bajo | C | plantilla |",
+            "| A3 | Cargar los precios | 3 | espera OK | parte de A1 | Medio | Ana | plantilla |",
+        ]))
+        r = correr(CHECK, self.dir)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("3 filas", r.stdout)
+
     def test_estados_validos_y_viejos_con_de(self):
         for est in ("pendiente", "en curso", "hecho", "espera dato", "espera OK", "espera dato de Ana", "espera OK de F"):
             with self.subTest(estado=est):
