@@ -33,6 +33,22 @@ def firma(p: Union[str, Path]) -> str:
         return f"ERR:{e.errno}"
 
 
+def firma_tipo(p: Union[str, Path]) -> str:
+    """
+    Firma de EXISTENCIA y tipo (siguiendo enlaces): 'T:dir', 'T:file', 'T:none' o 'T:otro'.
+    Es lo que se registra cuando el lector solo pregunta «¿existe? ¿es carpeta? ¿es archivo?»: la fecha de esa ruta
+    no le importa (la de `.git` cambia con cada commit, la de `plugins/cache` con cada actualización de la app).
+    """
+    try:
+        if os.path.isdir(str(p)):
+            return "T:dir"
+        if os.path.isfile(str(p)):
+            return "T:file"
+        return "T:otro" if os.path.lexists(str(p)) else "T:none"
+    except OSError:
+        return "T:none"
+
+
 Entrada = namedtuple("Entrada", ["nombre", "ruta", "es_dir"])
 
 
@@ -49,11 +65,14 @@ class Registro(dict):
         arch: Optional[Dict[str, str]] = None,
         dirs: Optional[Dict[str, List[Any]]] = None,
         contenido: Optional[Dict[str, str]] = None,
+        fuentes: Optional[Dict[str, Any]] = None,
     ):
         super().__init__()
         self["arch"] = dict(arch) if arch is not None else {}
         self["dirs"] = dict(dirs) if dirs is not None else {}
         self["contenido"] = dict(contenido) if contenido is not None else {}
+        # clave de contenido -> [ruta absoluta del JSON, [claves anidadas]]; se guarda para poder recalcular sin adivinar
+        self["fuentes"] = dict(fuentes) if fuentes is not None else {}
         # Mapping interno clave -> (ruta_archivo_abs, list_claves_json) para recalcular huellas
         self._fuentes: Dict[str, Tuple[str, List[str]]] = {}
 
@@ -111,17 +130,33 @@ def es_modo_proyectos(p: Union[str, Path], home: Union[str, Path]) -> bool:
         return False
 
 
+def _nivel_en_proyectos(p: Union[str, Path], home: Union[str, Path]) -> int:
+    """Cuántos niveles bajo home/Proyectos está `p` (Proyectos = 0). -1 si no está ahí."""
+    try:
+        rel = Path(os.path.abspath(str(p))).relative_to(Path(os.path.abspath(str(home))) / "Proyectos")
+    except ValueError:
+        return -1
+    return len(rel.parts)
+
+
 def obtener_nombres_relevantes(p: Union[str, Path], home: Union[str, Path]) -> List[str]:
     """
-    Devuelve los nombres relevantes de una carpeta:
-    - En MODO PROYECTOS: solo subcarpetas (con '/') y el archivo '.mcp.json' si existe.
-    - Fuera de MODO PROYECTOS o dentro de un .claude: todos los nombres (carpetas con '/').
+    Devuelve los nombres que, si cambian, cambian el mapa:
+    - MODO PROYECTOS (bajo ~/Proyectos y fuera de un .claude): el lector solo busca carpetas `.claude` (hasta 4 niveles)
+      y archivos `.mcp.json` (hasta 3). Entonces: nivel 0-2 → subcarpetas (con '/') y `.mcp.json`; nivel 3 → solo `.claude/`
+      y `.mcp.json` (lo demás no se recorre: antes cada carpeta temporal de una copia de trabajo rehacía el mapa);
+      nivel 4 o más → nada (solo cuenta su propio nombre, que ya vigila su padre).
+    - Fuera de ese modo: todos los nombres (carpetas con '/'), menos las marcas ocultas que la app pone y saca sola
+      (p. ej. `.in_use` en cada plugin cargado), salvo `.claude`, `.claude-plugin` y `.mcp.json`.
     Usa follow_symlinks=False para determinar si es carpeta.
     """
     p_str = os.path.abspath(str(p))
     if not os.path.isdir(p_str):
         return []
     modo_proy = es_modo_proyectos(p_str, home)
+    nivel = _nivel_en_proyectos(p_str, home) if modo_proy else -1
+    if modo_proy and nivel >= 4:
+        return []
     nombres: List[str] = []
     try:
         with os.scandir(p_str) as it:
@@ -131,19 +166,15 @@ def obtener_nombres_relevantes(p: Union[str, Path], home: Union[str, Path]) -> L
                 except OSError:
                     es_dir = False
                 nombre = de.name
-                # Marcas ocultas que la app pone y saca sola (p. ej. .in_use en cada plugin cargado): no son piezas.
+                if modo_proy:
+                    if nombre == ".mcp.json" and not es_dir:
+                        nombres.append(nombre)
+                    elif es_dir and (nivel < 3 or nombre == ".claude"):
+                        nombres.append(f"{nombre}/")
+                    continue
                 if nombre.startswith(".") and nombre not in (".claude", ".claude-plugin", ".mcp.json"):
                     continue
-                if modo_proy:
-                    if es_dir:
-                        nombres.append(f"{nombre}/")
-                    elif nombre == ".mcp.json":
-                        nombres.append(nombre)
-                else:
-                    if es_dir:
-                        nombres.append(f"{nombre}/")
-                    else:
-                        nombres.append(nombre)
+                nombres.append(f"{nombre}/" if es_dir else nombre)
     except OSError:
         return []
     return sorted(nombres)
@@ -238,25 +269,25 @@ class IO:
     def existe(self, p: Union[str, Path]) -> bool:
         """Comprueba existencia siguiendo enlaces; registra en arch."""
         p_abs = os.path.abspath(str(p))
-        self.registro.arch[p_abs] = firma(p_abs)
+        self.registro.arch.setdefault(p_abs, firma_tipo(p_abs))
         return os.path.exists(p_abs)
 
     def es_archivo(self, p: Union[str, Path]) -> bool:
         """Comprueba si es archivo siguiendo enlaces; registra en arch."""
         p_abs = os.path.abspath(str(p))
-        self.registro.arch[p_abs] = firma(p_abs)
+        self.registro.arch.setdefault(p_abs, firma_tipo(p_abs))
         return os.path.isfile(p_abs)
 
     def es_dir(self, p: Union[str, Path]) -> bool:
         """Comprueba si es directorio siguiendo enlaces; registra en arch."""
         p_abs = os.path.abspath(str(p))
-        self.registro.arch[p_abs] = firma(p_abs)
+        self.registro.arch.setdefault(p_abs, firma_tipo(p_abs))
         return os.path.isdir(p_abs)
 
     def es_symlink(self, p: Union[str, Path]) -> bool:
         """Comprueba si es enlace simbólico; registra en arch."""
         p_abs = os.path.abspath(str(p))
-        self.registro.arch[p_abs] = firma(p_abs)
+        self.registro.arch.setdefault(p_abs, firma_tipo(p_abs) if not os.path.islink(p_abs) else "T:link")
         return os.path.islink(p_abs)
 
     def mtime(self, p: Union[str, Path]) -> Optional[float]:
@@ -390,6 +421,7 @@ class IO:
         huella = huella_claves(nombres)
         self.registro.contenido[clave_registro] = huella
         self.registro._fuentes[clave_registro] = (p_abs, claves_list)
+        self.registro["fuentes"][clave_registro] = [p_abs, claves_list]
         return nombres
 
 
@@ -407,7 +439,10 @@ def cambios(registro: Registro, home: Union[str, Path]) -> List[Tuple[str, str]]
 
     # 1. Archivos
     for p, f_guardada in sorted(registro.arch.items()):
-        if firma(p) != f_guardada:
+        actual = firma_tipo(p) if f_guardada.startswith("T:") else firma(p)
+        if f_guardada == "T:link":
+            actual = "T:link" if os.path.islink(p) else firma_tipo(p)
+        if actual != f_guardada:
             difs.append(("archivo", p))
 
     # 2. Carpetas
@@ -421,7 +456,10 @@ def cambios(registro: Registro, home: Union[str, Path]) -> List[Tuple[str, str]]
                 difs.append(("carpeta", p))
 
     # 3. Contenido
-    fuentes = getattr(registro, "_fuentes", {})
+    fuentes = dict(getattr(registro, "_fuentes", {}))
+    for _k, _v in (registro.get("fuentes") or {}).items():      # las guardadas en vigilancia.json
+        if isinstance(_v, (list, tuple)) and len(_v) == 2:
+            fuentes.setdefault(_k, (_v[0], list(_v[1])))
     for clave, huella_guardada in sorted(registro.contenido.items()):
         if clave in fuentes:
             p_abs, ruta_claves = fuentes[clave]

@@ -163,7 +163,7 @@ def parse_yaml_frontmatter(contenido: str) -> Dict[str, Any]:
 # 2. INVENTARIO MECÁNICO DESDE EL DISCO (CON IO)
 # ==============================================================================
 
-SALTAR_DIRS = {"node_modules", ".git", "__pycache__", ".venv", "venv"}
+SALTAR_DIRS = {"node_modules", ".git", "__pycache__", ".venv", "venv", ".omc", ".build", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
 AGENTES_DE_FABRICA = mapa_uso.AGENTES_DE_FABRICA
 SKILLS_DE_FABRICA = mapa_uso.SKILLS_DE_FABRICA
 COMANDOS_DE_FABRICA = mapa_uso.COMANDOS_DE_FABRICA
@@ -733,7 +733,8 @@ def inventariar_ajustes(io: IO) -> Dict[str, Any]:
         "settings_local_claves": sorted(sl.keys()) if isinstance(sl, dict) else [],
         "settings_local_permisos": len(sl_perms) if isinstance(sl_perms, (list, dict)) else 0,
         "mcp_habilitados_settings_local": sorted(lista_str(sl.get("enabledMcpjsonServers"))) if isinstance(sl, dict) else [],
-        "mcp_necesitan_autenticacion": sorted(_claves_dict(io.leer_json(io.claude_dir / "mcp-needs-auth-cache.json"))),
+        # solo los NOMBRES (la app reescribe ese archivo con fechas todo el tiempo y no deben rehacer el mapa)
+        "mcp_necesitan_autenticacion": sorted(io.nombres_json(io.claude_dir / "mcp-needs-auth-cache.json", [], "claude:mcp_necesitan_autenticacion")),
     }
 
 
@@ -1804,8 +1805,8 @@ def leer_disco(io: IO, proyectos_dir: Union[str, Path]) -> Dict[str, Any]:
     extra_m = settings.get("extraKnownMarketplaces") if isinstance(settings, dict) else None
     if isinstance(extra_m, dict):
         marketplaces = sorted(str(k) for k in extra_m.keys())
-    conocidos = io.leer_json(claude_dir / "plugins" / "known_marketplaces.json")
-    marketplaces_conocidos = sorted(conocidos.keys()) if isinstance(conocidos, dict) else []
+    # solo los NOMBRES de los marketplaces (el archivo trae fechas de actualización que cambian solas)
+    marketplaces_conocidos = sorted(io.nombres_json(claude_dir / "plugins" / "known_marketplaces.json", [], "claude:marketplaces_conocidos"))
 
     skills_personales = inventariar_skills_personales(io)
     agentes = inventariar_agentes(io)
