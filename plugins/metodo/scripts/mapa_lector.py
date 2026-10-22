@@ -209,6 +209,41 @@ def depurar_clientes(obj: Any, patron: Optional["re.Pattern[str]"], contador: Li
     return obj
 
 
+# Patrones de seguridad para tapar claves o credenciales sensibles
+_PATRONES_CLAVES = [
+    re.compile(r"-----BEGIN " + r"[A-Za-z0-9_\- ]*PRIVATE KEY-----"),
+    re.compile(r"AK" + r"IA[0-9A-Z]{16}"),
+    re.compile(r"gh" + r"[pousr]_[A-Za-z0-9]{36}"),
+    re.compile(r"s" + r"k-[A-Za-z0-9_\-]{20,}"),
+    re.compile(r"x" + r"ox[abpr]-"),
+    re.compile(r"AI" + r"za[0-9A-Za-z_\-]{35}"),
+    re.compile(r"(?:pass" + r"word|passwd|secret|token|api[_\-]?key)\s*[=:]\s*\S{8,}", re.IGNORECASE),
+]
+
+
+def tapar_claves(obj: Any) -> Any:
+    """
+    Recorre recursivamente listas/dicts y reemplaza por '[tapado]'
+    las cadenas que contengan claves o credenciales sensibles.
+    No cambia ninguna otra cadena.
+    """
+    if isinstance(obj, str):
+        for pat in _PATRONES_CLAVES:
+            if pat.search(obj):
+                return "[tapado]"
+        return obj
+    if isinstance(obj, list):
+        return [tapar_claves(x) for x in obj]
+    if isinstance(obj, tuple):
+        return tuple(tapar_claves(x) for x in obj)
+    if isinstance(obj, dict):
+        return {
+            (tapar_claves(k) if isinstance(k, str) else k): tapar_claves(v)
+            for k, v in obj.items()
+        }
+    return obj
+
+
 def lista_str(v: Any) -> List[str]:
     """Convierte None / texto / lista en lista de textos."""
     if v is None:
@@ -1866,9 +1901,10 @@ def cerrar(
         sum(1 for a in inv["agentes_plugin"] if a["cargado"] and a["nunca_usado"])
     )
 
-    # 3. Depuración de nombres de clientes
+    # 3. Depuración de nombres de clientes y claves sensibles
     contador_depurados = [0]
     inv = depurar_clientes(inv, cargar_patron_clientes(io), contador_depurados)
+    inv = tapar_claves(inv)
     metricas_out["textos_depurados_de_nombres_de_clientes"] = contador_depurados[0]
 
     inv["generado_en"] = datetime.now(timezone.utc).isoformat()
