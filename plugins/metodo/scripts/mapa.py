@@ -247,6 +247,7 @@ def obtener_registro_de_vigilancia(vig: Dict[str, Any]) -> Registro:
         arch=reg_dict.get("arch"),
         dirs=reg_dict.get("dirs"),
         contenido=reg_dict.get("contenido"),
+        fuentes=reg_dict.get("fuentes"),
     )
 
 
@@ -624,6 +625,15 @@ def recolectar_piezas_para_busqueda(inv: Dict[str, Any]) -> List[Dict[str, Any]]
         })
 
     return piezas
+
+
+def listar_piezas(claude_dir: Path, home: Path, proyectos_dir: Path) -> List[Dict[str, Any]]:
+    """API para otros programas (herramientas-para, el Bicho): las piezas del mapa YA AL DÍA, sin que nadie abra
+    ni rehaga archivos a mano. Cada pieza: tipo, nombre, descripcion, donde_vive (+ raw con la ficha)."""
+    asegurar_al_dia(claude_dir, home, proyectos_dir)
+    with open(claude_dir / "mapa" / "mapa.json", "r", encoding="utf-8") as f:
+        inv = json.load(f)
+    return recolectar_piezas_para_busqueda(inv)
 
 
 def comando_buscar(tema_lista: List[str], claude_dir: Path, home: Path, proyectos_dir: Path) -> None:

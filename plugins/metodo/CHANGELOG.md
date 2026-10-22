@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.53.1 — 2026-10-22
+**`mapa` casi no se rehace sin motivo, y `herramientas-para` ahora busca en el mapa.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema, medido en una computadora de trabajo real durante 3 horas:** el mapa se rehacía 41 veces de cada 45 consultas, casi siempre por cambios que no cambian nada del mapa: la marca `.git` de cada repositorio (cambia con cada commit), dos archivos que la app reescribe sola con fechas (`known_marketplaces.json` y `mcp-needs-auth-cache.json`) y carpetas temporales de copias de trabajo. Seguía dando el resultado correcto, pero gastaba un par de segundos de más.
+- **Qué cambia:** el mapa ya no mira la fecha de esas cosas. Pregunta «¿existe?» donde solo importa eso, compara solo los nombres de los archivos que la app reescribe, y en `~/Proyectos` solo vigila lo que de verdad lee (carpetas `.claude` y archivos `.mcp.json` hasta la profundidad que mira). Medición después del arreglo: 0 rehacer en 26 consultas seguidas (antes 41 de 45).
+- **`herramientas-para` busca en el mapa:** cuando vas a construir algo y `herramientas-para <tema>` te muestra «qué hay ya hecho», las skills y agentes salen de la misma lista que `mapa buscar`: siempre al día (una skill creada hace un minuto aparece) y sin duplicados de versiones viejas de plugins. Si el mapa no se puede leer, vuelve solo al recorrido de antes: nunca se queda sin contestar.
+- **Qué NO cambia:** lo que ves en pantalla (mismo formato), las recetas, el freno de la regla 22 y el resultado del mapa (se comparó contra el programa anterior).
+
 ## 0.53.0 — 2026-10-22
 **Nuevo comando `mapa`: te dice qué skills, agentes, conectores, reglas y programas tenés instalados, siempre al día y sin gastar IA.** Se aplica solo con la actualización; no hay nada que correr y no se instala nada que arranque solo.
 - **Para qué sirve:** antes de armar algo, `mapa buscar <tema>` te muestra qué hay ya hecho (nombre, qué hace en una línea y dónde vive). `mapa` a secas da un resumen corto (cuántas piezas de cada tipo y las últimas que cambiaron); `mapa ver <pieza>` abre la ficha de una; `mapa --al-dia` dice si el mapa coincide con tu disco.

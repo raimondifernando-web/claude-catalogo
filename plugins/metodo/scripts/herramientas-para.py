@@ -98,7 +98,37 @@ def recetas(q, minimo=1, estricto=False):
     return sorted(out, key=lambda x: -x[0])
 
 
+def piezas_del_mapa(q):
+    """Skills y agentes que coinciden, leídos del mapa único (`mapa.py`: siempre al día, un solo lector del disco).
+    Devuelve None si el mapa no se puede usar (el llamador cae al recorrido directo: este programa nunca se rompe)."""
+    try:
+        sys.path.insert(0, AQUI)
+        import mapa
+        claude_dir, home, proyectos = mapa.obtener_directorios(CFG if "CLAUDE_CONFIG_DIR" in os.environ else None)
+        lista = mapa.listar_piezas(claude_dir, home, proyectos)
+    except (Exception, SystemExit):
+        return None
+    cand = {}
+    for p in lista:
+        tipo = "skill" if p["tipo"].startswith("skill") else "agente" if p["tipo"].startswith("agente") else None
+        if tipo is None:
+            continue
+        nombre, d = p["nombre"], p["descripcion"] or ""
+        sc = 3 * len(q & toks(nombre)) + len(q & toks(d))
+        if sc and (tipo, nombre) not in cand:
+            cand[(tipo, nombre)] = (sc, d)
+    return sorted(cand.items(), key=lambda kv: -kv[1][0])
+
+
 def piezas(q):
+    por_mapa = piezas_del_mapa(q)
+    if por_mapa is not None:
+        return por_mapa
+    return piezas_por_disco(q)
+
+
+def piezas_por_disco(q):
+    """Plan B: recorrido directo del disco (solo si el mapa no está disponible)."""
     cand = {}
     pats = [("skill", os.path.join(CFG, "skills", "*", "SKILL.md")),
             ("agente", os.path.join(CFG, "agents", "*.md")),
