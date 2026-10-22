@@ -48,6 +48,9 @@ las reglas 1-10 no cubren: dos sesiones editan el mismo archivo, una sesión hac
     `git add -A`: si hay otra sesión en la misma carpeta, se llevaría su trabajo a medias. Antes de subir: `git pull --rebase --autostash`. Juntar a
     `main` es **un evento al cerrar, de a una sesión por vez**, y **sin pedir OK** si pasan los controles (regla 3).
     Nunca `--force`, nunca `reset --hard`.
+    Si lo que hiciste lo usa otra sesión (un cambio publicado, una regla nueva), **avisale por escrito en su carpeta**
+    (`<carpeta>/.claude/prompts/AAAA-MM-DD-<origen>-aviso-<tema>.md`: qué cambió y qué le toca hacer) y, si está
+    abierta, mandale además un mensaje directo: la otra sesión no revisa su carpeta sola.
 14. **Ninguna sesión de proyecto arranca sin preparación.** Una sesión de preparación (o una llamada con quien te acompaña)
     define: carpeta, ficha (`CLAUDE.md`), equipo (PM + especialistas), skills que hacen falta, límites con otros
     proyectos — y entrega el texto de arranque. Sin eso, la sesión improvisa.
