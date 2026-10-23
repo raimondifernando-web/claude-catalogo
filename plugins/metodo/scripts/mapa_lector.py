@@ -790,7 +790,7 @@ def inventariar_proyectos(io: IO, raiz: Union[str, Path], skills_personales: Opt
         dirs[:] = []  # no seguir dentro de .claude
         cdir = Path(actual)
         proyecto = cdir.parent
-        rel = str(proyecto.relative_to(raiz_path)) if proyecto != raiz_path else "."
+        rel = proyecto.relative_to(raiz_path).as_posix() if proyecto != raiz_path else "."
         skills = [p.name for p in skills_en_dir(io, cdir / "skills")]
         agentes = [e.ruta.stem for e in io.listar(cdir / "agents") if not e.es_dir and e.nombre.endswith(".md") and not e.nombre.startswith(".")] if io.es_dir(cdir / "agents") else []
         agentes.sort()
@@ -922,7 +922,7 @@ def inventariar_carpetas(io: IO, raiz: Union[str, Path]) -> List[Dict[str, Any]]
 
         return {
             "ruta": rel,
-            "ruta_tilde": io.con_tilde(p),
+            "ruta_tilde": io.con_tilde(p).replace("\\", "/"),   # siempre con «/» (también en Windows)
             "nombre": nombre,
             "grupo": grupo,
             "area": area,
@@ -1379,7 +1379,7 @@ def inventariar_servidores_mcp(
         for actual, dirs, files in io.caminar(raiz):
             podar_recorrido_proyectos_mcp(actual, dirs, prof)
             if ".mcp.json" in files:
-                rel = str(Path(actual).relative_to(raiz))
+                rel = Path(actual).relative_to(raiz).as_posix()
                 for n in nombres_mcp(io.leer_json(Path(actual) / ".mcp.json")):
                     nuevo(n, f"proyecto:{rel}/.mcp.json", True)
                     proyectos_mcp.append(f"{rel}:{n}")
