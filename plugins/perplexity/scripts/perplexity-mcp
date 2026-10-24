@@ -1,0 +1,46 @@
+#!/bin/bash
+# Arranca el servidor MCP oficial de Perplexity leyendo la clave del llavero de macOS (nunca de un archivo ni del chat).
+# Disparador: automático — lo lanza Claude Code al abrir cada sesión (servidor «perplexity» del plugin, .mcp.json).
+# Prueba de disparo: `claude mcp list` → plugin:perplexity:perplexity ✔ Connected (con clave); sin clave dice «falta la clave».
+# Versión fijada (Mand. XVI del catálogo) en runtime/package.json + package-lock.json: el servidor 1.3.0 y sus 129 paquetes,
+# cada uno con su huella (integrity). Para subirla: auditar la nueva y regenerar el lock. Sin «latest», sin rangos.
+SEC=/usr/bin/security                                     # solo las pruebas lo cambian (PERPLEXITY_PRUEBA=1)
+SERV="local.perplexity"
+if [ "${PERPLEXITY_PRUEBA:-}" = "1" ]; then SEC="${PERPLEXITY_SECURITY:-$SEC}"; SERV="${PERPLEXITY_LLAVERO_SERVICIO:-$SERV}"; fi
+case "$SERV" in local.perplexity|local.perplexity.prueba-[0-9]*) ;; *) echo "Perplexity: servicio de llavero inválido." >&2; exit 1 ;; esac
+CUENTA="api"
+ESPERA=90; [ "${PERPLEXITY_PRUEBA:-}" = "1" ] && ESPERA="${PERPLEXITY_ESPERA:-90}"
+RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
+DIR="${CLAUDE_PLUGIN_DATA:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/metodo/perplexity-runtime}"
+PATH="$PATH${PERPLEXITY_PATH_EXTRA-:/opt/homebrew/bin:/usr/local/bin}"   # Claude abre esto sin el PATH de la Terminal
+
+if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+  echo "Perplexity: falta Node. Instalalo desde nodejs.org (versión LTS) y abrí una sesión nueva." >&2
+  exit 1
+fi
+cd / || exit 1                                            # que ninguna carpeta de proyecto (.npmrc, node_modules) se meta en el medio
+KEY="$("$SEC" find-generic-password -s "$SERV" -a "$CUENTA" -w 2>/dev/null)"
+if [ -z "$KEY" ]; then
+  echo "Perplexity: falta la clave. Ponela con UN comando (la escribís vos; Claude no la ve): bash \"$RAIZ/scripts/perplexity-clave\"" >&2
+  exit 1
+fi
+# Instalar (una sola vez, o si cambió el lock) exactamente lo que dice el lock, sin scripts de instalación.
+# La marca .lock-ok se escribe SOLO si la instalación terminó bien; un candado evita que dos sesiones instalen a la vez.
+listo() { [ -f "$DIR/node_modules/@perplexity-ai/mcp-server/dist/index.js" ] && cmp -s "$RAIZ/runtime/package-lock.json" "$DIR/.lock-ok"; }
+if ! listo; then
+  mkdir -p "$DIR" || { echo "Perplexity: no pude preparar $DIR" >&2; exit 1; }
+  find "$DIR.lock" -maxdepth 0 -mmin +5 -exec rmdir {} \; 2>/dev/null   # candado viejo de una instalación cortada
+  if mkdir "$DIR.lock" 2>/dev/null; then
+    rm -f "$DIR/.lock-ok"
+    cp "$RAIZ/runtime/package.json" "$RAIZ/runtime/package-lock.json" "$DIR/" \
+      && ( cd "$DIR" && npm ci --ignore-scripts --no-audit --no-fund --registry https://registry.npmjs.org/ >&2 ) \
+      && cp "$RAIZ/runtime/package-lock.json" "$DIR/.lock-ok"
+    rmdir "$DIR.lock" 2>/dev/null
+  else
+    i=0; while [ $i -lt $ESPERA ] && ! listo; do sleep 1; i=$((i+1)); done   # otra sesión está instalando: esperar
+  fi
+  listo || { echo "Perplexity: no pude bajar el servidor oficial (¿sin internet?). Abrí una sesión nueva para reintentar." >&2; exit 1; }
+fi
+export PERPLEXITY_API_KEY="$KEY"
+unset KEY
+exec node "$DIR/node_modules/@perplexity-ai/mcp-server/dist/index.js"

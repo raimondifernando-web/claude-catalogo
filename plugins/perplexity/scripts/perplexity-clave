@@ -1,0 +1,77 @@
+#!/bin/bash
+# Perplexity: poner o revisar TU clave en el llavero de la Mac. La clave la escribe la persona; Claude nunca la escribe ni la ve.
+# Uso:  perplexity-clave            → te pide la clave (no se ve al pegar), la guarda en el llavero y cierra con una línea
+#       perplexity-clave --estado   → una línea: «Perplexity ✓ …» o «Falta: … ✗»
+#       perplexity-clave --aviso    → lo usa el hook al abrir sesión: silencio si todo está bien, aviso (1 vez por día) si falta algo
+#       perplexity-clave --borrar   → saca la clave del llavero (para cambiarla o dejar de usar Perplexity)
+# Disparador: automático (--aviso: lo lanza el hook SessionStart de este plugin) · manual declarada (poner/borrar la clave:
+#   la tipea la persona a propósito; nunca lo corre Claude por su cuenta).
+# Prueba de disparo: plugins/perplexity/scripts/tests/probar.sh (aviso sin clave → aviso; con clave → silencio).
+# Nunca imprime la clave, nunca la pone en un argumento de comando (se pasa por la entrada del llavero, no por `ps`).
+VERSION="1.3.0"
+SEC=/usr/bin/security                                     # solo las pruebas lo cambian (PERPLEXITY_PRUEBA=1)
+SERV="local.perplexity"
+if [ "${PERPLEXITY_PRUEBA:-}" = "1" ]; then SEC="${PERPLEXITY_SECURITY:-$SEC}"; SERV="${PERPLEXITY_LLAVERO_SERVICIO:-$SERV}"; fi
+case "$SERV" in local.perplexity|local.perplexity.prueba-[0-9]*) ;; *) echo "Falta: servicio de llavero inválido ✗"; exit 1 ;; esac
+CUENTA="api"
+PATH="$PATH${PERPLEXITY_PATH_EXTRA-:/opt/homebrew/bin:/usr/local/bin}"   # Claude abre esto sin el PATH de la Terminal
+AQUI="$(cd "$(dirname "$0")" && pwd)"
+CMD="bash \"$AQUI/perplexity-clave\""
+
+tiene_clave() { "$SEC" find-generic-password -s "$SERV" -a "$CUENTA" >/dev/null 2>&1; }   # sin -w: no lee la clave, solo si existe
+tiene_node()  { command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; }
+
+if [ "$(uname)" != "Darwin" ]; then
+  echo "Perplexity: este plugin guarda la clave en el llavero de macOS; en otro sistema no está probado. Falta: una Mac ✗"
+  [ "${1:-}" = "--aviso" ] && exit 0
+  exit 1
+fi
+
+estado() {   # imprime la línea final y devuelve 0 si está todo
+  if ! tiene_node; then echo "Falta: Node ✗ — instalalo desde nodejs.org (versión LTS) y abrí una sesión nueva"; return 1; fi
+  if ! tiene_clave; then echo "Falta: la clave de Perplexity ✗ — ponela con: $CMD"; return 1; fi
+  echo "Perplexity ✓ listo (clave en el llavero, servidor oficial versión $VERSION)"; return 0
+}
+
+case "${1:-}" in
+  --estado) estado; exit $? ;;
+  --aviso)
+    msg="$(estado)" && exit 0
+    d="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/metodo"; hoy="$(date +%Y%m%d)"
+    [ "$(cat "$d/perplexity-aviso" 2>/dev/null)" = "$hoy" ] && exit 0
+    mkdir -p "$d" 2>/dev/null && printf '%s' "$hoy" > "$d/perplexity-aviso" 2>/dev/null
+    if ! tiene_node; then echo "Perplexity: falta Node. Instalalo desde nodejs.org (versión LTS) y abrí una sesión nueva."
+    else echo "Perplexity: falta la clave. Ponela con UN comando, la escribís vos y no se ve al pegar: $CMD"; fi
+    echo "(Aviso del plugin perplexity, una vez por día. Si la persona no usa Perplexity, puede ignorarlo. Si la va a usar: que pegue ese comando en la Terminal y escriba ella la clave; vos no la pidas ni la escribas. La skill /perplexity:perplexity explica cómo sacar la clave.)"
+    exit 0 ;;
+  --borrar)
+    "$SEC" delete-generic-password -s "$SERV" -a "$CUENTA" >/dev/null 2>&1
+    if tiene_clave; then echo "Falta: no pude sacar la clave del llavero ✗"; exit 1; fi
+    echo "Perplexity: clave borrada del llavero ✓"; exit 0 ;;
+  "") ;;
+  *) echo "Uso: perplexity-clave [--estado | --aviso | --borrar]"; exit 2 ;;
+esac
+
+# --- poner la clave ---
+if [ -t 0 ]; then
+  echo "Pegá tu clave de Perplexity y apretá Enter. Al pegar NO se ve nada: es normal."
+  printf 'Clave: '; IFS= read -rs KEY; echo
+else
+  IFS= read -r KEY                                       # entrada por tubería (así se prueba)
+fi
+case "$KEY" in
+  "")                     echo "Falta: no escribiste nada ✗"; exit 1 ;;
+  *[!A-Za-z0-9_-]*)       echo "Falta: la clave tiene caracteres que no van (espacios o símbolos); copiala de nuevo, sin comillas ✗"; unset KEY; exit 1 ;;
+esac
+if [ "${#KEY}" -lt 20 ]; then echo "Falta: la clave es demasiado corta; copiala completa ✗"; unset KEY; exit 1; fi
+# La clave viaja por la entrada del programa «security», no por la línea de comandos (no se ve en `ps`).
+printf 'add-generic-password -s %s -a %s -U -w %s\n' "$SERV" "$CUENTA" "$KEY" | "$SEC" -i >/dev/null 2>&1
+rc=$?
+L="$("$SEC" find-generic-password -s "$SERV" -a "$CUENTA" -w 2>/dev/null)"   # comprobar que quedó la NUEVA (no una vieja), sin mostrarla
+if [ $rc -eq 0 ] && [ "$L" = "$KEY" ]; then
+  unset KEY L
+  echo "Perplexity ✓ clave guardada en el llavero. Abrí una sesión nueva de Claude para que conecte."
+else
+  unset KEY L
+  echo "Falta: no pude guardar la clave en el llavero ✗ (si apareció una ventana pidiendo permiso, aceptala y repetí)"; exit 1
+fi

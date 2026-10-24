@@ -1,0 +1,16 @@
+{
+  "description": "Perplexity: al abrir la sesión, si falta la clave (o Node), avisa en castellano y trae el comando para ponerla; como mucho una vez por día. Si todo está en orden no dice nada. Solo mira si la clave EXISTE en el llavero: nunca la lee ni la muestra. Sin red.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 5,
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/perplexity-clave\" --aviso 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}
