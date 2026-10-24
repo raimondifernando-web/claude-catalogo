@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.54.2 — 2026-10-22
+**`mapa carpetas`: la lista de tus carpetas de proyecto, siempre al día.** Se aplica solo con la actualización; no hay nada que correr.
+- **Qué te da:** `mapa carpetas` lista las carpetas reales de `~/Proyectos` (una línea por carpeta: tipo · grupo · nombre · ruta), con tipo (**activo**, **dormido** si cuelga de `Personal/`, **archivo** si está en `_archivo/`), grupo (la empresa o área de arriba) y un nombre legible. Con `--tipo`, `--grupo` o `--json` se filtra o se pasa a otro programa. Ninguna herramienta tiene que armar esa lista por su cuenta.
+- **Qué cuenta como carpeta de proyecto:** la regla de siempre de la estructura (una carpeta con `.git` o con `CLAUDE.md`; en la raíz toda carpeta cuenta); no entran las que empiezan con `.` o `_` ni los enlaces, así que las copias de trabajo temporales y lo que ya se borró no aparecen.
+- **Por qué importa para el rendimiento:** esas copias temporales ya no cuentan como cambio, así que el mapa se rehace menos (en el día de prueba con muchas sesiones en paralelo, 19 de 27 rehacer venían de copias de trabajo nuevas). La lista de proyectos con piezas de Claude (`proyectos`) tampoco las incluye.
+
 ## 0.54.1 — 2026-10-22
 **La lista de pendientes calcula la prioridad con una cuenta que da más peso a lo que rinde, y el control avisa de dos descuidos.** Se aplica solo con la actualización; no hay nada que correr y tus listas siguen funcionando igual.
 - **La cuenta:** la prioridad (Prio) sale de `2 × impacto − esfuerzo`, con Bajo 1 · Medio 2 · Alto 3 (antes era `impacto − esfuerzo`). Se sigue escribiendo el dígito: 1 = Alta (3 o más), 2 = Media (1 o 2), 3 = Baja (0 o menos). Así lo de impacto Alto sale Alta aunque cueste, y lo de impacto Bajo no sale Alta. La plantilla de la lista y el paso «Pendientes» de `/metodo:cerrar` ya lo explican.

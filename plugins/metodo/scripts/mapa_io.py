@@ -142,9 +142,10 @@ def _nivel_en_proyectos(p: Union[str, Path], home: Union[str, Path]) -> int:
 def obtener_nombres_relevantes(p: Union[str, Path], home: Union[str, Path]) -> List[str]:
     """
     Devuelve los nombres que, si cambian, cambian el mapa:
-    - MODO PROYECTOS (bajo ~/Proyectos y fuera de un .claude): el lector solo busca carpetas `.claude` (hasta 4 niveles)
-      y archivos `.mcp.json` (hasta 3). Entonces: nivel 0-2 → subcarpetas (con '/') y `.mcp.json`; nivel 3 → solo `.claude/`
-      y `.mcp.json` (lo demás no se recorre: antes cada carpeta temporal de una copia de trabajo rehacía el mapa);
+    - MODO PROYECTOS (bajo ~/Proyectos y fuera de un .claude): el lector solo busca carpetas `.claude` (hasta 4 niveles),
+      archivos `.mcp.json` (hasta 3) y carpetas de proyecto (hasta 3 niveles más `_archivo`). Entonces:
+      nivel 0-2 → subcarpetas visibles (con '/') y `.mcp.json`; se ignoran nombres que empiecen con '.' (salvo '.claude')
+      o con '_' (salvo exactamente '_archivo'); nivel 3 → solo `.claude/` y `.mcp.json` (lo demás no se recorre);
       nivel 4 o más → nada (solo cuenta su propio nombre, que ya vigila su padre).
     - Fuera de ese modo: todos los nombres (carpetas con '/'), menos las marcas ocultas que la app pone y saca sola
       (p. ej. `.in_use` en cada plugin cargado), salvo `.claude`, `.claude-plugin` y `.mcp.json`.
@@ -169,8 +170,13 @@ def obtener_nombres_relevantes(p: Union[str, Path], home: Union[str, Path]) -> L
                 if modo_proy:
                     if nombre == ".mcp.json" and not es_dir:
                         nombres.append(nombre)
-                    elif es_dir and (nivel < 3 or nombre == ".claude"):
-                        nombres.append(f"{nombre}/")
+                    elif es_dir:
+                        if nombre.startswith(".") and nombre != ".claude":
+                            continue
+                        if nombre.startswith("_") and nombre != "_archivo":
+                            continue
+                        if nivel < 3 or nombre == ".claude":
+                            nombres.append(f"{nombre}/")
                     continue
                 if nombre.startswith(".") and nombre not in (".claude", ".claude-plugin", ".mcp.json"):
                     continue
