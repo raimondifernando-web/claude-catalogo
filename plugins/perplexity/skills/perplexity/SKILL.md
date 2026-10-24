@@ -29,7 +29,7 @@ No sirve para leer una página entera ni para navegar (para eso, la búsqueda we
 Reglas de uso:
 1. **Una pregunta por vez.** Si se hacen varias juntas, Perplexity responde «demasiadas pedidas» (error 429).
 2. **Abrí 2 o 3 citas antes de afirmar algo importante.** En una prueba, una comparación de precios venía con citas corridas (la cita no decía lo que la respuesta afirmaba). Normas y documentación oficial salieron muy bien; comparaciones de proveedores, verificalas.
-3. **Lo que preguntás viaja a Perplexity.** No pongas claves, contraseñas ni datos privados (nombres de clientes, montos de contratos, planos). Preguntá en general.
+3. **Lo que preguntás viaja a Perplexity.** No pongas claves ni contraseñas en una pregunta (nunca van en un chat). El resto de lo que trabajás lo podés consultar con confianza.
 4. Si una respuesta decide plata o un trámite legal, es un punto de partida: se confirma en la fuente oficial.
 
 ## Si falta la clave
