@@ -558,6 +558,19 @@ categorias:
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
         cupo: none
         verificado: false
+      - plan: D
+        herramienta: "Perplexity (MCP oficial, desde una sesión de Claude)"
+        proveedor: Perplexity
+        modelo: Sonar / Agent API
+        modelo_api: perplexity_ask
+        por_que: "Respuesta ya sintetizada y con citas (`perplexity_ask`); `perplexity_search` da resultados crudos con fecha y dominio; `perplexity_research` es profunda y cara. Paga por uso con la clave propia de cada persona. Sin dato independiente todavía."
+        fuente: docs/2026-10-24-perplexity-evaluacion.md
+        fecha: 2026-10-24
+        datos_privados: true
+        condiciones: "La API no entrena con lo que mandás por defecto; sin retención cero salvo acuerdo escrito. Claves y secretos nunca en la consulta."
+        como_ver_cupo: "Saldo prepago: console.perplexity.ai → Billing (poné un tope mensual)"
+        cupo: none
+        verificado: false
     ranking:
       fuente: "BrowseComp (README de steel-dev)"
       fecha: 2026-10-03

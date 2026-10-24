@@ -90,6 +90,7 @@ Orden PROVISORIO: 1 de 2 fuentes independientes.
 | A | app web (ChatGPT deep research) (OpenAI, GPT-6 Astra) [a verificar] | BrowseComp: casi empatado con Sonnet/Opus (92,2 / 91,5 / 90,8): elegir por el cupo que quede. | sí |  |
 | B | Codex (OpenAI, GPT-6.1 Sol) [a verificar] | Por consola: `codex --search exec --sandbox read-only`. Es lo que se puede automatizar desde una sesión. | sí |  |
 | C | app web (Gemini Deep Research) (Google, Gemini 3.8 Flash) [a verificar] | 5 informes gratis por mes. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
+| D | Perplexity (MCP oficial, desde una sesión de Claude) (Perplexity, Sonar / Agent API) [a verificar] | Respuesta ya sintetizada y con citas (`perplexity_ask`); `perplexity_search` da resultados crudos con fecha y dominio; `perplexity_research` es profunda y cara. Paga por uso con la clave propia de cada persona. Sin dato independiente todavía. | sí | La API no entrena con lo que mandás por defecto; sin retención cero salvo acuerdo escrito. Claves y secretos nunca en la consulta. |
 
 Ranking (BrowseComp (README de steel-dev), 2026-10-03): 1. GPT-5.6 Sol; 2. GPT-6 Astra; 3. Claude Opus 5
 
