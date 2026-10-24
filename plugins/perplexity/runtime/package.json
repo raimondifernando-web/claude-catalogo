@@ -1,0 +1,8 @@
+{
+  "name": "perplexity-runtime",
+  "private": true,
+  "description": "Fija el servidor oficial de Perplexity y todas sus dependencias (package-lock.json). Lo instala scripts/perplexity-mcp con npm ci --ignore-scripts.",
+  "dependencies": {
+    "@perplexity-ai/mcp-server": "1.3.0"
+  }
+}
