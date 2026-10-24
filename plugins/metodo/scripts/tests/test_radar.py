@@ -609,7 +609,7 @@ class TestDatosReales(Base):
                          "tareas_baratas", "agentes_largos"):
             self.assertIn(esperado, ids)
         for c in radar["categorias"]:
-            self.assertEqual([p["plan"] for p in c["planes"]], ["A", "B", "C"], c["id"])
+            self.assertEqual([p["plan"] for p in c["planes"]][:3], ["A", "B", "C"], c["id"])  # D en adelante: extras opcionales
             for p in c["planes"]:
                 for campo in ("herramienta", "proveedor", "por_que", "fuente", "fecha", "como_ver_cupo", "verificado"):
                     self.assertIn(campo, p, "%s %s" % (c["id"], p["plan"]))
