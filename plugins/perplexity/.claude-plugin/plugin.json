@@ -1,6 +1,6 @@
 {
   "name": "perplexity",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Perplexity (búsqueda web con citas) dentro de Claude Code: registra el servidor oficial @perplexity-ai/mcp-server con la versión fijada en 1.3.0, lee TU clave del llavero de la Mac (nunca de un archivo) y, si falta, te avisa en castellano con un solo comando para ponerla. Cada persona usa su propia cuenta y clave. Solo Mac.",
   "author": {
     "name": "Fernando Raimondi"
