@@ -42,6 +42,17 @@ class ReglasTest(unittest.TestCase):
         self.assertEqual(primera, "# Las 25 reglas del método")
         self.assertIn("\n19. **Una pieza por función; buscar antes de crear.**", PLANTILLA.read_text(encoding="utf-8"))
 
+    def test_version_corta_tiene_las_mismas_reglas_que_la_completa(self):
+        import re
+        completa = PLANTILLA.with_name("REGLAS-DEL-METODO-COMPLETO.md").read_text(encoding="utf-8")
+        corta = PLANTILLA.read_text(encoding="utf-8")
+        numeros = lambda t: [int(n) for n in re.findall(r"^(\d+)\.\s", t, re.M)]
+        self.assertEqual(numeros(corta), list(range(1, 26)))
+        self.assertEqual(numeros(completa), list(range(1, 26)))
+        self.assertIn("REGLAS-DEL-METODO-COMPLETO.md", corta)   # el puntero al texto completo
+        for umbral in ("70 %", "90 %", "85 %", "2 vueltas", "60/80/90 %", "`git add -A`", "aviso-<tema>.md", "security-checks"):
+            self.assertIn(umbral, corta)
+
     def test_bloque_viejo_entre_marcas_se_actualiza_sin_tocar_lo_propio(self):
         viejo = [reglas.INI, "# Las 18 reglas del método", "", "1. regla vieja", reglas.FIN]
         propio_arriba = ["# Mi ficha", "Lo mío de arriba: no se toca.", ""]
@@ -65,6 +76,18 @@ class ReglasTest(unittest.TestCase):
         r2 = correr(self.cfg)
         self.assertNotIn("Reglas del método", r2.stdout)   # ya al día: no repite el aviso (la línea del nombre sí sale en cada arranque)
         self.assertEqual(len(list(self.cfg.glob("CLAUDE.md.antes-reglas-*"))), 1)
+
+    def test_bloque_largo_sin_marcas_se_migra_a_la_version_corta(self):
+        completa = PLANTILLA.with_name("REGLAS-DEL-METODO-COMPLETO.md").read_text(encoding="utf-8").splitlines()
+        hasta = next(i for i, l in enumerate(completa) if reglas.FIN_LEGADO in l)
+        largo = [completa[0]] + completa[4:hasta + 1]          # copiado a mano, sin marcas, hasta la regla 15
+        self.ficha.write_text("\n".join(["Lo mío.", ""] + largo + ["", "Lo mío de abajo."]) + "\n", encoding="utf-8")
+        r = correr(self.cfg)
+        self.assertIn("Reglas del método actualizadas a 25 ✓", r.stdout)
+        texto = self.ficha.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(texto[texto.index(reglas.INI):texto.index(reglas.FIN) + 1], reglas.bloque_nuevo(PLANTILLA))
+        self.assertEqual(texto[0], "Lo mío.")
+        self.assertEqual(texto[-1], "Lo mío de abajo.")
 
     def test_ficha_sin_reglas_las_agrega_al_final(self):
         self.ficha.write_text("Lo mío.\n", encoding="utf-8")

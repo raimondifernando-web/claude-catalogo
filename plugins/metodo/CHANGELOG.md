@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.55.0 — 2026-10-24
+**Las reglas del método pesan la mitad en cada sesión: quedan todas, cada una en lo esencial.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** el bloque de reglas va en tu `~/.claude/CLAUDE.md`, y ese archivo se lee entero al abrir cada sesión y cada vez que Claude lanza un ayudante. Con 25 reglas largas eran unos 21 KB (cerca de 9.000 unidades de texto) leídos una y otra vez antes de empezar a trabajar.
+- **Qué cambia:** tu ficha lleva ahora la versión corta (unos 11 KB): cada regla en lo esencial, con todos sus números (umbrales de cupo, tope de vueltas, el 85 % de la copia, etc.). El texto completo, con ejemplos y comandos, queda en `REGLAS-DEL-METODO-COMPLETO.md` del paquete, y la versión corta dice cómo encontrarlo cuando una regla toca lo que vas a hacer.
+- **Dos agregados:** la regla 2 suma la revisión de seguridad en los momentos de riesgo (antes de publicar o entregar una herramienta, después de tocar claves o servidores, al arrancar un proyecto), con informe sin valores y freno si hay algo grave. La regla 13 ya decía que hay que avisar por escrito a la otra sesión; la versión corta lo conserva.
+- **Qué NO cambia:** los números de las reglas, lo tuyo fuera del bloque y la copia de respaldo que se guarda antes de cada cambio.
+
 ## 0.54.2 — 2026-10-22
 **`mapa carpetas`: la lista de tus carpetas de proyecto, siempre al día.** Se aplica solo con la actualización; no hay nada que correr.
 - **Qué te da:** `mapa carpetas` lista las carpetas reales de `~/Proyectos` (una línea por carpeta: tipo · grupo · nombre · ruta), con tipo (**activo**, **dormido** si cuelga de `Personal/`, **archivo** si está en `_archivo/`), grupo (la empresa o área de arriba) y un nombre legible. Con `--tipo`, `--grupo` o `--json` se filtra o se pasa a otro programa. Ninguna herramienta tiene que armar esa lista por su cuenta.
