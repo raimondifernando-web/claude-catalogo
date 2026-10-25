@@ -82,6 +82,9 @@ def sincronizar(plantilla: Path, ficha: Path) -> str:
         a = titulos[0]
         fin = next((i for i in range(a + 1, len(actual)) if FIN_LEGADO in actual[i]), None)
         permitidas = set(sin_vacias(nuevo))
+        completa = plantilla.with_name("REGLAS-DEL-METODO-COMPLETO.md")
+        if completa.is_file():   # un bloque largo copiado a mano antes de la versión corta también se migra
+            permitidas |= set(sin_vacias(completa.read_text(encoding="utf-8").splitlines()))
         if fin is None or any(l not in permitidas for l in sin_vacias(actual[a + 1:fin + 1])):
             return "Reglas del método: tu ficha tiene algo distinto a la plantilla, no toqué nada. Avisale a Fernando ✗"
         respaldo(ficha)
