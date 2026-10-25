@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.55.1 — 2026-10-25
+**El medidor de cupo de Codex ahora anda con cualquier plan (gratis o Plus).** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** `codex-cupo` solo sabía leer la ventana de 30 días del plan gratis. Con Plus, Codex mide por ventanas de 5 horas y de 7 días, así que el medidor no encontraba el dato y podía marcar «agotado» sin estarlo, frenando el reparto de trabajo.
+- **Qué cambia:** toma la última medición de Codex y usa la ventana más llena de las que haya. El radar y `delegar.py` usan ese mismo medidor, así que quedan arreglados también. Con prueba para los dos tipos de registro.
+
 ## 0.55.0 — 2026-10-24
 **Las reglas del método pesan la mitad en cada sesión: quedan todas, cada una en lo esencial.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** el bloque de reglas va en tu `~/.claude/CLAUDE.md`, y ese archivo se lee entero al abrir cada sesión y cada vez que Claude lanza un ayudante. Con 25 reglas largas eran unos 21 KB (cerca de 9.000 unidades de texto) leídos una y otra vez antes de empezar a trabajar.
