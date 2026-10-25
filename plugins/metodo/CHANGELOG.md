@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.56.0 — 2026-10-25
+**Si le pedís una skill a un ayudante que no puede cargarla, Claude te avisa antes de perder el trabajo.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** muchos ayudantes que vienen en paquetes de afuera (los de VoltAgent: swift-expert, python-pro, etc.) no tienen la herramienta para cargar skills. Si el pedido decía «usá la skill X», el ayudante volvía con «no pude cargarla» o, peor, seguía sin la guía y nadie se enteraba.
+- **Qué cambia:** antes de abrir un ayudante, un aviso automático mira si el pedido nombra una skill y si ese ayudante puede cargarla. Si no puede, frena UNA vez y propone dos salidas: otro ayudante del mismo oficio que sí la carga, o pasarle la ruta de la guía para que la lea. Si reintentás el mismo pedido, pasa. Si el ayudante sí puede, no dice nada.
+- **Regla 22 (más precisa):** ahora dice que antes de nombrar skills hay que mirar que el ayudante tenga la herramienta `Skill`. Se apaga con `SKILL_EN_AGENTE_OFF=1`.
+
 ## 0.55.1 — 2026-10-25
 **El medidor de cupo de Codex ahora anda con cualquier plan (gratis o Plus).** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** `codex-cupo` solo sabía leer la ventana de 30 días del plan gratis. Con Plus, Codex mide por ventanas de 5 horas y de 7 días, así que el medidor no encontraba el dato y podía marcar «agotado» sin estarlo, frenando el reparto de trabajo.
