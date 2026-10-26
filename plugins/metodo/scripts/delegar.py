@@ -6,7 +6,7 @@ con el cupo de cada una medido, y ejecuta la tarea en el repositorio indicado. N
 eso lo hace quien delega, mirando el cambio.
 
 Uso:
-    delegar.py <categoria> <repo> <pedido> [--archivo] [--revisar] [--sensible] [--dry-run]
+    delegar.py <categoria> <repo> <pedido> [--archivo] [--revisar] [--sensible] [--dry-run] [--skills a,b]
     delegar.py --aceptar            (una sola vez: acepta que el código del repo se envíe a Codex / Antigravity)
 
 Argumentos:
@@ -16,6 +16,8 @@ Argumentos:
 
 Opciones:
     --archivo     El pedido es la ruta de un archivo (se rechazan nombres de claves y más de 100 KB).
+    --skills a,b  Skills de Claude cuyo texto se pega al principio del pedido (además de las que el pedido nombra:
+                  /nombre, `nombre`, «skill nombre»). Codex y Antigravity no ven las skills de Claude; así reciben la guía.
     --revisar     Modo solo lectura: análisis y revisión sin modificar archivos. Permite árbol de trabajo sucio.
     --sensible    Excluye planes que no admiten datos privados.
     --dry-run     Muestra el plan elegido y el comando que correría, sin ejecutarlo.
@@ -88,6 +90,7 @@ if str(AQUI) not in sys.path:
     sys.path.insert(0, str(AQUI))
 
 import radar
+import guias
 
 TOPE_PEDIDO = 100 * 1024
 MODELO_VALIDO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -703,6 +706,7 @@ def parsear_argumentos(argv=None):
     ap.add_argument("pedido", nargs="?", help="Texto de la tarea (o la ruta de un archivo, con --archivo)")
     ap.add_argument("--archivo", action="store_true", help="El pedido es la ruta de un archivo de texto")
     ap.add_argument("--revisar", action="store_true", help="Modo solo lectura (no edita, permite árbol sucio)")
+    ap.add_argument("--skills", default="", help="Skills (a,b) cuyo texto se adjunta al pedido")
     ap.add_argument("--sensible", action="store_true", help="Excluye planes que no admiten datos privados")
     ap.add_argument("--dry-run", action="store_true", help="Muestra el plan elegido y el comando sin ejecutar")
     ap.add_argument("--aceptar", action="store_true", help="Acepta (una vez) el envío del código a un tercero")
@@ -1169,6 +1173,10 @@ def main(argv=None):
     if error:
         sys.stderr.write("Pedido rechazado: %s\n" % error)
         return 64
+    pedido_texto, _adjuntas, _avisos = guias.adjuntar(pedido_texto, [x for x in args.skills.split(",") if x], str(repo_path))
+    _r = guias.resumen(_adjuntas, _avisos)
+    if _r:
+        print(_r)
 
     # 9. Construir comando según adaptador y verificar CLI instalada (67)
     prompt_mostrado = None
