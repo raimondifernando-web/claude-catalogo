@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.57.0 — 2026-10-25
+**Cuando le pasás trabajo a Codex o a Gemini, ahora reciben las guías (skills) que el pedido nombra.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** Codex y Gemini no ven tus skills; reciben solo el texto del pedido. Si decías «hacelo con la skill X», la otra IA no sabía qué decía X y trabajaba sin la guía.
+- **Qué cambia:** `delegar.py` mira qué skills nombra el pedido (`/nombre`, «skill nombre») o cuáles pedís con `--skills a,b`, y pega su texto al principio del pedido (hasta 12 KB cada una, 24 KB en total). No instala nada en la otra IA. Si la guía usa conectores de Claude que la otra IA no tiene, te avisa y conviene que lo haga un agente de Claude. Las skills de la sesión (arrancar, cerrar…) y las que traen algo con forma de clave no se pegan. Se apaga con `GUIAS_OFF=1`.
+- **Regla 22 y receta de arneses:** ahora dicen quién hace cada trabajo: diseño, seguridad, textos en castellano y todo lo que usa conectores van a su agente especialista de Claude; programar algo mecánico con una prueba clara va a Codex o Gemini con las guías pegadas.
+
 ## 0.56.0 — 2026-10-25
 **Si le pedís una skill a un ayudante que no puede cargarla, Claude te avisa antes de perder el trabajo.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** muchos ayudantes que vienen en paquetes de afuera (los de VoltAgent: swift-expert, python-pro, etc.) no tienen la herramienta para cargar skills. Si el pedido decía «usá la skill X», el ayudante volvía con «no pude cargarla» o, peor, seguía sin la guía y nadie se enteraba.
