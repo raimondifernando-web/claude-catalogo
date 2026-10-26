@@ -163,6 +163,10 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     sigue la receta que le devuelve; si no hay receta, usa las skills y agentes que coinciden. Un freno automático salta
     UNA vez por carpeta cada 4 horas si hay receta para lo que va a hacer, y trae la receta en el mismo mensaje. Los
     subagentes **no heredan** las skills de la sesión: Claude las nombra en el prompt de cada uno y comprueba que las usó.
+    **Y antes de nombrarlas mira que ese ayudante pueda cargarlas**: la lista `tools:` de su encabezado tiene que traer `Skill`
+    (los de VoltAgent y varios oficiales no la traen: sin la herramienta, nombrar la skill no sirve y el fallo pasa en silencio).
+    Si no la trae, Claude elige otro ayudante del mismo oficio que sí (o `general-purpose`) o le pasa la ruta del `SKILL.md`
+    para que lo lea con Read. Un aviso automático (`skill-en-agente.py`) frena UNA vez cuando se olvida.
     Si hay que desviarse de la receta, lo dice en una línea. Las recetas del paquete están en `recetas/`; las propias de la
     persona, en `<config de Claude>/recetas/` (la propia gana si se llaman igual).
 
