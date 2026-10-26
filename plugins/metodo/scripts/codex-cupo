@@ -1,15 +1,40 @@
 #!/bin/bash
 # Cupo de Codex leído de sus propios registros, sin red ni IA. Correr ANTES de lanzar `codex exec`.
-# Regla (regla 16 del método): >=70% → no lanzar trabajo grande; >=90% → no lanzar nada.
-f=$(ls -t "$HOME"/.codex/sessions/*/*/*/*.jsonl 2>/dev/null | head -20)
-[ -z "$f" ] && { echo "Codex: sin registros"; exit 0; }
-# El plan gratis mide una ventana de 30 días (43200 min); Plus mide 5 h (300) y 7 días (10080). Se toma la última
-# línea de cupo del registro más reciente y, de sus ventanas, la más llena (así sirve para cualquier plan).
-p=""; for x in $f; do
-  l=$(grep -o '"rate_limits":{.*"credits"' "$x" 2>/dev/null | tail -1)
-  [ -n "$l" ] && { p=$(printf '%s' "$l" | grep -o '"used_percent":[0-9.]*' | grep -o '[0-9.]*$' | sort -n | tail -1); break; }; done
-[ -z "$p" ] && { echo "Codex: cupo desconocido (sin dato en los registros recientes)"; exit 0; }
-p=${p%.*}
-if [ "$p" -ge 90 ]; then echo "Codex: ${p}% del cupo (la ventana más llena) — NO lanzar"; exit 2
-elif [ "$p" -ge 70 ]; then echo "Codex: ${p}% del cupo (la ventana más llena) — solo tareas chicas"; exit 1
-else echo "Codex: ${p}% del cupo (la ventana más llena) — OK"; fi
+# Regla (2026-10-03, Codex agotado por lanzar 4 trabajos sin mirar): >=70% → no lanzar trabajo grande; >=90% → no lanzar nada.
+# 2026-10-25: el plan gratis mide una ventana de 30 días; Plus mide 5 h y 7 días. Se toma, de la última línea de cupo, la
+# ventana más llena. Y si lo último que dijo Codex es «You've hit your usage limit … try again at <fecha>» (en ese caso el
+# registro trae las ventanas vacías), se informa agotado hasta esa fecha.
+python3 - <<'PY'
+import glob, json, os, re, sys, time
+from datetime import datetime
+archivos = sorted(glob.glob(os.path.expanduser("~/.codex/sessions/*/*/*/*.jsonl")), key=os.path.getmtime, reverse=True)[:20]
+if not archivos:
+    print("Codex: sin registros"); sys.exit(0)
+tope = re.compile(r"hit your usage limit.*?try again at ([A-Z][a-z]{2} \d{1,2}(?:st|nd|rd|th)?, \d{4} \d{1,2}:\d{2} [AP]M)")
+for f in archivos:
+    ultimo = None  # ("tope", fecha) o ("cupo", porcentaje)
+    for linea in open(f, encoding="utf-8", errors="replace"):
+        m = tope.search(linea)
+        if m:
+            ultimo = ("tope", m.group(1)); continue
+        if '"rate_limits"' in linea:
+            p = [float(x) for x in re.findall(r'"used_percent":([0-9.]+)', linea)]
+            if p:
+                ultimo = ("cupo", max(p))
+    if ultimo is None:
+        continue
+    if ultimo[0] == "tope":
+        texto = re.sub(r"(\d)(st|nd|rd|th),", r"\1,", ultimo[1])
+        try:
+            hasta = datetime.strptime(texto, "%b %d, %Y %I:%M %p")
+        except ValueError:
+            print("Codex: tope alcanzado (no pude leer hasta cuándo) — NO lanzar"); sys.exit(2)
+        if hasta > datetime.now():
+            print(f"Codex: agotado hasta el {hasta:%d/%m %H:%M} — NO lanzar"); sys.exit(2)
+        print("Codex: el tope anterior ya se renovó — OK"); sys.exit(0)
+    p = int(ultimo[1])
+    if p >= 90: print(f"Codex: {p}% del cupo (la ventana más llena) — NO lanzar"); sys.exit(2)
+    if p >= 70: print(f"Codex: {p}% del cupo (la ventana más llena) — solo tareas chicas"); sys.exit(1)
+    print(f"Codex: {p}% del cupo (la ventana más llena) — OK"); sys.exit(0)
+print("Codex: cupo desconocido (sin dato en los registros recientes)")
+PY
