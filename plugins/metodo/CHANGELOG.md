@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.57.1 — 2026-10-26
+**El medidor de Codex ahora ve el tope de 5 horas del plan Plus.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** cuando Plus se agota, Codex no deja porcentajes en su registro: deja solo el aviso «You've hit your usage limit … try again at <fecha>». El medidor decía «cupo desconocido» y dejaba lanzar trabajo que iba a fallar.
+- **Qué cambia:** si lo último que dijo Codex es ese aviso, el medidor informa «agotado hasta <fecha>» y frena; pasada la fecha, vuelve a dejar lanzar. Si hay una medición más nueva, manda la nueva. El radar y `delegar.py` usan este mismo medidor, así que quedan arreglados. Con prueba nueva.
+
 ## 0.57.0 — 2026-10-25
 **Cuando le pasás trabajo a Codex o a Gemini, ahora reciben las guías (skills) que el pedido nombra.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** Codex y Gemini no ven tus skills; reciben solo el texto del pedido. Si decías «hacelo con la skill X», la otra IA no sabía qué decía X y trabajaba sin la guía.

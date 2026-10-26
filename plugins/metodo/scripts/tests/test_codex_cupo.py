@@ -48,6 +48,20 @@ class TestCodexCupo(unittest.TestCase):
         self.assertEqual(codigo, 0)
         self.assertIn("desconocido", texto)
 
+    def tope(self, fecha):
+        return ('{"payload":{"message":"You\'ve hit your usage limit. Upgrade to Pro or try again at %s."}}\n' % fecha)
+
+    def test_tope_de_5_horas_sin_porcentajes(self):
+        # Plus agotado: el registro trae las ventanas vacías y el aviso real está en el mensaje
+        vacio = linea(None, None)
+        codigo, texto = self.correr(vacio, self.tope("Dec 31st, 2099 3:30 AM"))
+        self.assertEqual(codigo, 2)
+        self.assertIn("agotado hasta el 31/12 03:30", texto)
+        # un tope viejo ya renovado no frena
+        self.assertEqual(self.correr(vacio, self.tope("Jan 1st, 2020 3:30 AM"))[0], 0)
+        # si después del tope hay una medición nueva, manda la nueva
+        self.assertEqual(self.correr(self.tope("Dec 31st, 2099 3:30 AM"), linea(("2.0", 300), None))[0], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
