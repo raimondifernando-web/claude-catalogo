@@ -4,7 +4,6 @@
 **Al pasarle trabajo a Codex o a Gemini ahora podés elegir el modelo y cuánto "piensa".** Se aplica solo con la actualización; si no usás las opciones nuevas, todo anda igual que antes.
 - **Qué cambia:** `delegar.py` acepta `--modelo <id>` y `--esfuerzo <nivel>` (low, medium, high, xhigh, max, ultra). Antes la herramienta usaba siempre su modelo por defecto. El modelo se confirma contra la lista real de cada herramienta; si no existe, no se lanza y te muestra los que hay (nunca lo cambia por otro). Si el modelo no admite ese esfuerzo, también avisa cuáles admite.
 - **Cuidado con el gasto:** más esfuerzo = más cupo y más tiempo. En planes con tope de 5 horas, un trabajo de esfuerzo alto puede agotarlo.
-- **Receta nueva (D6 en `arneses`):** qué modelo y esfuerzo conviene para tareas mecánicas, implementar, revisar y razonamiento difícil.
 
 ## 0.57.1 — 2026-10-26
 **El medidor de Codex ahora ve el tope de 5 horas del plan Plus.** Se aplica solo con la actualización; no hay nada que correr.
