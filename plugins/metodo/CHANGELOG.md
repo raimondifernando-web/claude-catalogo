@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.57.2 — 2026-10-26
+**La numeración de sesiones ya respeta el emoji del título y las copias «(fork)».** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** si el título de la serie empezaba con un emoji («🧬 PROYECTO. 04»), la sesión nueva salía sin él («PROYECTO. 05») y el arranque no reconocía la serie: decía «sin serie numerada» y no archivaba la anterior. Lo mismo pasaba si el cierre lo hacía una copia llamada «… 04 (fork)».
+- **Qué cambia:** la serie se reconoce por el nombre sin adornos al principio ni «(fork)» al final. El título nuevo conserva el emoji de la serie (y corrige el de una sesión que nació sin él), y las anteriores —incluidas las copias— se mandan a archivar. Anchos «03»→«04» y «99»→«100» siguen igual. `/cerrar` ahora pide abrir la sucesora con el mismo adorno.
+
 ## 0.57.1 — 2026-10-26
 **El medidor de Codex ahora ve el tope de 5 horas del plan Plus.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** cuando Plus se agota, Codex no deja porcentajes en su registro: deja solo el aviso «You've hit your usage limit … try again at <fecha>». El medidor decía «cupo desconocido» y dejaba lanzar trabajo que iba a fallar.
