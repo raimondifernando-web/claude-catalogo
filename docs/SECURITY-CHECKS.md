@@ -1279,3 +1279,16 @@ Composición pedida por el dueño del producto tras auditar el origen de 40 piez
 | Revisor independiente | Gemini (solo lectura): PASS con condiciones, sin críticos ni altos. |
 | Límites | No probado en la cuenta de un cliente ni en un Windows real. |
 | Veredicto | **PASS con condiciones**. Sin hallazgos altos ni críticos. |
+
+### 2026-10-27 · metodo 0.57.0 → 0.58.3 (commit 48117d100263a0f1ade8db584764c27fbd56a1c9; PR #88, #89, #90, #91, #93) — PASS
+
+Revisión de solo lectura (agente `security-reviewer`, distinto del autor) del diff de código entre `estable` (6249215) y 48117d1: `delegar.py`, `codex-cupo`, `arrancar-check.py`, `cierre_estado.py`, `estructura*.py`, gitignore de fábrica. Sin hallazgos medios, altos ni graves.
+- `delegar.py`: el nombre de modelo se valida (letras, números, `.`, `-`, `_`; no puede empezar con guion), el esfuerzo sale de una lista fija y el comando se arma por partes, sin shell.
+- `codex-cupo`: solo lee registros locales, sin red.
+- Bajo: `arrancar-check.py` copia el título de otra sesión dentro de una instrucción de renombrado (conviene quitarle las comillas); queda como mejora.
+- Bajo (a propósito): `cierre_estado.py` ignora las sesiones hijas ya soltadas al cerrar.
+- No se corrieron escáneres de dependencias ni de historial (no hay dependencias nuevas en el diff).
+
+### 2026-10-27 · paneles 0.5.4 → 0.5.5 (commit 48117d100263a0f1ade8db584764c27fbd56a1c9; PR #92) — PASS
+
+Misma revisión. `hooks/register.tsx` solo muestra texto del panel de pendientes («espera dato» / «espera OK»); no ejecuta comandos ni usa red. Sin hallazgos.
