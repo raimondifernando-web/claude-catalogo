@@ -194,6 +194,15 @@ class Hook(Base):
         self.escribir(donde=".claude/prompts/REANUDAR.md")
         self.assertIn("paso uno", self.hook(self.p)[1])
 
+    def test_con_los_dos_lugares_gana_el_canonico(self):
+        import datetime
+        hoy = datetime.date.today().isoformat()
+        self.escribir(fecha="2020-01-01", donde="REANUDAR.md")                  # el viejo de la raíz, desactualizado
+        self.escribir(fecha=hoy, donde=".claude/prompts/REANUDAR.md")
+        out = self.hook(self.p)[1]
+        self.assertIn(hoy, out)
+        self.assertNotIn("puede estar viejo", out)
+
     def test_sin_parte_b_no_imprime(self):
         (self.p / "REANUDAR.md").write_text("<!-- cierre 2026-10-09-x -->\nsolo texto\n", encoding="utf-8")
         self.assertEqual(self.hook(self.p), (0, ""))

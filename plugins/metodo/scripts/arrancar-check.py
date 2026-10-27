@@ -54,9 +54,10 @@ def linea(ok, texto, falta=None):
         faltan.append(falta or texto)
 
 
-# (a) REANUDAR.md (raíz de la carpeta de trabajo; también se acepta .claude/prompts/) y fecha de cierre
-reanudar = next((p for p in (os.path.join(cwd, "REANUDAR.md"), os.path.join(cwd, ".claude", "prompts", "REANUDAR.md"))
-                 if os.path.isfile(p)), None)
+# (a) REANUDAR.md (.claude/prompts/; se sigue leyendo el viejo de la raíz hasta que el orden lo mueva) y fecha de cierre
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import reanudar_ruta as RR  # noqa: E402  (único lugar que sabe dónde vive el REANUDAR.md)
+reanudar = RR.buscar(cwd)
 texto = ""
 confianza = True
 if reanudar:

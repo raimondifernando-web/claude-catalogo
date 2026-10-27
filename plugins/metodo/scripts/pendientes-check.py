@@ -142,7 +142,9 @@ def main():
         print(f"✗ PENDIENTES.md tiene {len(prob)} problema(s): " + " | ".join(prob[:4]))
         return 1
     aviso = []
-    rea = os.path.join(os.path.dirname(os.path.dirname(p)), ".claude", "prompts", "REANUDAR.md")
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    import reanudar_ruta as RR
+    rea = RR.buscar(os.path.dirname(os.path.dirname(p))) or ""
     if not ultima:
         aviso.append("«Cambios» no tiene ninguna línea fechada (AAAA-MM-DD): no se sabe cuándo se actualizó")
     elif os.path.isfile(rea):

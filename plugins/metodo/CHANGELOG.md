@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.59.0 — 2026-10-27
+**El texto de traspaso de `/cerrar` (`REANUDAR.md`) ahora vive en UN solo lugar: `.claude/prompts/REANUDAR.md`.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** `/cerrar` lo guardaba en la raíz de la carpeta, pero el control de estructura (R18) y la vuelta de rama lo buscaban en `.claude/prompts/`. Resultado: el de la raíz arrancaba bien pero nadie lo revisaba, y los controles decían «no» en la columna de traspaso.
+- **Qué cambia:** `/cerrar` guarda solo en `.claude/prompts/REANUDAR.md`; `/arrancar`, el aviso de apertura, `cerrar-check`, `arrancar-check`, `pendientes-check` y R18 miran ese lugar primero (si hay dos, gana el nuevo) y un único archivo del kit (`reanudar_ruta.py`) sabe la ruta.
+- **Los viejos se mudan solos:** si una carpeta tiene el `REANUDAR.md` en la raíz, guardado en git y sin cambios, el orden de carpetas semanal (grupo «seguro y reversible») lo copia al lugar nuevo, comprueba que quedó idéntico y recién ahí saca el viejo, en un solo commit. Si algo falla, restaura la raíz. Se deshace con `estructura.py deshacer <id>`. Mientras no se mude, se sigue leyendo (nada se pierde ni deja de arrancar).
+- **No toca:** un archivo sin guardar en git o con cambios, ni una carpeta que ya tiene los dos lugares ocupados (no adivina cuál vale). No cambia la confianza del archivo: se mide por contenido, no por ruta.
+
 ## 0.58.3 — 2026-10-27
 **La mudanza de `/cerrar` ya no quiere archivar las sesiones que dejaste sueltas a propósito.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** al mudar de sesión, el paso «hijas» listaba como pendientes a las sesiones permanentes de cada carpeta (ya soltadas con «detach»), y pedía archivarlas.

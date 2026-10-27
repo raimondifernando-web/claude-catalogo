@@ -128,6 +128,116 @@ class TestGrupo1(Base):
         self.assertNotIn("docs/PRD.md", faltan)
 
 
+class TestReanudarUnLugar(Base):
+    """El REANUDAR.md vive en UN lugar (.claude/prompts/). El que dejó una versión vieja en la raíz se mueve solo, con copia y deshacer."""
+    TEXTO = "<!-- cierre 2026-10-27-prueba -->\n═══ PARTE B — ESTADO ═══\nacentos: áéíóú ñ\r\nlínea final sin salto"
+
+    def caja_con_raiz(self, guardado=True):
+        c = _caja(self.td)
+        (c / "REANUDAR.md").write_bytes(self.TEXTO.encode("utf-8"))
+        if guardado:
+            _git(c, "add", "REANUDAR.md")
+            _git(c, "commit", "-q", "-m", "cierre viejo")
+        return c
+
+    def hallazgos(self):
+        return [h for h in O.todos(self.raiz()) if h["tipo"] == "reanudar_en_raiz"]
+
+    def test_el_desorden_viejo_se_ve_y_el_arreglo_lo_mueve_byte_a_byte(self):
+        c = self.caja_con_raiz()
+        hs = self.hallazgos()
+        self.assertEqual((len(hs), hs[0]["grupo"]), (1, 1))            # con el desorden viejo: hallazgo seguro y reversible
+        antes = int(_git(c, "rev-list", "--count", "HEAD"))
+        e = O.aplicar_uno(hs[0])
+        O.registrar(e)
+        self.assertEqual(e["estado"], "aplicado", e)
+        self.assertFalse((c / "REANUDAR.md").exists())
+        self.assertEqual((c / ".claude" / "prompts" / "REANUDAR.md").read_bytes(), self.TEXTO.encode("utf-8"))
+        self.assertEqual(int(_git(c, "rev-list", "--count", "HEAD")), antes + 1)     # un solo commit
+        self.assertEqual(_git(c, "status", "--porcelain"), "")
+        self.assertEqual(self.hallazgos(), [])                                        # con el arreglo: nada que mover
+
+    def test_deshacer_devuelve_la_raiz_y_no_se_vuelve_a_mover_solo(self):
+        c = self.caja_con_raiz()
+        e = O.aplicar_uno(self.hallazgos()[0])
+        O.registrar(e)
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(O.comando_deshacer(e["id"]), 0)
+        self.assertEqual((c / "REANUDAR.md").read_bytes(), self.TEXTO.encode("utf-8"))
+        self.assertFalse((c / ".claude" / "prompts" / "REANUDAR.md").exists())
+        self.assertEqual(O.aplicar_uno(self.hallazgos()[0])["estado"], "omitido")    # lo deshecho no se repite solo
+
+    def test_sin_guardar_en_git_o_con_cambios_no_se_toca(self):
+        c = self.caja_con_raiz(guardado=False)
+        self.assertEqual(self.hallazgos(), [])                                        # no está en git: no se podría deshacer
+        _git(c, "add", "REANUDAR.md"); _git(c, "commit", "-q", "-m", "x")
+        (c / "REANUDAR.md").write_bytes(b"editado a mano\n")
+        self.assertEqual(self.hallazgos(), [])
+
+    def test_si_el_lugar_nuevo_ya_esta_ocupado_no_adivina(self):
+        c = self.caja_con_raiz()
+        (c / ".claude" / "prompts").mkdir(parents=True)
+        (c / ".claude" / "prompts" / "REANUDAR.md").write_text("otro", encoding="utf-8")
+        self.assertEqual(self.hallazgos(), [])
+        self.assertEqual((c / "REANUDAR.md").read_bytes(), self.TEXTO.encode("utf-8"))
+
+    def test_si_el_lugar_nuevo_esta_ignorado_no_se_intenta(self):
+        c = self.caja_con_raiz()
+        (c / ".gitignore").write_text(".claude/prompts/\n", encoding="utf-8")
+        _git(c, "add", ".gitignore"); _git(c, "commit", "-q", "-m", "ignora")
+        self.assertEqual(self.hallazgos(), [])
+
+    def test_si_otra_sesion_ocupa_el_lugar_nuevo_justo_ahora_no_se_le_borra(self):
+        c = self.caja_con_raiz()
+        h = self.hallazgos()[0]
+        (c / ".claude" / "prompts").mkdir(parents=True)
+        ajeno = c / ".claude" / "prompts" / "REANUDAR.md"
+        ajeno.write_text("de otra sesion", encoding="utf-8")   # aparece después de detectar el hallazgo
+        e = O.aplicar_uno(h)
+        self.assertNotEqual(e["estado"], "aplicado")
+        self.assertEqual(ajeno.read_text(encoding="utf-8"), "de otra sesion")
+        self.assertEqual((c / "REANUDAR.md").read_bytes(), self.TEXTO.encode("utf-8"))
+
+    def test_si_el_commit_falla_la_raiz_queda_como_estaba(self):
+        c = self.caja_con_raiz()
+        h = self.hallazgos()[0]
+        (c / ".gitignore").write_text(".claude/prompts/\n", encoding="utf-8")        # git no deja agregar el lugar nuevo
+        e = O.aplicar_uno(h)
+        self.assertEqual(e["estado"], "fallo")
+        self.assertEqual((c / "REANUDAR.md").read_bytes(), self.TEXTO.encode("utf-8"))
+        self.assertFalse((c / ".claude" / "prompts" / "REANUDAR.md").exists())
+        self.assertEqual(_git(c, "ls-files", "REANUDAR.md"), "REANUDAR.md")
+
+    def test_si_la_carpeta_del_camino_es_un_enlace_no_escribe(self):
+        if os.name == "nt":
+            self.skipTest("enlaces simbólicos no disponibles sin permisos en Windows")
+        c = self.caja_con_raiz()
+        afuera = Path(self.td) / "afuera"
+        afuera.mkdir()
+        (c / ".claude").symlink_to(afuera, target_is_directory=True)
+        e = O.aplicar_uno(self.hallazgos()[0])
+        self.assertEqual(e["estado"], "omitido")
+        self.assertEqual(list(afuera.iterdir()), [])
+
+    def test_el_control_R18_ahora_revisa_tambien_el_de_la_raiz(self):
+        import estructura
+        c = self.caja_con_raiz()
+        (c / "REANUDAR.md").write_text(self.TEXTO + "\nMirá `docs/no-existe-nada.md`.\n", encoding="utf-8")
+        r18 = [m for _t, r, m in estructura.revisar_contenido(c) if r == "R18"]
+        self.assertTrue(r18 and "no existen" in r18[0], r18)
+
+    def test_un_solo_punto_conoce_la_ruta(self):
+        import reanudar_ruta as RR
+        d = Path(self.td) / "k"
+        self.assertIsNone(RR.buscar(d))
+        d.mkdir()
+        (d / "REANUDAR.md").write_text("v", encoding="utf-8")
+        self.assertEqual(RR.buscar(d), RR.ruta_vieja(d))
+        (d / ".claude" / "prompts").mkdir(parents=True)
+        (d / ".claude" / "prompts" / "REANUDAR.md").write_text("n", encoding="utf-8")
+        self.assertEqual(RR.buscar(d), RR.ruta(d))
+
+
 class TestGrupo2y3(Base):
     def test_grupo2_pide_la_verificacion_de_una_segunda_ia(self):
         c = _caja(self.td)

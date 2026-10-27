@@ -22,7 +22,10 @@ for _flujo in (sys.stdin, sys.stdout, sys.stderr):  # Windows: consola cp1252
     except Exception:
         pass
 
-REANUDAR = os.path.join(".claude", "prompts", "REANUDAR.md")
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import reanudar_ruta as _rr  # noqa: E402  (único lugar que sabe dónde vive el REANUDAR.md)
+
+REANUDAR = os.path.join(*_rr.RELATIVA.split("/"))
 RUIDO = re.compile(r"(^|/)(\.omc|__pycache__|\.pytest_cache|node_modules)(/|$)|(^|/)\.DS_Store$")
 
 
@@ -107,7 +110,8 @@ def volver(repo, a=None):
     if git(repo, "rev-parse", "--verify", "-q", f"refs/remotes/origin/{rama}") is None or git(repo, "rev-list", "--count", f"origin/{rama}..{rama}") != "0":
         return False, f"«{rama}» tiene commits que no están en GitHub: subila (git push) antes de volver"
     st = git(repo, "--no-optional-locks", "status", "--short", "-uall") or ""
-    sucios = [l for l in st.splitlines() if l.strip() and not l.startswith("??") and not RUIDO.search(l.strip().split(None, 1)[-1])]
+    sucios = [l for l in st.splitlines() if l.strip() and not l.startswith("??") and not RUIDO.search(l.strip().split(None, 1)[-1])
+              and l.strip().split(None, 1)[-1].strip('"') not in (REANUDAR.replace(os.sep, "/"), "REANUDAR.md")]   # el REANUDAR cambia en cada cierre: no cuenta como «sin guardar»
     if sucios:
         return False, f"hay {len(sucios)} archivo(s) versionados sin guardar ({sucios[0].strip()[:60]}…): guardalos (commit) antes de volver"
     ruta = os.path.join(repo, REANUDAR)
