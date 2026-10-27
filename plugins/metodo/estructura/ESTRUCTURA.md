@@ -114,6 +114,7 @@ Fuera de las cajas:
 | R26 | Si se despliega o usa claves: hay una revisión de seguridad registrada en `.claude/security-checks/` de menos de 90 días | caja que se despliega o usa claves | aviso | correr el chequeo de seguridad y guardar el informe, sin valores de claves |
 | R27 | El PRD ya completado dice Dueño, Estado, Respaldo y Última revisión | toda caja | aviso | agregar las cuatro líneas |
 | R28 | Si existe `docs/esquema/`: su `LEEME.md` dice «Comando:» y «Fecha:», y el código no cambió más de 30 días después de esa fecha | caja con esquema | aviso | volver a generarlo con ese comando |
+| R29 | El `CLAUDE.md` dice quién es el equipo de la caja: nombra un `pm-…` o trae una línea «Equipo:» (puede ser «Equipo: sin PM (motivo)»). R19 solo juzga lo que se nombra; sin esta regla una caja sin PM pasaba en silencio | toda caja | aviso | agregar la línea «Equipo: pm-<empresa> + los especialistas que usa» (se crea el PM con `/metodo:crear-agente`); si de verdad no lleva PM, «Equipo: sin PM (motivo)» |
 
 **Excepciones:** lo que se decidió dejar así, con su motivo, no queda como ✗ para siempre: se anota en
 `.estructura-excepciones.json` en la raíz del repositorio, una lista de

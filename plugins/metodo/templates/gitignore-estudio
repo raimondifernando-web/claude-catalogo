@@ -57,6 +57,8 @@ Thumbs.db
 
 # --- Configuración de Claude de ESTA computadora (la compartida, .claude/settings.json, sí viaja) ---
 .claude/settings.local.json
+# Estado local de /cerrar (la mudanza de sesión): es de esta computadora, nunca viaja
+.claude/cerrando.json
 
 # --- Graphify (si lo instalás: docs/GRAPHIFY.md) ---
 # El mapa contiene textos sacados de tus archivos. Sus enganches van a .claude/settings.local.json.

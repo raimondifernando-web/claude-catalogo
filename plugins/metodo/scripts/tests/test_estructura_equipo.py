@@ -47,6 +47,9 @@ class Base(unittest.TestCase):
                 json.dumps({"enabledMcpjsonServers": habilitados}), encoding="utf-8")
 
     def ids(self, texto):
+        return [(i, m) for _t, i, m in eq.revisar(self.caja, texto) if i != "R29"]
+
+    def ids_con_r29(self, texto):
         return [(i, m) for _t, i, m in eq.revisar(self.caja, texto)]
 
 
@@ -149,6 +152,44 @@ class TestR21(Base):
     def test_json_roto_no_rompe(self):
         (self.casa / ".mcp.json").write_text("{no es json", encoding="utf-8")
         self.assertEqual(self.ids("Texto cualquiera."), [])
+
+
+class TestR29(Base):
+    def test_sin_equipo_avisa(self):
+        r = self.ids_con_r29("Reglas de la caja, sin nada de quién la lleva.")
+        self.assertEqual([i for i, _ in r], ["R29"])
+
+    def test_con_pm_nombrado_no_avisa(self):
+        self.pm("pm-turismo")
+        self.assertNotIn("R29", [i for i, _ in self.ids_con_r29("Usa pm-turismo.")])
+
+    def test_linea_equipo_no_avisa(self):
+        self.assertEqual(self.ids_con_r29("# Caja\n**Equipo:** pm-miempresa + code-reviewer\n"), [])
+        self.assertEqual(self.ids_con_r29("# Caja\n- Equipo: sin PM (dormida)\n"), [])
+
+    def test_sin_pm_dicho_no_avisa(self):
+        self.assertEqual(self.ids_con_r29("# Caja\nSin PM: es chica.\n"), [])
+
+    def test_sin_pm_en_medio_de_una_frase_no_vale(self):
+        r = self.ids_con_r29("No desplegar en prod sin PM aprobación.")
+        self.assertEqual([i for i, _ in r], ["R29"])
+
+    def test_titulo_markdown_equipo_no_avisa(self):
+        self.assertEqual(self.ids_con_r29("# Caja\n## Equipo:\n- Soporte\n"), [])
+        self.assertEqual(self.ids_con_r29("# Caja\n### Equipo\n- Soporte\n"), [])
+
+    def test_palabra_equipo_suelta_no_vale(self):
+        r = self.ids_con_r29("El equipo de ventas usa esta caja.")
+        self.assertEqual([i for i, _ in r], ["R29"])
+
+    def test_claude_vacio_no_avisa(self):
+        self.assertEqual(self.ids_con_r29("   \n"), [])
+
+    def test_no_duplica_con_r19(self):
+        self.pm("pm-turismo")
+        self.pm("pm-otro", cuerpo=CUERPO + "\nTrabaja en Proyectos/Turismo siempre.")
+        r = [i for i, _ in self.ids_con_r29("Reglas sin nombrar PM.")]
+        self.assertNotIn("R29", r) if "R19" in r else self.assertIn("R29", r)
 
 
 if __name__ == "__main__":
