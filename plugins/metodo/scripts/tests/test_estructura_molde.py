@@ -330,7 +330,7 @@ class TestPlantillas(Entorno):
     def test_las_reglas_nuevas_estan_en_el_molde_oficial(self):
         molde = (SCRIPTS_DIR.parent / "estructura" / "ESTRUCTURA.md").read_text(encoding="utf-8")
         reglas = E.parsear_reglas(molde)
-        for r in ("R22", "R23", "R24", "R25", "R26", "R27", "R28"):
+        for r in ("R22", "R23", "R24", "R25", "R26", "R27", "R28", "R29"):
             self.assertTrue(any(r in str(x) for x in reglas), r)
 
 

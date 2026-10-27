@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.58.2 — 2026-10-27
+**El control de estructura ahora avisa cuando una carpeta no dice quién es su equipo, y la carpeta nueva ya ignora el estado local de `/cerrar`.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** el control decía «Sin errores» aunque una carpeta no nombrara a su jefe de proyecto (PM) ni a los especialistas que usa. Sin eso, una sesión abierta ahí no sabe a quién delegar. Antes solo se revisaba lo que la ficha nombraba; si no nombraba nada, el control callaba.
+- **Qué cambia:** nueva regla R29 (aviso, no error): la ficha `CLAUDE.md` de cada carpeta tiene que nombrar un `pm-…` o traer una línea «Equipo: …» (por ejemplo «Equipo: pm-miempresa + code-reviewer» o «Equipo: sin PM (motivo)»). Se puede dejar así por escrito como cualquier otro aviso. Si no tenés PM, se crea con `/metodo:crear-agente`.
+- **El archivo de ignorados de fábrica** (`estructura.py arreglar` y la plantilla `gitignore-estudio`) ahora incluye `.claude/cerrando.json`, el estado local de `/cerrar`, que antes aparecía como archivo suelto sin guardar. Las carpetas que ya existen conservan su `.gitignore`; si el tuyo no lo trae, sumá esa línea.
+- **Qué NO cambia:** ningún archivo tuyo. El control sigue sin escribir nada por su cuenta.
+
 ## 0.58.1 — 2026-10-27
 **La numeración de sesiones ya respeta el emoji del título y las copias «(fork)».** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** si el título de la serie empezaba con un emoji («🧬 PROYECTO. 04»), la sesión nueva salía sin él («PROYECTO. 05») y el arranque no reconocía la serie: decía «sin serie numerada» y no archivaba la anterior. Lo mismo pasaba si el cierre lo hacía una copia llamada «… 04 (fork)».

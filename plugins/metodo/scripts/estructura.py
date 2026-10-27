@@ -1151,7 +1151,7 @@ def revisar_caja(carpeta: Path, nivel: str, parent_caja: Path = None) -> list:
     mia = ruta_en_repo(raiz, carpeta)
     salida = []
     for tipo, r_id, msg in hallazgos:
-        exceptuable = tipo == "error" or r_id in ("R12", "R13", "R14", "R15", "R16", "R17", "R18", "R22", "R23", "R24", "R25", "R26", "R27", "R28")  # son avisos, pero también se pueden dejar así por escrito
+        exceptuable = tipo == "error" or r_id in ("R12", "R13", "R14", "R15", "R16", "R17", "R18", "R22", "R23", "R24", "R25", "R26", "R27", "R28", "R29")  # son avisos, pero también se pueden dejar así por escrito
         if exceptuable and r_id not in NO_EXCEPTUABLES and r_id != "R8" and (r_id, mia) in excepciones:
             salida.append(("excepcion", r_id, f"{msg} (motivo: {excepciones[(r_id, mia)]})"))
         else:
@@ -1829,7 +1829,7 @@ def plan_seguro(carpeta: Path, nivel: str) -> list:
     if not (carpeta / ".claude" / "settings.json").exists():
         plan.append((".claude/settings.json", "{}\n", "R4"))
     if not (carpeta / ".gitignore").exists():
-        lineas_gi = [".env", ".claude/settings.local.json", "CLAUDE.local.md",
+        lineas_gi = [".env", ".claude/settings.local.json", "CLAUDE.local.md", ".claude/cerrando.json",
                      "# settings.json SÍ se sube (permisos y paquetes de la caja); esta línea le gana a un ignore global de la persona",
                      "!.claude/settings.json"]
         if nivel in ("empresa", "area"):
