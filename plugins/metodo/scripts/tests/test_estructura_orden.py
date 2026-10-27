@@ -163,7 +163,8 @@ class TestReanudarUnLugar(Base):
         O.registrar(e)
         with redirect_stdout(io.StringIO()):
             self.assertEqual(O.comando_deshacer(e["id"]), 0)
-        self.assertEqual((c / "REANUDAR.md").read_bytes(), self.TEXTO.encode("utf-8"))
+        # git en Windows puede cambiar \r\n al devolver el archivo (autocrlf): se compara el texto, no los saltos de línea
+        self.assertEqual((c / "REANUDAR.md").read_bytes().replace(b"\r\n", b"\n"), self.TEXTO.encode("utf-8").replace(b"\r\n", b"\n"))
         self.assertFalse((c / ".claude" / "prompts" / "REANUDAR.md").exists())
         self.assertEqual(O.aplicar_uno(self.hallazgos()[0])["estado"], "omitido")    # lo deshecho no se repite solo
 
