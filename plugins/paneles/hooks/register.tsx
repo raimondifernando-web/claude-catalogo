@@ -415,7 +415,18 @@ const leyendaAbierta = atom({ plugin: 'paneles', key: 'leyendaAbierta' } as cons
 const detalle = atom({ plugin: 'paneles', key: 'detalle' } as const, [])
 
 const COLUMNAS = ['ID', 'Pendiente', 'Prio', 'Estado', 'Depende de', 'Esf.', 'Quién', 'Origen']
-const ESTADOS = ['pendiente', 'en curso', 'espera dato de F', 'espera OK de F', 'hecho']
+// Estados válidos de una fila. La forma corta («espera dato», «espera OK») es la canónica: es la que escriben la plantilla
+// y /metodo:cerrar y la que exige pendientes-check.py. También se lee «espera dato de F» (la forma larga que usan listas
+// viejas). El mismo patrón vive en pendientes-check.py (ESTADO_OK): scripts/tests/test_estados_pendientes.py falla si divergen.
+const ESTADO_VALIDO = /^(pendiente|en curso|hecho|espera dato( de .+)?|espera OK( de .+)?)$/i
+// Lleva el estado a su forma canónica (undefined si no es uno de los conocidos).
+const normalizarEstado = (e: string): string | undefined => {
+  const t = e.trim()
+  if (!ESTADO_VALIDO.test(t)) return undefined
+  const m = /^espera (dato|ok)\b/i.exec(t)
+  return m ? (m[1]!.toLowerCase() === 'dato' ? 'espera dato' : 'espera OK') : t.toLowerCase()
+}
+const esperaAF = (e: string): boolean => e === 'espera dato' || e === 'espera OK'
 const ESTADOS_TAREA = ['pending', 'in_progress', 'completed']
 const MAX_CAMBIOS = 8
 // Topes: un archivo enorme o con miles de filas no tiene que colgar el panel (se corta, no se rechaza).
@@ -574,7 +585,7 @@ function analizar(texto: string): Lectura {
       return
     }
     const prio = Number(c[2])
-    const estado = c[3] ?? ''
+    const estadoCrudo = c[3] ?? ''
     if (!/^[A-Z]\d+$/.test(id)) {
       problemas.push(`Línea ${i + 1}: «${id}» no es un ID válido.`)
       return
@@ -583,8 +594,9 @@ function analizar(texto: string): Lectura {
       problemas.push(`${id}: la prioridad «${c[2]}» no es 1, 2 ni 3.`)
       return
     }
-    if (!ESTADOS.includes(estado)) {
-      problemas.push(`${id}: el estado «${estado}» no es uno de los conocidos.`)
+    const estado = normalizarEstado(estadoCrudo)
+    if (estado === undefined) {
+      problemas.push(`${id}: el estado «${estadoCrudo}» no es uno de los conocidos.`)
       return
     }
     if (vistas.has(id)) {
@@ -848,7 +860,7 @@ async function refrescar($: EngineInterface): Promise<void> {
 // ---------- Dibujo ----------
 
 const colorDe = (estado: string): string | undefined =>
-  estado === 'espera dato de F' || estado === 'espera OK de F' ? NARANJA : undefined
+  esperaAF(estado) ? NARANJA : undefined
 
 const ICONO: Record<Cambio['tipo'], string> = { nuevo: '＋', cerrado: '✓', prio: '↕', estado: '→', sacado: '–' }
 const VERBO: Record<Cambio['tipo'], string> = {
@@ -1070,7 +1082,7 @@ const dato = (Text: any, titulo: string, valor: string) => (
 const ICONO_ESTADO: Record<Tarea['estado'], string> = { pending: '○', in_progress: '◐', completed: '✅' }
 
 const iconoDe = (estado: string): string =>
-  estado === 'espera dato de F' || estado === 'espera OK de F' ? '✋' : estado === 'en curso' ? '◐' : estado === 'hecho' ? '✅' : '○'
+  esperaAF(estado) ? '✋' : estado === 'en curso' ? '◐' : estado === 'hecho' ? '✅' : '○'
 
 // Una fila depende de otra si su columna «Depende de» nombra el ID de la otra y esa otra sigue abierta en el mismo grupo.
 function agrupar(filas: Fila[]): { fila: Fila; hijas: Fila[] }[] {
@@ -1118,16 +1130,16 @@ function renderPendientes(
             }
           />
         </Box>
-        {f.estado === 'espera dato de F' || f.estado === 'espera OK de F' ? (
+        {esperaAF(f.estado) ? (
           <Text color={NARANJA} bold>
-            {'    '}te llama: {f.estado === 'espera dato de F' ? 'falta un dato tuyo' : 'falta tu OK'}
+            {'    '}te llama: {f.estado === 'espera dato' ? 'falta un dato tuyo' : 'falta tu OK'}
           </Text>
         ) : null}
         {abierta ? (
           <Box flexDirection="column" paddingLeft={4}>
             <Text>{f.completo}</Text>
-            {f.estado === 'espera dato de F' ? <Text color={NARANJA}>Necesita un dato tuyo para avanzar.</Text> : null}
-            {f.estado === 'espera OK de F' ? <Text color={NARANJA}>Necesita tu OK para avanzar.</Text> : null}
+            {f.estado === 'espera dato' ? <Text color={NARANJA}>Necesita un dato tuyo para avanzar.</Text> : null}
+            {f.estado === 'espera OK' ? <Text color={NARANJA}>Necesita tu OK para avanzar.</Text> : null}
             {dato(Text, 'Depende de', f.depende === '—' || f.depende === '' ? 'nada, se puede hacer ya' : f.depende)}
             {f.desbloquea.length > 0 ? dato(Text, 'Desbloquea', f.desbloquea.join(', ')) : null}
             {dato(Text, 'Esfuerzo', f.esfuerzo)}
@@ -1166,7 +1178,7 @@ function renderPendientes(
     )
   }
 
-  const esperan = m.ahora.filter(f => f.estado === 'espera dato de F' || f.estado === 'espera OK de F').length
+  const esperan = m.ahora.filter(f => esperaAF(f.estado)).length
 
   return (
     <Box flexDirection="column" gap={1}>

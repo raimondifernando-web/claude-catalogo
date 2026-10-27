@@ -89,7 +89,7 @@ test('lee el archivo real: Ahora, Esta semana, Cambios y Próxima fecha', async 
     expect(await ui.find({ type: 'Text', text: /Contra la versión anterior \(9\/10\)/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Nuevo · prio 2/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Cambió de prioridad · prio 2 → 1/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Cambió de estado · pendiente → espera dato de F/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Cambió de estado · pendiente → espera dato/ })).toBeDefined()
     // Próxima fecha: la primera de la tabla que todavía no pasó (10/10 15:00).
     expect(await ui.find({ type: 'Text', text: /^hoy 15:00$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Se renueva el cupo semanal de Claude/ })).toBeDefined()
@@ -185,6 +185,24 @@ test('lista con un estado inválido: avisa el problema, sigue mostrando el resto
   expect(await ui.find({ type: 'Text', text: /S2: el estado «inventado» no es uno de los conocidos/ })).toBeDefined()
   expect(await ui.find({ type: 'Button', text: /Respaldo real de toda la Mac/ })).toBeDefined()
   await ui.unmount()
+})
+
+async function seLeeBien($: Parameters<Parameters<typeof test>[1]>[0], on: On, texto: string) {
+  fondo(on, { texto })
+  const ui = await abrir($)
+  expect(await ui.find({ type: 'Text', text: /^No pude leer/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /te llama: falta un dato tuyo/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Hay \d que dependen de vos/ })).toBeDefined()
+  await ui.unmount()
+}
+
+// /metodo:cerrar y la plantilla escriben «espera dato» / «espera OK»; las listas viejas, «… de F».
+test('estados cortos («espera dato», «espera OK», los que escribe /cerrar) se leen igual que los largos', async ($, on) => {
+  await seLeeBien($, on, EJEMPLO.replace(/espera dato de F/g, 'espera dato').replace(/espera OK de F/g, 'espera OK'))
+})
+
+test('«espera dato de Ana» (otra persona) y mayúsculas distintas también se leen', async ($, on) => {
+  await seLeeBien($, on, EJEMPLO.replace(/espera dato de F/g, 'Espera dato de Ana'))
 })
 
 test('sin ninguna lista en la carpeta ni en su repo: lo dice en criollo', async ($, on) => {

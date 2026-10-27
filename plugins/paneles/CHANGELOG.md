@@ -1,5 +1,11 @@
 # paneles
 
+## 0.5.5 — 2026-10-27
+**El panel de pendientes ya lee los estados cortos que escribe `/cerrar`.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** el panel decía «No pude leer bien PENDIENTES.md» en casi todas las listas después de cada cierre. `/metodo:cerrar` y la plantilla escriben «espera dato» y «espera OK», y el panel solo conocía «espera dato de F» y «espera OK de F».
+- **Qué cambia:** el panel acepta las dos formas (y también «espera dato de Ana», con cualquier mayúscula) y las muestra igual: ✋ «te llama» y el aviso «Hay N que dependen de vos». La forma corta es la que escribe el método.
+- **Para que no vuelva a pasar:** una prueba compara el panel con el chequeo de listas (`pendientes-check.py`) y falla si dejan de aceptar los mismos estados.
+
 ## 0.5.4 — 2026-10-17
 Retoques al panel «Uso y actividad»:
 - **«Actividad» va en una barra de punta a punta** que separa el panel en dos.
