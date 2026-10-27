@@ -419,12 +419,15 @@ const COLUMNAS = ['ID', 'Pendiente', 'Prio', 'Estado', 'Depende de', 'Esf.', 'Qu
 // y /metodo:cerrar y la que exige pendientes-check.py. También se lee «espera dato de F» (la forma larga que usan listas
 // viejas). El mismo patrón vive en pendientes-check.py (ESTADO_OK): scripts/tests/test_estados_pendientes.py falla si divergen.
 const ESTADO_VALIDO = /^(pendiente|en curso|hecho|espera dato( de .+)?|espera OK( de .+)?)$/i
-// Lleva el estado a su forma canónica (undefined si no es uno de los conocidos).
+// Lleva el estado a su forma canónica (undefined si no es uno de los conocidos). «… de F» y sin destinatario son de Fer
+// (forma corta); «… de Ana» espera a otra persona y se conserva: no es de Fer, así que no lo llama.
 const normalizarEstado = (e: string): string | undefined => {
   const t = e.trim()
   if (!ESTADO_VALIDO.test(t)) return undefined
-  const m = /^espera (dato|ok)\b/i.exec(t)
-  return m ? (m[1]!.toLowerCase() === 'dato' ? 'espera dato' : 'espera OK') : t.toLowerCase()
+  const m = /^espera (dato|ok)(?: de (.+))?$/i.exec(t)
+  if (!m) return t.toLowerCase()
+  const que = m[1]!.toLowerCase() === 'dato' ? 'dato' : 'OK'
+  return m[2] === undefined || m[2].toUpperCase() === 'F' ? `espera ${que}` : `espera ${que} de ${m[2]}`
 }
 const esperaAF = (e: string): boolean => e === 'espera dato' || e === 'espera OK'
 const ESTADOS_TAREA = ['pending', 'in_progress', 'completed']

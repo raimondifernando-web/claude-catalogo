@@ -201,8 +201,17 @@ test('estados cortos («espera dato», «espera OK», los que escribe /cerrar) s
   await seLeeBien($, on, EJEMPLO.replace(/espera dato de F/g, 'espera dato').replace(/espera OK de F/g, 'espera OK'))
 })
 
-test('«espera dato de Ana» (otra persona) y mayúsculas distintas también se leen', async ($, on) => {
-  await seLeeBien($, on, EJEMPLO.replace(/espera dato de F/g, 'Espera dato de Ana'))
+test('«Espera DATO de F» con otras mayúsculas también se lee', async ($, on) => {
+  await seLeeBien($, on, EJEMPLO.replace(/espera dato de F/g, 'Espera DATO de F'))
+})
+
+test('«espera dato de Ana» se lee, pero no llama a Fer (espera a otra persona)', async ($, on) => {
+  fondo(on, { texto: EJEMPLO.replace(/espera dato de F/g, 'espera dato de Ana') })
+  const ui = await abrir($)
+  expect(await ui.find({ type: 'Text', text: /^No pude leer/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /te llama: falta un dato tuyo/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /te llama: falta tu OK/ })).toBeDefined()
+  await ui.unmount()
 })
 
 test('sin ninguna lista en la carpeta ni en su repo: lo dice en criollo', async ($, on) => {
