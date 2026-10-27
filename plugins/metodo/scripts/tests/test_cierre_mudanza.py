@@ -203,6 +203,8 @@ class TestCierreMudanza(unittest.TestCase):
         ses = hs.cargar()
         self.assertEqual(cierre_estado.hijas_pendientes(str(self.carpeta), ses), [])
 
+        # soltada con PR abierto: tampoco cuenta (igual que sesiones_hijas.hijas_de); lo decide quien la soltó
+        self.sesion("local_pr", "Soltada con PR", spawnedFrom={"sessionId": "local_vieja"}, lineageDetached=True, prs=[{"state": "OPEN"}], lastActivityAt=ant)
         self.sesion("local_viva", "Hija colgada", spawnedFrom={"sessionId": "local_vieja"}, lastActivityAt=ant)
         ids = [h["id"] for h in cierre_estado.hijas_pendientes(str(self.carpeta), hs.cargar())]
         self.assertEqual(ids, ["local_viva"])

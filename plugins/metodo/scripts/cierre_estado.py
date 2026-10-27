@@ -294,7 +294,8 @@ def hijas_pendientes(carpeta, ses):
 def marcar_hijas(carpeta, ses):
     """Exige paso >= 'guardado'. Ok solo si ninguna hija viva está 'terminada' o 'esperando'.
 
-    Las 'trabajando' no frenan si ya tienen lineageDetached=True. Paso 'hijas'.
+    Las soltadas (lineageDetached=True) no son hijas: hijas_pendientes ni las lista, estén como estén (trabajando,
+    con PR abierto o sin guardar; igual que sesiones_hijas.hijas_de y cierre-hijas.py). Paso 'hijas'.
     """
     d = leer(carpeta)
     if not d or not vigente(d):
