@@ -194,6 +194,21 @@ class TestCierreMudanza(unittest.TestCase):
         self.assertIn('detach_session("local_colgada")', motivo)
         self.assertIn("sigue colgada de la vieja", motivo)
 
+    def test_hijas_ignora_las_ya_soltadas_y_sigue_frenando_las_vivas(self):
+        """Una sesión soltada con detach_session ya no es hija (ni sus propias hijas); las colgadas siguen contando."""
+        cierre_estado.congelar(str(self.carpeta), "local_vieja")
+        ant = int(time.time() * 1000) - 3_600_000
+        self.sesion("local_caja", "Caja permanente", spawnedFrom={"sessionId": "local_vieja"}, lineageDetached=True, lastActivityAt=ant)
+        self.sesion("local_nieta", "Hija de la caja", spawnedFrom={"sessionId": "local_caja"}, lastActivityAt=ant)
+        ses = hs.cargar()
+        self.assertEqual(cierre_estado.hijas_pendientes(str(self.carpeta), ses), [])
+
+        # soltada con PR abierto: tampoco cuenta (igual que sesiones_hijas.hijas_de); lo decide quien la soltó
+        self.sesion("local_pr", "Soltada con PR", spawnedFrom={"sessionId": "local_vieja"}, lineageDetached=True, prs=[{"state": "OPEN"}], lastActivityAt=ant)
+        self.sesion("local_viva", "Hija colgada", spawnedFrom={"sessionId": "local_vieja"}, lastActivityAt=ant)
+        ids = [h["id"] for h in cierre_estado.hijas_pendientes(str(self.carpeta), hs.cargar())]
+        self.assertEqual(ids, ["local_viva"])
+
     def test_guardado_sin_reanudar_nuevo(self):
         """Guardado sin REANUDAR fresco devuelve ✗."""
         d = cierre_estado.congelar(str(self.carpeta), "local_vieja")

@@ -249,6 +249,9 @@ def hijas_pendientes(carpeta, ses):
                 continue
             if hs.padre_de(s) == p:
                 vistos.add(sid)
+                if s.get("lineageDetached"):
+                    # soltada con detach_session: ya no es hija (ni sus propias hijas cuelgan de la vieja)
+                    continue
                 cola.append(sid)
                 if not s.get("isArchived") and sid != sucesora:
                     descendientes.append(s)
@@ -291,7 +294,8 @@ def hijas_pendientes(carpeta, ses):
 def marcar_hijas(carpeta, ses):
     """Exige paso >= 'guardado'. Ok solo si ninguna hija viva está 'terminada' o 'esperando'.
 
-    Las 'trabajando' no frenan si ya tienen lineageDetached=True. Paso 'hijas'.
+    Las soltadas (lineageDetached=True) no son hijas: hijas_pendientes ni las lista, estén como estén (trabajando,
+    con PR abierto o sin guardar; igual que sesiones_hijas.hijas_de y cierre-hijas.py). Paso 'hijas'.
     """
     d = leer(carpeta)
     if not d or not vigente(d):

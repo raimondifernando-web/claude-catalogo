@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.58.3 — 2026-10-27
+**La mudanza de `/cerrar` ya no quiere archivar las sesiones que dejaste sueltas a propósito.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** al mudar de sesión, el paso «hijas» listaba como pendientes a las sesiones permanentes de cada carpeta (ya soltadas con «detach»), y pedía archivarlas.
+- **Qué cambia:** una sesión soltada deja de contar como hija, y sus propias hijas tampoco cuelgan de la sesión que se cierra. Las hijas que siguen colgadas (terminadas, esperando o trabajando sin soltar) se frenan igual que antes.
+
 ## 0.58.2 — 2026-10-27
 **El control de estructura ahora avisa cuando una carpeta no dice quién es su equipo, y la carpeta nueva ya ignora el estado local de `/cerrar`.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** el control decía «Sin errores» aunque una carpeta no nombrara a su jefe de proyecto (PM) ni a los especialistas que usa. Sin eso, una sesión abierta ahí no sabe a quién delegar. Antes solo se revisaba lo que la ficha nombraba; si no nombraba nada, el control callaba.
