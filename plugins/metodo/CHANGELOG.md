@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.58.0 — 2026-10-26
+**Al pasarle trabajo a Codex o a Gemini ahora podés elegir el modelo y cuánto "piensa".** Se aplica solo con la actualización; si no usás las opciones nuevas, todo anda igual que antes.
+- **Qué cambia:** `delegar.py` acepta `--modelo <id>` y `--esfuerzo <nivel>` (low, medium, high, xhigh, max, ultra). Antes la herramienta usaba siempre su modelo por defecto. El modelo se confirma contra la lista real de cada herramienta; si no existe, no se lanza y te muestra los que hay (nunca lo cambia por otro). Si el modelo no admite ese esfuerzo, también avisa cuáles admite.
+- **Cuidado con el gasto:** más esfuerzo = más cupo y más tiempo. En planes con tope de 5 horas, un trabajo de esfuerzo alto puede agotarlo.
+
 ## 0.57.1 — 2026-10-26
 **El medidor de Codex ahora ve el tope de 5 horas del plan Plus.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** cuando Plus se agota, Codex no deja porcentajes en su registro: deja solo el aviso «You've hit your usage limit … try again at <fecha>». El medidor decía «cupo desconocido» y dejaba lanzar trabajo que iba a fallar.

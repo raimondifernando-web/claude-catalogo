@@ -7,6 +7,7 @@ eso lo hace quien delega, mirando el cambio.
 
 Uso:
     delegar.py <categoria> <repo> <pedido> [--archivo] [--revisar] [--sensible] [--dry-run] [--skills a,b]
+                            [--modelo <id>] [--esfuerzo low|medium|high|xhigh|max|ultra]
     delegar.py --aceptar            (una sola vez: acepta que el código del repo se envíe a Codex / Antigravity)
 
 Argumentos:
@@ -18,6 +19,12 @@ Opciones:
     --archivo     El pedido es la ruta de un archivo (se rechazan nombres de claves y más de 100 KB).
     --skills a,b  Skills de Claude cuyo texto se pega al principio del pedido (además de las que el pedido nombra:
                   /nombre, `nombre`, «skill nombre»). Codex y Antigravity no ven las skills de Claude; así reciben la guía.
+    --modelo ID   Pide un modelo concreto a Codex o Antigravity (si no, usa el del radar o el que trae la herramienta).
+                  Se confirma contra la lista real de la herramienta (Codex: ~/.codex/models_cache.json; Antigravity:
+                  `agy models`): si no existe, no se lanza y se muestran los que hay. Con Claude Code no se usa.
+    --esfuerzo N  Esfuerzo de razonamiento: low, medium, high, xhigh, max o ultra (cuanto más alto, más cupo gasta).
+                  Codex: se pasa como model_reasoning_effort, solo si ese modelo lo admite. Antigravity: se suma al
+                  nombre del modelo (gemini-4-argon + medium = gemini-4-argon-medium).
     --revisar     Modo solo lectura: análisis y revisión sin modificar archivos. Permite árbol de trabajo sucio.
     --sensible    Excluye planes que no admiten datos privados.
     --dry-run     Muestra el plan elegido y el comando que correría, sin ejecutarlo.
@@ -553,7 +560,52 @@ def carpeta_de_trabajo_agy(repo_path=None):
     return raiz, None
 
 
-def args_modelo_agy(plan):
+NIVELES_ESFUERZO = ("low", "medium", "high", "xhigh", "max", "ultra")
+
+
+def modelos_codex():
+    """{id: [niveles de esfuerzo]} que Codex dejó en ~/.codex/models_cache.json (solo lectura, nunca la red), o None si
+    no se puede leer. Sirve para no pasarle a `codex exec` un modelo o esfuerzo que no existe."""
+    home = os.environ.get("CODEX_HOME", "").strip()
+    base = Path(home) if home and os.path.isabs(home) else Path.home() / ".codex"
+    try:
+        ruta = base / "models_cache.json"
+        if not ruta.is_file() or ruta.stat().st_size > 4_000_000:
+            return None
+        datos = json.loads(ruta.read_text(encoding="utf-8"))
+        res = {}
+        for m in datos.get("models", []):
+            slug = m.get("slug") if isinstance(m, dict) else None
+            if isinstance(slug, str) and MODELO_VALIDO.match(slug):
+                res[slug] = [x.get("effort") for x in m.get("supported_reasoning_levels") or []
+                             if isinstance(x, dict) and isinstance(x.get("effort"), str)]
+        return res or None
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def args_codex_modelo(modelo, esfuerzo):
+    """Argumentos extra para `codex exec` (-m y -c model_reasoning_effort). [] si no se pidió nada. ValueError (en
+    castellano) si el modelo o el esfuerzo no existen en la lista de Codex; si la lista no se puede leer, deja pasar
+    lo que tenga forma válida (Codex mismo lo rechaza si está mal)."""
+    if not modelo and not esfuerzo:
+        return []
+    lista = modelos_codex()
+    if modelo and lista is not None and modelo not in lista:
+        raise ValueError("Codex no tiene el modelo «%s». Modelos que ofrece: %s" % (modelo, ", ".join(sorted(lista))))
+    if esfuerzo and lista is not None and modelo:
+        niveles = lista.get(modelo) or []
+        if niveles and esfuerzo not in niveles:
+            raise ValueError("«%s» no admite el esfuerzo «%s». Admite: %s" % (modelo, esfuerzo, ", ".join(niveles)))
+    out = []
+    if modelo:
+        out += ["-m", modelo]
+    if esfuerzo:
+        out += ["-c", 'model_reasoning_effort="%s"' % esfuerzo]
+    return out
+
+
+def args_modelo_agy(plan, esfuerzo=None):
     """Argumentos --model/--effort para `agy`. El radar usa ids de API («gemini-3.8-flash», «gemini-3.1-pro-preview»);
     `agy` pide el id sin «-preview» y un nivel de esfuerzo aparte (si el id ya trae -low/-medium/-high, no se agrega).
     El id y el esfuerzo se validan: el radar se baja de internet y no puede colar un argumento raro."""
@@ -566,7 +618,7 @@ def args_modelo_agy(plan):
         raise ValueError("modelo con forma rara: %r" % api[:80])
     if api.endswith(("-low", "-medium", "-high")):
         return ["--model", api]
-    esfuerzo = os.environ.get("METODO_AGY_ESFUERZO", "high").strip() or "high"
+    esfuerzo = esfuerzo or os.environ.get("METODO_AGY_ESFUERZO", "high").strip() or "high"
     if not MODELO_VALIDO.match(esfuerzo):
         raise ValueError("esfuerzo con forma rara: %r" % esfuerzo[:80])
     return ["--model", api, "--effort", esfuerzo]
@@ -623,11 +675,11 @@ def mejor_gemini_high(ids):
     return max(candidatos, key=clave) if candidatos else None
 
 
-def resolver_modelo_agy(plan, bin_cli, consultar=True):
+def resolver_modelo_agy(plan, bin_cli, consultar=True, esfuerzo=None):
     """(argumentos --model, aviso o None). Nunca deja que agy elija el modelo: si el del radar no está en `agy models`,
     usa el mejor Gemini «-high» disponible y lo avisa; si la lista no se puede leer, uno conocido. (None, motivo) si
     Antigravity no ofrece ningún Gemini «-high». ValueError si el radar trae un id con forma rara."""
-    pedido = args_modelo_agy(plan)
+    pedido = args_modelo_agy(plan, esfuerzo)
     candidato = (pedido[1] + "-" + pedido[3] if len(pedido) == 4 else pedido[1]) if pedido else None
     if not consultar:
         return ["--model", MODELO_AGY_CONOCIDO], ("no consulté la lista de modelos de Antigravity (su cupo no dio «ok»): "
@@ -644,6 +696,23 @@ def resolver_modelo_agy(plan, bin_cli, consultar=True):
                       "elija uno por su cuenta" % ", ".join(ids[:6]))
     return ["--model", elegido], ("el modelo del radar (%s) no está en Antigravity; uso %s, el mejor Gemini disponible"
                                   % (candidato or "ninguno", elegido))
+
+
+def resolver_modelo_agy_pedido(modelo, esfuerzo, bin_cli, consultar=True):
+    """(argumentos --model, aviso o None) para un modelo que la persona pidió con --modelo. A diferencia del radar, si no
+    existe en `agy models` NO se cambia por otro: ValueError con la lista. Sin poder consultar la lista, se usa tal cual."""
+    sufijo = next((n for n in ("low", "medium", "high") if modelo.endswith("-" + n)), None)
+    if sufijo and esfuerzo and esfuerzo != sufijo:
+        raise ValueError("el modelo «%s» ya trae el esfuerzo «%s» y pediste «%s»" % (modelo, sufijo, esfuerzo))
+    candidato = modelo if sufijo else "%s-%s" % (modelo, esfuerzo or "high")
+    if not consultar:
+        return ["--model", candidato], "no consulté la lista de modelos de Antigravity (su cupo no dio «ok»): uso %s tal cual" % candidato
+    ids = modelos_agy(bin_cli)
+    if ids is None:
+        return ["--model", candidato], "no pude leer la lista de modelos de Antigravity (agy models): uso %s tal cual" % candidato
+    if candidato not in ids:
+        raise ValueError("Antigravity no tiene el modelo «%s». Modelos que ofrece: %s" % (candidato, ", ".join(ids)))
+    return ["--model", candidato], None
 
 
 def binario_seguro(ruta, repo_path):
@@ -707,6 +776,8 @@ def parsear_argumentos(argv=None):
     ap.add_argument("--archivo", action="store_true", help="El pedido es la ruta de un archivo de texto")
     ap.add_argument("--revisar", action="store_true", help="Modo solo lectura (no edita, permite árbol sucio)")
     ap.add_argument("--skills", default="", help="Skills (a,b) cuyo texto se adjunta al pedido")
+    ap.add_argument("--modelo", default="", help="Modelo concreto para Codex o Antigravity (se confirma contra su lista real)")
+    ap.add_argument("--esfuerzo", default="", help="Esfuerzo de razonamiento: " + ", ".join(NIVELES_ESFUERZO))
     ap.add_argument("--sensible", action="store_true", help="Excluye planes que no admiten datos privados")
     ap.add_argument("--dry-run", action="store_true", help="Muestra el plan elegido y el comando sin ejecutar")
     ap.add_argument("--aceptar", action="store_true", help="Acepta (una vez) el envío del código a un tercero")
@@ -1075,6 +1146,13 @@ def main(argv=None):
     if args.aceptar:
         return aceptar()
 
+    if args.modelo and not MODELO_VALIDO.match(args.modelo):
+        sys.stderr.write("--modelo con forma rara: %r.\n" % args.modelo[:80])
+        return 64
+    if args.esfuerzo and args.esfuerzo not in NIVELES_ESFUERZO:
+        sys.stderr.write("--esfuerzo debe ser uno de: %s.\n" % ", ".join(NIVELES_ESFUERZO))
+        return 64
+
     # 1. Chequeo de repositorio (64 uso)
     repo_path = Path(args.repo).resolve()
     if not repo_path.is_dir() or not es_repo_git(repo_path):
@@ -1143,6 +1221,8 @@ def main(argv=None):
     herramienta = str(plan.get("herramienta", ""))
     if herramienta.startswith("Claude Code"):
         print("El plan elegido es Claude Code: hacelo en esta sesión (cupo disponible).")
+        if args.modelo or args.esfuerzo:
+            print("(--modelo / --esfuerzo no se usan con Claude Code: el modelo y el esfuerzo de esta sesión los fijás vos.)")
         return 3
 
     # 7. Aceptación del envío a un tercero (68) y árbol sucio al editar (66; con --revisar no se exige)
@@ -1185,9 +1265,15 @@ def main(argv=None):
         if not bin_cli:
             sys.stderr.write("La CLI de Codex («codex») no está instalada, no se encuentra o está dentro del repo.\n")
             return 67
+        try:
+            extra_codex = args_codex_modelo(args.modelo, args.esfuerzo)
+        except ValueError as e:
+            sys.stderr.write("No se ejecuta: %s.\n" % e)
+            return 64
         cmd = [
             bin_cli,
             "exec",
+            *extra_codex,
             "-C",
             str(repo_path),
             "--sandbox",
@@ -1201,8 +1287,19 @@ def main(argv=None):
             sys.stderr.write("La CLI de Antigravity («agy») no está instalada, no se encuentra o está dentro del repo.\n")
             return 67
         try:
-            if args.dry_run:   # sin ejecutar nada: el modelo se confirma contra `agy models` al lanzar
-                modelo, aviso_modelo = args_modelo_agy(plan), None
+            if args.modelo:   # pedido a mano: se confirma contra `agy models` y nunca se cambia por otro
+                puede, motivo_agy = (True, None) if args.dry_run else radar.agy_puede_correr()
+                if not puede:
+                    sys.stderr.write("No se lanza Antigravity: %s.\n" % (
+                        "está en pausa (pidió iniciar sesión o no respondió hace poco; si sigue, corré «agy» una vez: se reanuda solo)"
+                        if motivo_agy == "login" else
+                        "no hay conexión con Google ahora (sin red, agy abriría el navegador para entrar); reintentá cuando vuelva"))
+                    return 75
+                cupo_ok = (cupos or {}).get("antigravity", ("sin_dato",))[0] == "ok"
+                modelo, aviso_modelo = resolver_modelo_agy_pedido(args.modelo, args.esfuerzo, bin_cli,
+                                                                  consultar=(cupo_ok and not args.dry_run))
+            elif args.dry_run:   # sin ejecutar nada: el modelo se confirma contra `agy models` al lanzar
+                modelo, aviso_modelo = args_modelo_agy(plan, args.esfuerzo or None), None
             else:
                 puede, motivo_agy = radar.agy_puede_correr()
                 if not puede:
@@ -1212,7 +1309,7 @@ def main(argv=None):
                         "no hay conexión con Google ahora (sin red, agy abriría el navegador para entrar); reintentá cuando vuelva"))
                     return 75
                 cupo_ok = (cupos or {}).get("antigravity", ("sin_dato",))[0] == "ok"
-                modelo, aviso_modelo = resolver_modelo_agy(plan, bin_cli, consultar=cupo_ok)
+                modelo, aviso_modelo = resolver_modelo_agy(plan, bin_cli, consultar=cupo_ok, esfuerzo=args.esfuerzo or None)
         except ValueError as e:
             sys.stderr.write("No se ejecuta: %s.\n" % e)
             return 64
