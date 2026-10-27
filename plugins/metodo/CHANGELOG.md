@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.58.2 — 2026-10-27
+**La mudanza de `/cerrar` ya no quiere archivar las sesiones que dejaste sueltas a propósito.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** al mudar de sesión, el paso «hijas» listaba como pendientes a las sesiones permanentes de cada carpeta (ya soltadas con «detach»), y pedía archivarlas.
+- **Qué cambia:** una sesión soltada deja de contar como hija, y sus propias hijas tampoco cuelgan de la sesión que se cierra. Las hijas que siguen colgadas (terminadas, esperando o trabajando sin soltar) se frenan igual que antes.
+
 ## 0.58.1 — 2026-10-27
 **La numeración de sesiones ya respeta el emoji del título y las copias «(fork)».** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** si el título de la serie empezaba con un emoji («🧬 PROYECTO. 04»), la sesión nueva salía sin él («PROYECTO. 05») y el arranque no reconocía la serie: decía «sin serie numerada» y no archivaba la anterior. Lo mismo pasaba si el cierre lo hacía una copia llamada «… 04 (fork)».

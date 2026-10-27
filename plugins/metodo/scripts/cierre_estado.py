@@ -249,6 +249,9 @@ def hijas_pendientes(carpeta, ses):
                 continue
             if hs.padre_de(s) == p:
                 vistos.add(sid)
+                if s.get("lineageDetached"):
+                    # soltada con detach_session: ya no es hija (ni sus propias hijas cuelgan de la vieja)
+                    continue
                 cola.append(sid)
                 if not s.get("isArchived") and sid != sucesora:
                     descendientes.append(s)
