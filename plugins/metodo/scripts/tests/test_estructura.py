@@ -119,7 +119,7 @@ class TestControl(unittest.TestCase):
             subprocess.run(["git", "remote", "add", "origin", "https://github.com/org/repo.git"], cwd=caja, capture_output=True, check=True)
 
             # Archivos obligatorios
-            (caja / "CLAUDE.md").write_text("# Proyecto\n\nReglas válidas.\n", encoding="utf-8")
+            (caja / "CLAUDE.md").write_text("# Proyecto\n\nReglas válidas.\nEquipo: sin PM (prueba)\n", encoding="utf-8")
             (caja / ".claude").mkdir()
             (caja / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
             (caja / ".gitignore").write_text(".env\n.claude/settings.local.json\nCLAUDE.local.md\n", encoding="utf-8")
@@ -144,7 +144,7 @@ class TestControl(unittest.TestCase):
             caja.mkdir()
             _configurar_repo_git(caja, Path(td))
             subprocess.run(["git", "remote", "add", "origin", "https://github.com/org/repo.git"], cwd=caja, capture_output=True, check=True)
-            (caja / "CLAUDE.md").write_text("# Proyecto\n\nReglas válidas.\n", encoding="utf-8")
+            (caja / "CLAUDE.md").write_text("# Proyecto\n\nReglas válidas.\nEquipo: sin PM (prueba)\n", encoding="utf-8")
             (caja / ".claude").mkdir()
             (caja / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
             (caja / ".gitignore").write_text(".env\n.claude/settings.local.json\nCLAUDE.local.md\n", encoding="utf-8")
@@ -333,7 +333,7 @@ class TestAviso(unittest.TestCase):
 
             _configurar_repo_git(caja, Path(td))
             subprocess.run(["git", "remote", "add", "origin", "https://github.com/org/repo.git"], cwd=caja, capture_output=True, check=True)
-            (caja / "CLAUDE.md").write_text("# Ok\n", encoding="utf-8")
+            (caja / "CLAUDE.md").write_text("# Ok\nEquipo: sin PM (prueba)\n", encoding="utf-8")
             (caja / ".claude").mkdir()
             (caja / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
             (caja / ".gitignore").write_text(".env\n", encoding="utf-8")
@@ -520,7 +520,7 @@ class TestArreglar(unittest.TestCase):
             caja = Path(td) / "casi"
             caja.mkdir()
             claude_md = caja / "CLAUDE.md"
-            claude_md.write_bytes("# Mío\r\nreglas propias ñ\n".encode("utf-8"))
+            claude_md.write_bytes("# Mío\r\nEquipo: sin PM (prueba)\r\nreglas propias ñ\n".encode("utf-8"))
             antes = claude_md.read_bytes()
             (caja / ".env").write_text("A=1\n", encoding="utf-8")
             code, salida = _correr(fn=estructura.comando_arreglar, carpeta_arg=str(caja), raiz_arg=td, aplicar=True)
@@ -909,7 +909,7 @@ class TestR12DocumentosVivos(unittest.TestCase):
 class TestContenido(unittest.TestCase):
     """R13-R18: el contenido de los archivos de la caja, no solo que existan."""
 
-    def _caja(self, td, claude_md="# Caja\n", **archivos):
+    def _caja(self, td, claude_md="# Caja\nEquipo: sin PM (prueba)\n", **archivos):
         caja = Path(td) / "caja"
         (caja / ".claude" / "prompts").mkdir(parents=True)
         (caja / "CLAUDE.md").write_text(claude_md, encoding="utf-8")
@@ -925,7 +925,7 @@ class TestContenido(unittest.TestCase):
 
     def test_caja_sana_no_marca_nada(self):
         with tempfile.TemporaryDirectory() as td:
-            caja = self._caja(td, "# Caja\nVer `docs/PRD.md` y `docs/planes/`.\n")
+            caja = self._caja(td, "# Caja\nEquipo: sin PM (prueba)\nVer `docs/PRD.md` y `docs/planes/`.\n")
             self.assertEqual(estructura.revisar_contenido(caja), [])
 
     def test_r13_ruta_inexistente(self):

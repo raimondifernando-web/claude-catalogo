@@ -172,8 +172,11 @@ def _es_de_nube(servidor: str) -> bool:
 
 
 # ---------------------------------------------------------------- reglas
+_EQUIPO_DICHO = re.compile(r"(?im)^[\s>*_#-]*equipo[\s*_]*(?::|$)|^[\s>*_#-]*sin\s+pm\b")
+
+
 def revisar(carpeta: Path, texto: str) -> list:
-    """R19-R21 de una caja. `texto` = su CLAUDE.md sin las líneas históricas. Retorna [(tipo, id, mensaje)]."""
+    """R19-R21 y R29 de una caja. `texto` = su CLAUDE.md sin las líneas históricas. Retorna [(tipo, id, mensaje)]."""
     h = []
     if not texto.strip():
         return h
@@ -206,6 +209,11 @@ def revisar(carpeta: Path, texto: str) -> list:
             if duenos:
                 h.append(("aviso", "R19", "el CLAUDE.md no nombra ningún PM y hay uno que cita esta carpeta: "
                           + ", ".join(sorted(duenos)[:MAX_EJEMPLOS]) + " → nombralo para que una sesión sepa a quién delegar"))
+
+    # R29: la caja tiene que decir quién es su equipo (R19 solo juzga lo que se nombra)
+    if not citados and not _EQUIPO_DICHO.search(texto) and not any(i == "R19" for _t, i, _m in h):
+        h.append(("aviso", "R29", "el CLAUDE.md no dice quién es el equipo de esta caja (ningún pm-… ni una línea «Equipo:») → "
+                  "agregá «Equipo: pm-<empresa> + los especialistas que usa» o «Equipo: sin PM (motivo)»"))
 
     # R20
     conocidas = skills_conocidas(carpeta)

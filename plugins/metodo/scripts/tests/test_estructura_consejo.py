@@ -23,7 +23,7 @@ def _caja(td, lineas_claude=3, codigo=False):
     caja.mkdir()
     subprocess.run(["git", "init", "-q"], cwd=caja, check=True)
     subprocess.run(["git", "remote", "add", "origin", "https://github.com/org/repo.git"], cwd=caja, check=True)
-    (caja / "CLAUDE.md").write_text("# Proyecto\n" + "\n".join(f"Regla número {i}." for i in range(lineas_claude)) + "\n", encoding="utf-8")
+    (caja / "CLAUDE.md").write_text("# Proyecto\nEquipo: sin PM (prueba)\n" + "\n".join(f"Regla número {i}." for i in range(lineas_claude)) + "\n", encoding="utf-8")
     (caja / ".claude").mkdir()
     (caja / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
     (caja / ".gitignore").write_text(".env\n.claude/settings.local.json\nCLAUDE.local.md\n", encoding="utf-8")
