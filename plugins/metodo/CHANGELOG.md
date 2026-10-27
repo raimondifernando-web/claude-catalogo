@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.58.1 — 2026-10-27
+**La numeración de sesiones ya respeta el emoji del título y las copias «(fork)».** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** si el título de la serie empezaba con un emoji («🧬 PROYECTO. 04»), la sesión nueva salía sin él («PROYECTO. 05») y el arranque no reconocía la serie: decía «sin serie numerada» y no archivaba la anterior. Lo mismo pasaba si el cierre lo hacía una copia llamada «… 04 (fork)».
+- **Qué cambia:** la serie se reconoce por el nombre sin adornos al principio ni «(fork)» al final. El título nuevo conserva el emoji de la serie (y corrige el de una sesión que nació sin él), y las anteriores —incluidas las copias— se mandan a archivar. Anchos «03»→«04» y «99»→«100» siguen igual. `/cerrar` ahora pide abrir la sucesora con el mismo adorno.
+
 ## 0.58.0 — 2026-10-26
 **Al pasarle trabajo a Codex o a Gemini ahora podés elegir el modelo y cuánto "piensa".** Se aplica solo con la actualización; si no usás las opciones nuevas, todo anda igual que antes.
 - **Qué cambia:** `delegar.py` acepta `--modelo <id>` y `--esfuerzo <nivel>` (low, medium, high, xhigh, max, ultra). Antes la herramienta usaba siempre su modelo por defecto. El modelo se confirma contra la lista real de cada herramienta; si no existe, no se lanza y te muestra los que hay (nunca lo cambia por otro). Si el modelo no admite ese esfuerzo, también avisa cuáles admite.

@@ -28,7 +28,7 @@ abre **primero**, mientras la vuelta es tuya (tu `/cerrar`). Hacelo ANTES del Pa
    frena el mensaje y le dice que lo deje como carta en la carpeta (`cartas.py dejar …`); la sesión nueva las lee al arrancar.
 2. `start_session`, una sola llamada: `initiation: "user_asked"` (tu `/cerrar` es el pedido), `context: "fresh"`, `use_worktree: false` (la sesión nueva trabaja en la MISMA
    carpeta), `cwd` = esta carpeta, `model` = el de la línea «Modelo para abrir» de tu REANUDAR anterior (por defecto el mismo que usás), `title` = el siguiente de la serie
-   (mismo ancho: «03» → «04»), `prompt`: «Sesión abierta por la mudanza de <slug>. NO ejecutes nada todavía: esperá el mensaje "traspaso listo" de la sesión que cierra y
+   (mismo ancho: «03» → «04»; conservá TODO lo que va antes del número, emoji incluido, y sacá un «(fork)» final: «🧬 SERIE SETUP. 04 (fork)» → «🧬 SERIE SETUP. 05»), `prompt`: «Sesión abierta por la mudanza de <slug>. NO ejecutes nada todavía: esperá el mensaje "traspaso listo" de la sesión que cierra y
    recién ahí ejecutá la skill /arrancar en esta carpeta.». Enseguida `detach_session(<id nuevo>)` (nace colgada de esta y al archivar esta se archivaría con ella) y, si esta
    sesión tiene grupo en la barra lateral (`get_session("self")`), `move_sessions([<id nuevo>], group_id = el de esta)`.
 3. `CM abierta <id nuevo>` → ✓ (comprueba que existe, es de esta carpeta y está suelta; con ✗ lo arreglás y repetís: la mudanza no sigue sin esto).

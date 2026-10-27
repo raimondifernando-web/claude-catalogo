@@ -154,7 +154,7 @@ UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 
 def carpeta_sesiones():
     h = os.path.expanduser("~")
-    for c in (os.path.join(os.environ.get("APPDATA", ""), "Claude", "claude-code-sessions"),
+    for c in (os.environ.get("CLAUDE_SESIONES_DIR", ""), os.path.join(os.environ.get("APPDATA", ""), "Claude", "claude-code-sessions"),
               os.path.join(h, "Library", "Application Support", "Claude", "claude-code-sessions"),
               os.path.join(h, ".config", "Claude", "claude-code-sessions")):
         if c and os.path.isdir(c):
@@ -258,16 +258,26 @@ def serie_sesiones():
         print("• MANUAL (numeración): no pude identificar esta sesión en el disco; si tenés `list_sessions`, pedí "
               "`limit: 15` y filtrá por tu carpeta")
         return
-    numeradas = {}
+    # La serie se reconoce por el nombre SIN adornos al principio (emoji, signos) ni «(fork)» al final;
+    # el título nuevo conserva el adorno de la sesión numerada más reciente de la serie.
+    def partir(titulo):
+        m = re.match(r"^(.*?)(\d+)(?:\s*\((?:fork|copia)[^)]*\))?$", titulo.strip(), re.I)
+        if not m or not m.group(1).strip():
+            return None
+        return re.sub(r"^[\W_]+", "", m.group(1)).casefold(), m.group(1), int(m.group(2)), m.group(2)
+
+    numeradas, vista = {}, {}
     for s in ses:
         if s["sessionId"] == yo["sessionId"]:
             continue
-        m = re.match(r"^(.*?)(\d+)$", s.get("title", "").strip())
-        if m and m.group(1).strip():
-            numeradas.setdefault(m.group(1), []).append((int(m.group(2)), m.group(2), s))
-    mt = re.match(r"^(.*?)(\d+)$", yo.get("title", "").strip())
-    if mt and mt.group(1) in numeradas:
-        base, mio, ya = mt.group(1), int(mt.group(2)), True
+        p = partir(s.get("title", ""))
+        if p:
+            numeradas.setdefault(p[0], []).append((p[2], p[3], s))
+            if p[0] not in vista or (p[2], s.get("lastActivityAt", 0)) > vista[p[0]][0]:
+                vista[p[0]] = ((p[2], s.get("lastActivityAt", 0)), p[1])
+    mt = partir(yo.get("title", ""))
+    if mt and mt[0] in numeradas:
+        clave, mio, ya = mt[0], mt[2], True
     else:
         # serie = la de la sesión numerada más reciente, entre las bases con ≥2 miembros
         # (una sola sesión que casualmente termina en número no es una serie)
@@ -275,13 +285,18 @@ def serie_sesiones():
         if not cand:
             print("✓ Numeración: sin serie numerada en esta carpeta (no inventes una); nada que archivar")
             return
-        base = max(cand, key=lambda b: max(s.get("lastActivityAt", 0) for _, _, s in cand[b]))
-        mio, ya = max(n for n, _, _ in cand[base]) + 1, False
-    ancho = max(len(dig) for _, dig, _ in numeradas[base])
-    if ya:
+        clave = max(cand, key=lambda b: max(s.get("lastActivityAt", 0) for _, _, s in cand[b]))
+        mio, ya = max(n for n, _, _ in cand[clave]) + 1, False
+    base = vista[clave][1]  # texto antes del número, con su emoji o adorno
+    ancho = max(len(dig) for _, dig, _ in numeradas[clave])
+    nuevo = f"{base}{str(mio).zfill(max(ancho, len(str(mio))))}"
+    if ya and yo.get("title", "").strip() == nuevo:
         print(f"✓ Numeración: la sesión ya se llama «{yo['title']}» (la nombró alguien): no tocar el título")
+    elif ya:
+        print(f"• TÍTULO: set_session_title(\"self\", \"{nuevo}\")  (conserva el adorno de la serie; hoy se llama «{yo['title']}»)")
     else:
-        print(f"• TÍTULO: set_session_title(\"self\", \"{base}{str(mio).zfill(ancho)}\")")
+        print(f"• TÍTULO: set_session_title(\"self\", \"{nuevo}\")")
+    base = clave
     viejas = sorted(((n, s) for n, _, s in numeradas[base] if n < mio and not s.get("isArchived")),
                     key=lambda x: x[0])
     # Grupo de la barra lateral: al abrir la sesión nueva, /cerrar la suelta de la anterior y eso la saca del grupo;
