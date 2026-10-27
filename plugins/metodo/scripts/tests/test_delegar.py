@@ -329,6 +329,91 @@ class TestDryRun(BaseDelegar):
 
 
 @unittest.skipIf(ES_WINDOWS, "scripts falsos de bash/sh")
+class TestModeloYEsfuerzo(BaseDelegar):
+    """--modelo / --esfuerzo: Codex recibe -m y -c model_reasoning_effort; Antigravity el id con el nivel. Todo con CLIs falsas."""
+
+    def cache_codex(self):
+        home = self.tmp / "codex-home"
+        home.mkdir()
+        (home / "auth.json").write_text("{}", encoding="utf-8")
+        datos = {"models": [
+            {"slug": "gpt-6-sol", "supported_reasoning_levels": [{"effort": "low"}, {"effort": "medium"}, {"effort": "high"}]},
+            {"slug": "gpt-6-luna", "supported_reasoning_levels": [{"effort": "low"}, {"effort": "medium"}]},
+        ]}
+        (home / "models_cache.json").write_text(json.dumps(datos), encoding="utf-8")
+        os.environ["CODEX_HOME"] = str(home)
+
+    def args_codex(self):
+        return json.loads((self.tmp / "codex_args.json").read_text(encoding="utf-8"))
+
+    def test_sin_flags_codex_queda_igual(self):
+        repo = self.crear_repo_git("repo-m0")
+        self.assertEqual(self.correr("desarrollo", str(repo), "x")[0], 0)
+        self.assertEqual(self.args_codex(), ["exec", "-C", str(repo), "--sandbox", "workspace-write", "-"])
+
+    def test_codex_recibe_modelo_y_esfuerzo(self):
+        self.cache_codex()
+        repo = self.crear_repo_git("repo-m1")
+        cod, out, err = self.correr("desarrollo", str(repo), "x", "--modelo", "gpt-6-sol", "--esfuerzo", "high")
+        self.assertEqual(cod, 0, err)
+        self.assertEqual(self.args_codex(), ["exec", "-m", "gpt-6-sol", "-c", 'model_reasoning_effort="high"',
+                                             "-C", str(repo), "--sandbox", "workspace-write", "-"])
+
+    def test_codex_modelo_inexistente_no_se_lanza_y_lista_los_que_hay(self):
+        self.cache_codex()
+        repo = self.crear_repo_git("repo-m2")
+        cod, out, err = self.correr("desarrollo", str(repo), "x", "--modelo", "gpt-6.1-sol")
+        self.assertEqual(cod, 64)
+        self.assertIn("gpt-6-luna", err)
+        self.assertFalse((self.tmp / "codex_args.json").exists())
+
+    def test_codex_esfuerzo_que_el_modelo_no_admite(self):
+        self.cache_codex()
+        repo = self.crear_repo_git("repo-m3")
+        cod, out, err = self.correr("desarrollo", str(repo), "x", "--modelo", "gpt-6-luna", "--esfuerzo", "max")
+        self.assertEqual(cod, 64)
+        self.assertIn("Admite: low, medium", err)
+
+    def test_valores_con_forma_rara_se_rechazan(self):
+        repo = self.crear_repo_git("repo-m4")
+        self.assertEqual(self.correr("desarrollo", str(repo), "x", "--esfuerzo", "furioso")[0], 64)
+        self.assertEqual(self.correr("desarrollo", str(repo), "x", "--modelo", "a b;rm -rf")[0], 64)
+        self.assertFalse((self.tmp / "codex_args.json").exists())
+
+    def test_dry_run_muestra_los_flags_sin_ejecutar(self):
+        self.cache_codex()
+        repo = self.crear_repo_git("repo-m5")
+        cod, out, err = self.correr("desarrollo", str(repo), "x", "--modelo", "gpt-6-luna", "--esfuerzo", "low", "--dry-run")
+        self.assertEqual(cod, 0)
+        self.assertIn("-m gpt-6-luna", out)
+        self.assertIn("model_reasoning_effort", out)
+        self.assertFalse((self.tmp / "codex_args.json").exists())
+
+    def test_antigravity_modelo_pedido_con_esfuerzo(self):
+        self.cupo_codex_falso(2, "Codex: 95% del cupo mensual — NO lanzar")
+        repo = self.crear_repo_git("repo-m6")
+        cod, out, err = self.correr("desarrollo", str(repo), "x", "--modelo", "gemini-3.8-flash", "--esfuerzo", "medium")
+        self.assertEqual(cod, 0, err)
+        args = json.loads((self.tmp / "agy_args.json").read_text(encoding="utf-8"))
+        self.assertEqual(args[0:2], ["--model", "gemini-3.8-flash-medium"])
+
+    def test_antigravity_solo_esfuerzo_cambia_el_del_radar(self):
+        self.cupo_codex_falso(2, "Codex: 95% del cupo mensual — NO lanzar")
+        repo = self.crear_repo_git("repo-m7")
+        self.assertEqual(self.correr("desarrollo", str(repo), "x", "--esfuerzo", "low")[0], 0)
+        args = json.loads((self.tmp / "agy_args.json").read_text(encoding="utf-8"))
+        self.assertEqual(args[0:2], ["--model", "gemini-3.8-flash-low"])
+
+    def test_antigravity_modelo_inexistente_no_se_reemplaza(self):
+        self.cupo_codex_falso(2, "Codex: 95% del cupo mensual — NO lanzar")
+        repo = self.crear_repo_git("repo-m8")
+        cod, out, err = self.correr("desarrollo", str(repo), "x", "--modelo", "gemini-9-inventado")
+        self.assertEqual(cod, 64)
+        self.assertIn("gemini-3.8-flash-high", err)          # muestra los que sí hay
+        self.assertFalse((self.tmp / "agy_args.json").exists())
+
+
+@unittest.skipIf(ES_WINDOWS, "scripts falsos de bash/sh")
 class TestRevisar(BaseDelegar):
     def test_revisar_codex_sandbox_read_only_y_arbol_sucio_permitido(self):
         repo_sucio = self.crear_repo_git("repo-sucio-codex", sucio=True)
