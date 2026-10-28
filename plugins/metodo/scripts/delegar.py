@@ -57,7 +57,7 @@ Códigos de salida:
 Antigravity trabaja sobre una COPIA del repo: solo los archivos versionados o nuevos no ignorados, sin .git, sin archivos
 de claves, de entorno, llaves, historiales ni transcripts (por la ruta, el nombre o lo que tienen adentro) y sin enlaces
 simbólicos (la carpeta .claude/ del proyecto, con sus notas internas, pendientes y traspasos, SÍ viaja, solo para leer;
-quedan afuera .claude/projects y settings.local.json); corre con un entorno en el que git no ejecuta nada aunque plante un
+quedan afuera .claude/projects, .claude/hooks, y los settings*.json, launch.json y mcp*.json); corre con un entorno en el que git no ejecuta nada aunque plante un
 .git. Lo que edita vuelve al repo real como parche, solo por archivos comunes, con la lista completa de lo que vuelve; si toca .claude/ o un CLAUDE.md, o crea
 archivos en carpetas que git ignora, no se trae nada; si toca hooks, .vscode, .github, instrucciones de otros agentes o
 atributos de git, se avisa en rojo. La copia va en ~/.cache/metodo/agy-trabajo (o METODO_AGY_TRABAJO). Si la
@@ -127,16 +127,25 @@ EXT_DATOS = {"", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".t
 EXT_COPIA = {".bak", ".old", ".orig"}   # token.json.bak: cuenta la extensión de antes
 # Configuración de otras herramientas que trae el repo: no viaja a la copia (Antigravity podría leerla desde su carpeta de
 # trabajo y darse permisos solo; p. ej. un .gemini/settings.json con «command(*)»). En cualquier nivel, sin importar mayúsculas.
-# .claude/ (notas internas del proyecto: PENDIENTES, prompts, traspasos, CLAUDE.md) SÍ viaja, solo lectura: lo que Gemini
-# cambie ahí no vuelve (71). Quedan afuera de ella .claude/projects (transcripts, ver PARES_SECRETOS) y settings.local.json
-# (configuración y permisos de ESTA computadora); este último va aparte y no en NOMBRE_SECRETO para no hacer saltar a Codex.
+# .claude/ (notas internas del proyecto: PENDIENTES, prompts, traspasos, docs, CLAUDE.md) SÍ viaja, solo lectura: lo que
+# Gemini cambie ahí no vuelve (71). Adentro de .claude/ quedan afuera la configuración y lo que se ejecuta: la carpeta hooks/ y
+# los settings*.json, launch.json y mcp*.json (también como copias .bak/.old/.orig), más .claude/projects (transcripts, ver
+# PARES_SECRETOS). Y settings.local.json, en cualquier carpeta (permisos de ESTA computadora). Van aparte y no en NOMBRE_SECRETO
+# para no hacer saltar a Codex en repos que tienen esos archivos (ignorados por git).
 TRAMOS_NO_COPIAR = {".gemini", ".agents", ".antigravity", ".codex", ".cursor"}
 NOMBRES_NO_COPIAR = {"settings.local.json"}
+TRAMOS_NO_COPIAR_EN_CLAUDE = {"hooks"}
+NOMBRE_CONFIG_EN_CLAUDE = re.compile(r"^(settings.*\.json|launch\.json|mcp.*\.json)$", re.I)
 # 4) Contenido (los primeros 64 KB): claves privadas y llaves con forma conocida, aunque el archivo se llame de cualquier modo.
 CONTENIDO_SECRETO = re.compile(
     rb"-----BEGIN [A-Z ]*PRIVATE KEY-----|(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}(?![0-9A-Z])|(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9]{36}"
     rb"|(?<![A-Za-z0-9_-])sk-[A-Za-z0-9_-]{20,}|(?<![A-Za-z0-9])xox[abpr]-|(?<![A-Za-z0-9_])AIza[0-9A-Za-z_-]{35}"
-    rb'|"private_key"\s*:')
+    rb'|"private_key"\s*:'
+    # llaves de servicios comunes (Stripe, Notion, HuggingFace, GitLab, Google OAuth) y JWT (tres tramos que empiezan con eyJ)
+    rb"|(?<![A-Za-z0-9])[sr]k_(?:live|test)_[A-Za-z0-9]{16,}|(?<![A-Za-z0-9_])ntn_[A-Za-z0-9]{20,}"
+    rb"|(?<![A-Za-z0-9_])secret_[A-Za-z0-9]{40,}|(?<![A-Za-z0-9_])hf_[A-Za-z0-9]{30,}|(?<![A-Za-z0-9_-])glpat-[A-Za-z0-9_-]{20,}"
+    rb"|(?<![A-Za-z0-9_])ya29\.[A-Za-z0-9_-]{20,}"
+    rb"|(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")
 TOPE_CONTENIDO = 64 * 1024
 # Lo que imprime agy sin pantalla cuando se le niega una herramienta (no hay quién apruebe): antes terminaba «bien» sin hacer
 # nada. Solo cuenta si la salida es corta o agy terminó con error (una respuesta larga puede citar esas palabras).
@@ -371,7 +380,20 @@ def tramos_delicados(rel):
 def no_se_copia(rel):
     """True si la ruta es configuración de otra herramienta que no viaja a la copia (H-1)."""
     partes = [x.casefold() for x in rel.replace("\\", "/").split("/") if x]
-    return any(x in TRAMOS_NO_COPIAR for x in partes) or (bool(partes) and partes[-1] in NOMBRES_NO_COPIAR)
+    if not partes:
+        return False
+    if any(x in TRAMOS_NO_COPIAR for x in partes):
+        return True
+    nombre = partes[-1]
+    raiz, ext = os.path.splitext(nombre)
+    if ext in EXT_COPIA:
+        nombre = raiz   # settings.local.json.bak cuenta como settings.local.json
+    if nombre in NOMBRES_NO_COPIAR:
+        return True
+    if ".claude" in partes[:-1]:
+        adentro = partes[partes.index(".claude") + 1:]
+        return any(x in TRAMOS_NO_COPIAR_EN_CLAUDE for x in adentro[:-1]) or bool(NOMBRE_CONFIG_EN_CLAUDE.match(nombre))
+    return False
 
 
 def archivos_de_claves(repo_path, tope=5):
@@ -1005,7 +1027,7 @@ def ejecutar_agy_aislado(cmd, repo_path, args, tope):
                   % (fuera, por_contenido))
         if config:
             print("(no viajan a Gemini %d archivo(s) de configuración de otras herramientas: .gemini, .agents, .codex, "
-                  ".cursor, settings.local.json…)" % config)
+                  ".cursor, settings*.json, hooks/…)" % config)
         rojo, fin = ("\033[31m", "\033[0m") if sys.stdout.isatty() else ("", "")
         if os.environ.get("METODO_AGY_SIN_AVISO_REGLAS") != "1":
             amplias, error_conf = reglas_amplias_agy()

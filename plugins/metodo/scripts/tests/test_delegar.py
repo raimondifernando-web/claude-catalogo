@@ -915,6 +915,8 @@ if modo == "accept-edits" or "editar_igual" in travesuras:
     if "claude" in travesuras:
         os.makedirs(".claude", exist_ok=True)
         open(".claude/settings.json", "w").write('{"hooks": {}}')
+    if "borra_notas" in travesuras:   # Gemini borra las notas internas
+        os.remove(".claude/PENDIENTES.md")
     if "notas" in travesuras:   # Gemini anota algo en las notas internas que le dejaron para leer (.claude/PENDIENTES.md)
         with open(".claude/PENDIENTES.md", "a") as f:
             f.write("anotado por gemini\n")
@@ -1202,9 +1204,14 @@ class TestAgyAislado(BaseDelegar):
         (repo / ".claude" / "PENDIENTES.md").write_text("- falta probar X\n", encoding="utf-8")
         (repo / ".claude" / "prompts" / "REANUDAR.md").write_text("estado de la sesión anterior\n", encoding="utf-8")
         (repo / "CLAUDE.md").write_text("reglas del proyecto\n", encoding="utf-8")
-        (repo / ".claude" / "settings.local.json").write_text('{"permissions": {"allow": ["Bash(*)"]}}', encoding="utf-8")
+        (repo / ".claude" / "docs").mkdir()
+        (repo / ".claude" / "docs" / "x.md").write_text("decisiones\n", encoding="utf-8")
+        (repo / ".claude" / "hooks").mkdir()
+        (repo / ".claude" / "hooks" / "h.py").write_text("print('hook')\n", encoding="utf-8")
+        for n in ("settings.local.json", "settings.json", "launch.json"):
+            (repo / ".claude" / n).write_text('{"permissions": {"allow": ["Bash(*)"]}}', encoding="utf-8")
         (repo / ".claude" / "projects" / "x" / "sesion.jsonl").write_text("transcript\n", encoding="utf-8")
-        subprocess.run(["git", "-C", str(repo), "add", "-f", "."], check=True)
+        subprocess.run(["git", "-C", str(repo), "add", "-f", ".claude"] + (["CLAUDE.md"] if (repo / "CLAUDE.md").exists() else []), check=True)
         subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "notas"], check=True)
         cod, out, err = self.correr("desarrollo", str(repo), "leé los pendientes y arreglá el README")
         self.assertEqual(cod, 0, out + err)
@@ -1212,9 +1219,12 @@ class TestAgyAislado(BaseDelegar):
         self.assertIn("ARCHIVO .claude/PENDIENTES.md", visto)                # las notas internas viajan
         self.assertIn("ARCHIVO .claude/prompts/REANUDAR.md", visto)
         self.assertIn("ARCHIVO CLAUDE.md", visto)
-        self.assertNotIn("settings.local.json", visto)                       # lo de esta computadora, no
-        self.assertNotIn("sesion.jsonl", visto)                               # ni los transcripts
-        self.assertIn("settings.local.json", out)                             # y el aviso lo dice
+        self.assertIn("ARCHIVO .claude/docs/x.md", visto)
+        for no_viaja in ("settings.local.json", "settings.json", "launch.json", "h.py", "sesion.jsonl"):
+            self.assertNotIn(no_viaja, visto)                                # configuración, hooks y transcripts, no
+        # el aviso cuenta lo que quedó afuera: 4 de configuración (3 json + hook) y 2 de claves (credencial versionada + transcript)
+        self.assertIn("no viajan a Gemini 4 archivo(s) de configuración de otras herramientas", out)
+        self.assertIn("no viajan a Gemini 2 archivo(s) de claves o de entorno", out)
         self.assertNotIn(".claude, .codex", out)                              # ya no dice que .claude no viaja
         self.sin_copias()
 
@@ -1222,11 +1232,24 @@ class TestAgyAislado(BaseDelegar):
         repo = self.repo_con_claves("repo-notas-editadas")
         (repo / ".claude").mkdir()
         (repo / ".claude" / "PENDIENTES.md").write_text("- falta probar X\n", encoding="utf-8")
-        subprocess.run(["git", "-C", str(repo), "add", "-f", "."], check=True)
+        subprocess.run(["git", "-C", str(repo), "add", "-f", ".claude"] + (["CLAUDE.md"] if (repo / "CLAUDE.md").exists() else []), check=True)
         subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "notas"], check=True)
         os.environ["FAKE_AGY"] = "notas"
         cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
         self.assertEqual(cod, 71, out + err)                                  # tocar .claude/ sigue sin traerse
+        self.assertIn(".claude/PENDIENTES.md", err)
+        self.assertEqual((repo / ".claude" / "PENDIENTES.md").read_text(), "- falta probar X\n")
+        self.assertNotIn("linea agregada por gemini", (repo / "README.md").read_text())
+
+    def test_si_gemini_borra_las_notas_internas_eso_no_vuelve(self):
+        repo = self.repo_con_claves("repo-notas-borradas")
+        (repo / ".claude").mkdir()
+        (repo / ".claude" / "PENDIENTES.md").write_text("- falta probar X\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "add", "-f", ".claude"] + (["CLAUDE.md"] if (repo / "CLAUDE.md").exists() else []), check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "notas"], check=True)
+        os.environ["FAKE_AGY"] = "borra_notas"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 71, out + err)
         self.assertIn(".claude/PENDIENTES.md", err)
         self.assertEqual((repo / ".claude" / "PENDIENTES.md").read_text(), "- falta probar X\n")
         self.assertNotIn("linea agregada por gemini", (repo / "README.md").read_text())
@@ -1465,6 +1488,53 @@ class TestLlavesYTrabajo(BaseDelegar):
         self.assertFalse(viejo.exists())
         self.assertTrue(nuevo.exists())
         self.assertTrue(ajeno.exists(), "borró una carpeta que no creó este programa")
+
+
+class TestClavesPorContenido(unittest.TestCase):
+    """Llaves con forma conocida: se arman por partes para que este archivo no traiga ninguna clave literal."""
+
+    ALN = "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0U1v2W3x4Y5z6"
+
+    def casos(self):
+        a = self.ALN
+        return {
+            "stripe-live": "sk" + "_live_" + a[:24],
+            "stripe-test-restringida": "rk" + "_test_" + a[:20],
+            "notion-nueva": "ntn" + "_" + a[:30],
+            "notion-vieja": "secret" + "_" + a[:43],
+            "huggingface": "hf" + "_" + a[:34],
+            "gitlab": "glpat" + "-" + a[:20] + "_-ab",
+            "google-oauth": "ya29" + "." + a[:30] + "-_x",
+            "jwt": "eyJ" + a[:12] + "." + "eyJ" + a[12:26] + "." + a[26:40],
+        }
+
+    def test_cada_patron_nuevo_se_detecta(self):
+        for nombre, valor in self.casos().items():
+            for envoltura in ("%s", "TOKEN=%s\n", '{"k": "%s"}', "Authorization: Bearer %s"):
+                texto = (envoltura % valor).encode()
+                self.assertTrue(D.CONTENIDO_SECRETO.search(texto), "%s no se detectó (%s)" % (nombre, envoltura[:12]))
+
+    def test_no_cuenta_texto_comun_ni_claves_cortas(self):
+        a = self.ALN
+        no = ["sk" + "_live_corta", "ntn" + "_corta", "secret" + "_" + a[:20], "secret_manager_client_configuration_for_the_service",
+              "hf" + "_" + a[:10], "glpat" + "-corta", "ya29" + ".corta", "eyJ" + "hbGci", "eyJ" + a[:12] + "." + a[12:24],
+              "task_hf_pipeline_" + a[:34], "risk" + "_live_" + a[:24], "este_es_un_nombre_largo_de_variable_" + a]
+        for texto in no:
+            self.assertFalse(D.CONTENIDO_SECRETO.search(texto.encode()), "falso positivo: %s" % texto)
+
+    def test_un_archivo_con_una_llave_nueva_no_viaja_a_la_copia(self):
+        with tempfile.TemporaryDirectory() as d:
+            repo = Path(d) / "repo"
+            (repo / "docs").mkdir(parents=True)
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            for i, valor in enumerate(self.casos().values()):
+                (repo / "docs" / ("nota%d.md" % i)).write_text("anotación con %s adentro\n" % valor, encoding="utf-8")
+            (repo / "docs" / "ok.md").write_text("sin nada\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repo), "add", "-f", "."], check=True)
+            destino = Path(d) / "copia"
+            fuera, contenido, config = D.copia_aislada(repo, [str(destino)])
+            self.assertEqual(contenido, len(self.casos()))
+            self.assertEqual(sorted(p.name for p in (destino / "docs").iterdir()), ["ok.md"])
 
 
 class TestNombresDeClaves(unittest.TestCase):
