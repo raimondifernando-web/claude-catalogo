@@ -56,8 +56,9 @@ Códigos de salida:
 
 Antigravity trabaja sobre una COPIA del repo: solo los archivos versionados o nuevos no ignorados, sin .git, sin archivos
 de claves, de entorno, llaves, historiales ni transcripts (por la ruta, el nombre o lo que tienen adentro) y sin enlaces
-simbólicos; corre con un entorno en el que git no ejecuta nada aunque plante un .git. Lo que edita vuelve al repo real
-como parche, solo por archivos comunes, con la lista completa de lo que vuelve; si toca .claude/ o un CLAUDE.md, o crea
+simbólicos (la carpeta .claude/ del proyecto, con sus notas internas, pendientes y traspasos, SÍ viaja, solo para leer;
+quedan afuera .claude/projects y settings.local.json); corre con un entorno en el que git no ejecuta nada aunque plante un
+.git. Lo que edita vuelve al repo real como parche, solo por archivos comunes, con la lista completa de lo que vuelve; si toca .claude/ o un CLAUDE.md, o crea
 archivos en carpetas que git ignora, no se trae nada; si toca hooks, .vscode, .github, instrucciones de otros agentes o
 atributos de git, se avisa en rojo. La copia va en ~/.cache/metodo/agy-trabajo (o METODO_AGY_TRABAJO). Si la
 configuración de Antigravity tiene reglas amplias (leer cualquier carpeta, comandos, cualquier página), se avisa en rojo y
@@ -126,7 +127,11 @@ EXT_DATOS = {"", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".t
 EXT_COPIA = {".bak", ".old", ".orig"}   # token.json.bak: cuenta la extensión de antes
 # Configuración de otras herramientas que trae el repo: no viaja a la copia (Antigravity podría leerla desde su carpeta de
 # trabajo y darse permisos solo; p. ej. un .gemini/settings.json con «command(*)»). En cualquier nivel, sin importar mayúsculas.
-TRAMOS_NO_COPIAR = {".gemini", ".agents", ".antigravity", ".codex", ".cursor", ".claude"}
+# .claude/ (notas internas del proyecto: PENDIENTES, prompts, traspasos, CLAUDE.md) SÍ viaja, solo lectura: lo que Gemini
+# cambie ahí no vuelve (71). Quedan afuera de ella .claude/projects (transcripts, ver PARES_SECRETOS) y settings.local.json
+# (configuración y permisos de ESTA computadora); este último va aparte y no en NOMBRE_SECRETO para no hacer saltar a Codex.
+TRAMOS_NO_COPIAR = {".gemini", ".agents", ".antigravity", ".codex", ".cursor"}
+NOMBRES_NO_COPIAR = {"settings.local.json"}
 # 4) Contenido (los primeros 64 KB): claves privadas y llaves con forma conocida, aunque el archivo se llame de cualquier modo.
 CONTENIDO_SECRETO = re.compile(
     rb"-----BEGIN [A-Z ]*PRIVATE KEY-----|(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}(?![0-9A-Z])|(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9]{36}"
@@ -138,7 +143,7 @@ TOPE_CONTENIDO = 64 * 1024
 AGY_DENEGADO = re.compile(r"no output produced|auto-denied|requires the .* permission", re.I)
 TOPE_SALIDA_DENEGADA = 600
 # Archivos que, si Gemini los toca, pueden ejecutar programas o cambiar cómo se comportan git, el editor o Claude:
-# .claude/ no se trae nunca (71); los demás se muestran antes, en rojo.
+# .claude/ viaja a la copia para que Gemini lea las notas, pero lo que cambie ahí no se trae nunca (71); los demás se muestran antes, en rojo.
 TRAMOS_CLAUDE = {".claude"}
 NOMBRES_CLAUDE = {"claude.md", "claude.local.md"}   # instrucciones que Claude lee solo (en cualquier carpeta)
 # un .gitignore nuevo o cambiado podría esconder lo que vuelve (o destapar un .env): no se trae nada
@@ -365,7 +370,8 @@ def tramos_delicados(rel):
 
 def no_se_copia(rel):
     """True si la ruta es configuración de otra herramienta que no viaja a la copia (H-1)."""
-    return any(x.casefold() in TRAMOS_NO_COPIAR for x in rel.replace("\\", "/").split("/") if x)
+    partes = [x.casefold() for x in rel.replace("\\", "/").split("/") if x]
+    return any(x in TRAMOS_NO_COPIAR for x in partes) or (bool(partes) and partes[-1] in NOMBRES_NO_COPIAR)
 
 
 def archivos_de_claves(repo_path, tope=5):
@@ -998,8 +1004,8 @@ def ejecutar_agy_aislado(cmd, repo_path, args, tope):
             print("(no viajan a Gemini %d archivo(s) de claves o de entorno por el nombre y %d por lo que tienen adentro)"
                   % (fuera, por_contenido))
         if config:
-            print("(no viajan a Gemini %d archivo(s) de configuración de otras herramientas: .gemini, .claude, .codex, "
-                  ".cursor…)" % config)
+            print("(no viajan a Gemini %d archivo(s) de configuración de otras herramientas: .gemini, .agents, .codex, "
+                  ".cursor, settings.local.json…)" % config)
         rojo, fin = ("\033[31m", "\033[0m") if sys.stdout.isatty() else ("", "")
         if os.environ.get("METODO_AGY_SIN_AVISO_REGLAS") != "1":
             amplias, error_conf = reglas_amplias_agy()

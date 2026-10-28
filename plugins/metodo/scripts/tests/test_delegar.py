@@ -915,6 +915,9 @@ if modo == "accept-edits" or "editar_igual" in travesuras:
     if "claude" in travesuras:
         os.makedirs(".claude", exist_ok=True)
         open(".claude/settings.json", "w").write('{"hooks": {}}')
+    if "notas" in travesuras:   # Gemini anota algo en las notas internas que le dejaron para leer (.claude/PENDIENTES.md)
+        with open(".claude/PENDIENTES.md", "a") as f:
+            f.write("anotado por gemini\n")
     if "husky" in travesuras:
         os.makedirs(".husky", exist_ok=True)
         open(".husky/pre-commit", "w").write("echo hola\n")
@@ -1191,6 +1194,42 @@ class TestAgyAislado(BaseDelegar):
         self.assertIn("ARCHIVO README.md", self.visto())
         self.assertIn("no viajan a Gemini 1 archivo(s) de configuración de otras herramientas", out)
         self.assertTrue((repo / ".gemini" / "settings.json").exists())        # el del repo real queda como estaba
+
+    def test_las_notas_internas_de_claude_viajan_pero_no_lo_de_esta_computadora(self):
+        repo = self.repo_con_claves("repo-notas")
+        (repo / ".claude" / "prompts").mkdir(parents=True)
+        (repo / ".claude" / "projects" / "x").mkdir(parents=True)
+        (repo / ".claude" / "PENDIENTES.md").write_text("- falta probar X\n", encoding="utf-8")
+        (repo / ".claude" / "prompts" / "REANUDAR.md").write_text("estado de la sesión anterior\n", encoding="utf-8")
+        (repo / "CLAUDE.md").write_text("reglas del proyecto\n", encoding="utf-8")
+        (repo / ".claude" / "settings.local.json").write_text('{"permissions": {"allow": ["Bash(*)"]}}', encoding="utf-8")
+        (repo / ".claude" / "projects" / "x" / "sesion.jsonl").write_text("transcript\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "add", "-f", "."], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "notas"], check=True)
+        cod, out, err = self.correr("desarrollo", str(repo), "leé los pendientes y arreglá el README")
+        self.assertEqual(cod, 0, out + err)
+        visto = self.visto()
+        self.assertIn("ARCHIVO .claude/PENDIENTES.md", visto)                # las notas internas viajan
+        self.assertIn("ARCHIVO .claude/prompts/REANUDAR.md", visto)
+        self.assertIn("ARCHIVO CLAUDE.md", visto)
+        self.assertNotIn("settings.local.json", visto)                       # lo de esta computadora, no
+        self.assertNotIn("sesion.jsonl", visto)                               # ni los transcripts
+        self.assertIn("settings.local.json", out)                             # y el aviso lo dice
+        self.assertNotIn(".claude, .codex", out)                              # ya no dice que .claude no viaja
+        self.sin_copias()
+
+    def test_si_gemini_edita_las_notas_internas_eso_no_vuelve(self):
+        repo = self.repo_con_claves("repo-notas-editadas")
+        (repo / ".claude").mkdir()
+        (repo / ".claude" / "PENDIENTES.md").write_text("- falta probar X\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "add", "-f", "."], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "notas"], check=True)
+        os.environ["FAKE_AGY"] = "notas"
+        cod, out, err = self.correr("desarrollo", str(repo), "arreglá el README")
+        self.assertEqual(cod, 71, out + err)                                  # tocar .claude/ sigue sin traerse
+        self.assertIn(".claude/PENDIENTES.md", err)
+        self.assertEqual((repo / ".claude" / "PENDIENTES.md").read_text(), "- falta probar X\n")
+        self.assertNotIn("linea agregada por gemini", (repo / "README.md").read_text())
 
     def test_un_gitignore_nuevo_no_se_trae(self):
         repo = self.repo_con_claves("repo-gitignore")
