@@ -14,6 +14,9 @@ Qué cuenta como cambio relevante:
     El orden A/B/C NO se toca: lo decide una persona (spec §7);
   - cambió una guía oficial de prompting o de migración de Anthropic, OpenAI o Google (huella diaria del texto, sin IA).
     Los resúmenes de `plugins/metodo/radar/consejos/` NO los hace el robot: el aviso del PR dice qué comando correr;
+  - catálogo de modelos (`plugins/metodo/radar/MODELOS.json`, lo arma `radar_modelos.py`): TODOS los modelos de TODAS las IA de
+    `fuentes_auto.proveedores`. Un modelo o laboratorio nuevo en models.dev / OpenRouter / LiteLLM aparece solo como novedad,
+    sin regla escrita a mano; los datos se publican solos (modo `diario` o `todo`);
   - huella diaria del índice de páginas de la doc de Claude Code, de las páginas de funciones y de los registros de cambios
     de Claude Code, Codex y Gemini CLI; el aviso del PR dice qué fila de FUNCIONES.md rehacer; este tipo de cambio no se
     publica solo.
@@ -37,6 +40,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 RADAR_PY = RAIZ / "plugins" / "metodo" / "scripts" / "radar.py"
 YAML_POR_DEFECTO = RAIZ / "plugins" / "metodo" / "radar" / "RADAR.yaml"
+RM = None   # radar_modelos, se carga junto con radar.py
 SUBIDA_PRECIO = 1.20
 
 
@@ -49,6 +53,7 @@ def _radar_mod():
 
 
 R = _radar_mod()
+RM = R.RM
 
 
 # --------------------------------------------------------------------------- #
@@ -527,12 +532,23 @@ def juntar(radar, modo, traer_fn=traer, avisar=_avisar_actions):
     fa = radar.get("fuentes_auto") or {}
     fuentes = {"paginas": {}, "guias": {}}
     if modo in ("diario", "todo"):
+        fuentes["crudo"] = {"docs": {}}
         for clave, lector in (("litellm", leer_litellm), ("openrouter", leer_openrouter), ("modelsdev", leer_modelsdev)):
+            fuentes["crudo"][clave] = None
             if fa.get(clave):
                 try:
-                    fuentes[clave] = lector(traer_fn(fa[clave]))
+                    datos = traer_fn(fa[clave])
+                    fuentes["crudo"][clave] = datos   # el catálogo de modelos necesita lo que `lector` descarta
+                    fuentes[clave] = lector(datos)
                 except Exception as ex:
                     avisar("Aviso: no pude leer %s (%s); sigo con el resto." % (clave, type(ex).__name__))
+        for prov in fa.get("proveedores") or []:
+            d = prov.get("docs_modelos")
+            if isinstance(d, dict) and d.get("url") and d.get("patron"):
+                try:
+                    fuentes["crudo"]["docs"][prov["id"]] = RM.nombres_de_doc(traer_fn(d["url"], "texto"), d["patron"])
+                except Exception as ex:
+                    avisar("Aviso: no pude leer la doc de modelos de %s (%s)." % (prov.get("id"), type(ex).__name__))
         for pid, p in sorted((fa.get("paginas_retiros") or {}).items()):
             try:
                 fuentes["paginas"][pid] = hash_tablas(traer_fn(p["url"], "texto"))
@@ -581,6 +597,39 @@ def juntar(radar, modo, traer_fn=traer, avisar=_avisar_actions):
     return fuentes
 
 
+def catalogo_nuevo(radar, fuentes, ruta_modelos, hoy_f=None):
+    """(catalogo, motivos) si el catálogo de modelos cambió respecto del publicado; (None, []) si no cambió o no se pudo armar.
+    Solo cuenta lo que importa: la fecha `actualizado` no se mueve sola (si no, habría un PR todos los días)."""
+    crudo = fuentes.get("crudo")
+    if not crudo or all(crudo.get(c) is None for c in ("modelsdev", "openrouter", "litellm")):
+        return None, []
+    previo = None
+    try:
+        if ruta_modelos.exists():
+            previo = RM.desde_texto(ruta_modelos.read_text(encoding="utf-8"))
+    except Exception:
+        previo = None
+    nuevo, motivos = RM.construir({"modelsdev": crudo.get("modelsdev"), "openrouter": crudo.get("openrouter"),
+                                   "litellm": crudo.get("litellm"), "docs": crudo.get("docs") or {}},
+                                  (radar.get("fuentes_auto") or {}).get("proveedores") or [], previo, hoy_f or date.today())
+    if previo and len(nuevo["modelos"]) < 0.7 * len(previo.get("modelos") or []):
+        print("Aviso: el catálogo nuevo tiene %d modelos y el publicado %d; parece una falla de las fuentes: no lo publico." % (
+            len(nuevo["modelos"]), len(previo["modelos"])))
+        return None, []
+    if previo:
+        sin_fecha = lambda c: {k: v for k, v in c.items() if k != "actualizado"}
+        if sin_fecha(previo) == sin_fecha(nuevo):
+            return None, []
+        nuevo["actualizado"] = (hoy_f or date.today()).isoformat()
+    return nuevo, motivos
+
+
+def catalogo_activo():
+    """El robot arma el catálogo de modelos solo si el workflow lo pide con RADAR_CATALOGO=1 (así, mientras el workflow viejo no sabe
+    commitear MODELOS.json, un cambio solo del catálogo no deja un commit vacío y un robot en rojo)."""
+    return os.environ.get("RADAR_CATALOGO") == "1"
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Actualiza RADAR.yaml desde fuentes públicas; solo escribe si hay un cambio relevante.")
     ap.add_argument("--modo", choices=("diario", "semanal", "todo"), default="todo")
@@ -589,22 +638,29 @@ def main(argv=None):
     ap.add_argument("--seco", action="store_true", help="muestra los motivos pero no escribe nada")
     a = ap.parse_args(argv)
     ruta = Path(a.yaml)
+    ruta_modelos = ruta.with_name("MODELOS.json")
     try:
         radar = R.leer_yaml(ruta)
-        nuevo, motivos = analizar(radar, juntar(radar, a.modo, traer), date.today())
+        fuentes = juntar(radar, a.modo, traer)
+        nuevo, motivos_radar = analizar(radar, fuentes, date.today())
+        catalogo, motivos_cat = catalogo_nuevo(radar, fuentes, ruta_modelos) if catalogo_activo() else (None, [])
+        motivos = motivos_cat + motivos_radar
     except Exception as ex:
         print("No se pudo actualizar (%s: %s). No se toca nada." % (type(ex).__name__, ex))
         return 0
-    if not motivos:
+    if not motivos and catalogo is None:
         print("Sin cambios relevantes (modo %s)." % a.modo)
         return 0
     for m in motivos:
         print("- " + m)
     if a.seco:
         return 0
-    cab = "".join(l for l in ruta.read_text(encoding="utf-8").splitlines(True) if l.startswith("#"))
-    ruta.write_text(cab + R.yaml_volcar(nuevo) + "\n", encoding="utf-8")
-    ruta.with_name("RADAR.md").write_text(R.a_markdown(nuevo), encoding="utf-8")
+    if motivos_radar:   # si solo cambió el catálogo de modelos, RADAR.yaml no se reescribe (ni cambia de formato)
+        cab = "".join(l for l in ruta.read_text(encoding="utf-8").splitlines(True) if l.startswith("#"))
+        ruta.write_text(cab + R.yaml_volcar(nuevo) + "\n", encoding="utf-8")
+        ruta.with_name("RADAR.md").write_text(R.a_markdown(nuevo), encoding="utf-8")
+    if catalogo is not None:
+        ruta_modelos.write_text(RM.a_texto(catalogo), encoding="utf-8")
     if a.motivo:
         Path(a.motivo).write_text("Cambios detectados en las fuentes públicas (modo %s):\n\n%s\n\n"
                                   "Este PR lo abrió una tarea programada, sin IA y sin claves. **Revisalo antes de aprobar**: "
