@@ -496,6 +496,15 @@ class TestRobot(unittest.TestCase):
         self.assertTrue(any("claude-zephyr-9" in m for m in motivos), motivos)
         self.assertEqual(cat2["actualizado"], "2026-10-30")
 
+    def test_el_workflow_publica_el_catalogo_y_ya_no_deja_esperar_a_una_persona_que_nadie_avisa(self):
+        wf = (RAIZ / ".github" / "workflows" / "radar.yml").read_text(encoding="utf-8")
+        self.assertIn("plugins/metodo/radar/MODELOS.json", wf)
+        self.assertIn('RADAR_CATALOGO: "1"', wf)
+        self.assertNotIn('"$vigentes" != "igual"', wf)   # un modelo vigente o una página de doc nueva ya no frenan los datos
+        self.assertIn("radar.py modelos", wf)
+        self.assertIn("test_radar_modelos.py", wf)   # el catálogo se prueba antes de publicarse solo
+        self.assertIn('RADAR_AUTO: "0"', wf)
+
     def test_el_robot_arma_el_catalogo_solo_si_el_workflow_lo_pide(self):
         os.environ.pop("RADAR_CATALOGO", None)
         self.assertFalse(FU.catalogo_activo())   # con el workflow viejo, un cambio solo del catálogo dejaría un commit vacío
