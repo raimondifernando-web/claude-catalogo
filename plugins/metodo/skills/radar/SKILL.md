@@ -1,6 +1,6 @@
 ---
 name: radar
-description: "Radar de modelos: dice qué IA conviene usar para cada tarea (programar, revisar código, diseño, escribir en castellano, investigar en la web, documentos largos, imágenes, video, transcripción, voz, planillas, tareas baratas, agentes de tarea larga), con un plan A, un B y un C por si el A no está disponible (cupo agotado, modelo retirado, sin datos privados). Usala cuando el usuario diga 'qué modelo uso para esto', 'qué IA me conviene', '/metodo:radar', 'se me acabó el cupo, qué uso', 'mostrame el ranking', 'plan B', o antes de delegar trabajo a Codex, Gemini o cualquier otra IA, o cuando al arrancar aparezca 'Radar: …'."
+description: "Radar de modelos: dice qué IA conviene usar para cada tarea (programar, revisar código, diseño, escribir en castellano, investigar en la web, documentos largos, imágenes, video, transcripción, voz, planillas, tareas baratas, agentes de tarea larga), con un plan A, un B y un C por si el A no está disponible (cupo agotado, modelo retirado, sin datos privados). Usala cuando el usuario diga 'qué modelo uso para esto', 'qué IA me conviene', '/metodo:radar', 'se me acabó el cupo, qué uso', 'mostrame el ranking', 'plan B', o antes de delegar trabajo a Codex, Gemini o cualquier otra IA, o cuando al arrancar aparezca 'Radar: …'. También para 'qué diferencia hay entre el modelo X y el Y', 'cuál es mejor para qué', 'qué modelos hay de Claude / OpenAI / Gemini / Perplexity / ElevenLabs', 'salió un modelo nuevo' o 'qué es Fable / Opus / GPT / Gemini': se contesta con `radar comparar` o `radar modelos`, nunca de memoria."
 ---
 
 # /metodo:radar — Qué IA usar para cada cosa (y qué usar si no está)
@@ -24,9 +24,11 @@ terminal. En los ejemplos, `radar` quiere decir `python3 "${CLAUDE_PLUGIN_ROOT}/
   privados o de clientes, y la primera vez exige `delegar.py --aceptar` (el código viaja a OpenAI o Google; los planes
   gratuitos pueden entrenar con él): explicáselo al usuario y pedile que lo corra él en su terminal (no se puede dar desde una sesión de IA). Tests y revisión del cambio los hacés vos.
 - **`radar ver [categoría]`** — *cuando el usuario quiere mirar el ranking.* Sin categoría, el resumen A/B/C de todas; con
-  categoría, el detalle (por qué, condiciones, cómo ver el cupo, fuente y fecha).
+  categoría, el detalle (por qué, condiciones, cómo ver el cupo, fuente y fecha). Al final, los modelos vigentes de cada IA.
 - **`radar html`** — una página local para mirarlo en el navegador (`<config>/metodo/radar.html`).
-- **`radar actualizar`** — baja la última versión publicada. Sin red, sigue con lo último guardado.
+- **`radar comparar <A> <B>`** — *cuando preguntan qué diferencia hay entre dos modelos o cuál sirve para qué* («Opus o Fable», «GPT-6.1 Sol o Gemini 4 Argon»). Acepta alias («opus») o ids; devuelve la tabla de datos de las fuentes (precio, contexto, qué entiende, fecha; lo que falta dice «sin dato»), lo que cambia y lo que es igual, y para qué sirve cada uno según las fuentes y el radar (planes, ranking, consejos). Contestá con eso y citá fuente y fecha; **no completes de memoria** lo que dice «sin dato». Con `--json` para otras herramientas.
+- **`radar modelos [proveedor] [--todos]`** — todos los modelos vigentes de cada IA que seguimos (Claude, OpenAI, Google, Perplexity, ElevenLabs y las demás de `fuentes_auto.proveedores`), con fecha y precio. Con un proveedor, el detalle; con `--todos`, también los anteriores.
+- **`radar actualizar [--directo]`** — baja la última versión publicada del radar y del catálogo de modelos; si el catálogo tiene más de 4 días (o con `--directo`) lo arma desde las fuentes públicas. Sin red, sigue con lo último guardado. `radar hoy` lo lanza solo una vez por día.
 - **`radar probar --si`** — *opcional.* Prueba gratis, con las claves del usuario (por variable de entorno, nunca se
   muestran), que los modelos nombrados existen para su cuenta. Detecta el caso «el modelo figura pero tu cuenta ya no lo
   puede usar». Si el usuario no lo pidió, no lo corras.
