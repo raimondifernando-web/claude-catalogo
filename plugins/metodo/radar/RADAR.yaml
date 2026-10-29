@@ -79,8 +79,11 @@ ruteo_claude:
       esfuerzo: low
       otra_ia: tareas_baratas
       verificado: false
-      sin_dato: "El radar no mide a Claude Haiku en esta categoría (solo GPT-6 Luna y GPT-6.1 Sol). haiku/low es el piso de la escala."
-      evidencia: []
+      sin_dato: "Claude Haiku 5.5 ya se mide en «tareas baratas» (índice de Artificial Analysis 43 a US$0,21 por tarea, el más alto de los baratos; GPT-6 Luna, 38 a US$0,07), pero nadie mide «buscar, mover o resumir» como tal. haiku/low es el piso de la escala."
+      evidencia:
+        - dato: nivel
+          categoria: tareas_baratas
+          fuente: Artificial Analysis LLM Leaderboard
       palabras:
         - buscar
         - busqueda
@@ -106,14 +109,17 @@ ruteo_claude:
       esfuerzo: low
       otra_ia: desarrollo
       verificado: false
-      sin_dato: "Nivel: dos fuentes independientes. Esfuerzo: las mediciones solo traen variantes xhigh y max (Arena) y no comparan medium ni low; sin dato, ante la duda entre low y medium, el de abajo."
+      sin_dato: "Nivel: tres fuentes independientes (Claude Code con Sonnet 5.5: 59 contra 62 de Opus 5.5 en el índice de Artificial Analysis, 61,8% contra 64,8% en Terminal-Bench, 3.º contra 1.º en Arena WebDev). Esfuerzo: las mediciones solo traen variantes xhigh y max (Arena) y no comparan medium ni low; sin dato, ante la duda entre low y medium, el de abajo."
       evidencia:
         - dato: nivel
           categoria: desarrollo
-          fuente: Artificial Analysis Coding Agent Index v1.5
+          fuente: Artificial Analysis Coding Agent Index v2.0
         - dato: nivel
           categoria: diseno
           fuente: Arena WebDev
+        - dato: nivel
+          categoria: desarrollo
+          fuente: "Terminal-Bench 4.0 (tabla de Snorkel AI)"
       palabras:
         - "implement*"
         - arreglar
@@ -141,8 +147,14 @@ ruteo_claude:
       esfuerzo: medium
       otra_ia: revision
       verificado: false
-      sin_dato: "La categoría «revisión de código y seguridad» no tiene evidencia independiente cargada (orden provisorio): vale la política de modelos. Revisar juzga y el error sale caro (2 «sí» de 3 se cumplen a medias): sonnet/medium. La segunda opinión conviene mandarla antes a otra IA con cupo."
-      evidencia: []
+      sin_dato: "Nivel: dos fuentes independientes (Qodo e ironbee): Claude Sonnet 5.5 queda a 2 puntos de Opus 5.5 revisando, a menos costo. Esfuerzo: las fuentes no coinciden (ironbee midió mejor en low, Qodo corrió en high); vale la política de modelos: revisar juzga y el error sale caro (2 «sí» de 3 se cumplen a medias) → sonnet/medium. La segunda opinión conviene mandarla antes a otra IA con cupo."
+      evidencia:
+        - dato: nivel
+          categoria: revision
+          fuente: "Qodo, ¿qué modelo conviene para revisar código? (13 modelos)"
+        - dato: nivel
+          categoria: revision
+          fuente: "ironbee-ai/code-review-benchmarks (21 modelos, 50 pull requests)"
       palabras:
         - "revis*"
         - review
@@ -157,11 +169,14 @@ ruteo_claude:
       esfuerzo: low
       otra_ia: datos_planillas
       verificado: false
-      sin_dato: "Nivel: una fuente independiente (Claude Sonnet 5.5 queda 2° en AnalystAgent). Esfuerzo: sin medición; ante la duda entre low y medium, el de abajo."
+      sin_dato: "Nivel: dos fuentes independientes (Claude Sonnet 5.5 lidera el Vals Index v2.2 con 70,85% y queda 2.º en AnalystAgent). Esfuerzo: sin medición; ante la duda entre low y medium, el de abajo."
       evidencia:
         - dato: nivel
           categoria: datos_planillas
           fuente: Artificial Analysis AnalystAgent y GDP.pdf
+        - dato: nivel
+          categoria: datos_planillas
+          fuente: "Vals AI, modelado en Excel y finanzas"
       palabras:
         - planilla
         - excel
@@ -177,7 +192,7 @@ ruteo_claude:
       esfuerzo: low
       otra_ia: investigacion_web
       verificado: false
-      sin_dato: "Arena búsqueda no trae modelos Claude de septiembre (el único Claude es Opus 4.6): sin dato vale la política de modelos (una pregunta con «sí»: hay que juntar y contrastar fuentes → sonnet; ante la duda entre low y medium, el de abajo)."
+      sin_dato: "Arena búsqueda (13/10) trae Claude Fable 5.1 (5.º), Opus 5 (6.º) y Opus 5.5 en esfuerzo medio (14.º, 1213) pero no Sonnet 5.5: sin dato del nivel que corresponde, vale la política de modelos (una pregunta con «sí»: hay que juntar y contrastar fuentes → sonnet; ante la duda entre low y medium, el de abajo)."
       evidencia: []
       palabras:
         - "investig*"
@@ -193,7 +208,7 @@ ruteo_claude:
       esfuerzo: high
       otra_ia: revision
       verificado: false
-      sin_dato: "No hay evidencia independiente de arquitectura ni de seguridad (revisión sin fuentes): vale la política de modelos tal cual. Hay que juzgar y el error sale caro (2 «sí») → opus/high."
+      sin_dato: "No hay evidencia independiente de arquitectura ni de seguridad (las fuentes de revisión de código —Qodo, ironbee, cross-review— no miden arquitectura ni seguridad): vale la política de modelos tal cual. Hay que juzgar y el error sale caro (2 «sí») → opus/high."
       evidencia: []
       palabras:
         - "arquitectur*"
