@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.61.3 — 2026-10-29
+**Los agentes que son de UNA empresa o proyecto ahora se identifican con su nombre entre corchetes**, y un control del catálogo impide que se cuele uno con datos de alguien en la lista de agentes generales. Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** había agentes que solo servían para una empresa (llevaban sus cuentas y sistemas adentro) pero no lo decían, y en la lista parecían generales; recién al usarlos se notaba, y faltaba la versión general.
+- **Qué cambia:** `/metodo:crear-agente` ahora pide que todo agente con datos de una empresa o proyecto empiece su descripción con `[PROYECTO]` (por ejemplo `[TU-EMPRESA] PM de …`), que todo `pm-*` de una empresa lo lleve y que el agente general no tenga datos de nadie. Si hace falta la versión general, se crea aparte.
+- **Control nuevo del catálogo:** falla si algún agente del catálogo trae tag de proyecto o nombra empresas o personas de una lista que no está en el repositorio.
+
 ## 0.61.2 — 2026-10-29
 **El radar ahora muestra un ranking en revisión de código, voz, datos y planillas, y tareas baratas** (decían «sin ranking cargado todavía»), y los nombres de modelo largos se acortaron para que se lean enteros en la guía de modelos. Se aplica solo con la actualización; no hay nada que correr.
 - Revisión de código: F1 de ironbee (Sonnet 5.5, Grok 4.7, Opus 5.5, Gemini 4 Argon). Voz: arena de Artificial Analysis. Datos y planillas: Excel Modeling de Vals. Tareas baratas: índice de Artificial Analysis con costo por tarea. Todos a mano, con fuente y fecha; el robot no los toca.

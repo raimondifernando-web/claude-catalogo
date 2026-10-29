@@ -17,6 +17,9 @@ paso "pruebas del vigía" python3 -m unittest discover -s plugins/metodo/scripts
 paso "pruebas del método (buzón, radar, estable, checks)" python3 -m unittest discover -s plugins/metodo/scripts/tests
 paso "pasos manuales / Windows (nada exige que el cliente corra algo a mano)" python3 scripts/pasos-manuales.py
 paso "pruebas de los controles" python3 -m unittest discover -s scripts/tests
+# Etiqueta de proyecto (Mand. III, C229): los agentes del catálogo son generales, sin datos de ninguna empresa. Lista de
+# marcadores: el secreto MARCADORES_PROYECTO en GitHub (una expresión por línea; nunca se imprime) o, a mano, un archivo.
+paso "agentes generales (sin tag de proyecto ni nombres propios)" python3 scripts/agentes-etiqueta.py --publico --agentes 'plugins/*/agents/*.md' ${MARCADORES_ARCHIVO:+--marcadores "$MARCADORES_ARCHIVO"}
 # Regla 25: los workflows que este PR AGREGA (los viejos se ponen al día cuando se rediseñan) nacen baratos y silenciosos (el catálogo es público: la regla de sistema operativo no corre).
 BASE_WL="$(git merge-base origin/main HEAD 2>/dev/null || true)"
 if [ -n "$BASE_WL" ] && [ "$BASE_WL" != "$(git rev-parse HEAD)" ]; then
