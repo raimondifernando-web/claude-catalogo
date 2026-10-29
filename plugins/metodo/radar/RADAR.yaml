@@ -1,6 +1,6 @@
 # RADAR.yaml — qué IA usar para cada cosa, con plan A, B y C. Lo lee `scripts/radar.py`.
 # Lo mantiene un PR automático (.github/workflows/radar.yml) que una persona aprueba; el RADAR.md se genera con `radar.py md`.
-actualizado: 2026-10-13
+actualizado: 2026-10-29
 nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual."
 vigentes:
   actualizado: 2026-10-08
@@ -270,24 +270,24 @@ categorias:
           - "Terminal-Bench 4.0 (tabla oficial)"
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
-      fecha: 2026-10-05
+      fecha: 2026-10-29
       verificado: false
       items:
         - puesto: 1
-          modelo: claude-opus-5.5-max
-          puntaje: 1815
+          modelo: "Claude Opus 5.5 (Max)"
+          puntaje: 1810
         - puesto: 2
-          modelo: gpt-6-astra-max
-          puntaje: 1788
+          modelo: "GPT-6 Astra (Max)"
+          puntaje: 1773
         - puesto: 3
-          modelo: claude-sonnet-5.5-xhigh
-          puntaje: 1786
+          modelo: "Claude Sonnet 5.5 (xHigh)"
+          puntaje: 1770
         - puesto: 4
-          modelo: gpt-6.1-sol-max
-          puntaje: 1758
+          modelo: "Gemini 4 Carbon (High)"
+          puntaje: 1768
         - puesto: 5
-          modelo: claude-fable-5.1-max
-          puntaje: 1749
+          modelo: "GPT-6.1 Sol (Max)"
+          puntaje: 1751
     arena:
       config: webdev
       split: latest
@@ -401,24 +401,24 @@ categorias:
         verificado: false
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
-      fecha: 2026-10-05
+      fecha: 2026-10-29
       verificado: false
       items:
         - puesto: 1
-          modelo: claude-opus-5.5-max
-          puntaje: 1815
+          modelo: "Claude Opus 5.5 (Max)"
+          puntaje: 1810
         - puesto: 2
-          modelo: gpt-6-astra-max
-          puntaje: 1788
+          modelo: "GPT-6 Astra (Max)"
+          puntaje: 1773
         - puesto: 3
-          modelo: claude-sonnet-5.5-xhigh
-          puntaje: 1786
+          modelo: "Claude Sonnet 5.5 (xHigh)"
+          puntaje: 1770
         - puesto: 4
-          modelo: gpt-6.1-sol-max
-          puntaje: 1758
+          modelo: "Gemini 4 Carbon (High)"
+          puntaje: 1768
         - puesto: 5
-          modelo: claude-fable-5.1-max
-          puntaje: 1749
+          modelo: "GPT-6.1 Sol (Max)"
+          puntaje: 1751
     arena:
       config: webdev
       split: latest
@@ -487,24 +487,24 @@ categorias:
           - EQ-Bench Creative Writing v3
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
-      fecha: 2026-10-05
+      fecha: 2026-10-29
       verificado: false
       items:
         - puesto: 1
-          modelo: gemini-4-argon-high
-          puntaje: 1533
+          modelo: "Gemini 4 Carbon (High)"
+          puntaje: 1540
         - puesto: 2
-          modelo: claude-opus-5.5-high
-          puntaje: 1512
+          modelo: "Gemini 4 Argon (High)"
+          puntaje: 1529
         - puesto: 3
-          modelo: claude-fable-5.1-max
-          puntaje: 1511
+          modelo: "Claude Opus 5.5 (High)"
+          puntaje: 1516
         - puesto: 4
-          modelo: claude-opus-5-max
-          puntaje: 1507
+          modelo: "Claude Fable 5.1 (Max)"
+          puntaje: 1514
         - puesto: 5
-          modelo: claude-opus-4-6-high
-          puntaje: 1503
+          modelo: "Claude Opus 5 (Max)"
+          puntaje: 1508
     arena:
       config: text
       split: latest
@@ -777,24 +777,24 @@ categorias:
         verificado: false
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
-      fecha: 2026-10-05
+      fecha: 2026-10-29
       verificado: false
       items:
         - puesto: 1
-          modelo: claude-fable-5-high
+          modelo: "Claude Fable 5 (High)"
           puntaje: 1325
         - puesto: 2
-          modelo: claude-opus-5-high
+          modelo: "Claude Opus 5.5 (High)"
           puntaje: 1321
         - puesto: 3
-          modelo: claude-fable-5.1-max
+          modelo: "Claude Opus 5 (High)"
           puntaje: 1320
         - puesto: 4
-          modelo: claude-opus-4-7
-          puntaje: 1316
+          modelo: "Claude Fable 5.1 (Max)"
+          puntaje: 1319
         - puesto: 5
-          modelo: gemini-3.8-flash-high
-          puntaje: 1316
+          modelo: Claude Opus 4.7
+          puntaje: 1317
     arena:
       config: vision
       split: latest
@@ -1262,31 +1262,32 @@ fuentes_auto:
   paginas_retiros:
     anthropic:
       url: "https://platform.claude.com/docs/en/about-claude/model-deprecations"
-      hash: 1b26043ce69e8c79
+      hash: d3e7f78d930391a7
     openai:
       url: "https://developers.openai.com/api/docs/deprecations"
-      hash: 960a8c5b74fd208a
+      hash: f831715883d3c856
     google:
       url: "https://ai.google.dev/gemini-api/docs/deprecations"
-      hash: 0bc9331579e4e075
+      hash: 89a2cf370a523f6c
   guias:
     anthropic_prompting:
       proveedor: Anthropic
       titulo: Prompting best practices
       url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices.md"
-      hash: b07bd1df9d7b1aee
-      cambio: 2026-10-13
+      hash: 24e3e94376865449
+      cambio: 2026-10-29
     anthropic_migracion:
       proveedor: Anthropic
       titulo: "Guías de migración por modelo (índice)"
       url: "https://platform.claude.com/docs/en/about-claude/models/migration-guide.md"
-      hash: 7faf92fd72ab2974
-      cambio: 2026-10-13
+      hash: 33137b25fe4f8984
+      cambio: 2026-10-29
     openai_ultimo_modelo:
       proveedor: OpenAI
       titulo: "Using GPT-6 (último modelo, prompting y migración)"
       url: "https://developers.openai.com/api/docs/guides/latest-model.md"
-      hash: 913ff184a3e9820e
+      hash: 4df75842141f83db
+      cambio: 2026-10-29
     openai_prompting:
       proveedor: OpenAI
       titulo: Prompt engineering
@@ -1296,8 +1297,8 @@ fuentes_auto:
       proveedor: Google
       titulo: "Novedades y migración del último Gemini"
       url: "https://ai.google.dev/gemini-api/docs/latest-model.md.txt"
-      hash: 3dac74e5d2d6d9d6
-      cambio: 2026-10-13
+      hash: ec1c49ff460e5b08
+      cambio: 2026-10-29
     google_prompting:
       proveedor: Google
       titulo: Prompt design strategies
@@ -1307,34 +1308,42 @@ fuentes_auto:
       proveedor: Claude Code
       titulo: "Claude Code — memory (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/memory.md"
+      hash: 027ae08228620503
     claude_code_settings:
       proveedor: Claude Code
       titulo: "Claude Code — settings (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/settings.md"
+      hash: edca99ec6ed90a7d
     claude_code_skills:
       proveedor: Claude Code
       titulo: "Claude Code — skills (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/skills.md"
+      hash: 47f65583444fb747
     claude_code_sub_agents:
       proveedor: Claude Code
       titulo: "Claude Code — sub-agents (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/sub-agents.md"
+      hash: f6b2d1973fdfcbf2
     claude_code_mcp:
       proveedor: Claude Code
       titulo: "Claude Code — mcp (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/mcp.md"
+      hash: 1d66f912e1bc8b10
     claude_code_plugins_reference:
       proveedor: Claude Code
       titulo: "Claude Code — plugins-reference (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/plugins-reference.md"
+      hash: d6fcec69f40c7b17
     claude_code_plugin_marketplaces:
       proveedor: Claude Code
       titulo: "Claude Code — plugin-marketplaces (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/plugin-marketplaces.md"
+      hash: 1ccebd7298c6d872
     claude_code_large_codebases:
       proveedor: Claude Code
       titulo: "Claude Code — large-codebases (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/large-codebases.md"
+      hash: 92a75d6471df39e5
   familias:
     - id: claude-haiku
       nombre: Claude Haiku
@@ -1453,6 +1462,12 @@ fuentes_auto:
         - cli-reference
         - cloud-environments
         - code-review
+        - code-review-costs
+        - code-review-customize
+        - code-review-local
+        - code-review-pull-requests
+        - code-review-setup
+        - code-review-troubleshooting
         - commands
         - common-workflows
         - communications-kit
@@ -1586,96 +1601,111 @@ fuentes_auto:
         - zero-data-retention
       nuevas:
         - auto-mode-classifier-billing 2026-10-13
+        - code-review-costs 2026-10-29
+        - code-review-customize 2026-10-29
+        - code-review-local 2026-10-29
+        - code-review-pull-requests 2026-10-29
+        - code-review-setup 2026-10-29
+        - code-review-troubleshooting 2026-10-29
     paginas:
       mods:
         titulo: Mods
         url: "https://code.claude.com/docs/en/plugins/mods/overview.md"
-        hash: 25d443d69737d28e
+        hash: 701010c7c6d840ca
+        cambio: 2026-10-29
       goal:
         titulo: /goal
         url: "https://code.claude.com/docs/en/goal.md"
-        hash: 867a0ff334e589b9
-        cambio: 2026-10-13
+        hash: 7a08d158425579ee
+        cambio: 2026-10-29
       canales:
         titulo: Canales
         url: "https://code.claude.com/docs/en/channels.md"
-        hash: e76e3ccc52c20ccd
+        hash: 8b46a63ba1b0689d
+        cambio: 2026-10-29
       rutinas:
         titulo: Rutinas
         url: "https://code.claude.com/docs/en/routines.md"
-        hash: 62c39dc22065b1b8
-        cambio: 2026-10-13
+        hash: d6bb3ea440df2913
+        cambio: 2026-10-29
       worktrees:
         titulo: Worktrees
         url: "https://code.claude.com/docs/en/worktrees.md"
-        hash: a8a24404f94eb2d3
-        cambio: 2026-10-13
+        hash: 81133cb84366fccf
+        cambio: 2026-10-29
       subagentes:
         titulo: Subagentes
         url: "https://code.claude.com/docs/en/sub-agents.md"
-        hash: 3e21198905cc79a3
-        cambio: 2026-10-13
+        hash: f6b2d1973fdfcbf2
+        cambio: 2026-10-29
       hooks:
         titulo: Hooks
         url: "https://code.claude.com/docs/en/hooks-guide.md"
-        hash: d3a06b91bb67f8b2
-        cambio: 2026-10-13
+        hash: 7c8f42cf7fe1e2e7
+        cambio: 2026-10-29
       skills:
         titulo: Skills
         url: "https://code.claude.com/docs/en/skills.md"
-        hash: a2af6e88f2f8a407
-        cambio: 2026-10-13
+        hash: 47f65583444fb747
+        cambio: 2026-10-29
       plugins:
         titulo: Plugins
         url: "https://code.claude.com/docs/en/plugins/overview.md"
-        hash: 8135d91ce8cf16dd
+        hash: cdfe622ece99d963
+        cambio: 2026-10-29
       loop:
         titulo: /loop y tareas programadas
         url: "https://code.claude.com/docs/en/scheduled-tasks.md"
-        hash: c69b2970c1507c34
-        cambio: 2026-10-13
+        hash: 3dbaf2e94fbca10a
+        cambio: 2026-10-29
       scheduled_escritorio:
         titulo: Scheduled tasks de escritorio
         url: "https://code.claude.com/docs/en/desktop-scheduled-tasks.md"
-        hash: 7b02ef2472ff7583
+        hash: 1160b877d6e6c92a
+        cambio: 2026-10-29
       workflows:
         titulo: "Workflows dinámicos y ultracode"
         url: "https://code.claude.com/docs/en/workflows.md"
-        hash: daca13448c80810a
-        cambio: 2026-10-13
+        hash: 160f62a3bcd2c9dd
+        cambio: 2026-10-29
       nube:
         titulo: Sesiones en la nube
         url: "https://code.claude.com/docs/en/claude-code-on-the-web.md"
-        hash: fda2f14eef59c5e7
-        cambio: 2026-10-13
+        hash: 57ff0a8623e5a7e8
+        cambio: 2026-10-29
       agentes_paralelo:
         titulo: Agentes en paralelo
         url: "https://code.claude.com/docs/en/agents.md"
-        hash: 8365a5978d39666c
+        hash: bff56413c3124dac
+        cambio: 2026-10-29
       modelo_effort:
         titulo: "Configuración de modelo y effort"
         url: "https://code.claude.com/docs/en/model-config.md"
-        hash: bceac1d4062ab95a
+        hash: 10e373b20f625f5d
+        cambio: 2026-10-29
     changelogs:
       claude_code:
         proveedor: Anthropic
         titulo: Claude Code
         url: "https://github.com/anthropics/claude-code/releases.atom"
         tipo: atom_estable
-        version: "2.1.295"
+        version: "2.1.312"
         corte: 2
         paso: 25
+        cambio: 2026-10-29
       codex:
         proveedor: OpenAI
         titulo: Codex CLI
         url: "https://github.com/openai/codex/releases.atom"
         tipo: atom_estable
-        version: "0.162.0"
+        version: "0.165.0"
         corte: 2
+        cambio: 2026-10-29
       gemini_cli:
         proveedor: Google
         titulo: Gemini CLI
         url: "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/docs/changelogs/latest.md"
         tipo: gemini_latest
-        version: "0.63.0"
+        version: "0.66.0"
         corte: 2
+        cambio: 2026-10-29
