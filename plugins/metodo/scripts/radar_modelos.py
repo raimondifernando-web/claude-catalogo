@@ -56,7 +56,7 @@ def _clave(texto):
 def _canon(mid):
     """Id canónico para juntar el mismo modelo entre fuentes (sin prefijo de proveedor; los puntos pasan a guiones:
     OpenRouter dice claude-haiku-5.5 y models.dev claude-haiku-5-5)."""
-    return str(mid or "").strip().lower().split("/")[-1].replace(".", "-")
+    return str(mid or "").strip().lower().split("/")[-1].replace(".", "-").replace("_", "-")
 
 
 def _fecha(v):
@@ -83,8 +83,13 @@ def _num(v):
 
 
 def _por_millon(v):
-    n = _num(v)
-    return round(n * 1e6, 4) if n is not None else None
+    """Precio por token → por millón. Se multiplica ANTES de redondear (0.00000015 por token son US$0.15 por millón)."""
+    if isinstance(v, bool) or v is None:
+        return None
+    try:
+        return round(float(v) * 1e6, 4)
+    except (TypeError, ValueError):
+        return None
 
 
 def _texto(v, largo=240):
@@ -123,7 +128,8 @@ def desde_modelsdev(datos, prov):
                 continue
             if "/" in str(mid) and str(mid).split("/")[0] not in ids:
                 continue   # modelos de otro laboratorio que este proveedor solo revende: viven en el catálogo de su dueño
-            dueno = str(m.get("canonical_model_id") or "").split("/")[0].lower()
+            cid = str(m.get("canonical_model_id") or "")
+            dueno = cid.split("/")[0].lower() if "/" in cid else ""
             if dueno and dueno not in propios:
                 continue   # lo publica otro laboratorio (p. ej. un DeepSeek dentro del listado de Mistral): vive en el catálogo de su dueño
             costo = m.get("cost") or {}
@@ -131,6 +137,7 @@ def desde_modelsdev(datos, prov):
             mod = m.get("modalities") or {}
             estado = m.get("status")
             r = {"id": str(mid), "nombre": _texto(m.get("name") or mid, 80), "familia": _texto(m.get("family"), 40),
+                 "retiro": _fecha(m.get("deprecation_date") or m.get("retirement_date") or m.get("sunset_date")),
                  "tipo": _tipo(m.get("type"), mod.get("output")), "alta": _fecha(m.get("release_date")),
                  "contexto": _num(lim.get("context")), "salida_max": _num(lim.get("output")),
                  "entrada_usd": _num(costo.get("input")), "salida_usd": _num(costo.get("output")),
@@ -261,6 +268,8 @@ def _estados(registros, hoy):
             r["estado"] = "retirado"
         elif _es_alias_latest(r["id"]):
             r["estado"] = "alias"
+        elif r.get("alta") and r["alta"] > hoy.isoformat():
+            r["estado"] = "anunciado"   # todavía no salió: no desplaza al vigente de hoy
         else:
             fam = r.get("familia") or _familia_derivada(r["id"])
             if fam:
@@ -343,21 +352,25 @@ def construir(fuentes, proveedores, previo=None, hoy=None):
         _estados(registros, hoy)
         # lo que estaba y las fuentes ya no traen
         actuales = {_canon(r["id"]) for r in registros}
+        ya_retirados = [dict(m) for k, m in previos.items() if k[0] == pid and k[1] not in actuales and m.get("estado") == "retirado"]
+        registros.extend(ya_retirados)   # un modelo retirado se queda en el catálogo (la historia no se borra)
         faltan = [m for k, m in previos.items() if k[0] == pid and k[1] not in actuales and m.get("estado") != "retirado"]
         previos_del_proveedor = [m for k, m in previos.items() if k[0] == pid]
-        if faltan and tuvo_datos and len(faltan) <= max(MIN_DESAPARECIDOS, UMBRAL_DESAPARECIDOS * len(previos_del_proveedor)):
+        # si alguna fuente que este proveedor usa no respondió, lo que falta puede ser la fuente y no un retiro
+        fuente_incompleta = any(fuentes.get(c) is None for c in ("modelsdev", "openrouter", "litellm") if prov.get(c))
+        if faltan and tuvo_datos and not fuente_incompleta and len(faltan) <= max(MIN_DESAPARECIDOS, UMBRAL_DESAPARECIDOS * len(previos_del_proveedor)):
             for m in faltan:
                 m = dict(m)
                 m["estado"] = "retirado"
                 registros.append(m)
                 novedades["retirados"].append("Dejó de figurar en las fuentes: %s (%s)." % (m.get("nombre") or m.get("id"), prov.get("nombre") or pid))
-        elif faltan and tuvo_datos:
+        elif faltan and tuvo_datos and not fuente_incompleta:
             novedades["avisos"].append("A %s le faltan %d modelos en las fuentes de hoy (de %d); parece una falla de la fuente: los dejo como estaban." % (
                 prov.get("nombre") or pid, len(faltan), len(previos_del_proveedor)))
             registros.extend(dict(m) for m in faltan)
         elif faltan:
-            registros.extend(dict(m) for m in faltan)   # fuente caída o vacía: se conserva todo lo anterior tal cual
-            novedades["avisos"].append("No pude leer modelos de %s en ninguna fuente; conservo los de la corrida anterior." % (prov.get("nombre") or pid))
+            registros.extend(dict(m) for m in faltan)   # fuente caída, vacía o a medias: se conserva todo lo anterior tal cual
+            novedades["avisos"].append("No pude leer todas las fuentes de modelos de %s; conservo los de la corrida anterior." % (prov.get("nombre") or pid))
         # novedades (solo si hay una corrida anterior con qué comparar)
         if previo:
             for r in registros:
@@ -520,7 +533,7 @@ def buscar(catalogo, texto, proveedor=None):
         elif any(q in k for k in ks):
             parciales.append(m)
     def peso(m):
-        orden_estado = {"vigente": 0, "vista previa": 1, "anterior": 2, "alias": 3, "viejo": 4, "retirado": 5}
+        orden_estado = {"vigente": 0, "vista previa": 1, "anunciado": 2, "anterior": 3, "alias": 4, "viejo": 5, "retirado": 6}
         return (orden_estado.get(m.get("estado"), 6), -(int((m.get("alta") or "0").replace("-", "") or 0)), len(m.get("id", "")))
     return sorted(exactos, key=peso) + sorted(parciales, key=peso)
 
@@ -552,7 +565,7 @@ def ficha(m, catalogo):
 
 def comparar(catalogo, a, b):
     """Líneas para mostrar la comparación de dos modelos (ya resueltos con `buscar`). Solo datos de las fuentes:
-    lo que no hay se dice «sin dato». Devuelve (lineas, resumen_a, resumen_b)."""
+    lo que no hay se dice «sin dato». Devuelve la lista de líneas."""
     fa, fb = dict(ficha(a, catalogo)), dict(ficha(b, catalogo))
     ancho = max(len(r) for r, _ in FILAS)
     lineas = ["%-*s  %-34s  %s" % (ancho, "", (a.get("nombre") or a["id"])[:34], b.get("nombre") or b["id"]),
@@ -572,10 +585,14 @@ def diferencias(catalogo, a, b):
         if va is None or vb is None:
             continue
         (igual if va == vb else dist).append(rotulo.lower() if va == vb else "%s (%s contra %s)" % (rotulo.lower(), va, vb))
-    for campo, rotulo in (("entrada_usd", "entrada"), ("salida_usd", "salida")):
+    for campo, rotulo in (("entrada_usd", "la entrada"), ("salida_usd", "la salida")):
         x, y = a.get(campo), b.get(campo)
-        if x and y and x != y:
-            mayor, menor = (b, a) if y > x else (a, b)
-            dist.append("el %s cuesta %sx más en %s" % (rotulo, round(max(x, y) / min(x, y), 1), mayor.get("nombre") or mayor["id"]))
+        if x is None or y is None or x == y:
+            continue
+        mayor, menor = (b, a) if y > x else (a, b)
+        if min(x, y) == 0:
+            dist.append("%s es gratis en %s y cuesta US$%s en %s" % (rotulo, menor.get("nombre") or menor["id"], max(x, y), mayor.get("nombre") or mayor["id"]))
+        else:
+            dist.append("%s cuesta %sx más en %s" % (rotulo, round(max(x, y) / min(x, y), 1), mayor.get("nombre") or mayor["id"]))
     return ["Distinto: " + ("; ".join(dist) if dist else "nada de lo que traen las fuentes") + ".",
             "Igual: " + (", ".join(igual) if igual else "nada") + "."]

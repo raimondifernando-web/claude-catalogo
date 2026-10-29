@@ -612,6 +612,10 @@ def catalogo_nuevo(radar, fuentes, ruta_modelos, hoy_f=None):
     nuevo, motivos = RM.construir({"modelsdev": crudo.get("modelsdev"), "openrouter": crudo.get("openrouter"),
                                    "litellm": crudo.get("litellm"), "docs": crudo.get("docs") or {}},
                                   (radar.get("fuentes_auto") or {}).get("proveedores") or [], previo, hoy_f or date.today())
+    if previo and len(nuevo["modelos"]) < 0.7 * len(previo.get("modelos") or []):
+        print("Aviso: el catálogo nuevo tiene %d modelos y el publicado %d; parece una falla de las fuentes: no lo publico." % (
+            len(nuevo["modelos"]), len(previo["modelos"])))
+        return None, []
     if previo:
         sin_fecha = lambda c: {k: v for k, v in c.items() if k != "actualizado"}
         if sin_fecha(previo) == sin_fecha(nuevo):

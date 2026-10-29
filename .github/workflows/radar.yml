@@ -65,6 +65,8 @@ jobs:
         run: python3 scripts/radar-fuentes.py --modo "${{ steps.modo.outputs.modo }}" --motivo "$RUNNER_TEMP/motivo.md"
       - name: Probar el radar nuevo (los PR que abre el bot no disparan otros workflows)
         if: steps.radar.outputs.hay_cambios == 'true'
+        env:
+          RADAR_AUTO: "0"   # `radar.py hoy` no lanza su actualización en segundo plano dentro del robot
         run: |
           python3 plugins/metodo/scripts/radar.py ver >/dev/null
           python3 plugins/metodo/scripts/radar.py modelos >/dev/null
@@ -72,6 +74,7 @@ jobs:
           if [ "$n" -lt 4 ] || [ "$n" -gt 6 ]; then echo "radar.py hoy imprime $n líneas (tienen que ser de 4 a 6)"; exit 1; fi
           python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_radar.py' -q
           python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_ruteo.py' -q
+          python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_radar_modelos.py' -q
       - name: Abrir o actualizar el PR (solo si hubo un cambio relevante)
         if: steps.radar.outputs.hay_cambios == 'true'
         env:
