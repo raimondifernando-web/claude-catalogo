@@ -1,7 +1,7 @@
 # RADAR.yaml — qué IA usar para cada cosa, con plan A, B y C. Lo lee `scripts/radar.py`.
 # Lo mantiene un PR automático (.github/workflows/radar.yml) que una persona aprueba; el RADAR.md se genera con `radar.py md`.
 actualizado: 2026-10-29
-nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual."
+nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual. Orden A/B/C revisado a mano el 2026-10-29 contra Arena, Artificial Analysis y otras fuentes independientes; cada plan trae su evidencia."
 vigentes:
   actualizado: 2026-10-08
   familias:
@@ -59,6 +59,16 @@ vigentes:
       modelo_api: gemini-3.1-pro
       alta: 2026-02-19
       fuente: models.dev
+    - id: gemini-argon
+      nombre: Gemini Argon
+      modelo_api: gemini-4-argon
+      alta: 2026-10-13
+      fuente: models.dev
+    - id: gpt-terra
+      nombre: GPT Terra
+      modelo_api: gpt-6.1-terra
+      alta: 2026-10-26
+      fuente: models.dev
 ruteo_claude:
   nota: "Punto de partida de nivel y esfuerzo de Claude por tipo de tarea. Cada fila cita la evidencia INDEPENDIENTE de este mismo radar que la respalda (spec §7). Donde no hay medición, la fila queda verificado: false y vale el valor por defecto de la política de modelos tal cual (0 «sí» a ¿hay que juzgar o decidir?, ¿equivocarse sale caro?, ¿hay mucho contexto? = haiku/low · 1 = sonnet/medium · 2 = opus/high · 3 = fable/xhigh): se baja un escalón solo cuando hay duda entre dos, no por falta de datos. Si la tarea tiene más «sí» de los que supone la fila, se sube un escalón por cada uno. Fable solo a pedido, max solo a pedido. Lo escribe una persona a mano: el robot no lo toca."
   tareas:
@@ -69,8 +79,11 @@ ruteo_claude:
       esfuerzo: low
       otra_ia: tareas_baratas
       verificado: false
-      sin_dato: "El radar no mide a Claude Haiku en esta categoría (solo GPT-6 Luna y GPT-6.1 Sol). haiku/low es el piso de la escala."
-      evidencia: []
+      sin_dato: "Claude Haiku 5.5 ya se mide en «tareas baratas» (índice de Artificial Analysis 43 a US$0,21 por tarea, el más alto de los baratos; GPT-6 Luna, 38 a US$0,07), pero nadie mide «buscar, mover o resumir» como tal. haiku/low es el piso de la escala."
+      evidencia:
+        - dato: nivel
+          categoria: tareas_baratas
+          fuente: Artificial Analysis LLM Leaderboard
       palabras:
         - buscar
         - busqueda
@@ -96,14 +109,17 @@ ruteo_claude:
       esfuerzo: low
       otra_ia: desarrollo
       verificado: false
-      sin_dato: "Nivel: dos fuentes independientes. Esfuerzo: las mediciones solo traen variantes xhigh y max (Arena) y no comparan medium ni low; sin dato, ante la duda entre low y medium, el de abajo."
+      sin_dato: "Nivel: tres fuentes independientes (Claude Code con Sonnet 5.5: 59 contra 62 de Opus 5.5 en el índice de Artificial Analysis, 61,8% contra 64,8% en Terminal-Bench, 3.º contra 1.º en Arena WebDev). Esfuerzo: las mediciones solo traen variantes xhigh y max (Arena) y no comparan medium ni low; sin dato, ante la duda entre low y medium, el de abajo."
       evidencia:
         - dato: nivel
           categoria: desarrollo
-          fuente: Artificial Analysis Coding Agent Index v1.5
+          fuente: Artificial Analysis Coding Agent Index v2.0
         - dato: nivel
           categoria: diseno
           fuente: Arena WebDev
+        - dato: nivel
+          categoria: desarrollo
+          fuente: "Terminal-Bench 4.0 (tabla de Snorkel AI)"
       palabras:
         - "implement*"
         - arreglar
@@ -131,8 +147,14 @@ ruteo_claude:
       esfuerzo: medium
       otra_ia: revision
       verificado: false
-      sin_dato: "La categoría «revisión de código y seguridad» no tiene evidencia independiente cargada (orden provisorio): vale la política de modelos. Revisar juzga y el error sale caro (2 «sí» de 3 se cumplen a medias): sonnet/medium. La segunda opinión conviene mandarla antes a otra IA con cupo."
-      evidencia: []
+      sin_dato: "Nivel: dos fuentes independientes (Qodo e ironbee): Claude Sonnet 5.5 queda a 2 puntos de Opus 5.5 revisando, a menos costo. Esfuerzo: las fuentes no coinciden (ironbee midió mejor en low, Qodo corrió en high); vale la política de modelos: revisar juzga y el error sale caro (2 «sí» de 3 se cumplen a medias) → sonnet/medium. La segunda opinión conviene mandarla antes a otra IA con cupo."
+      evidencia:
+        - dato: nivel
+          categoria: revision
+          fuente: "Qodo, ¿qué modelo conviene para revisar código? (13 modelos)"
+        - dato: nivel
+          categoria: revision
+          fuente: "ironbee-ai/code-review-benchmarks (21 modelos, 50 pull requests)"
       palabras:
         - "revis*"
         - review
@@ -147,11 +169,14 @@ ruteo_claude:
       esfuerzo: low
       otra_ia: datos_planillas
       verificado: false
-      sin_dato: "Nivel: una fuente independiente (Claude Sonnet 5.5 queda 2° en AnalystAgent). Esfuerzo: sin medición; ante la duda entre low y medium, el de abajo."
+      sin_dato: "Nivel: dos fuentes independientes (Claude Sonnet 5.5 lidera el Vals Index v2.2 con 70,85% y queda 2.º en AnalystAgent). Esfuerzo: sin medición; ante la duda entre low y medium, el de abajo."
       evidencia:
         - dato: nivel
           categoria: datos_planillas
           fuente: Artificial Analysis AnalystAgent y GDP.pdf
+        - dato: nivel
+          categoria: datos_planillas
+          fuente: "Vals AI, modelado en Excel y finanzas"
       palabras:
         - planilla
         - excel
@@ -167,7 +192,7 @@ ruteo_claude:
       esfuerzo: low
       otra_ia: investigacion_web
       verificado: false
-      sin_dato: "Arena búsqueda no trae modelos Claude de septiembre (el único Claude es Opus 4.6): sin dato vale la política de modelos (una pregunta con «sí»: hay que juntar y contrastar fuentes → sonnet; ante la duda entre low y medium, el de abajo)."
+      sin_dato: "Arena búsqueda (13/10) trae Claude Fable 5.1 (5.º), Opus 5 (6.º) y Opus 5.5 en esfuerzo medio (14.º, 1213) pero no Sonnet 5.5: sin dato del nivel que corresponde, vale la política de modelos (una pregunta con «sí»: hay que juntar y contrastar fuentes → sonnet; ante la duda entre low y medium, el de abajo)."
       evidencia: []
       palabras:
         - "investig*"
@@ -183,7 +208,7 @@ ruteo_claude:
       esfuerzo: high
       otra_ia: revision
       verificado: false
-      sin_dato: "No hay evidencia independiente de arquitectura ni de seguridad (revisión sin fuentes): vale la política de modelos tal cual. Hay que juzgar y el error sale caro (2 «sí») → opus/high."
+      sin_dato: "No hay evidencia independiente de arquitectura ni de seguridad (las fuentes de revisión de código —Qodo, ironbee, cross-review— no miden arquitectura ni seguridad): vale la política de modelos tal cual. Hay que juzgar y el error sale caro (2 «sí») → opus/high."
       evidencia: []
       palabras:
         - "arquitectur*"
@@ -209,65 +234,75 @@ categorias:
   - id: desarrollo
     nombre: "Desarrollo (programar)"
     evidencia:
-      - fuente: Artificial Analysis Coding Agent Index v1.5
+      - fuente: Artificial Analysis Coding Agent Index v2.0
         url: "https://artificialanalysis.ai/agents/coding-agents"
         tipo: independiente
-        dice: "Claude Code+Sonnet 5.5 68, Claude Code+Opus 5.5 66, Antigravity+Gemini 4 Argon 64, Codex+GPT-6.1 Sol 63"
+        dice: "Claude Code+Opus 5.5 62; Antigravity+Gemini 4 Carbon 59 (sin acceso general todavía); Claude Code+Sonnet 5.5 59; Claude Code+Fable 5.1 58; Codex+GPT-6 Astra 55; Codex+GPT-6.1 Sol 54; Antigravity+Gemini 4 Argon 53. Versión 2.0: no se compara con la 1.5 (antes Sonnet 68, Opus 66, Argon 64, Sol 63)."
         conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
-        fecha: 2026-10-03
-      - fuente: "Terminal-Bench 4.0 (tabla oficial)"
-        url: "https://www.tbench.ai/"
+        fecha: 2026-10-29
+      - fuente: "Terminal-Bench 4.0 (tabla de Snorkel AI)"
+        url: "https://snorkel.ai/leaderboard/terminal-bench/"
         tipo: independiente
-        dice: "Codex+GPT-6 Astra 58,2%, Claude Code+Fable 5.1 57,9%, Claude Code+Opus 5 53,9%; Opus 5.5 sin envío"
-        conflicto: "Terminal-Bench: muchos envíos los hace el fabricante; se lee la tabla oficial"
-        fecha: 2026-10-03
+        dice: "Claude Code+Opus 5.5 64,8%; Claude Code+Sonnet 5.5 61,8%; Codex+GPT-6 Astra 58,2%; Codex+GPT-6.1 Sol 58,2%; Claude Code+Fable 5.1 57,9%. Costo de la corrida en esa tabla: GPT-6.1 Sol US$0,6k, GPT-6 Astra US$3,3k"
+        conflicto: "Terminal-Bench: muchos envíos los hace el fabricante; se lee la tabla de Snorkel AI (actualizada el 2026-10-27)"
+        fecha: 2026-10-27
+      - fuente: Arena WebDev
+        url: "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"
+        tipo: independiente
+        dice: "1 Claude Opus 5.5 (Max) 1810, 2 GPT-6 Astra 1773, 3 Claude Sonnet 5.5 1770, 4 Gemini 4 Carbon 1768, 5 GPT-6.1 Sol 1751, 11 Gemini 4 Argon 1679, 37 Gemini 3.8 Flash 1583"
+        conflicto: "Arena mide preferencia humana en una tarea de páginas web, no corrección del código"
+        fecha: 2026-10-28
     planes:
       - plan: A
         herramienta: Claude Code
         proveedor: Anthropic
         modelo: Opus 5.5
         modelo_api: claude-opus-5-5
-        por_que: "Primero en el índice de agentes de programación de Artificial Analysis (Claude Code). Sonnet 5.5 para lo rutinario: en ese índice rinde igual."
+        por_que: "Primero en las tres fuentes: índice de agentes de programación de Artificial Analysis (Claude Code con Opus 5.5: 62), Terminal-Bench 4.0 (64,8%) y Arena WebDev (1810). Sonnet 5.5 rinde casi igual y cuesta menos (59, 61,8% y 1770): para lo rutinario."
         fuente: "evidencia de la categoría"
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
-        verificado: false
+        verificado: true
         respaldo:
-          - Artificial Analysis Coding Agent Index v1.5
+          - Artificial Analysis Coding Agent Index v2.0
+          - "Terminal-Bench 4.0 (tabla de Snorkel AI)"
+          - Arena WebDev
       - plan: B
         herramienta: Codex
         proveedor: OpenAI
         modelo: GPT-6.1 Sol
         modelo_api: gpt-6.1-sol
-        por_que: "Codex con GPT-6 Astra es el 1° de Terminal-Bench (58,2%) y Codex con GPT-6.1 Sol queda 4° en el índice de Artificial Analysis (63): otro modelo encuentra otros errores."
-        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        por_que: "Codex con GPT-6.1 Sol: 54 en el índice de Artificial Analysis (con GPT-6 Astra, 55), 58,2% en Terminal-Bench 4.0 (igual que Astra, a una quinta parte del costo en esa tabla) y 5.º en Arena WebDev (1751). Otro modelo encuentra otros errores."
+        fuente: "evidencia de la categoría"
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: "Con cuenta gratis, revisá la privacidad de la cuenta antes de mandar código privado."
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
-        verificado: false
+        verificado: true
         respaldo:
-          - Artificial Analysis Coding Agent Index v1.5
-          - "Terminal-Bench 4.0 (tabla oficial)"
+          - Artificial Analysis Coding Agent Index v2.0
+          - "Terminal-Bench 4.0 (tabla de Snorkel AI)"
+          - Arena WebDev
       - plan: C
         herramienta: Antigravity
         proveedor: Google
-        modelo: Gemini 3.8 Flash
-        modelo_api: gemini-3.8-flash
-        por_que: "Gratis, pero en Terminal-Bench rinde mucho menos (Gemini 3.8 Flash: 19,1%): solo tareas acotadas."
-        fuente: "https://antigravity.google/docs/plans"
-        fecha: 2026-10-03
+        modelo: Gemini 4 Argon
+        modelo_api: gemini-4-argon
+        por_que: "Gemini 4 Argon queda a un punto de Codex en el índice (53 contra 54) pero 11.º contra 5.º en Arena WebDev (1679 contra 1751): empate técnico, se deja B por tener más historia. Gemini 3.8 Flash, el modelo que figuraba acá, rinde mucho menos (37.º en Arena WebDev, 1583). Gemini 4 Carbon (59 en el índice, 4.º en WebDev) todavía no tiene acceso general: cuando salga es candidato a plan B."
+        fuente: "https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-argon/"
+        fecha: 2026-10-29
         datos_privados: false
-        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        condiciones: "Gemini 4 Argon en Antigravity es solo para suscriptores de Google AI Ultra (en la app de Gemini, desde AI Pro; por API, US$2/10 por millón hasta el 30/11/2026 y US$4/20 después, según Google). Con otra cuenta, Antigravity usa el mejor Gemini que tenga (delegar.py lo resuelve solo). En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: /usage en Antigravity CLI
         cupo: antigravity
         verificado: false
         respaldo:
-          - "Terminal-Bench 4.0 (tabla oficial)"
+          - Artificial Analysis Coding Agent Index v2.0
+          - Arena WebDev
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
       fecha: 2026-10-29
@@ -300,58 +335,88 @@ categorias:
         proveedor: Anthropic
         modelo: Opus 5.5
         modelo_api: claude-opus-5-5
-        por_que: "/code-review y /security-review con Opus 5.5; CR-bench: Claude Code 32,1% contra Codex 20,1% (a verificar)."
-        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        por_que: "Mejor revisor en Qodo (F1 56,8%) y en el grupo de arriba en ironbee (55,1); en cross-review empata con Codex y queda a 0,05 de Gemini 4 Argon, con la mitad de falsas alarmas de Codex y la corrida más rápida (141 s). `/code-review` y `/security-review`."
+        fuente: "https://www.qodo.ai/blog/which-llm-should-review-your-code/"
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
-        verificado: false
+        verificado: true
+        respaldo:
+          - "Qodo, ¿qué modelo conviene para revisar código? (13 modelos)"
+          - "ironbee-ai/code-review-benchmarks (21 modelos, 50 pull requests)"
+          - "cross-review benchmark (Codex, Claude Code y Antigravity)"
       - plan: B
+        herramienta: Antigravity
+        proveedor: Google
+        modelo: Gemini 4 Argon
+        modelo_api: gemini-4-argon
+        por_que: "El revisor más preciso: el 87% de lo que marca es un error real y casi no da falsas alarmas (5%). Gana en F1 a Codex de forma significativa (0,780 contra 0,707) y queda en el grupo 2 de ironbee, por encima de GPT-6.1 Sol (grupo 4). Se le escapan los errores que piden leer más allá del diff (acierta 75-83% en esos): usalo como segunda opinión, no solo. Sin ejecutar nada: `agy --mode plan -p=...`."
+        fuente: "https://cross-review.tlelabs.com/benchmark/"
+        fecha: 2026-10-29
+        datos_privados: false
+        condiciones: "Gemini 4 Argon en Antigravity es solo para suscriptores de Google AI Ultra (en la app de Gemini, desde AI Pro; por API, US$2/10 por millón hasta el 30/11/2026 y US$4/20 después, según Google). Con otra cuenta, Antigravity usa el mejor Gemini que tenga (delegar.py lo resuelve solo). Con Gemini 3.8 Flash la revisión queda a la par de Codex (47,0% contra 46,6% en Qodo). En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        como_ver_cupo: /usage en Antigravity CLI
+        cupo: antigravity
+        verificado: true
+        respaldo:
+          - "ironbee-ai/code-review-benchmarks (21 modelos, 50 pull requests)"
+          - "cross-review benchmark (Codex, Claude Code y Antigravity)"
+      - plan: C
         herramienta: Codex
         proveedor: OpenAI
         modelo: GPT-6.1 Sol
         modelo_api: gpt-6.1-sol
-        por_que: "Segunda revisión con un modelo distinto: `codex exec --sandbox read-only`. Encuentra errores que el primero no ve."
-        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        por_que: "Encuentra casi todos los errores (Codex con GPT-6 Astra: 92% en cross-review) pero marca de más (48% de falsas alarmas); GPT-6.1 Sol queda en el grupo 4 de ironbee (F1 43,7) y los GPT-6 detrás de Claude en Qodo. Úsalo cuando el código es privado o cuando importa no dejar pasar nada: `codex exec --sandbox read-only`."
+        fuente: "https://github.com/ironbee-ai/code-review-benchmarks"
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
-        verificado: false
-      - plan: C
-        herramienta: Antigravity
-        proveedor: Google
-        modelo: Gemini 3.1 Pro
-        modelo_api: gemini-3.1-pro-preview
-        por_que: "Revisión estática sin ejecutar nada: `agy --mode plan -p=...`."
-        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
-        datos_privados: false
-        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
-        como_ver_cupo: /usage en Antigravity CLI
-        cupo: antigravity
-        verificado: false
+        verificado: true
+        respaldo:
+          - "Qodo, ¿qué modelo conviene para revisar código? (13 modelos)"
+          - "ironbee-ai/code-review-benchmarks (21 modelos, 50 pull requests)"
+          - "cross-review benchmark (Codex, Claude Code y Antigravity)"
     ranking:
       fuente: "sin ranking cargado todavía"
       fecha: null
       verificado: false
       items: []
+    evidencia:
+      - fuente: "Qodo, ¿qué modelo conviene para revisar código? (13 modelos)"
+        url: "https://www.qodo.ai/blog/which-llm-should-review-your-code/"
+        tipo: independiente
+        dice: "F1 revisando pull requests: Claude Opus 5.5 56,8%, Claude Sonnet 5.5 54,9%, GPT-6 Sol 48,7%, Gemini 3.8 Flash 47,0%, GPT-6 Astra 46,6%. No mide GPT-6.1 Sol ni Gemini 4."
+        conflicto: "Qodo vende un producto de revisión de código"
+        fecha: 2026-10-12
+      - fuente: "ironbee-ai/code-review-benchmarks (21 modelos, 50 pull requests)"
+        url: "https://github.com/ironbee-ai/code-review-benchmarks"
+        tipo: independiente
+        dice: "Grupo 1 (empatados arriba): Claude Sonnet 5.5 F1 56,0 y Claude Opus 5.5 55,1; grupo 2: Gemini 4 Argon 54,3; grupo 4: GPT-6.1 Sol 43,7; grupo 5: GPT-6 Luna 43,7."
+        conflicto: "Los jueces son modelos de IA de otras familias; repositorio de un solo autor"
+        fecha: 2026-10-20
+      - fuente: "cross-review benchmark (Codex, Claude Code y Antigravity)"
+        url: "https://cross-review.tlelabs.com/benchmark/"
+        tipo: independiente
+        dice: "144 pull requests con errores sembrados: Antigravity+Gemini 4 Argon F1 0,780 (acierta el 87% de lo que marca, encuentra el 71% de los errores y da 5% de falsas alarmas); Claude Code+Opus 5.5 0,732 (89% de los errores, 21% de falsas alarmas, la corrida más rápida: 141 s la mediana); Codex+GPT-6 Astra 0,707 (92% de los errores, 48% de falsas alarmas). En los errores difíciles (los que piden leer más allá del diff o ejecutar el código) Antigravity recupera entre 75% y 83%, Codex y Claude Code 95-99%. Con 21 errores reales el orden se invierte, sin diferencia significativa."
+        conflicto: "El conjunto de prueba lo escribió Claude y los jueces son los tres competidores"
+        fecha: 2026-10-26
   - id: diseno
     nombre: "Diseño (UI web, presentaciones)"
     evidencia:
       - fuente: Arena WebDev
-        url: "https://arena.ai/leaderboard/code/webdev"
+        url: "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"
         tipo: independiente
-        dice: "1 claude-opus-5.5-max 1815, 2 gpt-6-astra-max 1788, 3 claude-sonnet-5.5-xhigh 1786"
+        dice: "1 Claude Opus 5.5 (Max) 1810, 2 GPT-6 Astra 1773, 3 Claude Sonnet 5.5 1770, 4 Gemini 4 Carbon 1768, 5 GPT-6.1 Sol 1751, 11 Gemini 4 Argon 1679, 37 Gemini 3.8 Flash 1583"
         conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
-        fecha: 2026-10-03
+        fecha: 2026-10-28
       - fuente: Design Arena
         url: "https://www.designarena.ai/leaderboard"
         tipo: independiente
-        dice: "1 Claude Opus 5.5 1396, 2 GPT-6 Astra (xhigh) 1388, 3 Kimi K3 1372"
+        dice: "1 Claude Opus 5.5 1396, 2 GPT-6 Astra (xhigh) 1388, 3 Kimi K3 1372 (no releída el 2026-10-29)"
         conflicto: "Design Arena: empresa que vende evaluaciones; votos del público"
         fecha: 2026-10-03
     planes:
@@ -360,9 +425,9 @@ categorias:
         proveedor: Anthropic
         modelo: Opus 5.5
         modelo_api: claude-opus-5-5
-        por_que: "Primero en Arena WebDev y en Design Arena; con la skill de diseño del plugin que corresponda."
+        por_que: "Primero en Arena WebDev (1810 contra 1773 de GPT-6 Astra) y en Design Arena (al 2026-10-03, no releída hoy); con la skill de diseño del plugin que corresponda."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
@@ -376,9 +441,9 @@ categorias:
         proveedor: OpenAI
         modelo: GPT-6.1 Sol
         modelo_api: gpt-6.1-sol
-        por_que: "GPT-6.1 Sol es 4° en Arena WebDev; GPT-6 Astra (también en Codex) es 2° en Arena WebDev y en Design Arena: sirve para una segunda propuesta."
+        por_que: "GPT-6.1 Sol es 5.º en Arena WebDev (1751); GPT-6 Astra (también en Codex) es 2.º (1773) y 2.º en Design Arena: sirve de segunda opinión de diseño."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
@@ -389,16 +454,18 @@ categorias:
       - plan: C
         herramienta: Antigravity
         proveedor: Google
-        modelo: Gemini 3.8 Flash
-        modelo_api: gemini-3.8-flash
-        por_que: "Gratis para bocetos; no para material de clientes."
+        modelo: Gemini 4 Argon
+        modelo_api: gemini-4-argon
+        por_que: "Gemini 4 Argon es 11.º en Arena WebDev (1679); Gemini 3.8 Flash, el que figuraba acá, 37.º (1583). Gemini 4 Carbon, 4.º (1768), todavía sin acceso general. Para bocetos; no para material de clientes."
         fuente: "https://antigravity.google/docs/plans"
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
-        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        condiciones: "Gemini 4 Argon en Antigravity es solo para suscriptores de Google AI Ultra (en la app de Gemini, desde AI Pro; por API, US$2/10 por millón hasta el 30/11/2026 y US$4/20 después, según Google). Con otra cuenta, Antigravity usa el mejor Gemini que tenga (delegar.py lo resuelve solo). En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: /usage en Antigravity CLI
         cupo: antigravity
         verificado: false
+        respaldo:
+          - Arena WebDev
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
       fecha: 2026-10-29
@@ -427,31 +494,31 @@ categorias:
     nombre: Escritura en castellano
     evidencia:
       - fuente: Arena texto
-        url: "https://arena.ai/leaderboard/text"
+        url: "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"
         tipo: independiente
-        dice: "1 gemini-4-argon-high 1525 (preliminar), 4 claude-opus-5.5-high 1504; diferencia dentro del margen"
-        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
-        fecha: 2026-10-03
+        dice: "General: 1 Gemini 4 Carbon 1540 (sin acceso general), 2 Gemini 4 Argon 1529, 3 Claude Opus 5.5 1516, 4 Claude Fable 5.1 1514; 9 Gemini 3.8 Flash 1498; 30 Claude Sonnet 5.5 1473; 62 GPT-6.1 Sol 1446. En español: 1 Claude Opus 5 1520, 2 Claude Fable 5.1 1518, 6 Gemini 4 Argon 1505, 7 Claude Opus 5.5 1504, 14 Gemini 3.8 Flash 1487, 67 Claude Sonnet 5.5 1447, 80 GPT-6.1 Sol 1442, 117 GPT-6 Astra 1419. Escritura creativa: 1 Claude Opus 5.5 1534, 2 Gemini 4 Carbon 1531, 3 Gemini 4 Argon 1527, 4 Claude Fable 5.1 1512, 65 GPT-6.1 Sol 1425."
+        conflicto: "Arena mide preferencia humana, no corrección; Opus 5.5 tiene pocos votos en español (403)"
+        fecha: 2026-10-28
       - fuente: EQ-Bench Creative Writing v3
-        url: "https://eqbench.com/creative_writing.html"
+        url: "https://news.assaynotes.com/en/leaderboard/sources/eq-creative"
         tipo: independiente
-        dice: "1 gpt-6-astra 2173, 2 claude-fable-5-1 2162, 3 claude-opus-5 2133, 4 gpt-6-sol 2125, 7 claude-opus-5-5 2050; gemini-3.8-flash 1748"
-        conflicto: "EQ-Bench: lo puntúa un modelo de IA como juez (puede preferir su propio estilo); en inglés"
-        fecha: 2026-10-03
+        dice: "1 GPT-6 Astra 2177, 3 Claude Fable 5.1 2155, 4 Claude Opus 5 2135, 5 GPT-6 Sol 2126, 8 Claude Opus 5.5 2051; Gemini 4 Argon 31.º (1758) y Gemini 3.8 Flash 1748; GPT-6.1 Sol y Claude Sonnet 5.5 fuera de los 30 primeros."
+        conflicto: "El juez es un modelo (Claude Sonnet 4.6) y mide inglés; puede preferir a Claude"
+        fecha: 2026-10-29
     planes:
       - plan: A
         herramienta: Claude Code
         proveedor: Anthropic
         modelo: Opus 5.5
         modelo_api: claude-opus-5-5
-        por_que: "Claude está en el grupo de arriba en las dos: Arena texto 4° (empate técnico con el 1°, Gemini 4 Argon) y EQ-Bench 7° con Opus 5.5 (Fable 5.1 es 2° si el texto lo vale). Sin dato del filtro en castellano."
+        por_que: "Claude es lo único que está arriba en las dos fuentes: en Arena (voto humano) Opus 5.5 es 1.º en escritura creativa y 7.º en español (1504; Opus 5 y Fable 5.1 lideran con 1520 y 1518), y en EQ-Bench los Claude ocupan 3.º, 4.º y 8.º. Sonnet 5.5 queda muy abajo en español (67.º, 1447): para volumen en castellano usá Opus."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
-        verificado: false
+        verificado: true
         respaldo:
           - Arena texto
           - EQ-Bench Creative Writing v3
@@ -460,31 +527,27 @@ categorias:
         proveedor: OpenAI
         modelo: GPT-6.1 Sol
         modelo_api: gpt-6.1-sol
-        por_que: "GPT-6 Astra es el 1° de EQ-Bench y GPT-6 Sol el 4°: buena segunda voz."
+        por_que: "A VERIFICAR. GPT-6.1 Sol es 62.º en Arena texto y 80.º en español, y no está entre los 30 primeros de EQ-Bench (que lidera GPT-6 Astra con 2177, pero Astra es 117.º en español de Arena). Las fuentes se contradicen con los GPT: se deja en B por falta de una segunda fuente en castellano."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
         verificado: false
-        respaldo:
-          - EQ-Bench Creative Writing v3
       - plan: C
         herramienta: app web de Gemini
         proveedor: Google
         modelo: Gemini 3.8 Flash
         modelo_api: gemini-3.8-flash
-        por_que: "Gratis, pero en EQ-Bench queda bastante más abajo (1748 contra 2050 de Opus 5.5): para borradores sin datos sensibles."
+        por_que: "A VERIFICAR. Arena (voto humano) lo ubica bien (Gemini 3.8 Flash: 9.º en texto, 14.º en español) y a Gemini 4 Argon mejor todavía (2.º en texto, 6.º en español, 3.º en creativa), pero EQ-Bench los pone al fondo (Argon 31.º, 1758; Flash 1748). Argon necesita Google AI Pro o Ultra en la app de Gemini. Si una segunda fuente en castellano confirma Arena, Argon pasa a plan B."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
         cupo: none
         verificado: false
-        respaldo:
-          - EQ-Bench Creative Writing v3
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
       fecha: 2026-10-29
@@ -513,46 +576,68 @@ categorias:
     nombre: "Investigación web"
     evidencia:
       - fuente: "Arena búsqueda"
-        url: "https://arena.ai/leaderboard/search"
+        url: "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"
         tipo: independiente
-        dice: "1 gpt-5.6-sol-xhigh 1257, 2 claude-opus-4-6-search 1253; sin modelos de septiembre"
-        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
-        fecha: 2026-10-03
+        dice: "1 GPT-5.6 Sol (xhigh) 1261, 3 Claude Opus 4.6 (con búsqueda) 1251, 5 Claude Fable 5.1 1246, 6 Claude Opus 5 1242, 7 GPT-6 Astra 1234, 8 GPT-6.1 Sol 1233, 15 Gemini 3.1 Pro (con búsqueda de Google) 1209, 22 Gemini 3 Flash (con búsqueda) 1196. Perplexity no figura en la tabla."
+        conflicto: "Mide modelos de chat con búsqueda puesta, no los productos Deep Research"
+        fecha: 2026-10-13
+      - fuente: Artificial Analysis Search Index
+        url: "https://artificialanalysis.ai/agents/search-api/"
+        tipo: independiente
+        dice: "Mide el buscador con el mismo modelo (GPT-5.6 Luna): índice 80 para Exa y Perplexity Search (medio), empatados 1.º; BrowseComp: Perplexity Search (medio) 87, (alto) 86, Exa 83, OpenAI Web Search 74; sin búsqueda 17."
+        conflicto: "Mide el buscador, no el producto Perplexity/Sonar ni el Deep Research de nadie"
+        fecha: 2026-10-19
+      - fuente: "Parallel, comparación de investigación profunda (agosto 2026)"
+        url: "https://parallel.ai/articles/browsecomp-benchmark"
+        tipo: independiente
+        dice: "BrowseComp (100 preguntas): Perplexity (alto) 86%, GPT-5.6 Sol (máx) 85%, Gemini 3.1 Pro (alto) 72%. DeepSearchQA: GPT-5.6 Sol 85%, Gemini 3.1 Pro 77%, Perplexity 68%."
+        conflicto: "Parallel vende un producto competidor; lo de OpenAI y Google son configuraciones de modelo, no su Deep Research. Leído en el resumen del buscador"
+        fecha: 2026-08-26
+      - fuente: "BrowseComp, tabla de Steel.dev (cifras de cada fabricante)"
+        url: "https://leaderboard.steel.dev/leaderboards/browsecomp/"
+        tipo: fabricante
+        dice: "1 GPT-5.6 Sol en modo ultra (4 agentes) 92,2% (cifra de OpenAI); 13 Gemini 3.1 Pro 85,9% (cifra de Google). Mezcla lo que reporta cada fabricante."
+        conflicto: "Lo reporta cada fabricante: no cuenta para el orden"
+        fecha: 2026-10-11
     planes:
       - plan: A
         herramienta: "app web (ChatGPT deep research)"
         proveedor: OpenAI
         modelo: GPT-6 Astra
         modelo_api: gpt-6-astra
-        por_que: "BrowseComp: casi empatado con Sonnet/Opus (92,2 / 91,5 / 90,8): elegir por el cupo que quede."
+        por_que: "1.º en Arena búsqueda con GPT-5.6 Sol (1261); GPT-6 Astra, 7.º (1234). En BrowseComp el mejor es GPT-5.6 Sol con 4 agentes (92,2%, cifra de OpenAI), Gemini 3.1 Pro 85,9% (cifra de Google) y Perplexity (alto) 86% en la prueba de Parallel: casi empatados, elegir por el cupo que quede."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: panel de uso de ChatGPT
         cupo: none
         verificado: false
+        respaldo:
+          - "Arena búsqueda"
       - plan: B
         herramienta: Codex
         proveedor: OpenAI
         modelo: GPT-6.1 Sol
         modelo_api: gpt-6.1-sol
-        por_que: "Por consola: `codex --search exec --sandbox read-only`. Es lo que se puede automatizar desde una sesión."
+        por_que: "Por consola: `codex --search exec --sandbox read-only`. Es lo que se puede automatizar desde una sesión. GPT-6.1 Sol es 8.º en Arena búsqueda (1233)."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
         verificado: false
+        respaldo:
+          - "Arena búsqueda"
       - plan: C
         herramienta: "app web (Gemini Deep Research)"
         proveedor: Google
-        modelo: Gemini 3.8 Flash
-        modelo_api: gemini-3.8-flash
-        por_que: 5 informes gratis por mes.
+        modelo: "Deep Research (Google no dice qué modelo usa; reseñas: Gemini 3.1 Pro)"
+        modelo_api: null
+        por_que: "A VERIFICAR. Es el peor ubicado de los medidos: Gemini 3.1 Pro con búsqueda es 15.º en Arena búsqueda (1209 contra 1261) y saca 72% en BrowseComp en la prueba de Parallel (contra 85-86% de GPT y Perplexity). Pero en DeepSearchQA le gana a Perplexity (77 contra 68%). Nadie midió el Deep Research de Google en BrowseComp. Gratis en la app con los planes de Google AI."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
@@ -561,69 +646,88 @@ categorias:
       - plan: D
         herramienta: "Perplexity (MCP oficial, desde una sesión de Claude)"
         proveedor: Perplexity
-        modelo: Sonar / Agent API
+        modelo: "Agent API (presets fast/medium/high; Sonar ya fue reemplazado)"
         modelo_api: perplexity_ask
-        por_que: "Respuesta ya sintetizada y con citas (`perplexity_ask`); `perplexity_search` da resultados crudos con fecha y dominio; `perplexity_research` es profunda y cara. Paga por uso con la clave propia de cada persona. Sin dato independiente todavía."
-        fuente: docs/2026-10-24-perplexity-evaluacion.md
-        fecha: 2026-10-24
+        por_que: "A VERIFICAR el lugar. Su buscador es el mejor medido por Artificial Analysis (BrowseComp 87 contra 74 del de OpenAI, mismo modelo; índice 80, empatado 1.º con Exa) y su Agent API saca 86% en BrowseComp en la prueba de Parallel (GPT-5.6 Sol: 85%); pero en DeepSearchQA queda en 68% (Gemini 77, GPT 85) y no figura en Arena búsqueda. Respuesta ya sintetizada y con citas (`perplexity_ask`, preset fast); `perplexity_search` da resultados crudos con fecha y dominio; `perplexity_research` es el profundo y caro. El MCP oficial (v1.0) ya corre sobre la Agent API."
+        fuente: "https://docs.perplexity.ai/docs/resources/changelog"
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: "La API no entrena con lo que mandás por defecto; sin retención cero salvo acuerdo escrito. Claves y secretos nunca en la consulta."
         como_ver_cupo: "Saldo prepago: console.perplexity.ai → Billing (poné un tope mensual)"
         cupo: none
         verificado: false
     ranking:
-      fuente: "BrowseComp (README de steel-dev)"
-      fecha: 2026-10-03
+      fuente: "Arena (dataset en Hugging Face)"
+      fecha: 2026-10-13
       verificado: false
       items:
         - puesto: 1
-          modelo: GPT-5.6 Sol
-          puntaje: "92,2%"
+          modelo: gpt-5.6-sol-xhigh
+          puntaje: 1261
         - puesto: 2
-          modelo: GPT-6 Astra
-          puntaje: "91,5%"
+          modelo: qwen3.8-max
+          puntaje: 1261
         - puesto: 3
-          modelo: Claude Opus 5
-          puntaje: "90,8%"
+          modelo: claude-opus-4-6-search
+          puntaje: 1251
+        - puesto: 4
+          modelo: gpt-5.5-search
+          puntaje: 1247
+        - puesto: 5
+          modelo: claude-fable-5.1-high
+          puntaje: 1246
+    arena:
+      config: search
+      split: latest
+      filtro:
+        category: overall
+      verificado: false
   - id: documentos_largos
     nombre: Documentos largos
     evidencia:
       - fuente: Arena documentos
-        url: "https://arena.ai/leaderboard/document"
+        url: "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"
         tipo: independiente
-        dice: "1 claude-opus-5-high 1516, 2 claude-fable-5.1-max 1513; los 5 primeros son Claude. Contradice el plan A"
-        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
-        fecha: 2026-10-03
+        dice: "1 Claude Opus 5 (high) 1516, 2 Claude Fable 5.1 1513, 5 Claude Fable 5 1496, 10 GPT-5.6 Sol 1483, 16 GPT-6 Astra 1468, 20 Gemini 3.5 Flash 1463. La tabla es del 2026-09-13 y todavía no tiene a Opus 5.5, GPT-6.1 Sol ni Gemini 3.8 Flash o 4."
+        conflicto: "Arena mide preferencia humana; tabla vieja"
+        fecha: 2026-09-13
       - fuente: Artificial Analysis AA-LCR v1.1
-        url: "https://artificialanalysis.ai/evaluations/artificial-analysis-long-context-reasoning"
+        url: "https://artificialanalysis.ai/"
         tipo: independiente
-        dice: "1 Kimi K3 88,7%, 2 Step 5 Preview 88,3%, 3 MiMo-V2.6-Pro 86,3%; ninguno de los tres está en nuestros planes"
-        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
-        fecha: 2026-10-03
+        dice: "1 Kimi K3 88,7%; Claude Opus 5.5 85%, Claude Fable 5.1 85%, GPT-6.1 Sol 83%, GPT-6 Astra 81%, Gemini 3.8 Flash 81%, Gemini 4 Argon 80%. Leído en reseñas que citan la tabla de Artificial Analysis."
+        conflicto: "Artificial Analysis: empresa comercial"
+        fecha: 2026-10-29
+      - fuente: "Google, GraphWalks 256K-1M (dato del fabricante)"
+        url: "https://venturebeat.com/ai/google-unveils-gemini-4-carbon-retaking-the-worlds-no-1-spot-on-updated-harder-benchmarks-but-access-is-limited"
+        tipo: fabricante
+        dice: "GraphWalks 256K-1M: Gemini 4 Carbon 96,2%, Gemini 4 Argon 84,2%, GPT-6 Astra 71,8%, Claude Opus 5.5 66,8%. Lo contradice AA-LCR (Opus 85, Argon 80): son pruebas distintas."
+        conflicto: "Lo mide el fabricante: no cuenta para el orden"
+        fecha: 2026-10-28
     planes:
       - plan: A
         herramienta: Claude Code
         proveedor: Anthropic
         modelo: Opus 5.5
         modelo_api: claude-opus-5-5
-        por_que: "Los 5 primeros de Arena documentos son Claude (Opus 5 y Fable 5.1 arriba); Opus 5.5 lee hasta 1M de tokens."
+        por_que: "85% en AA-LCR (el más alto de nuestros planes) y Claude llena el top de Arena documentos; Opus 5.5 lee hasta 1M de tokens."
         fuente: "https://platform.claude.com/docs/en/about-claude/models/overview"
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
-        verificado: false
+        verificado: true
         respaldo:
           - Arena documentos
+          - Artificial Analysis AA-LCR v1.1
       - plan: B
         herramienta: API / app web de Gemini
         proveedor: Google
         modelo: Gemini 3.8 Flash
         modelo_api: gemini-3.8-flash
-        por_que: "1M de contexto y barato (US$0,75/3,75 por millón): sirve para cargar el material."
+        por_que: "A VERIFICAR. 1M de contexto y barato (US$0,75/3,75 por millón; precio de lanzamiento hasta el 31/12/2026, después se duplica, según reseñas): sirve para cargar el material. En AA-LCR saca 81% (Gemini 4 Argon, 80%: empate técnico) y GPT-6.1 Sol 83%: B por precio. Google mide a Argon mucho mejor en su propia prueba, que no cuenta para el orden."
         fuente: "https://ai.google.dev/gemini-api/docs/pricing"
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
         condiciones: "Plan gratis: Google usa los datos. Con la API paga, mirá los términos (a verificar)."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
@@ -634,14 +738,16 @@ categorias:
         proveedor: OpenAI
         modelo: GPT-6.1 Sol
         modelo_api: gpt-6.1-sol
-        por_que: 1M de contexto.
+        por_que: "1M de contexto. 83% en AA-LCR, dos puntos sobre Gemini 3.8 Flash, pero a US$2/10 por millón."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
         verificado: false
+        respaldo:
+          - Artificial Analysis AA-LCR v1.1
     ranking:
       fuente: "MRCR v2 a 1M (llm-stats)"
       fecha: 2026-09-30
@@ -654,109 +760,129 @@ categorias:
     nombre: "Imágenes (generar y editar)"
     evidencia:
       - fuente: "Arena texto a imagen y edición"
-        url: "https://arena.ai/leaderboard/text-to-image"
+        url: "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"
         tipo: independiente
-        dice: "1 gpt-image-2.5-sunburst en las dos tablas (1424 y 1522)"
-        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
-        fecha: 2026-10-03
+        dice: "Texto a imagen: 1 GPT-Image-2.5 Sunburst 1427, 2 Flare 1401, 3 GPT-Image-2 1381, 4 MAI-Image-2.6 1329, 5 Gemini Nano Banana 2.1 1325, 11 Nano Banana 2 (Gemini 3.1 Flash Image) 1257. Edición: 1 Sunburst 1517, 2 Flare 1482, 3 MAI-Image-2.7 (preview) 1471, 4 GPT-Image-2 1460, 7 Nano Banana 2.1 1427."
+        conflicto: Arena mide preferencia humana
+        fecha: 2026-10-26
       - fuente: Artificial Analysis Image Arena
-        url: "https://artificialanalysis.ai/image/leaderboard/text-to-image"
+        url: "https://heyaiwiki.com/models/nano-banana-2-1/"
         tipo: independiente
-        dice: "1 GPT Image 2.5 Sunburst 1197 y 1 en edición 1182"
-        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
-        fecha: 2026-10-03
+        dice: "Texto a imagen: 1 GPT Image 2.5 Sunburst (máx) 1199, Nano Banana 2.1 4.º con 1159; edición: Nano Banana 2.1 empatado 3.º (1140 contra 1184 del 1.º). Precio por 1000 imágenes: US$33,6 contra US$210,7 de GPT Image 2.5 (máx). Leído en un resumen que cita la tabla."
+        conflicto: "Artificial Analysis: empresa comercial"
+        fecha: 2026-10-13
     planes:
       - plan: A
         herramienta: "app web (ChatGPT Images)"
         proveedor: OpenAI
         modelo: gpt-image-2.5
         modelo_api: gpt-image-2.5
-        por_que: "Primero en Arena y en Artificial Analysis, texto a imagen y edición. Claude no genera imágenes."
+        por_que: "Primero en Arena (texto a imagen 1427, edición 1517) y en Artificial Analysis, en las dos tablas. Claude no genera imágenes."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: No subas fotos de personas ni de clientes sin permiso.
         como_ver_cupo: panel de uso de ChatGPT
         cupo: none
-        verificado: false
+        verificado: true
         respaldo:
           - "Arena texto a imagen y edición"
           - Artificial Analysis Image Arena
       - plan: B
         herramienta: app web de Gemini
         proveedor: Google
-        modelo: "Nano Banana 2 (Gemini 3.1 Flash Image)"
+        modelo: Nano Banana 2.1
         modelo_api: null
-        por_que: Gratis en la app de Gemini.
+        por_que: "El mejor modelo de imágenes de Google: 5.º en Arena texto a imagen (1325) y 7.º en edición; cuesta una sexta parte por imagen que GPT Image 2.5 (Artificial Analysis). Nano Banana 2, el que figuraba acá, es 11.º (1257). Falta confirmar que la app de Gemini ya use el 2.1."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: app de Gemini
         cupo: none
         verificado: false
+        respaldo:
+          - "Arena texto a imagen y edición"
+          - Artificial Analysis Image Arena
       - plan: C
         herramienta: "Adobe Firefly / Express (conector)"
         proveedor: Adobe
         modelo: null
         modelo_api: null
-        por_que: "Sin dato en la investigación: alternativa con licencia comercial clara (a verificar)."
+        por_que: "No figura en Arena ni en Artificial Analysis: sin medición independiente. Su ventaja es la licencia comercial clara. MAI-Image-2.6 y 2.7 de Microsoft rinden más que Nano Banana 2.1 en Arena (4.º en texto a imagen, 3.º en edición), pero no están integrados."
         fuente: "https://www.adobe.com/products/firefly.html"
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
-        condiciones: "A completar en la próxima revisión."
+        condiciones: "Sin medición independiente: se usa por la licencia comercial, no por calidad."
         como_ver_cupo: cuenta de Adobe
         cupo: none
         verificado: false
     ranking:
-      fuente: "sin ranking cargado todavía"
-      fecha: null
+      fuente: "Arena (dataset en Hugging Face)"
+      fecha: 2026-10-26
       verificado: false
-      items: []
+      items:
+        - puesto: 1
+          modelo: GPT-Image-2.5 Sunburst
+          puntaje: 1427
+        - puesto: 2
+          modelo: GPT-Image-2.5 Flare
+          puntaje: 1401
+        - puesto: 3
+          modelo: "GPT-Image-2 (Medium)"
+          puntaje: 1381
+        - puesto: 4
+          modelo: MAI-Image-2.6
+          puntaje: 1329
+        - puesto: 5
+          modelo: Gemini Nano Banana 2.1
+          puntaje: 1325
     arena:
-      config: text-to-image
+      config: text_to_image
       split: latest
+      filtro:
+        category: overall
       verificado: false
   - id: imagenes_entender
     nombre: "Imágenes (entender)"
     evidencia:
       - fuente: "Arena visión"
-        url: "https://arena.ai/leaderboard/vision"
+        url: "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"
         tipo: independiente
-        dice: "1 claude-fable-5-high 1309, 2 qwen3.8-max 1301"
+        dice: "1 Claude Fable 5 (High) 1325, 2 Claude Opus 5.5 1321, 4 Claude Fable 5.1 1319, 7 Gemini 3.8 Flash 1315, 29 GPT-6.1 Sol 1288, 30 Claude Sonnet 5.5 1287, 36 GPT-6 Astra 1280"
         conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
-        fecha: 2026-10-03
+        fecha: 2026-10-19
       - fuente: Artificial Analysis MMMU-Pro
-        url: "https://artificialanalysis.ai/evaluations/mmmu-pro"
+        url: "https://benchgap.net/b/aa-mmmu-pro/current"
         tipo: independiente
-        dice: "1 Claude Opus 5.5 (max) 88%, 2 GPT-6 Astra (max) 87%, 3 Claude Opus 5.5 (xhigh) 87%"
+        dice: "1 Claude Opus 5.5 87,7%, 3 GPT-6 Astra 86,9%, 4 GPT-6.1 Sol 86,0%, 5 Gemini 3.8 Flash 85,6% (medido por Artificial Analysis; leído en benchgap)"
         conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
-        fecha: 2026-10-03
+        fecha: 2026-10-27
     planes:
       - plan: A
         herramienta: Claude Code
         proveedor: Anthropic
         modelo: Opus 5.5
         modelo_api: claude-opus-5-5
-        por_que: "Primero en MMMU-Pro (88%) y Claude arriba en Arena visión (Fable 5 1°): entiende imágenes dentro de Claude Code."
+        por_que: "Primero en MMMU-Pro (87,7%) y 2.º en Arena visión (1321; el 1.º es Fable 5 con 1325, de pago aparte): entiende imágenes dentro de Claude Code."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
-        verificado: false
+        verificado: true
         respaldo:
-          - Artificial Analysis MMMU-Pro
           - "Arena visión"
+          - Artificial Analysis MMMU-Pro
       - plan: B
         herramienta: Codex
         proveedor: OpenAI
         modelo: GPT-6.1 Sol
         modelo_api: gpt-6.1-sol
-        por_que: Alternativa.
+        por_que: "A VERIFICAR. GPT-6.1 Sol saca 86,0% en MMMU-Pro, casi igual que Gemini 3.8 Flash (85,6%), pero es 29.º en Arena visión (1288)."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
@@ -767,9 +893,9 @@ categorias:
         proveedor: Google
         modelo: Gemini 3.8 Flash
         modelo_api: gemini-3.8-flash
-        por_que: Alternativa gratis.
+        por_que: "A VERIFICAR. Arena visión lo pone 7.º (1315), 22 puestos sobre Codex, mientras MMMU-Pro los muestra empatados. Si una segunda fuente lo confirma, pasa a plan B. Gratis, como alternativa."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: /usage en Antigravity CLI
@@ -803,28 +929,28 @@ categorias:
     nombre: Video
     evidencia:
       - fuente: Arena texto a video
-        url: "https://arena.ai/leaderboard/text-to-video"
+        url: "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"
         tipo: independiente
-        dice: "1 gemini-omni-1.1-flash 1516, 2 gemini-omni-flash 1513"
-        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
-        fecha: 2026-10-03
+        dice: "Texto a video: 1 Gemini Omni 1.1 Flash 1516, 2 Gemini Omni Flash 1513, 3 FLUX 3 Video 1493, 4 Grok Imagine Video 1.5 1492, 5 Seedance 2.0 1479, 6 Wan 3.0 1476, 7 Seedance 2.5 1474, 8 MiniMax H3 1460. Imagen a video: 1 MiniMax H3 1495, 2 Gemini Omni 1.1 Flash 1488, 3 Wan 3.0 1480."
+        conflicto: Arena mide preferencia humana
+        fecha: 2026-09-22
       - fuente: Artificial Analysis Video Arena
-        url: "https://artificialanalysis.ai/video/leaderboard/text-to-video"
+        url: "https://metaprompt.ai/posts/text-to-video-arena-leaders"
         tipo: independiente
-        dice: "1 Wan 3.0 1157; en imagen a video 1 MiniMax H3 Max, 3 Gemini Omni Flash. No coincide con Arena"
-        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
-        fecha: 2026-10-03
+        dice: "Texto a video con audio: 1 Wan 3.0 1174, 4 HeyGen Video 1 1157, 5 Seedance 2.5 1156, 10 Gemini Omni Flash 1.1 1128 (los diez primeros dentro de 46 puntos, intervalos que se pisan). Imagen a video: 1 MiniMax H3 1140, 2 Seedance 2.5 1138, 3 Gemini Omni Flash 1.1 1132, 4 Wan 3.0 1127 (empate). Leído en resúmenes que citan la tabla."
+        conflicto: "Artificial Analysis: empresa comercial"
+        fecha: 2026-10-29
     planes:
       - plan: A
         herramienta: app web de Gemini
         proveedor: Google
-        modelo: Gemini Omni Flash
+        modelo: Gemini Omni 1.1 Flash
         modelo_api: null
-        por_que: "Gemini Omni es 1° en Arena texto a video y 3° en imagen a video de Artificial Analysis (Wan 3.0 y MiniMax H3 encabezan ahí, pero no están en apps que usamos)."
+        por_que: "A VERIFICAR el lugar. 1.º en Arena texto a video (1516) y 3.º en imagen a video de Artificial Analysis, pero 10.º en su texto a video (los diez primeros dentro de 46 puntos): las dos fuentes no coinciden arriba de todo."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
-        condiciones: Pendiente de verificar.
+        condiciones: Necesita un plan de Google AI para generar video en la app de Gemini.
         como_ver_cupo: app de Gemini
         cupo: none
         verificado: false
@@ -832,49 +958,69 @@ categorias:
           - Arena texto a video
           - Artificial Analysis Video Arena
       - plan: B
-        herramienta: "app web (Sora)"
-        proveedor: OpenAI
-        modelo: "Sora (a verificar)"
+        herramienta: "API o plataformas con Wan 3.0 (Alibaba Model Studio; según reseñas, Runway y Pika)"
+        proveedor: Alibaba
+        modelo: Wan 3.0
         modelo_api: null
-        por_que: "Sin dato en la investigación."
-        fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        por_que: "1.º en texto a video de Artificial Analysis (1174) y 6.º en Arena (1476); 3.º en imagen a video en Arena y 4.º en Artificial Analysis. Reemplaza a Sora: OpenAI la discontinuó (app web el 2026-04-26, API el 2026-09-24). Para imagen a video, MiniMax H3 es 1.º en Arena y en Artificial Analysis (empatado)."
+        fuente: "https://help.openai.com/en/articles/20001152-what-to-know-about-the-sora-discontinuation"
+        fecha: 2026-10-29
         datos_privados: false
-        condiciones: Pendiente de verificar.
-        como_ver_cupo: panel de uso de ChatGPT
+        condiciones: "Sin cuenta propia todavía: hay que contratarla. Proveedor chino: sin material de clientes."
+        como_ver_cupo: panel de la plataforma elegida
         cupo: none
         verificado: false
+        respaldo:
+          - Arena texto a video
+          - Artificial Analysis Video Arena
       - plan: C
         herramienta: "Adobe Express (conector)"
         proveedor: Adobe
         modelo: null
         modelo_api: null
-        por_que: "Cortes rápidos y redimensionado con el conector de Adobe (a verificar)."
+        por_que: "Cortes rápidos y redimensionado con el conector de Adobe (sin medición independiente)."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
-        condiciones: Pendiente de verificar.
+        condiciones: "Sin medición independiente."
         como_ver_cupo: cuenta de Adobe
         cupo: none
         verificado: false
     ranking:
-      fuente: "sin ranking cargado todavía"
-      fecha: null
+      fuente: "Arena (dataset en Hugging Face)"
+      fecha: 2026-09-22
       verificado: false
-      items: []
+      items:
+        - puesto: 1
+          modelo: gemini-omni-1.1-flash
+          puntaje: 1516
+        - puesto: 2
+          modelo: gemini-omni-flash
+          puntaje: 1513
+        - puesto: 3
+          modelo: flux-3-video
+          puntaje: 1493
+        - puesto: 4
+          modelo: grok-imagine-video-1.5-agent
+          puntaje: 1492
+        - puesto: 5
+          modelo: dreamina-seedance-2.0-720p
+          puntaje: 1479
     arena:
-      config: text-to-video
+      config: text_to_video
       split: latest
+      filtro:
+        category: overall
       verificado: false
   - id: transcripcion
     nombre: "Transcripción de audio"
     evidencia:
       - fuente: Artificial Analysis Speech to Text
-        url: "https://artificialanalysis.ai/speech-to-text"
+        url: "https://artificialanalysis.ai/speech-to-text/non-streaming"
         tipo: independiente
-        dice: "error por palabra: Scribe v2 2,2%, Gemini 3.5 Transcribe 2,6%; GPT Transcribe fuera de los 8 primeros"
+        dice: "Error por palabra (AA-WER): 1 Fun-Realtime-ASR-preview (Alibaba) 1,7%; 2 MAI-Transcribe-2 (Microsoft) 2,0%; 3 Voxtral Small Transcribe 3 (Mistral) 2,1%; Voxtral Mini Transcribe 3 2,2% (unos US$3,5 por 1000 minutos, según una reseña); 4 Scribe v2 (ElevenLabs) 2,2%; Gemini 3.5 Transcribe 2,6%; GPT Transcribe 3,3%. Precio por 1000 minutos: Scribe v2 US$3,67; GPT Transcribe US$4,50; Gemini 3.5 Transcribe US$5,00."
         conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
-        fecha: 2026-10-03
+        fecha: 2026-10-29
       - fuente: "Open ASR Leaderboard (Hugging Face)"
         url: "https://huggingface.co/spaces/hf-audio/open_asr_leaderboard"
         tipo: independiente
@@ -887,14 +1033,14 @@ categorias:
         proveedor: ElevenLabs
         modelo: Scribe v2
         modelo_api: null
-        por_que: "Menos errores que Gemini y OpenAI en las dos fuentes (Scribe v2: 2,2% en Artificial Analysis, 6° en Open ASR)."
+        por_que: "2,2% de error en Artificial Analysis (4.º entre todos) y 6.º en Open ASR; el mejor de nuestros tres. Ya no es el mejor del mercado: Fun-ASR de Alibaba (1,7%), MAI-Transcribe-2 de Microsoft (2,0%, en preview) y Voxtral Small de Mistral (2,1%) lo superan, pero ninguno está integrado."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: panel de ElevenLabs
         cupo: none
-        verificado: false
+        verificado: true
         respaldo:
           - Artificial Analysis Speech to Text
           - "Open ASR Leaderboard (Hugging Face)"
@@ -903,9 +1049,9 @@ categorias:
         proveedor: Google
         modelo: Gemini 3.5 Transcribe
         modelo_api: gemini-3.5-transcribe
-        por_que: "Muy cerca de Scribe (2,6% de error en Artificial Analysis) y más barato si ya usás Gemini."
+        por_que: "Segundo de nuestros tres (2,6% de error en Artificial Analysis), cerca de Scribe, pero cuesta más: US$5,00 por 1000 minutos contra US$3,67."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
         condiciones: "Plan gratis: Google usa los datos; con audios de clientes usá la API paga."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
@@ -918,14 +1064,31 @@ categorias:
         proveedor: OpenAI
         modelo: GPT Transcribe
         modelo_api: gpt-4o-transcribe
-        por_que: "3,3% de error. Ojo: los gpt-4o-*transcribe se apagan el 2027-02-26."
+        por_que: "3,3% de error y US$4,50 por 1000 minutos en Artificial Analysis. Ojo: los gpt-4o-*transcribe se apagan el 2027-02-26."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: panel de uso de la API de OpenAI
         cupo: none
         verificado: false
+        respaldo:
+          - Artificial Analysis Speech to Text
+      - plan: D
+        herramienta: API de Mistral
+        proveedor: Mistral
+        modelo: Voxtral Small Transcribe 3
+        modelo_api: null
+        por_que: "2,1% de error en Artificial Analysis (3.º entre todos); Voxtral Mini Transcribe 3 saca 2,2% a unos US$3,5 por 1000 minutos. Sin integración todavía y sin dato propio para castellano."
+        fuente: "https://artificialanalysis.ai/speech-to-text/non-streaming"
+        fecha: 2026-10-29
+        datos_privados: false
+        condiciones: "Sin revisar privacidad ni cuenta: hay que contratarla antes de usarlo."
+        como_ver_cupo: panel de Mistral
+        cupo: none
+        verificado: false
+        respaldo:
+          - Artificial Analysis Speech to Text
     ranking:
       fuente: "Artificial Analysis, speech to text (a verificar)"
       fecha: 2026-09-30
@@ -944,22 +1107,28 @@ categorias:
     nombre: "Voz (texto a voz)"
     evidencia:
       - fuente: Artificial Analysis Text to Speech
-        url: "https://artificialanalysis.ai/text-to-speech/leaderboard"
+        url: "https://artificialanalysis.ai/text-to-speech"
         tipo: independiente
-        dice: "1 Eleven v4 1321, 4 Gemini 3.8 Flash TTS 1275"
-        conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
-        fecha: 2026-10-03
+        dice: "Arena de voces (preferencia a ciegas, voces que elige cada empresa): 1 Eleven v4 Turbo 1334-1336, 2 Eleven v4 1321-1332, 3 Qwen-Audio-3.1-TTS-Plus 1292-1307, 4 Cartesia Sonic 3.6 1278-1292, 5 Gemini 3.8 Flash TTS 1275-1280; el mejor de OpenAI en la lista, TTS-1 HD, 1105. Con las mismas voces para todos: Qwen 3.1 es 1.º y Gemini 13.º (1048). Precio por millón de caracteres: Eleven v4 US$80, Turbo US$40, Gemini 3.8 Flash TTS US$16,50."
+        conflicto: "Los puntajes se mueven con cada voto y el puesto depende de las voces que trae cada empresa. No pude abrir la tabla: leído en reseñas que la citan"
+        fecha: 2026-10-29
+      - fuente: "OpenAI, retiros de la API de voz (fabricante)"
+        url: "https://developers.openai.com/api/docs/deprecations"
+        tipo: fabricante
+        dice: "tts-1, tts-1-hd y gpt-4o-mini-tts se apagan el 2027-01-06; reemplazo recomendado: gpt-realtime-2.1-mini."
+        conflicto: "Lo dice el fabricante: vale para retiros, no para el orden"
+        fecha: 2026-10-01
     planes:
       - plan: A
         herramienta: API de ElevenLabs
         proveedor: ElevenLabs
-        modelo: null
+        modelo: Eleven v4 / Eleven v4 Turbo
         modelo_api: null
-        por_que: "Eleven v4 es el 1° del ranking de voz de Artificial Analysis."
+        por_que: "1.º y 2.º en la arena de voces de Artificial Analysis (Turbo 1334, v4 1321-1332); Gemini 3.8 Flash TTS queda unos 50 puntos abajo. Cuesta US$80 por millón de caracteres (Turbo, US$40)."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
-        condiciones: Pendiente de verificar.
+        condiciones: "Orden a verificar: la tabla de Artificial Analysis no se pudo abrir directamente."
         como_ver_cupo: panel de ElevenLabs
         cupo: none
         verificado: false
@@ -968,24 +1137,24 @@ categorias:
       - plan: B
         herramienta: API de OpenAI
         proveedor: OpenAI
-        modelo: null
+        modelo: "gpt-realtime-2.1-mini (reemplaza a tts-1)"
         modelo_api: null
-        por_que: "Sin dato en la investigación."
+        por_que: "A VERIFICAR el lugar. Los modelos de voz de OpenAI (tts-1, tts-1-hd, gpt-4o-mini-tts) se apagan el 2027-01-06 y su reemplazo todavía no aparece medido en la arena. El mejor OpenAI que mide Artificial Analysis (TTS-1 HD, 1105) queda 170 puntos debajo de Gemini 3.8 Flash TTS. Si el reemplazo no mide mejor, Gemini pasa a plan B."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
-        condiciones: Pendiente de verificar.
+        condiciones: ""
         como_ver_cupo: panel de la API de OpenAI
         cupo: none
         verificado: false
       - plan: C
         herramienta: API de Gemini
         proveedor: Google
-        modelo: null
+        modelo: Gemini 3.8 Flash TTS
         modelo_api: null
-        por_que: "Gemini 3.8 Flash TTS es 4° en Artificial Analysis."
+        por_que: "4.º-5.º en la arena de Artificial Analysis (1275-1280) a US$16,50 por millón de caracteres, cinco veces menos que Eleven v4. Ojo: con las mismas voces para todos cae al 13.º; parte del puntaje son las voces que trae."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
@@ -1006,39 +1175,38 @@ categorias:
         proveedor: Anthropic
         modelo: Sonnet 5.5
         modelo_api: claude-sonnet-5-5
-        por_que: "Sonnet 5.5 es 2° en el test de análisis de datos de Artificial Analysis (57,5%); Opus 5.5 si el cálculo es delicado."
+        por_que: "Lidera el Vals Index v2.2 (70,85%) y es 3.º en modelado de Excel (75,9%, a 0,8 del 1.º); 2.º en AnalystAgent de Artificial Analysis. Opus 5.5 si el cálculo es del negocio."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
-        verificado: false
+        verificado: true
         respaldo:
+          - "Vals AI, modelado en Excel y finanzas"
           - Artificial Analysis AnalystAgent y GDP.pdf
       - plan: B
         herramienta: Codex
         proveedor: OpenAI
         modelo: GPT-6.1 Sol
         modelo_api: gpt-6.1-sol
-        por_que: "GPT-6.1 Sol es 2° leyendo documentos con números (GDP.pdf, 32%)."
+        por_que: "A VERIFICAR. Lee mejor documentos con números (GDP.pdf 31% contra 26% de Claude), pero en Vals queda 22.º en finanzas (55,8%), debajo de Gemini 3.8 Flash (60,5%); AutomationBench lo pone en 65%, sobre Flash (60%). GPT-6.1 Terra, de la misma familia, saca 73,3% en Excel a US$0,56 por prueba."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
         verificado: false
-        respaldo:
-          - Artificial Analysis AnalystAgent y GDP.pdf
       - plan: C
         herramienta: API / app web de Gemini
         proveedor: Google
         modelo: Gemini 3.8 Flash
         modelo_api: gemini-3.8-flash
-        por_que: Barato para volumen.
+        por_que: "A VERIFICAR. 72,9% en modelado de Excel (8.º) y 60,5% en el índice de finanzas de Vals. Barato para volumen; Gemini 4 Argon rinde más (74,8% en Excel, 78% en AutomationBench) por US$2/10."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
@@ -1050,43 +1218,65 @@ categorias:
       verificado: false
       items: []
     evidencia:
+      - fuente: "Vals AI, modelado en Excel y finanzas"
+        url: "https://www.vals.ai/benchmarks/emb-v1-1"
+        tipo: independiente
+        dice: "Modelado en Excel (27/10): 1 Claude Fable 5.1 76,7%, 2 Gemini 4 Carbon 76,5%, 3 Claude Sonnet 5.5 75,9%, 4 Claude Opus 5.5 75,8%, 6 Gemini 4 Argon 74,8%, 7 GPT-6.1 Terra 73,3% (US$0,56 por prueba), 8 Gemini 3.8 Flash 72,9%; Claude Haiku 5.5 65,5%. Índice de finanzas: 1 Carbon 66,4, 2 Opus 5.5 65,6, 4 Sonnet 5.5 64,5, 10 Gemini 3.8 Flash 60,5, 22 GPT-6.1 Sol 55,8. Vals Index v2.2: 1 Sonnet 5.5 70,85%, 2 Opus 5.5 70,18%."
+        conflicto: "Vals es una empresa comercial; los jueces son modelos de IA"
+        fecha: 2026-10-27
       - fuente: Artificial Analysis AnalystAgent y GDP.pdf
         url: "https://artificialanalysis.ai/evaluations/aa-analyst-agent"
         tipo: independiente
-        dice: "AnalystAgent: 1 Gemini 3.7 Flash 60%, 2 Claude Sonnet 5.5 57,5%, 2 Claude Fable 5.1 57,5%. GDP.pdf: 1 GPT-6 Astra 32,2%, 2 GPT-6.1 Sol 32,0%"
+        dice: "AutomationBench-AA: Gemini 4 Argon 78%, Claude Sonnet 5.5 71%, Claude Opus 5.5 70%, GPT-6 Astra 68%, GPT-6.1 Sol 65%, Gemini 3.8 Flash 60%. GDP.pdf (documentos con números): GPT-6 Astra y GPT-6.1 Sol 31%, Claude Opus 5.5 y Sonnet 5.5 26%, Gemini 4 Argon 22%. AnalystAgent (medición del 2026-10-03): 1 Gemini 3.7 Flash 60%, 2 Claude Sonnet 5.5 57,5%."
         conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
-        fecha: 2026-10-03
+        fecha: 2026-10-29
   - id: tareas_baratas
     nombre: "Tareas mecánicas baratas"
     evidencia:
       - fuente: Artificial Analysis LLM Leaderboard
-        url: "https://artificialanalysis.ai/leaderboards/models"
+        url: "https://artificialanalysis.ai/"
         tipo: independiente
-        dice: "índice ≥38 más barato por tarea: GPT-6 Luna 38 a 0,07 US$; GPT-6.1 Sol low 42 a 0,13 US$"
+        dice: "Índice de inteligencia v4.3.2 y costo por tarea: GPT-6 Luna 38 a US$0,07; Claude Haiku 5.5 43 a US$0,21; Gemini 3.8 Flash 41 a US$1,24; Gemini 4 Argon 53 a US$1,99. Con la misma nota (38): Luna al máximo US$0,07, Haiku en esfuerzo alto US$0,08. Haiku saca 33% en Terminal-Bench 4.0 contra 13% de Luna; Luna gana en AutomationBench (40% contra 29%). Leído en reseñas que citan la tabla. Haiku 5.5 cuesta cinco veces más con prompts de más de 100.000 tokens (según reseñas)."
         conflicto: "Artificial Analysis: empresa comercial, vende datos y asesoría"
-        fecha: 2026-10-03
+        fecha: 2026-10-29
+      - fuente: "Vals AI, modelado en Excel (costo por prueba)"
+        url: "https://www.vals.ai/benchmarks/emb-v1-1"
+        tipo: independiente
+        dice: "Modelado en Excel: GPT-6 Luna 70,0% a US$0,14 por prueba; Claude Haiku 5.5 65,5% a US$1,36."
+        conflicto: Vals es una empresa comercial
+        fecha: 2026-10-27
+      - fuente: "ironbee-ai/code-review-benchmarks (21 modelos, 50 pull requests)"
+        url: "https://github.com/ironbee-ai/code-review-benchmarks"
+        tipo: independiente
+        dice: "Revisión de código: GPT-6 Luna F1 43,7 a US$0,009 por pull request; Claude Haiku 5.5 F1 38,8 a US$0,023."
+        conflicto: Los jueces son modelos de IA
+        fecha: 2026-10-20
     planes:
       - plan: A
         herramienta: API de OpenAI
         proveedor: OpenAI
         modelo: GPT-6 Luna
         modelo_api: gpt-6-luna
-        por_que: "US$0,10/0,50 por millón: lo más barato."
+        por_que: "US$0,10/0,50 por millón y lo más barato por tarea (US$0,07 en Artificial Analysis, tres veces menos que Haiku 5.5); rinde igual o mejor en Excel (70,0% contra 65,5%) y en revisión de código (43,7 contra 38,8). Haiku saca más en el índice (43 contra 38) y en terminal."
         fuente: "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: panel de la API de OpenAI
         cupo: none
-        verificado: false
+        verificado: true
+        respaldo:
+          - Artificial Analysis LLM Leaderboard
+          - "Vals AI, modelado en Excel (costo por prueba)"
+          - "ironbee-ai/code-review-benchmarks (21 modelos, 50 pull requests)"
       - plan: B
         herramienta: API de Gemini
         proveedor: Google
         modelo: Gemini Flash-Lite
         modelo_api: gemini-3.5-flash-lite
-        por_que: "Con plan gratis (pero ver la condición)."
+        por_que: "Con plan gratis (pero ver la condición). No figura en las fuentes consultadas hoy: a verificar contra Luna y Haiku."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
@@ -1097,14 +1287,16 @@ categorias:
         proveedor: Anthropic
         modelo: Haiku 5.5
         modelo_api: claude-haiku-5-5
-        por_que: "Si tiene que quedar dentro de Claude Code: Haiku 5.5, el más barato de Claude (US$0,10 de entrada y US$0,50 de salida por millón de tokens, en prompts de hasta 100 mil tokens)."
+        por_que: "Si tiene que quedar dentro de Claude Code: Haiku 5.5 (US$0,10/0,50 por millón hasta 100.000 tokens de prompt; después cuesta cinco veces más). El de mejor nota entre los baratos (43 en el índice), pero escribe unas tres veces más y cuesta US$0,21 por tarea."
         fuente: "models.dev (alta 2026-10-07) y la tabla de modelos de claude-api"
-        fecha: 2026-10-08
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
         verificado: false
+        respaldo:
+          - Artificial Analysis LLM Leaderboard
     ranking:
       fuente: "sin ranking cargado todavía"
       fecha: null
@@ -1114,67 +1306,85 @@ categorias:
     nombre: Agentes de tarea larga
     evidencia:
       - fuente: Arena Agent
-        url: "https://arena.ai/leaderboard/agent"
+        url: "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"
         tipo: independiente
-        dice: "1 Claude Fable 5.1, 2 Claude Opus 5.5, 3 Claude Sonnet 5.5, 4 GPT 6 Astra"
-        conflicto: "Arena: vende evaluaciones a los labs que rankea; mide gusto, no corrección"
-        fecha: 2026-10-03
-      - fuente: "Terminal-Bench 4.0 (tabla oficial)"
-        url: "https://www.tbench.ai/"
+        dice: "(puntaje ×100) 1 Claude Opus 5.5 (Max) 20,9; 2 Gemini 4 Carbon 16,0 (sin acceso general); 3 Claude Sonnet 5.5 13,8; 4 Claude Fable 5.1 13,4; 5 GPT-6 Astra 13,0; 6 GPT-6.1 Sol 12,5; 7 Gemini 4 Argon 10,7; 15 Gemini 3.8 Flash 2,6."
+        conflicto: Arena mide preferencia humana en tareas de agente
+        fecha: 2026-10-28
+      - fuente: "Terminal-Bench 4.0 (tabla de Snorkel AI)"
+        url: "https://snorkel.ai/leaderboard/terminal-bench/"
         tipo: independiente
-        dice: "Codex+GPT-6 Astra 58,2%, Claude Code+Fable 5.1 57,9%; METR no sirve hoy (último modelo medido en mayo)"
-        conflicto: "Terminal-Bench: muchos envíos los hace el fabricante; se lee la tabla oficial"
-        fecha: 2026-10-03
+        dice: "Claude Code+Opus 5.5 64,8%; Claude Code+Sonnet 5.5 61,8%; Codex+GPT-6 Astra 58,2%; Codex+GPT-6.1 Sol 58,2%; Claude Code+Fable 5.1 57,9%. METR no midió Opus 5.5, GPT-6.1 Sol ni Gemini 4 y sus pruebas dejan de ser fiables sobre 16 horas."
+        conflicto: "Terminal-Bench: muchos envíos los hace el fabricante; se lee la tabla de Snorkel AI"
+        fecha: 2026-10-27
     planes:
       - plan: A
         herramienta: Claude Code
         proveedor: Anthropic
         modelo: Opus 5.5
         modelo_api: claude-opus-5-5
-        por_que: "Claude arriba en Arena Agent; Fable 5.1 (más caro) es el primero si la tarea lo vale."
+        por_que: "Primero en Arena Agent (20,9) y en Terminal-Bench 4.0 (64,8%). Fable 5.1 (más caro) ya no es el primero: 4.º en Arena Agent (13,4) y 5.º en Terminal-Bench (57,9%), debajo de Opus 5.5 y Sonnet 5.5."
         fuente: "evidencia de la categoría"
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
-        verificado: false
+        verificado: true
         respaldo:
           - Arena Agent
+          - "Terminal-Bench 4.0 (tabla de Snorkel AI)"
       - plan: B
         herramienta: Codex
         proveedor: OpenAI
         modelo: GPT-6.1 Sol
         modelo_api: gpt-6.1-sol
-        por_que: "GPT-6.1 Sol es 5° en Arena Agent; Codex con GPT-6 Astra es 1° en Terminal-Bench."
+        por_que: "6.º en Arena Agent (12,5; GPT-6 Astra, 5.º con 13,0) y 58,2% en Terminal-Bench 4.0, igual que Astra y a menos de una quinta parte del costo en esa tabla."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: true
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
-        verificado: false
+        verificado: true
         respaldo:
           - Arena Agent
-          - "Terminal-Bench 4.0 (tabla oficial)"
+          - "Terminal-Bench 4.0 (tabla de Snorkel AI)"
       - plan: C
         herramienta: Antigravity
         proveedor: Google
-        modelo: Gemini 3.1 Pro
-        modelo_api: gemini-3.1-pro-preview
-        por_que: Alternativa gratis para tareas acotadas.
+        modelo: Gemini 4 Argon
+        modelo_api: gemini-4-argon
+        por_que: "7.º en Arena Agent (10,7), debajo de GPT-6.1 Sol (12,5). Gemini 4 Carbon es 2.º en Arena Agent (16,0) pero todavía no tiene acceso general: cuando salga pasa a plan B. Alternativa para tareas acotadas."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
-        fecha: 2026-10-03
+        fecha: 2026-10-29
         datos_privados: false
-        condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
+        condiciones: "Gemini 4 Argon en Antigravity es solo para suscriptores de Google AI Ultra (en la app de Gemini, desde AI Pro; por API, US$2/10 por millón hasta el 30/11/2026 y US$4/20 después, según Google). Con otra cuenta, Antigravity usa el mejor Gemini que tenga (delegar.py lo resuelve solo). En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: /usage en Antigravity CLI
         cupo: antigravity
         verificado: false
+        respaldo:
+          - Arena Agent
     ranking:
-      fuente: "sin ranking cargado todavía"
-      fecha: null
+      fuente: "Arena Agent (dataset en Hugging Face; puntaje ×100)"
+      fecha: 2026-10-28
       verificado: false
-      items: []
+      items:
+        - puesto: 1
+          modelo: "Claude Opus 5.5 (Max)"
+          puntaje: 20.9
+        - puesto: 2
+          modelo: "Gemini 4 Carbon (High)"
+          puntaje: 16.0
+        - puesto: 3
+          modelo: "Claude Sonnet 5.5 (Max)"
+          puntaje: 13.8
+        - puesto: 4
+          modelo: "Claude Fable 5.1 (Max)"
+          puntaje: 13.4
+        - puesto: 5
+          modelo: "GPT-6 Astra (Max)"
+          puntaje: 13.0
 retiros:
   - modelo: claude-sonnet-4-5-20250929
     proveedor: Anthropic
@@ -1477,6 +1687,14 @@ fuentes_auto:
       nombre: Gemini Pro
       proveedor: google
       patron: "^gemini-(\\d{1,2}(?:\\.\\d{1,2})?)-pro(?:-preview)?$"
+    - id: gemini-argon
+      nombre: Gemini Argon
+      proveedor: google
+      patron: "^gemini-(\\d{1,2}(?:\\.\\d{1,2})?)-argon$"
+    - id: gpt-terra
+      nombre: GPT Terra
+      proveedor: openai
+      patron: "^gpt-(\\d{1,2}(?:\\.\\d{1,2})?)-terra$"
   docs:
     indice:
       url: "https://code.claude.com/docs/llms.txt"
