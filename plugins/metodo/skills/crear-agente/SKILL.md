@@ -80,6 +80,14 @@ herramienta, decí por qué en el mensaje.
 `mkdir -p ~/.claude/agents-archive && mv ~/.claude/agents/<nombre>.md ~/.claude/agents-archive/`
 Y sacá la línea del `CLAUDE.md`. Un agente archivado se puede volver a traer; uno borrado, no.
 
+## Etiqueta de proyecto (siempre)
+Si el cuerpo del agente lleva **datos, cuentas o sistemas de UNA empresa o proyecto** (nombres propios, cuentas de
+anuncios, carpetas, herramientas internas), su `description` **empieza con `[PROYECTO]`**: `[TU-EMPRESA] PM de …`.
+Todo `pm-*` de una empresa lo lleva. Un agente **general** (sirve en cualquier lado) no lleva datos de nadie y no
+lleva tag. Si necesitás la versión general de uno de proyecto, se crea **aparte**, sin esos datos. Así, en la lista de
+agentes se ve cuál es de qué proyecto y se nota qué versión general falta. Los datos del negocio igual van en el
+`CLAUDE.md`; el tag evita que un agente de una empresa se use, sin darse cuenta, en otra.
+
 ## Errores típicos
 - Crear un agente que nadie invoca (sin `Disparador:` ni quién lo llame) → no existe: nada lo ejecuta (regla 23).
 - Crear un agente para cada tarea → termina con 30 agentes que nadie usa. Regla: si en 2 semanas no lo
