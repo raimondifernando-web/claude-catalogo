@@ -322,6 +322,7 @@ class Base(unittest.TestCase):
         os.environ["CEREBRO_HOME"] = str(self.tmp / "cerebro")
         os.environ["RADAR_AUTO"] = "0"
         os.environ.pop("RADAR_HOY", None)
+        os.environ.pop("GITHUB_ACTIONS", None)   # en el CI de GitHub está puesta y apaga la actualización en segundo plano
         (self.tmp / "cerebro").mkdir()
 
 
