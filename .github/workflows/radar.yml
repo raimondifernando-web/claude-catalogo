@@ -3,15 +3,13 @@
 #   - diario  (retiros y precios): LiteLLM, OpenRouter, models.dev y las tablas de las páginas de retiros
 #   - semanal (rankings): dataset de Arena en Hugging Face
 # Se publica solo si TODO esto se cumple; si algo falla, el PR queda abierto para una persona:
-#   1. el commit toca únicamente RADAR.yaml, RADAR.md y MODELOS.json (datos, nunca programas; los clientes los leen con un
-#      lector propio que no ejecuta nada) · 2. radar.py los lee y los tests pasan · 3. el cambio no borra más de la mitad del
+#   1. el commit toca únicamente RADAR.yaml y RADAR.md (datos, nunca programas; los clientes los leen con un lector
+#      propio que no ejecuta nada) · 2. radar.py los lee y los tests pasan · 3. el cambio no borra más de la mitad del
 #      archivo · 4. la credencial de escritura existe solo en el último paso (no mientras se leen páginas de terceros) ·
-#      5. no se toca `radar/consejos/` (los resúmenes los hace una persona o la IA barata, nunca este robot).
-#      Modelos nuevos, vigentes, precios, rankings, retiros y cambios en la doc oficial son DATOS y se publican solos
-#      (2026-10-29, pedido del dueño: antes, un modelo vigente o una página de doc nueva dejaban el PR esperando a una persona
-#      que nadie avisaba, y el radar se pudrió 16 días). Lo que pide trabajo humano (rehacer un resumen de consejos, una fila
-#      de FUNCIONES.md, el orden A/B/C) no frena los datos: queda marcado en RADAR.yaml (`cambio:`) y `radar.py hoy` lo avisa en
-#      cada sesión hasta que se haga. El catálogo de modelos se arma sin reglas por modelo (`radar_modelos.py`).
+#      5. no cambian los modelos vigentes (`vigentes:`), la documentación oficial vigilada (`fuentes_auto.docs`: páginas
+#      nuevas, funciones que cambian, versiones nuevas de Claude Code, Codex y Gemini CLI) ni los consejos
+#      (`radar/consejos/`): una versión o una función nueva la revisa una persona (decisión del dueño, 2026-10-08).
+#      Precios, rankings y retiros siguen automáticos.
 # El orden A/B/C de cada categoría NO lo toca este robot: se escribe a mano (spec §7).
 # Requiere, en Settings > Actions > General, «Allow GitHub Actions to create and approve pull requests».
 name: radar
@@ -65,16 +63,12 @@ jobs:
         run: python3 scripts/radar-fuentes.py --modo "${{ steps.modo.outputs.modo }}" --motivo "$RUNNER_TEMP/motivo.md"
       - name: Probar el radar nuevo (los PR que abre el bot no disparan otros workflows)
         if: steps.radar.outputs.hay_cambios == 'true'
-        env:
-          RADAR_AUTO: "0"   # `radar.py hoy` no lanza su actualización en segundo plano dentro del robot
         run: |
           python3 plugins/metodo/scripts/radar.py ver >/dev/null
-          python3 plugins/metodo/scripts/radar.py modelos >/dev/null
           n=$(python3 plugins/metodo/scripts/radar.py hoy | wc -l)
           if [ "$n" -lt 4 ] || [ "$n" -gt 6 ]; then echo "radar.py hoy imprime $n líneas (tienen que ser de 4 a 6)"; exit 1; fi
           python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_radar.py' -q
           python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_ruteo.py' -q
-          python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_radar_modelos.py' -q
       - name: Abrir o actualizar el PR (solo si hubo un cambio relevante)
         if: steps.radar.outputs.hay_cambios == 'true'
         env:
@@ -87,17 +81,34 @@ jobs:
           git config user.name "radar-bot"
           git config user.email "radar-bot@users.noreply.github.com"
           git checkout -B "$rama"
-          git add plugins/metodo/radar/RADAR.yaml plugins/metodo/radar/RADAR.md plugins/metodo/radar/MODELOS.json
+          git add plugins/metodo/radar/RADAR.yaml plugins/metodo/radar/RADAR.md
           git commit -m "radar: actualización automática de fuentes públicas"
 
           # Guardias para publicar solo (si alguna falla, el PR se abre igual y queda para una persona).
           publicar=si
-          fuera="$(git diff --name-only HEAD~1 HEAD | grep -v -x -E 'plugins/metodo/radar/(RADAR\.(yaml|md)|MODELOS\.json)' || true)"
+          fuera="$(git diff --name-only HEAD~1 HEAD | grep -v -x -E 'plugins/metodo/radar/RADAR\.(yaml|md)' || true)"
           if [ -n "$fuera" ]; then
             publicar=no; echo "::warning::el cambio toca archivos que no son datos del radar; queda para revisión"
           fi
           if git diff --name-only HEAD~1 HEAD | grep -q '^plugins/metodo/radar/consejos/'; then
             publicar=no; echo "::warning::el cambio toca radar/consejos/; queda para revisión"
+          fi
+          # Versión nueva de un modelo (`vigentes`) o novedad en la doc oficial vigilada (`fuentes_auto.docs`): la revisa una
+          # persona. Si no se puede comparar, tampoco se publica.
+          git show HEAD~1:plugins/metodo/radar/RADAR.yaml > "$RUNNER_TEMP/radar-antes.yaml"
+          vigentes="$(python3 - "$RUNNER_TEMP/radar-antes.yaml" plugins/metodo/radar/RADAR.yaml <<'PY' || true
+          import importlib.util, sys
+          spec = importlib.util.spec_from_file_location("radar", "plugins/metodo/scripts/radar.py")
+          m = importlib.util.module_from_spec(spec)
+          sys.modules["radar"] = m
+          spec.loader.exec_module(m)
+          antes, ahora = (m.leer_yaml(p) for p in sys.argv[1:3])
+          docs = lambda r: (r.get("fuentes_auto") or {}).get("docs")
+          print("igual" if antes.get("vigentes") == ahora.get("vigentes") and docs(antes) == docs(ahora) else "cambio")
+          PY
+          )"
+          if [ "$vigentes" != "igual" ]; then
+            publicar=no; echo "::warning::cambian los modelos vigentes o la doc oficial vigilada (o no se pudo comparar); el PR queda abierto para revisión"
           fi
           antes=$(git show HEAD~1:plugins/metodo/radar/RADAR.yaml | wc -l)
           ahora=$(wc -l < plugins/metodo/radar/RADAR.yaml)

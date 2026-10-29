@@ -728,15 +728,13 @@ class TestSegundaRevision(Base):
 
 
 class TestRadarYml(unittest.TestCase):
-    def test_una_version_nueva_ya_no_deja_el_pr_esperando_a_nadie(self):
-        """2026-10-29 (pedido de Fer): un modelo vigente o una página de doc nueva son DATOS y se publican solos; antes dejaban el
-        PR esperando a una persona que nadie avisaba (el PR #6 esperó 15 días y el radar se pudrió). Lo que sí frena la publicación
-        es tocar radar/consejos/ (los resúmenes no los hace el robot) o que el cambio no sea solo datos del radar."""
+    def test_una_version_nueva_no_se_publica_sola(self):
         texto = (PLUGIN.parent.parent / ".github" / "workflows" / "radar.yml").read_text(encoding="utf-8")
         self.assertIn("radar/consejos/", texto)
-        self.assertNotIn('"$vigentes" != "igual"', texto)
-        self.assertNotIn('ahora.get("vigentes")', texto)
-        self.assertLess(texto.index("radar/consejos/"), texto.index('if [ "$publicar" = si ]'))
+        self.assertIn('ahora.get("vigentes")', texto)
+        self.assertIn('[ "$vigentes" != "igual" ]', texto)          # si no se puede comparar, tampoco se publica
+        guardia = texto.index('[ "$vigentes" != "igual" ]')
+        self.assertLess(guardia, texto.index('if [ "$publicar" = si ]'))
         self.assertIn("test_ruteo.py", texto)
 
 

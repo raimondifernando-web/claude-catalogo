@@ -624,6 +624,12 @@ def catalogo_nuevo(radar, fuentes, ruta_modelos, hoy_f=None):
     return nuevo, motivos
 
 
+def catalogo_activo():
+    """El robot arma el catálogo de modelos solo si el workflow lo pide con RADAR_CATALOGO=1 (así, mientras el workflow viejo no sabe
+    commitear MODELOS.json, un cambio solo del catálogo no deja un commit vacío y un robot en rojo)."""
+    return os.environ.get("RADAR_CATALOGO") == "1"
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Actualiza RADAR.yaml desde fuentes públicas; solo escribe si hay un cambio relevante.")
     ap.add_argument("--modo", choices=("diario", "semanal", "todo"), default="todo")
@@ -637,7 +643,7 @@ def main(argv=None):
         radar = R.leer_yaml(ruta)
         fuentes = juntar(radar, a.modo, traer)
         nuevo, motivos_radar = analizar(radar, fuentes, date.today())
-        catalogo, motivos_cat = catalogo_nuevo(radar, fuentes, ruta_modelos)
+        catalogo, motivos_cat = catalogo_nuevo(radar, fuentes, ruta_modelos) if catalogo_activo() else (None, [])
         motivos = motivos_cat + motivos_radar
     except Exception as ex:
         print("No se pudo actualizar (%s: %s). No se toca nada." % (type(ex).__name__, ex))

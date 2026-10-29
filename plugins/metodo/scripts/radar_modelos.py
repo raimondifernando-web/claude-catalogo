@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Catálogo de modelos del radar: TODOS los modelos de TODAS las IA que seguimos, armado solo desde fuentes públicas.
 
-Disparador: automático — `radar.py actualizar` (que corre solo desde `radar.py hoy` al abrir sesión cuando los datos tienen
-más de 2 días) y el robot `.github/workflows/radar.yml` (todos los días, vía `scripts/radar-fuentes.py`). A mano:
+Disparador: automático — `radar.py actualizar` (que lanza solo `radar.py hoy` al abrir sesión, una vez por día) y, cuando se
+una el PR del robot (RADAR_CATALOGO=1 en `.github/workflows/radar.yml`), `scripts/radar-fuentes.py` todos los días. A mano:
 `radar.py actualizar --directo`. Prueba de disparo: `scripts/tests/test_radar_modelos.py`.
 
 Por qué existe: el radar viejo solo veía las familias para las que alguien había escrito una regla (un patrón por

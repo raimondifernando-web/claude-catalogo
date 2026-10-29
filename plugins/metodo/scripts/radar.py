@@ -1695,8 +1695,9 @@ def actualizacion_automatica(catalogo):
     Es lo que evita que el radar se pudra en silencio: nadie tiene que acordarse de correrlo. Se apaga con RADAR_AUTO=0 o con
     el archivo <config>/metodo/radar.apagado. Nunca falla. Devuelve True si lanzó el proceso."""
     try:
-        if os.environ.get("RADAR_AUTO") == "0" or os.environ.get("RADAR_HOY") or (carpeta_metodo() / "radar.apagado").exists():
-            return False
+        if os.environ.get("RADAR_AUTO") == "0" or os.environ.get("RADAR_HOY") or os.environ.get("GITHUB_ACTIONS") == "true" \
+                or (carpeta_metodo() / "radar.apagado").exists():
+            return False   # en GitHub Actions (el robot, los tests de CI) nunca se lanza nada en segundo plano
         marca = carpeta_metodo() / "radar" / "intento"
         try:
             if time.time() - marca.stat().st_mtime < HORAS_ENTRE_INTENTOS * 3600:
