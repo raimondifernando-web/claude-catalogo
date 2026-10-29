@@ -1,5 +1,9 @@
 # base-segura
 
+## 0.14.6 — 2026-10-29
+- Skill nueva `metodologias-agiles`: elegir y aplicar metodologías ágiles y de objetivos en castellano (OKR, Scrum, Kanban, Scrumban, teoría del cambio y marco lógico, retrospectivas, priorización, riesgos, roles y decisiones, plantillas de acta e informe, Shape Up, Lean Startup). Una guía corta elige el método y abre solo el archivo que hace falta. No inventa números: si falta un dato, lo marca «sin dato».
+
+
 ## 0.14.5 — 2026-10-22
 **Nueva skill `council`:** ante una decisión dudosa con varias salidas, arma un consejo de 4 voces que discuten las opciones y marcan en qué no están de acuerdo antes de que elijas. Se aplica sola con la actualización.
 
