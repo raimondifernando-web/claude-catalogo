@@ -1,11 +1,21 @@
 # metodo — qué cambia para vos
 
-## 0.59.0 — 2026-10-27
+## 0.61.0 — 2026-10-29
 **El texto de traspaso de `/cerrar` (`REANUDAR.md`) ahora vive en UN solo lugar: `.claude/prompts/REANUDAR.md`.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** `/cerrar` lo guardaba en la raíz de la carpeta, pero el control de estructura (R18) y la vuelta de rama lo buscaban en `.claude/prompts/`. Resultado: el de la raíz arrancaba bien pero nadie lo revisaba, y los controles decían «no» en la columna de traspaso.
 - **Qué cambia:** `/cerrar` guarda solo en `.claude/prompts/REANUDAR.md`; `/arrancar`, el aviso de apertura, `cerrar-check`, `arrancar-check`, `pendientes-check` y R18 miran ese lugar primero (si hay dos, gana el nuevo) y un único archivo del kit (`reanudar_ruta.py`) sabe la ruta.
 - **Los viejos se mudan solos:** si una carpeta tiene el `REANUDAR.md` en la raíz, guardado en git y sin cambios, el orden de carpetas semanal (grupo «seguro y reversible») lo copia al lugar nuevo, comprueba que quedó idéntico y recién ahí saca el viejo, en un solo commit. Si algo falla, restaura la raíz. Se deshace con `estructura.py deshacer <id>`. Mientras no se mude, se sigue leyendo (nada se pierde ni deja de arrancar).
 - **No toca:** un archivo sin guardar en git o con cambios, ni una carpeta que ya tiene los dos lugares ocupados (no adivina cuál vale). No cambia la confianza del archivo: se mide por contenido, no por ruta.
+
+## 0.60.0 — 2026-10-29
+**El radar de modelos ahora conoce TODOS los modelos de todas las IA, se entera solo de los nuevos y te dice la diferencia entre dos.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** el radar solo veía las familias de modelos para las que alguien había escrito una regla a mano. Salió Fable, salió GPT Terra, salió Gemini 4 Argon, salió Eleven v4: el radar no los mostraba. Y los datos nuevos esperaban un PR que nadie miraba: a los 16 días el radar seguía mostrando solo Haiku, Sonnet y Opus, y cuando alguien preguntó «¿qué diferencia hay entre Opus y Fable?» la sesión contestó de memoria.
+- **Catálogo de modelos** (`radar/MODELOS.json`, lo arma un programa, nadie lo escribe): todos los modelos de Claude, OpenAI, Google, Perplexity y ElevenLabs, más xAI, Mistral, DeepSeek, Meta, Kimi, GLM y Qwen. Sale de models.dev, OpenRouter, LiteLLM y, para quien no está ahí (ElevenLabs), de la página de modelos de su doc oficial. Con fecha, precio, contexto, qué entiende y qué produce; lo que no figura en ninguna fuente dice «sin dato».
+- **Se entera solo de lo nuevo:** cualquier modelo que no estaba la vez anterior aparece como novedad, de cualquier proveedor que se siga, sin regla. Un laboratorio nuevo en las fuentes también. Sumar una IA a seguir = una entrada en `fuentes_auto.proveedores`; sus modelos se descubren solos.
+- **`radar.py comparar <A> <B>`:** una tabla con lo que cambia entre dos modelos (precio, contexto, qué entiende, fecha) y para qué sirve cada uno, con lo que dicen las fuentes y lo que el radar sabe (planes, ranking, consejos). Nada de memoria. `radar.py modelos [proveedor]` lista los vigentes de cada IA.
+- **`radar.py hoy` y `ver`** muestran los modelos vigentes de todas las IA integradas (incluido Fable) y los modelos nuevos de los últimos 14 días. Siguen siendo 6 líneas.
+- **Ya no se pudre en silencio:** `hoy` lanza `actualizar` solo, en segundo plano, una vez por día (se apaga con `RADAR_AUTO=0` o con el archivo `<config de Claude>/metodo/radar.apagado`). Si el catálogo publicado tiene más de 4 días porque el robot se paró, `actualizar` lo arma acá mismo desde las fuentes públicas. El robot diario del catálogo se ajusta en un cambio aparte (necesita probarse antes en un repo privado); mientras, cada computadora arma el catálogo por su cuenta.
+- **Qué NO cambia:** el orden A/B/C de cada categoría sigue escribiéndose a mano; ningún cupo se gasta; las fuentes son públicas, sin claves.
 
 ## 0.58.4 — 2026-10-28
 **Gemini ahora puede leer las notas internas de tu proyecto.** Se aplica solo con la actualización; no hay nada que correr.
