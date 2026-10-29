@@ -1,5 +1,9 @@
 # metodo — qué cambia para vos
 
+## 0.61.2 — 2026-10-29
+**El radar ahora muestra un ranking en revisión de código, voz, datos y planillas, y tareas baratas** (decían «sin ranking cargado todavía»), y los nombres de modelo largos se acortaron para que se lean enteros en la guía de modelos. Se aplica solo con la actualización; no hay nada que correr.
+- Revisión de código: F1 de ironbee (Sonnet 5.5, Grok 4.7, Opus 5.5, Gemini 4 Argon). Voz: arena de Artificial Analysis. Datos y planillas: Excel Modeling de Vals. Tareas baratas: índice de Artificial Analysis con costo por tarea. Todos a mano, con fuente y fecha; el robot no los toca.
+
 ## 0.61.1 — 2026-10-29
 **El orden de planes del radar se revisó contra los rankings de hoy.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** el orden A/B/C de cada categoría se escribió a mano el 3 de octubre y quedó atrás: nombraba modelos viejos (Gemini 3.8 Flash o 3.1 Pro donde ya existe Gemini 4 Argon, «Sora», que OpenAI discontinuó, «Sonar», que Perplexity reemplazó por su Agent API) y dejaba siete categorías sin ranking.

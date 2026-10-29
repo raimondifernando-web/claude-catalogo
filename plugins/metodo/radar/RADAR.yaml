@@ -381,10 +381,25 @@ categorias:
           - "ironbee-ai/code-review-benchmarks (21 modelos, 50 pull requests)"
           - "cross-review benchmark (Codex, Claude Code y Antigravity)"
     ranking:
-      fuente: "sin ranking cargado todavía"
-      fecha: null
-      verificado: false
-      items: []
+      fuente: "ironbee, F1 revisando 50 pull requests (mejor esfuerzo de cada modelo)"
+      fecha: 2026-10-20
+      verificado: true
+      items:
+        - puesto: 1
+          modelo: "Claude Sonnet 5.5 (low)"
+          puntaje: "56,0"
+        - puesto: 2
+          modelo: "Grok 4.7 (low)"
+          puntaje: "55,2"
+        - puesto: 3
+          modelo: "Claude Opus 5.5 (low)"
+          puntaje: "55,1"
+        - puesto: 4
+          modelo: "Gemini 4 Argon (high)"
+          puntaje: "54,3"
+        - puesto: 5
+          modelo: Muse Spark 1.3
+          puntaje: "52,3"
     evidencia:
       - fuente: "Qodo, ¿qué modelo conviene para revisar código? (13 modelos)"
         url: "https://www.qodo.ai/blog/which-llm-should-review-your-code/"
@@ -633,7 +648,7 @@ categorias:
       - plan: C
         herramienta: "app web (Gemini Deep Research)"
         proveedor: Google
-        modelo: "Deep Research (Google no dice qué modelo usa; reseñas: Gemini 3.1 Pro)"
+        modelo: Deep Research
         modelo_api: null
         por_que: "A VERIFICAR. Es el peor ubicado de los medidos: Gemini 3.1 Pro con búsqueda es 15.º en Arena búsqueda (1209 contra 1261) y saca 72% en BrowseComp en la prueba de Parallel (contra 85-86% de GPT y Perplexity). Pero en DeepSearchQA le gana a Perplexity (77 contra 68%). Nadie midió el Deep Research de Google en BrowseComp. Gratis en la app con los planes de Google AI."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
@@ -646,7 +661,7 @@ categorias:
       - plan: D
         herramienta: "Perplexity (MCP oficial, desde una sesión de Claude)"
         proveedor: Perplexity
-        modelo: "Agent API (presets fast/medium/high; Sonar ya fue reemplazado)"
+        modelo: Agent API
         modelo_api: perplexity_ask
         por_que: "A VERIFICAR el lugar. Su buscador es el mejor medido por Artificial Analysis (BrowseComp 87 contra 74 del de OpenAI, mismo modelo; índice 80, empatado 1.º con Exa) y su Agent API saca 86% en BrowseComp en la prueba de Parallel (GPT-5.6 Sol: 85%); pero en DeepSearchQA queda en 68% (Gemini 77, GPT 85) y no figura en Arena búsqueda. Respuesta ya sintetizada y con citas (`perplexity_ask`, preset fast); `perplexity_search` da resultados crudos con fecha y dominio; `perplexity_research` es el profundo y caro. El MCP oficial (v1.0) ya corre sobre la Agent API."
         fuente: "https://docs.perplexity.ai/docs/resources/changelog"
@@ -958,7 +973,7 @@ categorias:
           - Arena texto a video
           - Artificial Analysis Video Arena
       - plan: B
-        herramienta: "API o plataformas con Wan 3.0 (Alibaba Model Studio; según reseñas, Runway y Pika)"
+        herramienta: "API de Wan 3.0 (Alibaba)"
         proveedor: Alibaba
         modelo: Wan 3.0
         modelo_api: null
@@ -1122,7 +1137,7 @@ categorias:
       - plan: A
         herramienta: API de ElevenLabs
         proveedor: ElevenLabs
-        modelo: Eleven v4 / Eleven v4 Turbo
+        modelo: Eleven v4 / v4 Turbo
         modelo_api: null
         por_que: "1.º y 2.º en la arena de voces de Artificial Analysis (Turbo 1334, v4 1321-1332); Gemini 3.8 Flash TTS queda unos 50 puntos abajo. Cuesta US$80 por millón de caracteres (Turbo, US$40)."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
@@ -1137,7 +1152,7 @@ categorias:
       - plan: B
         herramienta: API de OpenAI
         proveedor: OpenAI
-        modelo: "gpt-realtime-2.1-mini (reemplaza a tts-1)"
+        modelo: gpt-realtime-2.1-mini
         modelo_api: null
         por_que: "A VERIFICAR el lugar. Los modelos de voz de OpenAI (tts-1, tts-1-hd, gpt-4o-mini-tts) se apagan el 2027-01-06 y su reemplazo todavía no aparece medido en la arena. El mejor OpenAI que mide Artificial Analysis (TTS-1 HD, 1105) queda 170 puntos debajo de Gemini 3.8 Flash TTS. Si el reemplazo no mide mejor, Gemini pasa a plan B."
         fuente: docs/specs/INVESTIGACION-radar-de-modelos.md
@@ -1163,10 +1178,25 @@ categorias:
         respaldo:
           - Artificial Analysis Text to Speech
     ranking:
-      fuente: "sin ranking cargado todavía"
-      fecha: null
+      fuente: "Artificial Analysis, arena de voces (Elo; leído en una reseña que cita la tabla)"
+      fecha: 2026-10-07
       verificado: false
-      items: []
+      items:
+        - puesto: 1
+          modelo: Eleven v4 Turbo
+          puntaje: "1334"
+        - puesto: 2
+          modelo: Eleven v4
+          puntaje: "1321"
+        - puesto: 3
+          modelo: Qwen-Audio-3.1-TTS-Plus
+          puntaje: "1292"
+        - puesto: 4
+          modelo: Cartesia Sonic 3.6
+          puntaje: "1278"
+        - puesto: 5
+          modelo: Gemini 3.8 Flash TTS
+          puntaje: "1275"
   - id: datos_planillas
     nombre: Datos y planillas
     planes:
@@ -1213,10 +1243,25 @@ categorias:
         cupo: none
         verificado: false
     ranking:
-      fuente: "sin ranking cargado todavía"
-      fecha: null
+      fuente: "Vals AI, Excel Modeling Benchmark v1.1 (% de aciertos)"
+      fecha: 2026-10-27
       verificado: false
-      items: []
+      items:
+        - puesto: 1
+          modelo: Claude Fable 5.1
+          puntaje: "76,73"
+        - puesto: 2
+          modelo: Gemini 4 Carbon
+          puntaje: "76,47"
+        - puesto: 3
+          modelo: Claude Sonnet 5.5
+          puntaje: "75,90"
+        - puesto: 4
+          modelo: Claude Opus 5.5
+          puntaje: "75,84"
+        - puesto: 5
+          modelo: Wonder Full
+          puntaje: "75,00"
     evidencia:
       - fuente: "Vals AI, modelado en Excel y finanzas"
         url: "https://www.vals.ai/benchmarks/emb-v1-1"
@@ -1298,10 +1343,22 @@ categorias:
         respaldo:
           - Artificial Analysis LLM Leaderboard
     ranking:
-      fuente: "sin ranking cargado todavía"
-      fecha: null
+      fuente: "Artificial Analysis, índice v4.3.2 de los modelos baratos (esfuerzo máximo; entre paréntesis el costo por tarea)"
+      fecha: 2026-10-29
       verificado: false
-      items: []
+      items:
+        - puesto: 1
+          modelo: Claude Haiku 5.5
+          puntaje: "43 (US$0,21)"
+        - puesto: 2
+          modelo: GLM 5.3 Flash
+          puntaje: "42 (US$0,28)"
+        - puesto: 3
+          modelo: Gemini 3.8 Flash
+          puntaje: "41 (US$1,24)"
+        - puesto: 4
+          modelo: GPT-6 Luna
+          puntaje: "38 (US$0,07)"
   - id: agentes_largos
     nombre: Agentes de tarea larga
     evidencia:
