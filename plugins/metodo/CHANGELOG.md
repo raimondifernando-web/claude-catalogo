@@ -7,6 +7,14 @@
 - **Los viejos se mudan solos:** si una carpeta tiene el `REANUDAR.md` en la raíz, guardado en git y sin cambios, el orden de carpetas semanal (grupo «seguro y reversible») lo copia al lugar nuevo, comprueba que quedó idéntico y recién ahí saca el viejo, en un solo commit. Si algo falla, restaura la raíz. Se deshace con `estructura.py deshacer <id>`. Mientras no se mude, se sigue leyendo (nada se pierde ni deja de arrancar).
 - **No toca:** un archivo sin guardar en git o con cambios, ni una carpeta que ya tiene los dos lugares ocupados (no adivina cuál vale). No cambia la confianza del archivo: se mide por contenido, no por ruta.
 
+## 0.58.4 — 2026-10-28
+**Gemini ahora puede leer las notas internas de tu proyecto.** Se aplica solo con la actualización; no hay nada que correr.
+- **El problema:** al pasarle un trabajo a Gemini con `delegar.py`, la copia del repo que recibía salía sin la carpeta `.claude/` (pendientes, prompts de reanudación, traspasos, fichas). Ahí está casi todo lo que el proyecto ya sabe, así que Gemini volvía diciendo que no pudo hacer el trabajo.
+- **Qué cambia:** `.claude/` viaja en la copia, **solo para leer**. Lo que Gemini cambie ahí (o en un `CLAUDE.md`) sigue sin volver a tu repo: no se trae nada y sale con código 71, igual que antes.
+- **Qué sigue sin viajar:** lo que adentro de `.claude/` es configuración o se ejecuta (la carpeta `hooks/` y los `settings*.json`, `launch.json` y `mcp*.json`, también como copias `.bak`/`.old`/`.orig`), `.claude/projects/` (los transcripts de las sesiones), `settings.local.json` en cualquier carpeta (los permisos de esta computadora), cualquier archivo con forma de clave (por el nombre o por lo que tiene adentro) y la configuración de otras herramientas (`.gemini`, `.agents`, `.codex`, `.cursor`, `.antigravity`). El aviso al delegar te dice cuántos archivos quedaron afuera.
+- **Más llaves reconocidas por lo que tienen adentro:** Stripe (`sk_live_…`, `rk_test_…`), Notion (`ntn_…`, `secret_…`), HuggingFace (`hf_…`), GitLab (`glpat-…`), tokens de Google (`ya29.…`) y JWT. Un archivo que traiga una no viaja.
+- **Qué NO cambia:** lo que Gemini cambie o borre en `.claude/` (o en un `CLAUDE.md`) no vuelve a tu repo. A Codex se lo sigue saltando solo si hay archivos de claves; tener un `settings.local.json` ignorado por git no lo frena.
+
 ## 0.58.3 — 2026-10-27
 **La mudanza de `/cerrar` ya no quiere archivar las sesiones que dejaste sueltas a propósito.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** al mudar de sesión, el paso «hijas» listaba como pendientes a las sesiones permanentes de cada carpeta (ya soltadas con «detach»), y pedía archivarlas.

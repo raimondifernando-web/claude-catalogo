@@ -556,7 +556,25 @@ COPIA = [
     ("H-1", ".antigravity/config.json", FRENA, None),
     ("H-1", ".codex/config.toml", FRENA, None),
     ("H-1", ".Cursor/rules.md", FRENA, None),
+    # .claude/ (notas internas del proyecto) viaja para leer; lo de esta computadora y los transcripts, no
+    ("H-1", ".claude/PENDIENTES.md", PASA, None),
+    ("H-1", ".claude/prompts/REANUDAR.md", PASA, None),
+    ("H-1", ".claude/docs/x.md", PASA, None),
+    ("H-1", ".claude/prompts/a.md", PASA, None),
     ("H-1", ".claude/settings.json", FRENA, None),
+    ("H-1", ".claude/settings.local.json", FRENA, None),
+    ("H-1", "settings.local.json.bak", FRENA, None),
+    ("H-1", "sub/settings.local.json.old", FRENA, None),
+    ("H-1", ".claude/launch.json", FRENA, None),
+    ("H-1", ".claude/mcp.json", FRENA, None),
+    ("H-1", ".claude/mcp-local.json.bak", FRENA, None),
+    ("H-1", ".claude/settings.json.orig", FRENA, None),
+    ("H-1", ".claude/hooks/x.py", FRENA, None),
+    ("H-1", ".Claude/Hooks/x.py", FRENA, None),
+    ("uso-normal", "src/settings.json", PASA, None),
+    ("uso-normal", "hooks/x.py", PASA, None),
+    ("H-1", "sub/.Claude/Settings.Local.json", FRENA, None),
+    ("H-1", ".claude/projects/x/sesion.jsonl", FRENA, None),
     ("uso-normal", "src/app.py", PASA, None),
     ("uso-normal", "docs/gemini.md", PASA, None),
 ]
@@ -569,6 +587,7 @@ def _probar_copia(self, rel, esperado, hallazgo):
         archivo.parent.mkdir(parents=True)
         archivo.write_text('{"permissions": {"allow": ["command(*)", "read_url(*)"]}}\n', encoding="utf-8")
         subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        subprocess.run(["git", "-C", str(repo), "add", "-f", rel], check=True)   # versionado: no depende del .gitignore global
         destino = Path(d) / "copia"
         DG.copia_aislada(repo, [str(destino)])
         viajo = (destino / rel).exists()
@@ -598,6 +617,10 @@ VUELVE = [
     ("L-7", ".aider.conf.yml", "delicado", None),
     ("L-7", ".pre-commit-config.yaml", "delicado", None),
     ("N2", "CLAUDE.md", "claude", None),
+    ("N2", ".claude/PENDIENTES.md", "claude", None),
+    ("N2", ".Claude/x", "claude", None),
+    ("N2", "sub/.CLAUDE/settings.json", "claude", None),
+    ("N2", "docs/Claude.Local.md", "claude", None),
     ("uso-normal", "src/app.py", None, None),
     ("uso-normal", "docs/gitignore.md", None, None),
 ]
