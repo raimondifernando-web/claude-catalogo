@@ -21,6 +21,7 @@ if _AQUI not in sys.path:
     sys.path.insert(0, _AQUI)
 
 import cartas  # noqa: E402
+import reanudar_ruta as rr  # noqa: E402
 import sesiones_hijas as hs  # noqa: E402
 
 ORDEN = ["congelado", "abierta", "guardado", "hijas", "archivando", "completo"]
@@ -207,13 +208,12 @@ def marcar_guardado(carpeta):
     if ORDEN.index(d["paso"]) < ORDEN.index("abierta"):
         return False, f"el paso actual es '{d['paso']}'; debe estar en 'abierta' antes de marcar guardado"
 
-    # /cerrar lo deja en la raíz de la carpeta; también se acepta .claude/prompts/ (como arrancar-check)
-    candidatos = [os.path.join(carpeta, "REANUDAR.md"), os.path.join(carpeta, ".claude", "prompts", "REANUDAR.md")]
-    existentes = [c for c in candidatos if os.path.isfile(c)]
-    if not existentes:
-        return False, f"no existe {candidatos[0]}"
+    # /cerrar lo deja en .claude/prompts/; mientras el orden no lo mueva, también cuenta el viejo de la raíz
+    vigente_ruta = rr.buscar(carpeta)   # el canónico; el viejo de la raíz solo si no hay otro
+    if not vigente_ruta:
+        return False, f"no existe {rr.ruta(carpeta)}"
 
-    if max(os.path.getmtime(c) for c in existentes) < d["desde"]:
+    if os.path.getmtime(vigente_ruta) < d["desde"]:
         return False, "el REANUDAR.md no se actualizó desde que se congeló"
 
     if d["paso"] == "abierta":

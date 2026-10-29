@@ -10,6 +10,8 @@ Tres grupos (decisión del dueño, 2026-10-16):
        · ruta movida: el CLAUDE.md cita una ruta que git muestra renombrada → se reescribe con la ruta nueva
        · documentos vivos que faltan (esqueleto de docs/PRD.md, decisiones.md, planes/)
        · caja atrasada respecto de GitHub que solo necesita avanzar (fast-forward, árbol limpio)
+       · REANUDAR.md en la raíz (lugar viejo) → se mueve a .claude/prompts/REANUDAR.md: copia, comprobación byte a byte y un
+         solo commit; si algo falla se restaura. Es la única escritura bajo `.claude/` del bucle (texto inerte, ruta fija en reanudar_ruta.py)
   2. DE JUICIO: lo decide Claude con evidencia del disco y la verifica una segunda IA; se aplica con
      `estructura.py aplicar <id> --verificado-por <IA>` (IA de una lista cerrada; es una declaración, no un control).
        · ruta citada que no existe, sin renombrado en git, pero hay UN solo archivo con ese nombre en la caja
@@ -36,6 +38,7 @@ for _flujo in (sys.stdin, sys.stdout, sys.stderr):
         pass
 
 import estructura as E
+import reanudar_ruta as RR
 
 # (a) Condición del revisor de 0.49.0 (C152): lo que el bucle ESCRIBE va por lista de PERMITIDOS, no de prohibidos.
 # Solo el CLAUDE.md de la caja y documentos .md dentro de docs/. Cualquier otra ruta no se toca, aunque no figure abajo.
@@ -307,6 +310,11 @@ def hallazgos_caja(caja: Path, nivel: str) -> list:
         elif regla == "R12" and puede_escribir(rel) and (caja / ".git").is_dir() and E.necesita_documentos(caja) and not _esta_en_el_remoto(caja, rel):
             h.append(dict(id=_id(str(caja), "doc", rel), grupo=1, tipo="doc_vivo", caja=str(caja), nombre=nombre, archivo=rel,
                           contenido=contenido, evidencia=f"falta {rel} (documento vivo del molde)"))
+    # el REANUDAR.md que dejó una versión vieja de /cerrar en la raíz
+    _queda_tiempo()
+    rea = _hallazgo_reanudar(caja)
+    if rea:
+        h.append(rea)
     # estructura que solo la persona decide
     _queda_tiempo()
     for tipo, r_id, msg in E.revisar_caja(caja, nivel):   # con las excepciones escritas ya descontadas
@@ -320,6 +328,22 @@ def hallazgos_caja(caja: Path, nivel: str) -> list:
         if al_dia:
             h.append(al_dia)
     return h
+
+
+def _hallazgo_reanudar(caja: Path):
+    """REANUDAR.md en la raíz (lugar viejo), guardado en git, sin cambios y sin un REANUDAR.md ya en el lugar nuevo. Si no, nada:
+    un archivo sin guardar en git no se puede deshacer, y con los dos lugares ocupados no se adivina cuál vale."""
+    viejo, nuevo = Path(RR.ruta_vieja(caja)), Path(RR.ruta(caja))
+    if not (caja / ".git").is_dir() or viejo.is_symlink() or not viejo.is_file() or nuevo.exists() or nuevo.is_symlink():
+        return None
+    code, _ = git(caja, "ls-files", "--error-unmatch", "--", RR.NOMBRE)
+    if code != 0 or not archivo_limpio(caja, RR.NOMBRE):
+        return None
+    if git(caja, "check-ignore", "-q", "--", RR.RELATIVA)[0] == 0:   # el lugar nuevo está ignorado: git no lo guardaría, no se mueve
+        return None
+    return dict(id=_id(str(caja), "reanudar"), grupo=1, tipo="reanudar_en_raiz", caja=str(caja), nombre=caja.name,
+                antes=RR.NOMBRE, despues=RR.RELATIVA,
+                evidencia=f"el REANUDAR.md está en la raíz (lugar viejo); el único lugar es {RR.RELATIVA}")
 
 
 def _esta_en_el_remoto(caja: Path, rel: str) -> bool:
@@ -396,10 +420,12 @@ def todos(raiz: Path, tope_segundos: float = 0) -> list:
 
 
 # ---------------------------------------------------------------- aplicar
-def _commit(caja: Path, rutas: list, mensaje: str):
-    code, _ = git(caja, "add", "--", *rutas)
-    if code != 0:
-        return None
+def _commit(caja: Path, rutas: list, mensaje: str, agregar: bool = True):
+    """`agregar=False` cuando las rutas ya están en el índice (un archivo borrado con `git rm` no se puede volver a `git add`)."""
+    if agregar:
+        code, _ = git(caja, "add", "--", *rutas)
+        if code != 0:
+            return None
     code, out = git(caja, "-c", "commit.gpgsign=false", "commit", "-q", "--no-verify", "-m", mensaje + "\n\nAutomático (metodo, orden de carpetas). Deshacer: estructura.py deshacer", "--", *rutas)
     if code != 0:
         return None
@@ -498,6 +524,8 @@ def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
             git(caja, "reset", "-q", "--", rel)
             return dict(base, estado="fallo", motivo="no se pudo commitear (el archivo creado queda sin versionar)")
         return dict(base, estado="aplicado", commit=sha, despues=rel, deshacer=f"estructura.py deshacer {h['id']}")
+    if t == "reanudar_en_raiz":
+        return _mover_reanudar(caja, base)
     if t == "caja_atrasada":
         c5, sucio = git(caja, "status", "--porcelain", "--untracked-files=no")
         if c5 != 0 or sucio.strip():
@@ -513,6 +541,54 @@ def aplicar_uno(h: dict, verificado_por: str = "") -> dict:
         return dict(base, estado="aplicado", commit=previo, antes=previo[:8], despues="origin/" + h["rama"], cabeza_nueva=nuevo_head,
                     deshacer=f"estructura.py deshacer {h['id']}")
     return dict(base, estado="omitido", motivo="tipo sin arreglo automático")
+
+
+def _mover_reanudar(caja: Path, base: dict) -> dict:
+    """Copia el REANUDAR.md de la raíz a su lugar único, comprueba que quedó idéntico y recién ahí saca el viejo, todo en UN commit
+    (deshacer = git revert). Cualquier fallo restaura la raíz y deja la copia sin hacer."""
+    viejo, nuevo = Path(RR.ruta_vieja(caja)), Path(RR.ruta(caja))
+    tramo = caja
+    for parte in Path(RR.RELATIVA).parts[:-1]:   # .claude/ y .claude/prompts/ no pueden ser enlaces que lleven afuera
+        tramo = tramo / parte
+        if tramo.is_symlink():
+            return dict(base, estado="omitido", motivo="una carpeta del camino es un enlace")
+    if viejo.is_symlink() or nuevo.exists() or nuevo.is_symlink():
+        return dict(base, estado="omitido", motivo="ya no hay nada que mover (o el lugar nuevo está ocupado)")
+    if not archivo_limpio(caja, RR.NOMBRE):
+        return dict(base, estado="omitido", motivo=f"{RR.NOMBRE} tiene cambios sin guardar (puede estar editándolo otra sesión)")
+    creado = False   # solo se borra el lugar nuevo si LO CREAMOS nosotros (otra sesión pudo ocuparlo justo ahora)
+    try:
+        original = viejo.read_bytes()
+        nuevo.parent.mkdir(parents=True, exist_ok=True)
+        with open(nuevo, "xb") as f:
+            creado = True
+            f.write(original)
+        copia_ok = nuevo.read_bytes() == original and viejo.read_bytes() == original   # idéntico, y nadie lo tocó mientras tanto
+    except OSError as e:
+        copia_ok = False
+        motivo_io = f"no se pudo copiar ({type(e).__name__})"
+    else:
+        motivo_io = "la copia no quedó idéntica al original"
+
+    def deshacer_todo():
+        git(caja, "reset", "-q", "--", RR.NOMBRE, RR.RELATIVA)
+        try:
+            if creado and nuevo.exists():
+                nuevo.unlink()
+            if not viejo.exists():
+                viejo.write_bytes(original)
+        except OSError:
+            pass
+    if not copia_ok:
+        deshacer_todo()
+        return dict(base, estado="fallo", motivo=motivo_io + "; la raíz quedó como estaba")
+    c1, _ = git(caja, "add", "--", RR.RELATIVA)
+    c2, _ = git(caja, "rm", "-q", "--", RR.NOMBRE) if c1 == 0 else (1, "")
+    sha = _commit(caja, [RR.NOMBRE, RR.RELATIVA], f"orden: mueve {RR.NOMBRE} a {RR.RELATIVA} (único lugar del traspaso)", agregar=False) if c2 == 0 else None
+    if not sha or viejo.exists() or nuevo.read_bytes() != original:
+        deshacer_todo()
+        return dict(base, estado="fallo", motivo="no se pudo guardar el movimiento; se restauró la raíz")
+    return dict(base, estado="aplicado", commit=sha, antes=RR.NOMBRE, despues=RR.RELATIVA, deshacer=f"estructura.py deshacer {base['id']}")
 
 
 def pregunta_de_la_persona(hs: list) -> str:

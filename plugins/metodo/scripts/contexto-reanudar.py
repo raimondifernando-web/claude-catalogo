@@ -39,6 +39,15 @@ def _cargar_confiable():
 confiable = _cargar_confiable()
 
 
+def _cargar_ruta():
+    """`buscar` vive en reanudar_ruta.py (único lugar que sabe dónde está el REANUDAR.md); se carga por ruta, como `confiable`."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("reanudar_ruta", os.path.join(os.path.dirname(os.path.abspath(__file__)), "reanudar_ruta.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def main():
     try:
         datos = json.loads(sys.stdin.read() or "{}")
@@ -50,8 +59,10 @@ def main():
     fuente = datos.get("source", "startup")
     if fuente not in ("startup", "compact"):
         return
-    ruta = next((p for p in (os.path.join(cwd, "REANUDAR.md"), os.path.join(cwd, ".claude", "prompts", "REANUDAR.md"))
-                 if os.path.isfile(p)), None)
+    try:
+        ruta = _cargar_ruta().buscar(cwd)
+    except Exception:
+        return
     if not ruta:
         return
     with open(ruta, "rb") as f:

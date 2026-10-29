@@ -6,7 +6,7 @@
 
 Lo único que usan `/metodo:cerrar` (guardar y subir el avance) y `/metodo:otra-sesion` (segunda sesión en su propia copia) es **git**, que viene con las herramientas de desarrollo de Apple que ya instalaste para `base-segura`. El chequeo del catálogo lo verifica. Plantilla `templates/gitignore-estudio`: qué NO sube al repositorio por defecto (claves, documentos de clientes, archivos pesados).
 
-Atajos: si no tenés otras skills con esos nombres, `/arrancar` y `/cerrar` a secas también funcionan. `/cerrar` deja `REANUDAR.md` en tu carpeta de trabajo y `/arrancar` lo lee solo: no hace falta pegar el texto de arranque.
+Atajos: si no tenés otras skills con esos nombres, `/arrancar` y `/cerrar` a secas también funcionan. `/cerrar` deja `REANUDAR.md` en `.claude/prompts/` de tu carpeta de trabajo y `/arrancar` lo lee solo: no hace falta pegar el texto de arranque.
 
 `/metodo:cowork` (publicar tus skills en Cowork) necesita **Python 3**, **git** y **`gh`** (la herramienta de GitHub, `brew install gh`) con tu sesión iniciada (`gh auth login`, lo hacés vos). Crea un repositorio **privado** en tu cuenta de GitHub, solo para esto: tus skills salen de tu computadora hacia ese repositorio y hacia Cowork, nada más. Sin `gh`, lo demás funciona igual.
 

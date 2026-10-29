@@ -34,6 +34,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import reanudar_ruta as RR  # noqa: E402  (único lugar que sabe dónde vive el REANUDAR.md)
+
 # Windows: la consola usa cp1252 y los ✓/✗ y acentos hacían caer el script; se fuerza UTF-8 en entrada y salida.
 for _flujo in (sys.stdin, sys.stdout, sys.stderr):
     try:
@@ -1110,8 +1113,9 @@ def _contenido_pendientes(carpeta: Path) -> list:
 def _contenido_reanudar(carpeta: Path) -> list:
     h = []
     # R18: el texto de reanudación (REANUDAR.md) coherente con la caja
-    rea = carpeta / ".claude" / "prompts" / "REANUDAR.md"
-    if rea.is_file():
+    rea_ruta = RR.buscar(carpeta)   # el canónico; si solo hay uno viejo en la raíz, también se revisa (hasta que el orden lo mueva)
+    rea = Path(rea_ruta) if rea_ruta else None
+    if rea is not None:
         t = _lee(rea)
         problemas = []
         if len(t.splitlines()) > 120:

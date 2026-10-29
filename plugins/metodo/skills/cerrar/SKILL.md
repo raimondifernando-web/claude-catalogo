@@ -168,11 +168,11 @@ Solo le llega a la persona, en UNA línea y en criollo, lo que **solo ella** pue
    contenido real (no una línea genérica); la PARTE B trae lo hecho, «De qué veníamos hablando» (de la CONVERSACIÓN, no de git), los pendientes en orden **con su
    detalle (qué, dónde, qué cuidado)** y el puntero al handoff; no tiene números de memoria; entra en 30-50 líneas. Si se pasa, no recortes borrando: es señal de
    que algo durable quedó sin bajar al `CLAUDE.md` (paso 3).
-8. **Guardalo en `REANUDAR.md`, en la raíz de la carpeta de trabajo**, para que la próxima ventana arranque con
+8. **Guardalo en `.claude/prompts/REANUDAR.md`** (crealo si falta; es el único lugar: ya no va en la raíz), para que la próxima ventana arranque con
    `/arrancar` sin pegar nada. Es el mismo bloque completo (PARTE A + PARTE B) que vas a emitir, con una primera
    línea `<!-- cierre YYYY-MM-DD-tema · lo escribe /metodo:cerrar · lo lee /metodo:arrancar -->`. **Sobrescribí
    siempre**: ese archivo es "el último", no un historial (el historial son los `handoffs/`). Si estás en una copia
-   de `/metodo:otra-sesion`, va en la raíz de esa copia. Hacelo **antes** del paso 5 para que entre en el mismo
+   de `/metodo:otra-sesion`, va en el `.claude/prompts/` de esa copia. Hacelo **antes** del paso 5 para que entre en el mismo
    guardado; si ya guardaste, un guardado chico aparte. Nunca con claves adentro (el prompt no las tiene).
 8 bis. **Comprobá el cierre:** cuando ya subiste el avance (paso 5) y guardaste `REANUDAR.md` (paso 8), corré
    `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cerrar-check.py"` (la ÚLTIMA pasada, cuando el REANUDAR ya quedó escrito, con `--anotar`: así el arranque de la sesión nueva confía en él) (en Windows, `py -3`; opcional: el id del cierre, o la
@@ -191,7 +191,7 @@ Solo le llega a la persona, en UNA línea y en criollo, lo que **solo ella** pue
       nunca se edita solo la copia del chat.
    c. Si el archivo no existe o no se pudo escribir, recién ahí armás el bloque con la plantilla y avisás «no quedó guardado».
    Aunque ya esté guardado, se emite igual: si el archivo se pierde o la ventana se abre en otra carpeta, el chat es el
-   respaldo, y por eso tiene que ser idéntico. Cerrá con una línea afuera del bloque: «Guardado en `REANUDAR.md`. La próxima
+   respaldo, y por eso tiene que ser idéntico. Cerrá con una línea afuera del bloque: «Guardado en `.claude/prompts/REANUDAR.md`. La próxima
    vez, abrí Claude en esta carpeta y escribí `/arrancar`: no hace falta pegar nada.»
 10. **Terminá la mudanza (solo en la app de escritorio).** Condiciones: el Paso A está hecho, `cerrar-check` dio todo ✓, el avance está subido y existen las herramientas de
    sesiones de la app (`detach_session`, `archive_session`, `send_message`; buscalas con ToolSearch si vienen diferidas). Si no existen (terminal, Cowork, otra máquina) → salteá este

@@ -26,6 +26,7 @@ import time
 from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import reanudar_ruta as RR  # noqa: E402  (único lugar que sabe dónde vive el REANUDAR.md)
 import ediciones as ed  # noqa: E402  (quién tocó qué: separa lo tuyo de lo de otra sesión)
 
 args = sys.argv[1:]
@@ -104,11 +105,10 @@ def anotar_confiable(ruta):
 
 
 # (b) REANUDAR: existe, encabezado, largo
-reanudar = next((p for p in (os.path.join(cwd, "REANUDAR.md"), os.path.join(cwd, ".claude", "prompts", "REANUDAR.md"))
-                 if os.path.isfile(p)), None)
+reanudar = RR.buscar(cwd)
 texto = leer(reanudar) if reanudar else ""
 if not texto:
-    linea(False, f"No existe REANUDAR.md en {cwd} (paso 8 de /metodo:cerrar)", "REANUDAR.md")
+    linea(False, f"No existe {RR.RELATIVA} en {cwd} (paso 8 de /metodo:cerrar)", "REANUDAR.md")
 else:
     m = re.match(r"\s*<!--\s*cierre\s+(\d{4}-\d{2}-\d{2}-\S+?)\s", texto)
     if m:
