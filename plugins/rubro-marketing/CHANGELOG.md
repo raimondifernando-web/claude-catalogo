@@ -1,5 +1,8 @@
 # rubro-marketing
 
+## 0.3.0 — 2026-10-29
+**4 agentes nuevos para vender y retener:** `especialista-seo`, `especialista-paid-media` (propone, no ejecuta cambios sin tu OK), `prospector-outbound` (clientes nuevos con motivo real, sin spam) y `customer-success` (salud de cuentas y prevención de bajas). Cada uno marca lo que no pudo verificar y cita sus fuentes. Se aplican solos con la actualización.
+
 ## 0.2.8 — 2026-10-22
 **Dos skills nuevas para mails:** `email-html-mjml` (mails en HTML que se ven bien en Gmail y Outlook, armados con MJML) y `ecommerce-email-marketing-builder` (secuencias de mails para tiendas online: bienvenida, carrito abandonado, recompra). Se aplican solas con la actualización.
 
