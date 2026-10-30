@@ -1,7 +1,7 @@
 {
   "name": "rubro-marketing",
-  "version": "0.2.8",
-  "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (40 skills y 1 agente: marketing-analyst, que mide qué canal trae clientes y cuánto cuestan). Requiere base-segura.",
+  "version": "0.3.0",
+  "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO, lanzamientos, referidos, pricing, revops y análisis de campañas (40 skills) + 5 agentes: marketing-analyst (qué canal trae clientes), especialista-seo, especialista-paid-media, prospector-outbound (clientes nuevos sin spam) y customer-success (retener clientes). Requiere base-segura.",
   "author": {
     "name": "Fernando Raimondi"
   },

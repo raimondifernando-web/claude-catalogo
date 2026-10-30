@@ -1,5 +1,8 @@
 # escala-automatizacion — qué cambia para vos
 
+## 0.2.0 — 2026-10-29
+**Agente nuevo `auditor-de-automatizaciones`:** revisa la seguridad y la confiabilidad de tus flujos de n8n, Make y Zapier (credenciales expuestas, webhooks, manejo de errores). Solo lee y reporta.
+
 ## 0.1.1 — 2026-10-12
 - **`ci-cd-and-automation` se mueve al plugin `agent-skills`** (mismo contenido, lo mantiene su autor y se actualiza solo). Este paquete lo declara como dependencia: se instala solo, no tenés que hacer nada. Antes quedaba repetida si ya tenías `agent-skills`.
 

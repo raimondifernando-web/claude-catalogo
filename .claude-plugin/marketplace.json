@@ -48,8 +48,8 @@
     {
       "name": "escala-desarrollo",
       "source": "./plugins/escala-desarrollo",
-      "description": "Capa L4 para desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive, investigación profunda) y 14 agentes. Revisores de solo lectura de verdad (no escriben ni ejecutan nada): code-reviewer y security-reviewer, con el método de agent-skills (se instala solo), revisan tu app entera y explican en castellano qué puede pasar y en qué orden arreglarlo. El comando /escala-desarrollo:revision-seguridad suma los escáneres (npm audit, pip-audit, claves en el historial de git) con tu aprobación. Para construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer, documentation-engineer. Para decidir: product-manager, technology-scout. Investigación: research-analyst y afines.",
-      "version": "0.14.5",
+      "description": "Capa L4 para desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive) y 17 agentes. Revisores de solo lectura (code-reviewer, security-reviewer) explican en castellano qué arreglar primero. Construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer, documentation-engineer. Decidir y gestionar: product-manager, technology-scout, jefe-de-ingenieria, jefe-de-proyectos, analista-de-bi. Investigación: research-analyst y afines.",
+      "version": "0.15.0",
       "category": "development",
       "tags": [
         "l4",
@@ -76,8 +76,8 @@
     {
       "name": "escala-automatizacion",
       "source": "./plugins/escala-automatizacion",
-      "description": "Escala de automatización (L4): flujos con n8n, Make, Zapier y ManyChat, pipelines de datos, CI/CD, apps en Microsoft Entra y conectores MCP propios. 12 skills + 3 agentes (automation-architect, data-engineer, deployment-engineer). Recomendado junto con base-segura.",
-      "version": "0.1.1",
+      "description": "Escala de automatización (L4): flujos con n8n, Make, Zapier y ManyChat, pipelines de datos, CI/CD, apps en Microsoft Entra y conectores MCP propios. 12 skills + 4 agentes (automation-architect, data-engineer, deployment-engineer, auditor-de-automatizaciones, que revisa seguridad de tus flujos). Recomendado junto con base-segura.",
+      "version": "0.2.0",
       "category": "automation",
       "tags": [
         "l4",
@@ -335,8 +335,8 @@
     {
       "name": "rubro-finanzas-legal",
       "source": "./plugins/rubro-finanzas-legal",
-      "description": "Pack de rubro (L2): finanzas y legal en Argentina — CFO para pymes, finanzas personales en pesos y dólares, trámites del auto, y guía de compraventa de empresas (M&A) con marco argentino (4 skills) y el agente contador-impositivo-ar (impuestos y cierres de una empresa argentina; prepara, no firma). Orientativo: no reemplaza a un contador ni a un abogado. Requiere base-segura.",
-      "version": "0.2.0",
+      "description": "Pack de rubro (L2): finanzas, legal y administración de una pyme argentina — CFO, finanzas personales, trámites del auto, M&A (4 skills) + 15 agentes: contador-impositivo-ar, asesor legal comercial, flujo de caja, cobranzas, conciliación, cierre contable, compras, logística, reclamos, inventario, operaciones, RR.HH. y reclutamiento. Orientativo: no reemplaza a un contador ni a un abogado. Requiere base-segura.",
+      "version": "0.3.0",
       "category": "productivity",
       "tags": [
         "l2",
@@ -347,8 +347,8 @@
     {
       "name": "rubro-marketing",
       "source": "./plugins/rubro-marketing",
-      "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO (páginas, formularios, registro, popups, paywalls), lanzamientos, referidos, pricing de producto, revops y habilitación comercial, análisis de campañas (40 skills y 1 agente: marketing-analyst, que mide qué canal trae clientes y cuánto cuestan). Requiere base-segura.",
-      "version": "0.2.8",
+      "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO, lanzamientos, referidos, pricing, revops y análisis de campañas (40 skills) + 5 agentes: marketing-analyst (qué canal trae clientes), especialista-seo, especialista-paid-media, prospector-outbound (clientes nuevos sin spam) y customer-success (retener clientes). Requiere base-segura.",
+      "version": "0.3.0",
       "category": "productivity",
       "tags": [
         "l2",

@@ -1,5 +1,8 @@
 # escala-desarrollo
 
+## 0.15.0 — 2026-10-29
+**3 agentes nuevos:** `jefe-de-ingenieria` (arquitectura mínima y reparto de tareas de desarrollo), `jefe-de-proyectos` (plan, riesgos y cambios de alcance) y `analista-de-bi` (KPIs y tableros de gestión). Se aplican solos con la actualización.
+
 ## 0.14.5 — 2026-10-22
 **Nueva skill `odoo-17`:** guía para programar módulos de Odoo 17 (modelos, vistas, seguridad, reportes, pruebas). Útil si tu empresa usa Odoo y armás herramientas sobre él. Se aplica sola con la actualización.
 

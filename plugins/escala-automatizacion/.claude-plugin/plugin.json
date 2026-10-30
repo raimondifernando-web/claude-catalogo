@@ -1,12 +1,14 @@
 {
   "name": "escala-automatizacion",
-  "version": "0.1.1",
-  "description": "Capa L4, para automatizar procesos con n8n, Make, Zapier o ManyChat y conectar herramientas: 12 skills (las 7 de n8n de czlonkowski, ManyChat en n8n, patrones de Zapier/Make y de automatización, registrar apps en Microsoft Entra, construir servidores MCP) y 3 agentes (automation-architect, que diseña el flujo; data-engineer, que arma los pipelines de datos; deployment-engineer, para publicar). La skill de CI/CD llega con el plugin agent-skills, que se instala solo como dependencia. Pedile a Claude: «automatizá que cuando entra X pase Y».",
+  "version": "0.2.0",
+  "description": "Escala de automatización (L4): flujos con n8n, Make, Zapier y ManyChat, pipelines de datos, CI/CD, apps en Microsoft Entra y conectores MCP propios. 12 skills + 4 agentes (automation-architect, data-engineer, deployment-engineer, auditor-de-automatizaciones, que revisa seguridad de tus flujos). Recomendado junto con base-segura.",
   "author": {
     "name": "Fernando Raimondi"
   },
   "homepage": "https://github.com/raimondifernando-web/claude-catalogo",
   "repository": "https://github.com/raimondifernando-web/claude-catalogo",
   "license": "MIT",
-  "dependencies": ["agent-skills"]
+  "dependencies": [
+    "agent-skills"
+  ]
 }
