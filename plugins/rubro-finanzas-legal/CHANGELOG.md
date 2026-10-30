@@ -1,5 +1,8 @@
 # rubro-finanzas-legal
 
+## 0.4.0 — 2026-10-30
+**3 agentes nuevos:** `oficial-de-cumplimiento-y-datos-ar` (bases de clientes y privacidad, Ley 25.326), `revisor-de-contratos` (semáforo de riesgos, solo lectura) y `redactor-de-sop` (procedimientos de una página). Orientativos: no reemplazan a un abogado. Se aplican solos con la actualización.
+
 ## 0.3.0 — 2026-10-29
 **14 agentes nuevos de administración y operaciones para pymes argentinas:** `analista-fpa-y-tesoreria`, `asesor-legal-comercial-ar`, `cobranzas-y-pagos`, `conciliador`, `controller-de-cierre`, `pm-administracion-pyme`, `jefe-de-operaciones`, `jefe-de-logistica-ar`, `gestor-de-compras-y-proveedores`, `gestor-de-reclamos-y-devoluciones`, `planificador-de-inventario`, `onboarding-y-clima`, `reclutador`, `rrhh-generalista-ar`. Orientativos: no reemplazan a un contador ni a un abogado. Se aplican solos con la actualización.
 

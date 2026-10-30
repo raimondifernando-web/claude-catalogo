@@ -335,8 +335,8 @@
     {
       "name": "rubro-finanzas-legal",
       "source": "./plugins/rubro-finanzas-legal",
-      "description": "Pack de rubro (L2): finanzas, legal y administración de una pyme argentina — CFO, finanzas personales, trámites del auto, M&A (4 skills) + 15 agentes: contador-impositivo-ar, asesor legal comercial, flujo de caja, cobranzas, conciliación, cierre contable, compras, logística, reclamos, inventario, operaciones, RR.HH. y reclutamiento. Orientativo: no reemplaza a un contador ni a un abogado. Requiere base-segura.",
-      "version": "0.3.0",
+      "description": "Pack de rubro (L2): finanzas, legal y administración de una pyme argentina — CFO, finanzas personales, trámites del auto, M&A (4 skills) + 18 agentes: impuestos, legal comercial, revisión de contratos, datos personales (Ley 25.326), flujo de caja, cobranzas, conciliación, cierre contable, compras, logística, reclamos, inventario, operaciones, SOP, RR.HH. y reclutamiento. Orientativo: no reemplaza a un contador ni a un abogado. Requiere base-segura.",
+      "version": "0.4.0",
       "category": "productivity",
       "tags": [
         "l2",
@@ -347,8 +347,8 @@
     {
       "name": "rubro-marketing",
       "source": "./plugins/rubro-marketing",
-      "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO y SEO para IA, CRO, lanzamientos, referidos, pricing, revops y análisis de campañas (40 skills) + 5 agentes: marketing-analyst (qué canal trae clientes), especialista-seo, especialista-paid-media, prospector-outbound (clientes nuevos sin spam) y customer-success (retener clientes). Requiere base-segura.",
-      "version": "0.3.0",
+      "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO, CRO, lanzamientos, referidos, pricing, revops y análisis de campañas (40 skills) + 23 agentes: jefe general de pyme (pm-empresa), jefes de marketing y de ventas, estrategia de negocio y de contenido, SEO, anuncios pagos, conversión, redes, marca, prensa, tienda online argentina, prospección, discovery, propuestas, pipeline, cuentas, WhatsApp B2B, soporte y customer success. Requiere base-segura.",
+      "version": "0.4.0",
       "category": "productivity",
       "tags": [
         "l2",

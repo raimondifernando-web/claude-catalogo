@@ -1,5 +1,8 @@
 # rubro-marketing
 
+## 0.4.0 — 2026-10-30
+**18 agentes nuevos para vender y comunicar:** `pm-empresa` (jefe general de pyme), `pm-marketing-pyme`, `pm-ventas`, `estratega-de-negocio`, `estratega-de-contenido`, `especialista-cro`, `social-media-manager`, `guardian-de-marca`, `comunicaciones-y-prensa`, `creativo-de-anuncios`, `auditor-de-tracking`, `ecommerce-manager-ar`, `coach-de-discovery`, `redactor-de-propuestas`, `analista-de-pipeline`, `ejecutivo-de-cuentas`, `vendedor-whatsapp-b2b` y `soporte-al-cliente`. Cada uno cita sus fuentes y marca lo que no pudo verificar. Se aplican solos con la actualización.
+
 ## 0.3.0 — 2026-10-29
 **4 agentes nuevos para vender y retener:** `especialista-seo`, `especialista-paid-media` (propone, no ejecuta cambios sin tu OK), `prospector-outbound` (clientes nuevos con motivo real, sin spam) y `customer-success` (salud de cuentas y prevención de bajas). Cada uno marca lo que no pudo verificar y cita sus fuentes. Se aplican solos con la actualización.
 
