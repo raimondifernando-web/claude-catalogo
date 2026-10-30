@@ -1292,3 +1292,16 @@ Revisión de solo lectura (agente `security-reviewer`, distinto del autor) del d
 ### 2026-10-27 · paneles 0.5.4 → 0.5.5 (commit 48117d100263a0f1ade8db584764c27fbd56a1c9; PR #92) — PASS
 
 Misma revisión. `hooks/register.tsx` solo muestra texto del panel de pendientes («espera dato» / «espera OK»); no ejecuta comandos ni usa red. Sin hallazgos.
+
+### 2026-10-30 · metodo 0.61.3 (commit 7c7a460f07fff71eb18b5ec0a7e5d184792804ad; PR #98 a #105) — PASS con condiciones
+
+Alcance: diff entre el último check (a817a8ec, metodo 0.60.0) y 7c7a460: scripts de `metodo` (`reanudar_ruta.py`, `estructura_orden.py`, `contexto-reanudar.py`, `cierre_*`, `arrancar-check`, `cerrar-check`, `pendientes-check`, `estructura`), skills `arrancar`/`cerrar`/`crear-agente`, radar 0.61.1-0.61.3, `metodologias-agiles`, control `agentes-etiqueta` (`scripts/agentes-etiqueta.py`, `controles.sh`, `zona-sensible.py`) y los 43 agentes nuevos de `rubro-marketing` y `rubro-finanzas-legal`. Vía manual (solo librería estándar, sin lock de dependencias: npm audit / pip-audit n/a). Revisor distinto del autor: Gemini (`agy-delegar --revisar`, solo lectura, 65 archivos leídos); sus hallazgos se verificaron contra el código.
+- Secretos: 0 patrones de claves en lo agregado (AKIA, sk_live, ghp_, sk-ant-, AIza, clave privada). Los scripts imprimen solo línea y archivo, nunca el valor.
+- Clientes/proyectos: `git grep` de nombres de clientes en lo agregado = 0 (única mención de una herramienta de gestión, un caso de prueba genérico en `test_agentes_etiqueta.py`).
+- Agentes nuevos (43): solo `.md`; sin hooks, scripts, HTML oculto ni caracteres invisibles; sin instrucciones de inyección; única URL: tres enlaces a sitios oficiales del Estado argentino (`rrhh-generalista-ar`).
+- Scripts: `subprocess` con listas, sin `shell=True`, sin red; escrituras confinadas por lista blanca; `contexto-reanudar.py` carga solo un módulo hermano y trata el `REANUDAR.md` ajeno como datos (firma local), no como órdenes.
+- Pruebas: 76 de los controles y la suite de `metodo` pasan; el control `agentes-etiqueta --publico` da OK sobre los 69 agentes del catálogo.
+- Medio (condición): 13 agentes llevan `Bash` en `tools:` (12 nuevos más `marketing-analyst`, ya publicado); `auditor-de-tracking` dice «no instala nada» pero tiene `Bash`. Claude Code pide permiso al usuario en cada uso, por eso no es crítico; conviene quitarlo donde el agente no lo necesite.
+- Bajo: 14 agentes nuevos terminan con «Casos de evaluación: ~/Proyectos/Tech/docs/…», ruta a una carpeta local privada (sin contenido; conviene quitar la línea). `marketing-analyst` nombra «Fernando» en el campo `origen` (ya estaba antes de este alcance).
+- Límites: no probado en la máquina de un cliente ni en Windows; no se corrieron escáneres de historial de git completo.
+- Veredicto: **PASS con condiciones**. Sin hallazgos críticos ni altos.
