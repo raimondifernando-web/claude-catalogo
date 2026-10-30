@@ -1,7 +1,7 @@
 {
   "name": "rubro-finanzas-legal",
-  "version": "0.3.0",
-  "description": "Pack de rubro (L2): finanzas, legal y administración de una pyme argentina — CFO, finanzas personales, trámites del auto, M&A (4 skills) + 15 agentes: contador-impositivo-ar, asesor legal comercial, flujo de caja, cobranzas, conciliación, cierre contable, compras, logística, reclamos, inventario, operaciones, RR.HH. y reclutamiento. Orientativo: no reemplaza a un contador ni a un abogado. Requiere base-segura.",
+  "version": "0.4.0",
+  "description": "Pack de rubro (L2): finanzas, legal y administración de una pyme argentina — CFO, finanzas personales, trámites del auto, M&A (4 skills) + 18 agentes: impuestos, legal comercial, revisión de contratos, datos personales (Ley 25.326), flujo de caja, cobranzas, conciliación, cierre contable, compras, logística, reclamos, inventario, operaciones, SOP, RR.HH. y reclutamiento. Orientativo: no reemplaza a un contador ni a un abogado. Requiere base-segura.",
   "author": {
     "name": "Fernando Raimondi"
   },
