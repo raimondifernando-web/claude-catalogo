@@ -45,6 +45,7 @@ class Etapas(Base):
         self.assertEqual((sens["ia"], sens["modelo"]), ("Claude", "sonnet"))
         self.assertIn("se queda en Claude", sens["linea"])
 
+    @unittest.skipIf(os.name == "nt", "scripts falsos de bash/sh")
     def test_con_todo_agotado_implementar_cae_en_claude(self):
         self.cupo_falso(2, "Codex: 98% del cupo — NO lanzar")
         self.agy_falso(0, json.dumps({"command": {"data": {"groups": [{"name": "Gemini", "buckets": [{"remaining_fraction": 0.01}]}]}}}))
