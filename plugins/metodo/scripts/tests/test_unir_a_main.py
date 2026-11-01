@@ -340,6 +340,16 @@ class UnirAMain(unittest.TestCase):
         self.assertEqual(self.unir(persona=False), 1)
         self.assertIn("escribí las pruebas", self.salida)
 
+    def test_cambiar_el_test_de_un_package_json_existente_pide_a_la_persona(self):
+        self.escribir("web/package.json", '{"scripts": {"test": "node t.js"}}\n')
+        self.escribir("web/t.js", "1\n")
+        self.commit("web")
+        sh("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo)
+        self.escribir("web/package.json", '{"scripts": {"test": "true"}}\n')
+        self.commit("test pasa a true")
+        self.assertEqual(self.unir(persona=False), 3)
+        self.assertIn("web/package.json", " ".join(self.preguntas))
+
     def test_sin_pruebas_pero_solo_documentos_une_solo(self):
         sh("git", "rm", "-q", "-r", "tests", cwd=self.repo)
         self.commit("sin tests")

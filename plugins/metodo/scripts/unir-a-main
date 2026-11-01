@@ -723,6 +723,9 @@ def _principal(a, revisor=None, aprobador=None):
                                  or (campos[0] != campos[1] and campos[4] == "M")
                                  or (campos[4] == "A" and campos[1] == "100755")):   # archivo nuevo ejecutable
             humano.append(f"{limpio(ruta, 80)}: es un submódulo, un enlace simbólico, un ejecutable nuevo o cambia permisos")
+        if len(campos) >= 5 and campos[4] == "M" and re.search(r"(^|/)package\.json$", ruta) and re.search(
+                r'^[+-].*"test', git(repo, "diff", "-U0", f"{base}...{head}", "--", ruta).stdout, re.M):
+            humano.append(f"{limpio(ruta, 80)}: cambia el script de pruebas (package.json)")
         if len(campos) >= 5 and campos[4] == "A":   # declarar «sus» pruebas en una carpeta nueva lo mira una persona
             if re.search(r"(^|/)(package\.json|Package\.swift)$", ruta):
                 humano.append(f"{limpio(ruta, 80)}: declara cómo se prueba una carpeta nueva")

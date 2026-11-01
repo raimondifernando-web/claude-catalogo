@@ -68,6 +68,14 @@ class Copias(unittest.TestCase):
         self.cdt("limpiar", "--aplicar")
         self.assertTrue((self.repo / "proy" / ".worktrees" / "fresca").exists())
 
+    def test_una_copia_vacia_que_trajo_main_no_cuenta_como_trabajo(self):
+        self.cdt("nueva", "vacia")
+        copia = self.repo / "proy" / ".worktrees" / "vacia"
+        (self.repo / "proy" / "otro.py").write_text("o\n"); git(self.repo, "add", "-A"); git(self.repo, "commit", "-q", "-m", "o")
+        git(self.repo, "push", "-q", "origin", "main"); git(copia, "fetch", "-q", "origin", "main"); git(copia, "merge", "-q", "--ff-only", "origin/main")
+        self.cdt("limpiar", "--aplicar")
+        self.assertTrue(copia.exists())
+
     def test_una_copia_con_archivos_ignorados_no_se_saca(self):
         copia = self.unir_con_trabajo_viejo("conlocal")
         (copia / ".gitignore").write_text("datos.local\n")

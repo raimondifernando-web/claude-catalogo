@@ -41,12 +41,13 @@ def tuvo_trabajo(ruta, rama):
     if rama == "(suelta)":
         return False
     log = git(ruta, "reflog", "show", "--format=%gs", f"refs/heads/{rama}", ok=(0, 128)).stdout.splitlines()
-    return any(l.strip() and not l.startswith("branch: Created") for l in log)
+    # solo cuentan commits propios; un «merge origin/main: Fast-forward» o un pull de una copia vacía NO es trabajo
+    return any(l.startswith(("commit", "cherry-pick", "rebase", "revert")) for l in log)
 
 
 def archivos_ignorados(ruta):
     """Archivos que git ignora y no son cachés conocidas (.env, bases locales, salidas): sacar la copia los perdería."""
-    out = git(ruta, "status", "--ignored", "--porcelain", "-z", "--untracked-files=no").stdout.split("\0")
+    out = git(ruta, "status", "--ignored", "--porcelain", "-z").stdout.split("\0")
     ign = [l[3:] for l in out if l.startswith("!! ")]
     return [p for p in ign if not any(p.endswith(c) or f"/{c}" in f"/{p}" for c in CACHES)]
 
