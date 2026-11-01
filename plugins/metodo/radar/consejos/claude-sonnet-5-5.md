@@ -1,11 +1,11 @@
-Fuente: https://platform.claude.com/docs/en/models/sonnet-5-5/migration-guide.md (consultada 2026-10-08)
-- Actualizar el identificador del modelo a "claude-sonnet-5-5" (sin sufijo de fecha).
-- El pensamiento adaptativo se ejecuta por defecto; para apagar el pensamiento previo al responder, enviar thinking con {"type": "between_tools"} en esfuerzo high o menor (el valor "disabled" devuelve error 400).
-- Eliminar presupuestos manuales (budget_tokens) y parámetros de muestreo (temperature, top_p, top_k); regular el razonamiento con output_config.effort (por defecto es high).
-- No forzar llamadas a herramientas: tool_choice de tipo "any" o "tool" devuelve error 400; usar {"type": "auto"} con strict: true en la herramienta y explicar en el prompt cuándo usarla.
-- Eliminar el prefill del asistente (devuelve error 400); terminar siempre la conversación con un turno de usuario y usar salidas estructuradas o instrucciones de sistema.
-- Procesar las respuestas seleccionando bloques por su campo type ("text") y reenviar los bloques thinking intactos en los bucles de herramientas.
-- Las notas largas que el modelo escribe entre herramientas ahora se devuelven en bloques de pensamiento (thinking); para mostrarlas, configurar display en "updates" o "summarized".
-- Mantener las conversaciones como append-only: editar mensajes previos, system o tools invalida las firmas de los bloques de pensamiento y genera error 400.
-- En Claude API y Google Cloud, migrar computer use al toolset computer_toolset_20260801 y remover la cabecera beta fine-grained-tool-streaming-2025-05-14 (usar eager_input_streaming en cada herramienta).
-- Manejar stop_reason "refusal" e inspeccionar stop_details con categorías de seguridad ("cyber", "bio", "frontier_llm", "reasoning_extraction", "general_harms").
+Fuente: https://platform.claude.com/docs/en/models/sonnet-5-5/migration-guide.md y https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-sonnet-5-5.md (consultada 2026-11-01)
+- Usá el ID claude-sonnet-5-5, sin fecha.
+- Sin campo thinking, el pensamiento ya está activo. Para apagarlo usá thinking: {"type": "between_tools"}: "disabled" da error 400, y between_tools no sirve con xhigh ni max.
+- thinking con budget_tokens da error 400. Usá thinking: {"type": "adaptive"} y output_config.effort; el default en la API es high.
+- tool_choice any o tool da error 400. Usá {"type": "auto"}, marcá la herramienta con strict: true y decí en el prompt cuándo usarla.
+- Quitá temperature, top_p y top_k, y no termines messages con un turno del asistente (prefill).
+- Hay más categorías de rechazo (stop_reason: "refusal"): manejálas y configurá fallback.
+- Los bloques de pensamiento van atados a la conversación: mantené el historial append-only.
+- Re-calibrá el effort: los niveles cambiaron y no equivalen a los de Sonnet 5. Para trabajo agéntico, arrancá en medium o high.
+- between_tools no deja cambiar el effort a mitad de conversación (error 400); para variar el effort por turno usá pensamiento adaptativo.
+- En tareas de razonamiento con salida JSON y sin pensar antes, a veces escribe el razonamiento antes del JSON: tomá el último valor JSON que parsee, o usá pensamiento adaptativo con xhigh.

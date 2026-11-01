@@ -1,11 +1,9 @@
-Fuente: https://ai.google.dev/gemini-api/docs/whats-new-gemini-3.6.md.txt (consultada 2026-10-08)
-- Actualizar el identificador del modelo a "gemini-3.5-flash-lite".
-- Para extracción de datos, enrutamiento o clasificación de alto volumen, mantener thinking_level en "minimal" (por defecto) para maximizar la velocidad.
-- Para subagentes autónomos con llamadas a herramientas, código o razonamiento por pasos, configurar thinking_level en "medium" o "high" para evitar la terminación prematura de herramientas.
-- Reemplazar el parámetro numérico thinking_budget por el enum de texto thinking_level.
-- Eliminar los parámetros de muestreo obsoletos temperature, top_p y top_k (la API los ignora y causarán error HTTP 400).
-- Para respuestas deterministas, definir instrucciones explícitas mediante system_instruction en lugar de modificar la temperatura.
-- No enviar turnos de modelo prefijados (prefilled model turns) al final del mensaje porque devuelven error HTTP 400; usar system_instruction o salidas estructuradas.
-- Eliminar candidate_count de la configuración ya que no es compatible con modelos Gemini 3.x.
-- En llamadas a funciones (function calling), incluir los contenidos multimodales dentro del payload de respuesta y separar instrucciones en línea con \n\n.
-- Soporta Computer Use integrado como herramienta para la automatización de interfaces mediante agentes.
+Fuente: https://ai.google.dev/gemini-api/docs/whats-new-gemini-3.6.md.txt (consultada 2026-11-01)
+- Usá el ID gemini-3.5-flash-lite.
+- Reemplazá thinking_budget por thinking_level. Para extracción, clasificación o ruteo de alto volumen, dejá minimal (el default).
+- Para subagentes con llamadas a herramientas, código o pasos de razonamiento, subí thinking_level a medium o high, para que no corte antes de tiempo.
+- Quitá temperature, top_p y top_k: están deprecados y la API los ignora.
+- No termines la petición con un turno model (prefill): da error 400. Usá system_instruction o salida estructurada.
+- Si aparece Malformed_Function_Call con texto antes de la herramienta, revisá los workarounds de la guía.
+- Mantené las thought signatures en los turnos de herramientas, requisito de Gemini 3.x.
+- Soporta Computer Use como herramienta integrada y mejora la ejecución de código, búsqueda y MCP en flujos de agentes.
