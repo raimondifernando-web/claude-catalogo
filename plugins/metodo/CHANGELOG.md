@@ -1,5 +1,13 @@
 # metodo — qué cambia para vos
 
+## 0.65.0 — 2026-11-01
+**Cada etapa del trabajo sabe qué IA, qué modelo y qué esfuerzo usar, y abrir una sesión sin decidirlo ya no pasa en silencio.**
+- **El problema:** se abrían sesiones y ayudantes con el modelo de siempre (por ejemplo, todas en Sonnet con esfuerzo alto) sin mirar si la tarea lo necesitaba ni si otra IA tenía cupo libre. Ahí se va la plata.
+- **Qué cambia:** `radar.py ruteo` muestra una tabla por etapa (explorar, investigar, planear, implementar, probar, revisar, seguridad, documentar, cierre) y `radar.py ruteo <etapa>` decide con el cupo de hoy: si otra IA (Codex o Gemini) lo hace igual de bien y tiene cupo, va ahí primero; lo que toca datos privados o tu configuración se queda en Claude (`--sensible`). Te da una línea «Ruteo: <IA>/<modelo>/<esfuerzo> porque <motivo>» para copiar en el pedido.
+- **El control:** abrir una sesión nueva sin esa línea en el pedido se frena una vez por sesión, con la recomendación del radar en el mismo mensaje; a los ayudantes se les avisa sin frenar. Se apaga con `RUTEO_FRENO_OFF=1`. La regla 18 lo dice y la tabla aparece en `RADAR.md`.
+- **Qué tenés que hacer:** nada.
+- **Nota de versión:** esta mejora nació como 0.62.0, pero esa versión ya la ocupó la de las pruebas en la unión (más abajo); como 0.63.0 y 0.64.0 están reservadas para otras dos mejoras en camino, pasa a ser 0.65.0.
+
 ## 0.62.0 — 2026-11-01
 **Una unión a `main` ya no pasa si fallan las pruebas del proyecto que tocaste (aunque el repo tenga varios proyectos), y la propia sesión se encarga de arreglar o escribir las pruebas: no te hace preguntas técnicas.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** el control de unión solo buscaba pruebas en la carpeta de arriba de todo. En un repo con varios proyectos (cada uno con sus pruebas adentro) no corría ninguna y el cambio se unía sin que nadie lo probara; con varias sesiones a la vez, además, dos sesiones reescribían el mismo archivo grande y una deshacía lo de la otra; y las copias de trabajo quedaban sueltas por todas partes.

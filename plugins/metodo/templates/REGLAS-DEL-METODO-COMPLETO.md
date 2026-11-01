@@ -118,7 +118,13 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     sesión ya te muestra 5-6 líneas (`radar.py hoy`): qué modelo es hoy cada nivel (haiku, sonnet, opus), qué nivel y
     esfuerzo conviene por tipo de tarea y cuánto cupo queda en Claude, Codex y Gemini. Antes de abrir un subagente o una
     sesión nueva, poné `model` y `effort` según esa tabla, no según lo que recordás: la tabla se actualiza sola y tu
-    memoria no. Un aviso del hook al delegar es solo un recordatorio, nunca te frena. Para elegir otra IA, corré
+    memoria no. **Cada etapa del trabajo tiene su ruteo por defecto** (explorar, investigar, planear, implementar,
+    probar, revisar, seguridad, documentar, cierre): `radar.py ruteo` muestra la tabla y `radar.py ruteo <etapa>` lo
+    decide con el cupo de hoy —si otra IA lo hace igual de bien y tiene cupo, va ahí primero; lo que toca datos privados,
+    de clientes o la configuración propia se queda en Claude (`--sensible`)— y te da la línea «Ruteo: <IA>/<modelo>/<esfuerzo>
+    porque <motivo>» que va en el pedido a la sesión o al subagente, con `model` y `effort` iguales. Abrir una sesión sin
+    esa línea se frena UNA vez por sesión (se apaga con `RUTEO_FRENO_OFF=1`); a un subagente solo se le avisa. Para subir o
+    bajar un escalón, las 3 preguntas: ¿hay que juzgar o decidir? ¿equivocarse sale caro? ¿hay mucho contexto? Para elegir otra IA, corré
     `python3 "$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name radar.py | sort -V | tail -1)" elegir <categoría>`
     (con `--sensible` si hay datos privados). Te devuelve el primer plan disponible: si el A no está (cupo agotado, modelo
     retirado o no disponible para tu cuenta), usá el B o el C que te indica. `ver` muestra todas las categorías con sus

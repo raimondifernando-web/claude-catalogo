@@ -230,6 +230,71 @@ ruteo_claude:
         - production
         - migracion
         - diseno de sistema
+  etapas_nota: "Ruteo por ETAPA del desarrollo (2026-11-01): cada etapa arranca con su IA, modelo y esfuerzo por defecto; `radar.py ruteo <etapa>` lo resuelve con el cupo de hoy y devuelve la línea «Ruteo: …» para el pedido. `fila` = nivel y esfuerzo de Claude (sale de las tareas de arriba); `categoria` = qué IA conviene según el ranking. `delegable: true` = si otra IA tiene cupo y lo hace igual de bien, va ahí primero; con datos privados, de clientes o de la configuración propia (--sensible) se queda en Claude. Subir o bajar un escalón: las 3 preguntas de la nota de arriba. Lo escribe una persona a mano."
+  etapas:
+    - id: explorar
+      nombre: "Explorar o buscar (código, archivos, inventario)"
+      fila: buscar_mover
+      categoria: tareas_baratas
+      delegable: false
+      motivo: "solo lee y cuenta; Haiku tiene las herramientas a mano y es el más barato"
+      palabras: [explorar, explore, buscar, inventario, ubicar, encontrar]
+    - id: investigar
+      nombre: "Investigar en la web"
+      fila: investigar
+      categoria: investigacion_web
+      delegable: true
+      motivo: "juntar y contrastar fuentes; una búsqueda con citas sale más barata afuera"
+      palabras: ["investig*", research, "en la web", relevar]
+    - id: planear
+      nombre: "Planear o diseñar (arquitectura, alcance, qué NO se hace)"
+      fila: arquitectura_seguridad_plata
+      categoria: agentes_largos
+      delegable: false
+      motivo: "hay que juzgar y el error sale caro; un plan chico de 1-2 archivos baja a sonnet/medium"
+      palabras: ["plan*", "dise*", "arquitectur*", alcance, spec]
+    - id: implementar
+      nombre: "Implementar (código acotado, arreglos, scripts)"
+      fila: implementar_acotado
+      categoria: desarrollo
+      delegable: true
+      motivo: "tarea acotada con criterio claro; Codex o Gemini con cupo primero, Claude si toca datos o configuración propia"
+      palabras: ["implement*", arreglar, fix, script, "program*", codigo]
+    - id: probar
+      nombre: "Probar (correr pruebas y leer el resultado)"
+      fila: buscar_mover
+      categoria: tareas_baratas
+      delegable: false
+      motivo: "correr y leer es mecánico; ESCRIBIR pruebas nuevas es la etapa implementar"
+      palabras: ["prob*", "test*", correr pruebas]
+    - id: revisar
+      nombre: "Revisar (segunda opinión de un cambio)"
+      fila: revisar
+      categoria: revision
+      delegable: true
+      motivo: "la revisión la hace alguien distinto del autor; otra IA con cupo, solo lectura"
+      palabras: ["revis*", review, segunda opinion, critic]
+    - id: seguridad
+      nombre: "Seguridad, plata o algo irreversible"
+      fila: arquitectura_seguridad_plata
+      categoria: revision
+      delegable: false
+      motivo: "toca claves, configuración o plata: se queda en Claude con el nivel más alto que no sea a pedido"
+      palabras: [seguridad, security, secreto, "vulnerab*", plata, irreversible]
+    - id: documentar
+      nombre: "Documentar (guías, fichas, avisos, changelog)"
+      fila: implementar_acotado
+      categoria: escritura
+      delegable: false
+      motivo: "escribir en castellano sobre lo ya decidido; si es texto para un tercero, después pasa por humanizalo"
+      palabras: ["document*", guia, ficha, changelog, aviso, readme]
+    - id: cierre
+      nombre: "Cierre (controles, conteos, traspaso)"
+      fila: buscar_mover
+      categoria: tareas_baratas
+      delegable: false
+      motivo: "los controles y conteos son mecánicos; el texto del traspaso lo escribe la sesión que trabajó, sin abrir otra"
+      palabras: [cierre, cerrar, handoff, traspaso]
 categorias:
   - id: desarrollo
     nombre: "Desarrollo (programar)"
