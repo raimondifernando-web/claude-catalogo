@@ -1,5 +1,6 @@
-Fuente: https://developers.openai.com/api/docs/guides/latest-model.md (consultada 2026-10-08)
-- Soporta el esfuerzo de razonamiento "none" (GPT-6 Astra y GPT-6.1 Sol no): si tu pedido actual lo usa, se puede mantener.
-- Llamadas a funciones en Chat Completions solo con reasoning_effort "none"; para razonar con herramientas, usar la Responses API.
-- Con un esfuerzo distinto de "none", sacar temperature, top_p y top_logprobs (y logprobs en Chat Completions).
-- Fast mode admite residencia de datos en la UE.
+Fuente: https://developers.openai.com/api/docs/guides/latest-model.md (consultada 2026-11-01)
+- Acepta reasoning.effort: none. La guía lo describe para tareas enfocadas y de alto volumen.
+- Con Chat Completions, el function calling solo anda con reasoning_effort: "none". Para razonar con herramientas, usá la Responses API.
+- Si el effort no es none, quitá temperature, top_p y top_logprobs.
+- Fast mode admite residencia de datos en la UE para Luna.
+- Al migrar desde GPT-5.5 o anterior, reemplazá prompt_cache_retention por prompt_cache_options.ttl con el valor "30m".

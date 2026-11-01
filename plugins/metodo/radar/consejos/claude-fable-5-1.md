@@ -1,11 +1,11 @@
-Fuente: https://platform.claude.com/docs/en/models/fable-5-1/migration-guide.md (consultada 2026-10-08)
-- Actualizar el identificador del modelo a "claude-fable-5-1".
-- El pensamiento adaptativo está siempre activo: configurar thinking con "disabled" o budget_tokens devuelve error 400; no se requiere enviar configuración de thinking.
-- No se admite forzar herramientas: tool_choice con "any" o "tool" devuelve error 400; dejar tool_choice en "auto", pedir la herramienta en el prompt y marcarla con strict: true (y additionalProperties: false).
-- Si la aplicación requiere una llamada obligatoria a una herramienta en un turno, agregar un mensaje con role: "system" al final de messages pidiendo esa llamada, sin alterar los turnos previos.
-- Conservar el historial estrictamente como append-only: modificar mensajes previos, el prompt system o la lista tools invalida las firmas de los bloques de pensamiento (error 400).
-- Para tolerar ediciones de historial sin fallar, enviar la cabecera beta thinking-binding-controls-2026-08-01 con prefix_mismatch_behavior en "drop_block".
-- No se permite prefill en el mensaje de asistente (devuelve error 400); la conversación debe concluir con un turno de usuario.
-- En bucles largos de agentes, puede emitir menos llamadas paralelas a herramientas; instruir explícitamente la ejecución paralela en un mensaje de sistema acotado al turno.
-- Con esfuerzo low, tiende a responder de memoria en lugar de buscar; para tareas que requieran recuperación, subir el esfuerzo o indicar explícitamente cuándo buscar.
-- Se puede cambiar el esfuerzo mid-conversación (beta) mediante un mensaje role: "system" con output_config sin romper el caché de prefijo de los turnos previos.
+Fuente: https://platform.claude.com/docs/en/models/fable-5-1/migration-guide.md y https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1.md (consultada 2026-11-01)
+- Usá claude-fable-5-1. claude-mythos-5-1 tiene las mismas capacidades, pero solo para organizaciones verificadas.
+- tool_choice any o tool da error 400. Dejá auto, nombrá la herramienta en la instrucción y marcala strict: true.
+- Si la app exige una llamada en un turno concreto, agregá un mensaje system después del último turno del usuario, no en el system principal.
+- El pensamiento siempre está activo (adaptive). thinking con disabled o budget_tokens da error 400; no hace falta configurarlo.
+- El prefill del asistente da error 400: usá instrucciones de sistema.
+- Editar turnos previos (system, tools o mensajes) invalida los bloques thinking que devolvés: mantené el historial append-only.
+- Exige retención de datos de 30 días: no sirve con ZDR salvo autorización de Anthropic, y no entra en Priority Tier.
+- El precio es igual que Fable 5 (US$10 entrada / US$50 salida por millón); la lectura de caché cuesta un cuarto.
+- El effort por defecto es high y los niveles no equivalen a los de Fable 5: rehacé la prueba de niveles con tus casos.
+- Escribe menos avisos de progreso en tareas largas: pedilos en el prompt y poné thinking.display en updates (beta). Con effort low tiende a responder de memoria: indicá cuándo buscar.
