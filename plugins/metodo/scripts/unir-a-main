@@ -389,7 +389,7 @@ def pruebas_del_cambio(copia, cambiados=()):
         if d not in cache:
             decl = copia / ".claude" / "pruebas.d" / (d.replace("/", "__") + ".sh") if d else None
             if decl is not None and decl.is_file() and not decl.is_symlink():
-                cache[d] = (f"{d} (.claude/pruebas.d)", 'bash "$RAIZ/.claude/pruebas.d/%s"' % decl.name)
+                cache[d] = (f"{d} (.claude/pruebas.d)", 'bash "$RAIZ"/.claude/pruebas.d/%s' % shlex.quote(decl.name))
             else:
                 desc, cmd = pruebas_en(copia / d if d else copia)
                 cache[d] = (desc, shlex.join(cmd)) if cmd else (None, None)
@@ -412,7 +412,7 @@ def pruebas_del_cambio(copia, cambiados=()):
     if not duenos:
         return None, None, sorted(sin)
     guion = 'RAIZ="$PWD"; fallo=0\n' + "".join(
-        'echo "== pruebas de %s: %s"; ( cd %s && %s ) || fallo=1\n' % (d or "la raíz", desc.replace('"', ""), shlex.quote(d or "."), texto)
+        'printf "%%s\\n" %s; ( cd %s && %s ) || fallo=1\n' % (shlex.quote("== pruebas de %s: %s" % (d or "la raíz", desc)), shlex.quote(d or "."), texto)
         for d, (desc, texto) in sorted(duenos.items())) + "exit $fallo\n"
     if list(duenos) == [""]:   # un solo proyecto, el de la raíz: la descripción de siempre
         resumen = duenos[""][0]
