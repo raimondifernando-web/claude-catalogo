@@ -1,5 +1,13 @@
 # metodo — qué cambia para vos
 
+## 0.67.0 — 2026-11-01
+**Tus sesiones ahora traen una guía de «qué modelo y qué esfuerzo usar para cada tarea»**, y se mantiene sola.
+- **El problema:** el método sabía elegir modelo y esfuerzo, pero esa guía no llegaba a las sesiones de quien trabaja con el paquete: cada una elegía de memoria.
+- **Qué cambia:** al abrir una sesión, el paquete arma `GUIA-MODELOS.md` en tu carpeta de Claude con los precios y modelos vigentes, quién rinde mejor en qué, las 3 preguntas para elegir escalón y cómo usar el esfuerzo, y la importa en tu ficha. Se rearma sola cuando cambia el radar; si no cambió, no escribe nada.
+- **Si ya tenés una guía tuya** (un archivo `GUIA-MODELOS.md` sin nuestra marca, o un `@GUIA-MODELOS.md` propio en tu ficha), no se toca nada.
+- **Qué tenés que hacer:** nada.
+- **Nota de versión:** nació como 0.64.0; al rebasar sobre #110, #111 y #113 (hasta 0.66.0) pasa a 0.67.0.
+
 ## 0.66.0 — 2026-11-01
 **Lo que detectan los vigías ahora se procesa solo**: un circuito diario lee lo que juntaron (versiones nuevas, guías y consejos de modelos, uso de modelos), cierra el ruido, le pide a la IA más barata con cupo que clasifique, otro modelo revisa antes de cerrar, mide cuánto sirvió cada vigía y se ajusta solo.
 - **El problema:** los vigías detectaban y apilaban; procesarlo dependía de que alguien se acordara, y los avisos se juntaban por semanas.

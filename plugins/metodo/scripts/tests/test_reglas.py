@@ -26,6 +26,16 @@ def correr(config_dir):
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", timeout=30)
 
 
+def sin_guia(lineas):
+    """Quita el bloque de la guía de modelos (con su línea en blanco de antes): estas pruebas miran solo las reglas."""
+    if reglas.GINI in lineas and reglas.GFIN in lineas:
+        a, b = lineas.index(reglas.GINI), lineas.index(reglas.GFIN)
+        if a > 0 and lineas[a - 1] == "":
+            a -= 1
+        return lineas[:a] + lineas[b + 1:]
+    return lineas
+
+
 @unittest.skipIf(ES_WINDOWS, "reglas.py es para Mac")
 class ReglasTest(unittest.TestCase):
     def setUp(self):
@@ -63,7 +73,7 @@ class ReglasTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("Reglas del método actualizadas a 25 ✓", r.stdout)
 
-        texto = self.ficha.read_text(encoding="utf-8").splitlines()
+        texto = sin_guia(self.ficha.read_text(encoding="utf-8").splitlines())
         self.assertEqual(texto[:3], propio_arriba)
         self.assertEqual(texto[-3:], propio_abajo)
         a, b = texto.index(reglas.INI), texto.index(reglas.FIN)
@@ -84,7 +94,7 @@ class ReglasTest(unittest.TestCase):
         self.ficha.write_text("\n".join(["Lo mío.", ""] + largo + ["", "Lo mío de abajo."]) + "\n", encoding="utf-8")
         r = correr(self.cfg)
         self.assertIn("Reglas del método actualizadas a 25 ✓", r.stdout)
-        texto = self.ficha.read_text(encoding="utf-8").splitlines()
+        texto = sin_guia(self.ficha.read_text(encoding="utf-8").splitlines())
         self.assertEqual(texto[texto.index(reglas.INI):texto.index(reglas.FIN) + 1], reglas.bloque_nuevo(PLANTILLA))
         self.assertEqual(texto[0], "Lo mío.")
         self.assertEqual(texto[-1], "Lo mío de abajo.")
@@ -157,6 +167,60 @@ class NombreTest(unittest.TestCase):
         r = correr(d.name)
         self.assertIn("Quién habla: Ana.", r.stdout)
 
+
+@unittest.skipIf(ES_WINDOWS, "reglas.py es para Mac")
+class GuiaModelosTest(unittest.TestCase):
+    """La guía de modelos llega sola: se escribe, se importa en la ficha, no se repite y no pisa una guía propia."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.cfg = Path(self.tmp.name)
+        self.ficha = self.cfg / "CLAUDE.md"
+        self.guia = self.cfg / "GUIA-MODELOS.md"
+
+    def test_crea_la_guia_y_la_importa(self):
+        r = correr(self.cfg)
+        self.assertIn("Guía de modelos: guía de modelos al día, importada en tu ficha", r.stdout)
+        self.assertIn("claude-opus-5-5", self.guia.read_text(encoding="utf-8"))
+        self.assertEqual(self.ficha.read_text(encoding="utf-8").count("@GUIA-MODELOS.md"), 1)
+
+    def test_segunda_corrida_no_hace_nada(self):
+        correr(self.cfg)
+        antes = (self.guia.read_bytes(), self.ficha.read_bytes())
+        r = correr(self.cfg)
+        self.assertNotIn("Guía de modelos", r.stdout)
+        self.assertEqual(antes, (self.guia.read_bytes(), self.ficha.read_bytes()))
+
+    def test_si_cambia_el_radar_se_rearma_sin_tocar_la_ficha(self):
+        correr(self.cfg)
+        self.guia.write_text(self.guia.read_text(encoding="utf-8") + "viejo\n", encoding="utf-8")
+        ficha = self.ficha.read_bytes()
+        r = correr(self.cfg)
+        self.assertIn("guía de modelos al día", r.stdout)
+        self.assertNotIn("viejo", self.guia.read_text(encoding="utf-8"))
+        self.assertEqual(ficha, self.ficha.read_bytes())
+
+    def test_una_guia_propia_no_se_pisa(self):
+        self.guia.write_text("# Mi guía\n", encoding="utf-8")
+        self.ficha.write_text("@GUIA-MODELOS.md\n", encoding="utf-8")
+        correr(self.cfg)
+        self.assertEqual(self.guia.read_text(encoding="utf-8"), "# Mi guía\n")
+        self.assertEqual(self.ficha.read_text(encoding="utf-8").count("@GUIA-MODELOS.md"), 1)
+
+    def test_import_propio_en_la_ficha_no_se_duplica(self):
+        self.ficha.write_text("hola\n@GUIA-MODELOS.md\n", encoding="utf-8")
+        correr(self.cfg)
+        self.assertEqual(self.ficha.read_text(encoding="utf-8").count("@GUIA-MODELOS.md"), 1)
+        self.assertFalse(self.guia.exists())
+
+    def test_la_guia_no_lleva_nada_personal(self):
+        import re
+        import guia_modelos
+        t = guia_modelos.texto_actual()
+        self.assertIsNotNone(t)
+        self.assertFalse(re.search(r"Fer\b|Mandamiento|TIBP|\bPM\b", t, re.I))
+        guia_modelos.probar()
 
 
 if __name__ == "__main__":
