@@ -39,11 +39,13 @@ Límite honesto: una sesión que puede correr cualquier comando como vos puede s
 `ok-fernando-<commit>` que solo pone la persona). Ver docs/SELLO-UNIR-A-MAIN.md.
 """
 import argparse
+import fcntl
 import fnmatch
 import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -138,6 +140,7 @@ SENSIBLE = [
     ("*.claude/unir-a-main*", "el control de unión"),
     # cómo se corren las pruebas (si la rama las cambia, ya no son las que el repo fijó en main)
     ("*.claude/pruebas.sh", "las pruebas que deciden si se une"),
+    ("*.claude/pruebas.d/*", "las pruebas que deciden si se une"),
     ("makefile", "cómo se corren las pruebas"), ("*/makefile", "cómo se corren las pruebas"),
     ("gnumakefile", "cómo se corren las pruebas"), ("*/gnumakefile", "cómo se corren las pruebas"),
     ("*.mk", "cómo se corren las pruebas"), ("*.pytest.ini", "cómo se corren las pruebas"),
@@ -336,15 +339,21 @@ def zona_sensible(repo, cambiados, base):
     return out
 
 
-def pruebas(copia):
-    """(descripción, comando) o (None, None). Solo DETECTA qué pruebas habría; no ejecuta nada. Los archivos que definen
-    el «cómo» son zona sensible: si la rama los cambió, la persona es consultada antes de correr las pruebas."""
+def es_codigo(p):
+    """Texto y documentación no necesitan pruebas; todo lo demás sí."""
+    q = "/" + p.lower()
+    return not (q.endswith(DOCUMENTOS) or q.startswith(("/docs/", "/.claude/prompts/")) or "/docs/" in q
+                or "/.claude/prompts/" in q)
+
+
+def pruebas_en(carpeta):
+    """Pruebas de UNA carpeta: (descripción, comando) o (None, None). Solo DETECTA; no ejecuta nada."""
     def existe(ruta):   # solo archivos comunes: un enlace o una cola que apunte a /dev/zero no cuenta (ni cuelga al programa)
-        p = copia / ruta
+        p = carpeta / ruta
         return p.is_file() and not p.is_symlink()
 
     def texto(ruta):
-        return (copia / ruta).read_text(errors="replace") if existe(ruta) else ""
+        return (carpeta / ruta).read_text(errors="replace") if existe(ruta) else ""
     if existe(".claude/pruebas.sh"):
         return ".claude/pruebas.sh", ["bash", ".claude/pruebas.sh"]
     if re.search(r"^test:", texto("Makefile"), re.M):
@@ -353,14 +362,63 @@ def pruebas(copia):
         return "npm test", ["npm", "test", "--silent"]
     if existe("Package.swift") and shutil.which("swift"):
         return "swift test", ["swift", "test"]
-    tests = [d for d in ("tests", "test") if (copia / d).is_dir() and not (copia / d).is_symlink()
-             and list((copia / d).glob("test_*.py"))]
+    tests = [d for d in ("tests", "test") if (carpeta / d).is_dir() and not (carpeta / d).is_symlink()
+             and list((carpeta / d).glob("test_*.py"))]
     if tests:
         import importlib.util
         if importlib.util.find_spec("pytest") is not None:   # sin importar nada ni mirar la carpeta de la rama
             return f"pytest {tests[0]}", [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", tests[0]]
         return f"unittest {tests[0]}", [sys.executable, "-m", "unittest", "discover", "-s", tests[0]]
     return None, None
+
+
+def pruebas(copia):
+    """Las pruebas de la raíz del repo: (descripción, comando) o (None, None)."""
+    return pruebas_en(copia)
+
+
+def pruebas_del_cambio(copia, cambiados=()):
+    """Pruebas que corresponden a ESTE cambio: (descripción, comando, carpetas con código sin pruebas).
+    Solo DETECTA qué pruebas habría; no ejecuta nada. Cada archivo de código se prueba con las pruebas de su carpeta o
+    de la primera carpeta de arriba que las tenga (<carpeta>/.claude/pruebas.sh, <raíz>/.claude/pruebas.d/<carpeta>.sh
+    o las detectadas). Las de la raíz corren siempre. Los archivos que definen el «cómo» son zona sensible: si la rama
+    los cambió, la persona es consultada antes de correr las pruebas."""
+    duenos, cache = {}, {}
+
+    def buscar(d):
+        if d not in cache:
+            decl = copia / ".claude" / "pruebas.d" / (d.replace("/", "__") + ".sh") if d else None
+            if decl is not None and decl.is_file() and not decl.is_symlink():
+                cache[d] = (f"{d} (.claude/pruebas.d)", 'bash "$RAIZ/.claude/pruebas.d/%s"' % decl.name)
+            else:
+                desc, cmd = pruebas_en(copia / d if d else copia)
+                cache[d] = (desc, shlex.join(cmd)) if cmd else (None, None)
+        return cache[d]
+
+    if buscar("")[1]:
+        duenos[""] = cache[""]
+    sin = set()
+    for p in cambiados:
+        if not es_codigo(p):
+            continue
+        partes = p.split("/")[:-1]
+        for i in range(len(partes), -1, -1):
+            d = "/".join(partes[:i])
+            if buscar(d)[1]:
+                duenos[d] = cache[d]
+                break
+        else:
+            sin.add(partes[0] if partes else p)
+    if not duenos:
+        return None, None, sorted(sin)
+    guion = 'RAIZ="$PWD"; fallo=0\n' + "".join(
+        'echo "== pruebas de %s: %s"; ( cd %s && %s ) || fallo=1\n' % (d or "la raíz", desc.replace('"', ""), shlex.quote(d or "."), texto)
+        for d, (desc, texto) in sorted(duenos.items())) + "exit $fallo\n"
+    if list(duenos) == [""]:   # un solo proyecto, el de la raíz: la descripción de siempre
+        resumen = duenos[""][0]
+    else:
+        resumen = " + ".join(f"{d or 'raíz'}: {desc}" for d, (desc, _) in sorted(duenos.items()))
+    return resumen, ["bash", "-c", guion], sorted(sin)
 
 
 def perfil_sandbox_mac(libre_escritura, home_real, lecturas_extra=()):
@@ -562,6 +620,21 @@ def aprobador_persona(resumen, sha7):
 
 
 def principal(a, revisor=None, aprobador=None):
+    """Una unión a la vez por repo (cola): la segunda espera, trae el main nuevo y prueba la COMBINACIÓN, no su rama sola."""
+    if a.probar:
+        return _principal(a, revisor, aprobador)
+    repo = Path(sh("git", "-C", a.repo, "rev-parse", "--show-toplevel").stdout.strip())
+    comun = Path(git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip())
+    with open(comun / "unir-a-main.lock", "w") as cerrojo:
+        try:
+            fcntl.flock(cerrojo, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print("Hay otra unión en curso en este repo: espero mi turno (después pruebo mi rama sobre el main nuevo)…")
+            fcntl.flock(cerrojo, fcntl.LOCK_EX)
+        return _principal(a, revisor, aprobador)
+
+
+def _principal(a, revisor=None, aprobador=None):
     revisor = revisor or revisor_claude
     aprobador = aprobador or aprobador_persona
     if not os.path.isabs(GIT):
@@ -636,21 +709,28 @@ def principal(a, revisor=None, aprobador=None):
     # (no ejecuta nada) y, si hace falta, se le pregunta a la persona ANTES de correr una sola línea de la rama.
     copia_raiz = Path(tempfile.mkdtemp(prefix="unir-a-main-"))
     limpia = copia_raiz / "copia"
-    resultado = {"descripcion": None, "ok": None, "aislamiento": None, "salida_sha256": None}
+    resultado = {"descripcion": None, "ok": None, "aislamiento": None, "salida_sha256": None, "sin_pruebas": []}
     ok_persona = None
     sha7 = head[:7]
     ascii_ = lambda t: re.sub(r"[^A-Za-z0-9._/@+ -]", "?", str(t))[:60]
     try:
         copia_limpia(repo, head, limpia)
-        desc, cmd = pruebas(limpia)
+        desc, cmd, sin = pruebas_del_cambio(limpia, cambiados)
+        if sin:
+            print("SIN PRUEBAS ⚠ no se puede verificar lo que cambió en: " + ", ".join(sin))
         if cmd:
             clase, aislamiento = detectar_aislamiento()
             if aislamiento != "completo":
                 humano.append(f"las pruebas no se pueden aislar del todo ({aislamiento})")
         else:
-            codigo = [p for p in cambiados if not p.lower().endswith(DOCUMENTOS)]
+            codigo = [p for p in cambiados if es_codigo(p)]
             if codigo:
-                humano.append("el repo no tiene pruebas y el cambio toca algo más que documentos")
+                raise Frena("sin pruebas: no se puede verificar lo que cambió en " + (", ".join(sin) or "el repo")
+                            + " (el repo no tiene pruebas y el cambio toca algo más que documentos). PARA LA SESIÓN (no le "
+                            "preguntes a la persona): escribí las pruebas con el agente test-engineer "
+                            "(oh-my-claudecode:test-engineer o el que tengas), corrélas, arreglá lo que falle y volvé a "
+                            "lanzar unir-a-main; hasta 3 vueltas. Declaralas en <carpeta>/.claude/pruebas.sh (o "
+                            ".claude/pruebas.d/<carpeta>.sh en la raíz) o dejá tests/test_*.py / make test / npm test")
 
         informe = revisor(diff_bytes, {"repo": nombre, "rama": rama, "archivos": cambiados})
         if informe["veredicto"] == "rojo":
@@ -679,16 +759,20 @@ def principal(a, revisor=None, aprobador=None):
                 return 3
             ok_persona = {"commit": head, "motivos": humano, "cuando": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
 
+        resultado["sin_pruebas"] = sin
         if cmd:   # recién ahora corre código de la rama, aislado y con el OK que hiciera falta
             try:
                 rc, salida, aislamiento = correr_pruebas_aisladas(limpia, cmd, a.tope)
             except subprocess.TimeoutExpired:
                 raise Frena(f"las pruebas ({desc}) tardaron más de {a.tope} s: no se une")
-            resultado = {"descripcion": desc, "ok": rc == 0, "aislamiento": aislamiento,
+            resultado = {"descripcion": desc, "ok": rc == 0, "aislamiento": aislamiento, "sin_pruebas": sin,
                          "salida_sha256": hashlib.sha256(salida.encode("utf-8", "replace")).hexdigest()}
             if rc:
                 print(salida[-1500:])
-                raise Frena(f"las pruebas ({desc}) fallaron: no se une")
+                raise Frena(f"las pruebas ({desc}) fallaron: no se une. PARA LA SESIÓN (no le preguntes a la persona): "
+                            "arreglá el código —no borres ni aflojes la prueba—, commiteá y volvé a lanzar unir-a-main; "
+                            "hasta 3 vueltas. Si a la tercera sigue rojo, parás y le contás a la persona en una frase "
+                            "qué prueba falla")
     finally:
         if shutil.rmtree.avoids_symlink_attacks:   # sin esa garantía, mejor dejar la carpeta que seguir un enlace
             shutil.rmtree(copia_raiz, ignore_errors=True)
@@ -700,6 +784,8 @@ def principal(a, revisor=None, aprobador=None):
     sello_sha = hashlib.sha256(sello_json.encode("utf-8")).hexdigest()
     prueba = (f"{resultado['descripcion']} OK (aislamiento: {resultado['aislamiento']})" if resultado["descripcion"]
               else "sin pruebas en el repo")
+    if resultado["sin_pruebas"]:
+        prueba += " · SIN PRUEBAS en: " + ", ".join(resultado["sin_pruebas"])
     zona = ("OK de la persona para: " + ", ".join(sorted(sensibles))) if sensibles else "no"
     mensaje = (f"Unir {rama} a main\n\nPruebas: {prueba}\n"
                f"Revisión: {informe['quien']} → {informe['veredicto']}: {informe['frase']}\n"
@@ -736,6 +822,13 @@ def principal(a, revisor=None, aprobador=None):
             f.write(f"{union} {rama} | {prueba} | {informe['veredicto']} | sello {sello_sha}\n")
     except (Frena, OSError):
         pass
+    limpiar = Path(__file__).resolve().with_name("copias-de-trabajo")
+    if limpiar.exists():   # saca las copias de `.worktrees/` ya unidas y limpias (nunca la propia ni una con trabajo)
+        try:
+            subprocess.run([sys.executable, str(limpiar), "--repo", str(repo), "limpiar", "--aplicar"],
+                           capture_output=True, timeout=120, env=entorno_limpio())
+        except (subprocess.TimeoutExpired, OSError):
+            pass
     print(f"Unido a main ✓ {nombre} ← {rama} ({commits} commit(s) · pruebas: {prueba} · revisor: "
           f"{informe['veredicto']} · OK de la persona: {'sí' if ok_persona else 'no hizo falta'}){nota}")
     return 0

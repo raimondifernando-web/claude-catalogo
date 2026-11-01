@@ -20,7 +20,11 @@
    que vos lo aceptes por escrito.
 3. **Confirmar antes de lo irreversible.** Borrar, mover, renombrar, enviar, publicar, pagar: se muestra qué se va a hacer y se espera el OK.
    **Unir el trabajo a `main` no es irreversible** (se revierte con un commit): no se pide OK, lo deciden los controles
-   automáticos (`scripts/unir-a-main`: pruebas del repo aisladas + un revisor independiente que lanza el propio programa, sin opciones que la sesión pueda afirmar; en un repo con checks
+   automáticos (`scripts/unir-a-main`: pruebas aisladas de **cada proyecto que el cambio toca** —las declara la carpeta en
+   `.claude/pruebas.sh` o la raíz en `.claude/pruebas.d/<carpeta>.sh`, o se detectan—; si una falla no se une, y el código
+   que queda sin pruebas se dice en voz alta («SIN PRUEBAS») y queda escrito en el commit de unión. **Es un ciclo de la sesión, no una pregunta**: si fallan, la sesión arregla el código (nunca la prueba) y reintenta; si faltan, las
+   escribe ella con el agente `test-engineer`, las corre y reintenta; hasta 3 vueltas, y recién entonces le cuenta a la persona,
+   en una frase, qué prueba falla + un revisor independiente que lanza el propio programa, sin opciones que la sesión pueda afirmar; en un repo con checks
    en GitHub, PR + `gh pr merge --squash --auto`). El OK se sigue pidiendo para lo que **corre solo en tu computadora** (ajustes
    de Claude, hooks, tareas que arrancan solas, instaladores, robots), para **borrar o reescribir historia** y para las
    **decisiones del negocio**.
@@ -46,6 +50,14 @@ las reglas 1-10 no cubren: dos sesiones editan el mismo archivo, una sesión hac
     Dos cosas sí la exigen: que las sesiones necesiten **ramas distintas** (cambiar de rama en una carpeta reescribe
     los archivos para todas las sesiones de esa carpeta), o que vayan a editar **el mismo archivo a la vez** (eso no se
     puede separar: lo sube la primera que cierra y la segunda avisa).
+    **Ramas cortas, cambios chicos, cola de unión** (como los equipos grandes, sin un tope fijo de sesiones): lo que se une en
+    horas casi no choca. Las uniones hacen **cola** —una a la vez por repo— y cada una trae el `main` nuevo y prueba la
+    COMBINACIÓN antes de subir. **Antes de abrir una sesión hija que va a editar código**, corré
+    `scripts/ramas-que-pisan <archivos que va a tocar>`: avisa de las ramas largas (más de 2 días sin unir) y frena si otra
+    rama toca un **archivo grande** (60 KB o más) que también vas a tocar; si dice «Falta … ✗», esperá a que se una o dale
+    la tarea a esa rama. Los archivos gigantes se parten en piezas por función, de a uno. La copia de trabajo de cada hija
+    vive **dentro del proyecto** (`scripts/copias-de-trabajo nueva <tema>` → `<proyecto>/.worktrees/<tema>`, ignorada por
+    git) y se saca sola al unir. El pedido a la hija lleva los archivos exactos.
 12. **Cada sesión sabe su rol y su alcance.** Van en el bloque ALCANCE del texto de arranque. Lo que cae fuera se anota
     («fuera de alcance → tal sesión») y se avisa; no se ejecuta.
 13. **Cierre seguro entre sesiones.** Id `AAAA-MM-DD-tema`. En los archivos compartidos (`CLAUDE.md`, `handoffs/`) cada
@@ -57,8 +69,10 @@ las reglas 1-10 no cubren: dos sesiones editan el mismo archivo, una sesión hac
     (`<carpeta>/.claude/prompts/AAAA-MM-DD-<origen>-aviso-<tema>.md`: qué cambió y qué le toca hacer) y, si está
     abierta, mandale además un mensaje directo: la otra sesión no revisa su carpeta sola.
 14. **Ninguna sesión de proyecto arranca sin preparación.** Una sesión de preparación (o una llamada con quien te acompaña)
-    define: carpeta, ficha (`CLAUDE.md`), equipo (PM + especialistas), skills que hacen falta, límites con otros
-    proyectos — y entrega el texto de arranque. Sin eso, la sesión improvisa.
+    define: carpeta, ficha (`CLAUDE.md`), equipo (PM —en castellano «jefe de proyecto»— + especialistas), skills que
+    hacen falta, límites con otros proyectos y **las pruebas, antes que el código** — y entrega el texto de arranque. Sin
+    eso, la sesión improvisa. Las reglas del proyecto viven en UN lugar que se carga solo (`CLAUDE.md` +
+    `.claude/rules/*.md`, estas con `paths:` para que se activen al tocar esa carpeta); `REANUDAR.md` es solo estado.
 
 ## Cuando pasás contenido de un lado a otro (regla 15)
 Es conducta general, como las 1-10; va numerada al final para no cambiarles el número a las demás.

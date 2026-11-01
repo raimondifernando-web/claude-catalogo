@@ -259,13 +259,64 @@ class UnirAMain(unittest.TestCase):
         self.assertIn("fallaron", self.salida)
         self.assertNotIn("Unir", self.main_remoto())
 
-    def test_sin_pruebas_y_con_codigo_pide_a_la_persona_sin_opcion_de_saltearlo(self):
+    def test_sin_pruebas_y_con_codigo_no_une_y_manda_a_la_sesion_a_escribirlas(self):
         sh("git", "rm", "-q", "-r", "tests", cwd=self.repo)
         self.commit("sin tests")
         self.escribir("a.py", "x = 1\n")
         self.commit("codigo")
+        self.assertEqual(self.unir(persona=False), 1)       # sin pregunta técnica a la persona
+        self.assertEqual(self.preguntas, [])
+        self.assertIn("escribí las pruebas", self.salida)
+
+    # ---- varios proyectos en un repo: cada uno con sus pruebas ----
+    def _monorepo(self, pruebas_proy):
+        sh("git", "rm", "-q", "-r", "tests", cwd=self.repo)
+        self.escribir("proy/.claude/pruebas.sh", pruebas_proy)
+        self.escribir("proy/app.py", "a = 1\n")
+        self.escribir("otro/x.py", "a = 1\n")
+        self.commit("monorepo")
+        sh("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo)
+
+    def test_monorepo_la_prueba_rota_de_un_proyecto_frena(self):
+        self._monorepo("echo ROTA; exit 1\n")
+        self.escribir("proy/app.py", "a = 2\n")
+        self.commit("cambio en proy")
+        self.assertEqual(self.unir(persona=True), 1)
+        self.assertIn("fallaron", self.salida)
+        self.assertNotIn("Unir", self.main_remoto())
+
+    def test_monorepo_no_corre_las_pruebas_de_un_proyecto_que_no_se_toco(self):
+        self._monorepo("exit 1\n")
+        self.escribir("otro/x.py", "a = 2\n")
+        self.commit("cambio en otro")
+        self.assertEqual(self.unir(persona=False), 1)       # nadie prueba «otro»: no corre las de proy; la sesión escribe pruebas
+        self.assertIn("escribí las pruebas", self.salida)
+        self.assertIn("otro", self.salida)
+
+    def test_lo_que_queda_sin_pruebas_se_dice_en_voz_alta_y_queda_escrito(self):
+        self._monorepo("exit 0\n")
+        self.escribir("proy/app.py", "a = 2\n")
+        self.escribir("otro/x.py", "a = 2\n")
+        self.commit("cambio en los dos")
+        self.assertEqual(self.unir(), 0, self.salida)
+        self.assertIn("SIN PRUEBAS", self.salida)
+        self.assertIn("SIN PRUEBAS en: otro", self.main_remoto())
+
+    def test_pruebas_declaradas_en_la_raiz_para_una_carpeta(self):
+        sh("git", "rm", "-q", "-r", "tests", cwd=self.repo)
+        self.escribir(".claude/pruebas.d/proy.sh", "echo DESDE-LA-RAIZ; exit 1\n")
+        self.escribir("proy/app.py", "a = 1\n")
+        self.commit("monorepo")
+        sh("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo)
+        self.escribir("proy/app.py", "a = 2\n")
+        self.commit("cambio")
+        self.assertEqual(self.unir(persona=True), 1)
+        self.assertIn("DESDE-LA-RAIZ", self.salida)
+
+    def test_cambiar_las_pruebas_declaradas_en_la_raiz_pide_a_la_persona(self):
+        self.escribir(".claude/pruebas.d/proy.sh", "exit 0\n")
+        self.commit("pruebas que siempre pasan")
         self.assertEqual(self.unir(persona=False), 3)
-        self.assertIn("no tiene pruebas", self.preguntas[0])
 
     def test_sin_pruebas_pero_solo_documentos_une_solo(self):
         sh("git", "rm", "-q", "-r", "tests", cwd=self.repo)
