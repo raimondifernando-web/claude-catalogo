@@ -37,6 +37,22 @@ Punto de partida de nivel y esfuerzo de Claude por tipo de tarea. Cada fila cita
 | Investigar en la web y juntar fuentes | sonnet | low | investigacion_web |
 | Arquitectura, seguridad, dinero o algo irreversible (planear en Claude; la revisión puede ir a otra IA) | opus | high | revision |
 
+## Ruteo por etapa del desarrollo
+
+Ruteo por ETAPA del desarrollo (2026-11-01): cada etapa arranca con su IA, modelo y esfuerzo por defecto; `radar.py ruteo <etapa>` lo resuelve con el cupo de hoy y devuelve la línea «Ruteo: …» para el pedido. `fila` = nivel y esfuerzo de Claude (sale de las tareas de arriba); `categoria` = qué IA conviene según el ranking. `delegable: true` = si otra IA tiene cupo y lo hace igual de bien, va ahí primero; con datos privados, de clientes o de la configuración propia (--sensible) se queda en Claude. Subir o bajar un escalón: las 3 preguntas de la nota de arriba. Lo escribe una persona a mano.
+
+| Etapa | Claude por defecto | ¿Otra IA primero? | Por qué |
+|---|---|---|---|
+| Explorar o buscar (código, archivos, inventario) | haiku/low | no | solo lee y cuenta; Haiku tiene las herramientas a mano y es el más barato |
+| Investigar en la web | sonnet/low | sí, si tiene cupo (investigacion_web) | juntar y contrastar fuentes; una búsqueda con citas sale más barata afuera |
+| Planear o diseñar (arquitectura, alcance, qué NO se hace) | opus/high | no | hay que juzgar y el error sale caro; un plan chico de 1-2 archivos baja a sonnet/medium |
+| Implementar (código acotado, arreglos, scripts) | sonnet/low | sí, si tiene cupo (desarrollo) | tarea acotada con criterio claro; Codex o Gemini con cupo primero, Claude si toca datos o configuración propia |
+| Probar (correr pruebas y leer el resultado) | haiku/low | no | correr y leer es mecánico; ESCRIBIR pruebas nuevas es la etapa implementar |
+| Revisar (segunda opinión de un cambio) | sonnet/medium | sí, si tiene cupo (revision) | la revisión la hace alguien distinto del autor; otra IA con cupo, solo lectura |
+| Seguridad, plata o algo irreversible | opus/high | no | toca claves, configuración o plata: se queda en Claude con el nivel más alto que no sea a pedido |
+| Documentar (guías, fichas, avisos, changelog) | sonnet/low | no | escribir en castellano sobre lo ya decidido; si es texto para un tercero, después pasa por humanizalo |
+| Cierre (controles, conteos, traspaso) | haiku/low | no | los controles y conteos son mecánicos; el texto del traspaso lo escribe la sesión que trabajó, sin abrir otra |
+
 ## Desarrollo (programar)
 
 Orden respaldado por 3 fuentes independientes.

@@ -29,6 +29,8 @@ Comandos (los corre Claude desde la skill `radar`; el usuario no toca la termina
     consejos [--pedido RUTA] [--todo]    estado de los resúmenes de consejos de uso (radar/consejos/<modelo>.md, ≤10 líneas con la
                                          fuente arriba). --pedido baja las guías oficiales y deja el texto para que la IA más
                                          barata escriba los que faltan (con --todo, todos). No usa IA por sí mismo
+    ruteo [<etapa o tarea>] [--sensible] sin nada: tabla de IA/modelo/esfuerzo por etapa del desarrollo; con una etapa, la decide
+                                         con el cupo de hoy y da la línea «Ruteo: …» que va en el pedido a una hija o subagente
     recordar                             (lo llama el hook PreToolUse de Agent / start_session; lee el JSON del hook por stdin)
                                          agrega una línea de contexto si al delegar falta el modelo o sobra nivel/esfuerzo.
                                          NUNCA bloquea ni decide permisos: solo recuerda
@@ -881,7 +883,7 @@ ESFUERZOS = {"low": 1, "medium": 2, "high": 3, "xhigh": 4, "max": 5}
 ID_MODELO = re.compile(r"^[a-z0-9][a-z0-9._-]{1,63}$")
 EDAD_MAX_CUPO = {"claude": 1800, "codex": 24 * 3600, "antigravity": 1800}   # segundos
 CACHE_CUPO = {"claude": "cupo.json", "codex": "cupo-codex.json", "antigravity": "cupo-agy.json"}
-MAX_AVISOS_POR_SESION = {"generico": 1, "sobra": 3}
+MAX_AVISOS_POR_SESION = {"generico": 1, "sobra": 3, "freno": 1, "sin_ruteo": 2}
 
 
 def _tupla_version(texto):
@@ -1270,7 +1272,12 @@ def recordatorio_ruteo(radar, entrada, cupos=None):
                 _limpio(fila.get("corto") or fila.get("id")), fila["nivel"], fila["esfuerzo"]))
         else:
             partes.append("sin `model` explícito (hereda el de la sesión o el del agente); ruteo de hoy: %s" % ruteo_en_una_linea(radar))
-    if not partes or _ya_se_dijo(entrada.get("session_id"), tipo):
+    if partes and _ya_se_dijo(entrada.get("session_id"), tipo):
+        partes = []
+    pedido = str(ti.get("prompt") or "") + "\n" + str(ti.get("background") or "")
+    if pedido.strip() and not RE_LINEA_RUTEO.search(pedido) and not _ya_se_dijo(entrada.get("session_id"), "sin_ruteo"):
+        partes.append("el pedido no trae la línea «Ruteo: <IA>/<modelo>/<esfuerzo> porque <motivo>»: sacala con `radar.py ruteo <etapa>`")
+    if not partes:
         return ""
     msg = "Ruteo del radar: " + "; ".join(partes) + "."
     cupos = cupos or cupos_rapidos()
@@ -1282,7 +1289,8 @@ def recordatorio_ruteo(radar, entrada, cupos=None):
 
 
 def cmd_recordar(_a):
-    """Hook PreToolUse de Agent / start_session. Nunca bloquea: no devuelve permissionDecision ni sale con 2."""
+    """Hook PreToolUse de Agent / start_session. Solo frena UNA vez por sesión una start_session sin la línea «Ruteo:»
+    (freno_ruteo; se apaga con RUTEO_FRENO_OFF=1 o <config>/metodo/ruteo-freno.apagado); el resto, solo avisa. Nunca sale con 2."""
     try:
         if sys.stdin is None or sys.stdin.isatty():
             return 0
@@ -1294,12 +1302,149 @@ def cmd_recordar(_a):
         if not isinstance(entrada, dict) or not isinstance(entrada.get("tool_input"), dict) or not entrada["tool_input"]:
             return 0
         radar, _ = cargar()
+        motivo = freno_ruteo(radar, entrada)
+        if motivo:
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                                     "permissionDecisionReason": motivo}}, ensure_ascii=False))
+            return 0
         msg = recordatorio_ruteo(radar, entrada)
         if msg:
             print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": msg}}))
     except BaseException:
         pass
     return 0
+
+
+# --------------------------------------------------------------------------- #
+# Ruteo por etapa del desarrollo (`radar.py ruteo`) y freno al delegar sin la línea «Ruteo:»
+# --------------------------------------------------------------------------- #
+# Herramientas a las que `delegar.py` puede mandar trabajo desde una sesión (una app web no se lanza desde acá).
+HERRAMIENTAS_DELEGABLES = ("Codex", "Antigravity")
+RE_LINEA_RUTEO = re.compile(r"\bruteo\s*:", re.I)
+
+
+def etapas_validas(radar):
+    """Etapas de `ruteo_claude.etapas` cuya `fila` existe entre las tareas del ruteo."""
+    filas = {t["id"]: t for t in ruteo_filas(radar)}
+    out = []
+    for e in ((radar.get("ruteo_claude") or {}).get("etapas") or []):
+        if isinstance(e, dict) and e.get("id") and e.get("fila") in filas:
+            out.append(dict(e, _fila=filas[e["fila"]]))
+    return out
+
+
+def etapa_para(radar, texto):
+    """La etapa por id exacto, o la primera cuyas palabras calzan con el texto (orden del archivo)."""
+    etapas = etapas_validas(radar)
+    clave = _norm(texto).strip()
+    for e in etapas:
+        if clave in (_norm(e["id"]), _norm(e.get("nombre", ""))):
+            return e
+    for e in etapas:
+        if fila_para({"ruteo_claude": {"tareas": [dict(e["_fila"], palabras=e.get("palabras") or [])]}}, texto):
+            return e
+    return None
+
+
+def resolver_etapa(radar, etapa, sensible=False, prueba=None, rapido=False):
+    """{ia, modelo, esfuerzo, motivo, saltados, linea}. Claude con la fila de la etapa salvo que sea delegable, no sensible
+    y Codex/Antigravity tengan cupo. `rapido` (lo usa el hook): no lanza programas, solo mira las cachés locales de cupo."""
+    fila = etapa["_fila"]
+    claude = {"ia": "Claude", "modelo": fila["nivel"], "modelo_api": modelo_de_alias(radar, fila["nivel"]) or "",
+              "esfuerzo": fila["esfuerzo"], "saltados": []}
+    elegido = None
+    if etapa.get("delegable") and not sensible and not rapido:
+        c = buscar_categoria(radar, etapa.get("categoria") or "")
+        prueba = cargar_prueba() if prueba is None else prueba
+        cache = {}
+        for plan in (c or {}).get("planes") or []:
+            herr = str(plan.get("herramienta", ""))
+            if not herr.startswith(HERRAMIENTAS_DELEGABLES):
+                continue
+            m = motivo_salto(plan, radar, False, prueba, cache)
+            if m is None:
+                elegido = {"ia": herr, "modelo": plan.get("modelo") or plan.get("modelo_api") or "el que trae la herramienta",
+                           "modelo_api": plan.get("modelo_api") or "", "esfuerzo": fila["esfuerzo"], "saltados": claude["saltados"],
+                           "categoria": c["id"]}
+                break
+            claude["saltados"].append("%s: %s" % (herr, m))
+    r = elegido or claude
+    motivo = _limpio(etapa.get("motivo") or "", 160)
+    if elegido:
+        motivo += "; %s tiene cupo (`delegar.py %s <repo> <pedido> --archivo`)" % (r["ia"], r["categoria"])
+    elif sensible and etapa.get("delegable"):
+        motivo += "; toca datos privados o configuración propia: se queda en Claude"
+    r["motivo"] = motivo
+    r["etapa"] = etapa["id"]
+    r["linea"] = "Ruteo: %s/%s/%s porque %s" % (r["ia"], r["modelo"], r["esfuerzo"], motivo)
+    return r
+
+
+def tabla_etapas(radar):
+    filas = ["Etapa | Claude por defecto | ¿Va primero a otra IA? | Por qué"]
+    for e in etapas_validas(radar):
+        f = e["_fila"]
+        filas.append("%s | %s/%s | %s | %s" % (e["id"], f["nivel"], f["esfuerzo"],
+                     "sí, si tiene cupo y no hay datos privados" if e.get("delegable") else "no", _limpio(e.get("motivo"), 120)))
+    filas.append("Subir o bajar: ¿hay que juzgar o decidir? ¿equivocarse sale caro? ¿hay mucho contexto? Un escalón por cada «sí» "
+                 "de más que la fila; ante la duda entre dos, el más barato. Fable y max, solo a pedido.")
+    return filas
+
+
+def cmd_ruteo(a):
+    """Tabla por etapa o la decisión para una etapa, con la línea «Ruteo: …» para el pedido.
+Disparador: encadenado (lo pide el freno de `radar.py recordar` al abrir una sesión sin esa línea, y la regla 18) y manual (`radar.py ruteo <etapa>`)."""
+    radar, _ = cargar()
+    texto = " ".join(a.tarea or []).strip()
+    if not texto:
+        print("\n".join(tabla_etapas(radar)))
+        print("Uso: radar.py ruteo <etapa o descripción de la tarea> [--sensible]  → IA, modelo, esfuerzo y la línea «Ruteo:» para el pedido.")
+        return 0
+    e = etapa_para(radar, texto)
+    if not e:
+        print("No reconozco la etapa de «%s». Las que hay: %s" % (_limpio(texto), ", ".join(x["id"] for x in etapas_validas(radar))))
+        return 2
+    r = resolver_etapa(radar, e, sensible=a.sensible)
+    if a.json:
+        print(json.dumps(r, ensure_ascii=False))
+        return 0
+    print("Etapa: %s · IA: %s · modelo: %s%s · esfuerzo: %s" % (e["id"], r["ia"], r["modelo"],
+          " (%s)" % r["modelo_api"] if r.get("modelo_api") and r["modelo_api"] != r["modelo"] else "", r["esfuerzo"]))
+    if r["saltados"]:
+        print("Saltó: " + "; ".join(r["saltados"]) + ".")
+    print("Para el pedido (copiala tal cual): " + r["linea"])
+    return 0
+
+
+def _freno_apagado():
+    if os.environ.get("RUTEO_FRENO_OFF", "").strip() == "1":
+        return True
+    try:
+        return (carpeta_metodo() / "ruteo-freno.apagado").exists()
+    except Exception:
+        return False
+
+
+def freno_ruteo(radar, entrada):
+    """Motivo para frenar UNA vez por sesión una start_session cuyo pedido no trae la línea «Ruteo: …», o ''.
+Disparador: automático (hook PreToolUse del plugin metodo, hooks/hooks.json, matcher Agent|Task|mcp__ccd_session__start_session → `radar.py recordar`)."""
+    if not str(entrada.get("tool_name", "")).endswith("start_session") or _freno_apagado():
+        return ""
+    ti = entrada.get("tool_input") if isinstance(entrada.get("tool_input"), dict) else {}
+    if ti.get("proposal_id") and not ti.get("prompt"):
+        return ""   # arranca una propuesta ya armada: el pedido se revisó cuando se propuso
+    pedido = str(ti.get("prompt") or "") + "\n" + str(ti.get("background") or "")
+    if not pedido.strip() or RE_LINEA_RUTEO.search(pedido):
+        return ""
+    if _ya_se_dijo(entrada.get("session_id"), "freno"):
+        return ""
+    texto = " ".join(str(ti.get(k) or "") for k in ("title", "name")) + " " + str(ti.get("prompt") or "")[:300]
+    e = etapa_para(radar, texto)
+    sug = ("Para «%s» el radar dice por defecto: %s." % (e["id"], resolver_etapa(radar, e, rapido=True)["linea"])
+           if e else "Etapas: %s." % ", ".join(x["id"] for x in etapas_validas(radar)))
+    return ("Antes de abrir la sesión, decidí IA, modelo y esfuerzo con el radar: corré `radar.py ruteo <etapa>` "
+            "(mira el cupo de hoy y si conviene otra IA) y agregá al pedido su línea «Ruteo: <IA>/<modelo>/<esfuerzo> porque <motivo>»; "
+            "poné `model` y `effort` iguales. %s Este freno sale una sola vez por sesión." % sug)
 
 
 # --------------------------------------------------------------------------- #
@@ -1571,6 +1716,14 @@ def a_markdown(radar):
         for t in ruteo_filas(radar):
             out.append("| %s | %s | %s | %s |" % (_esc_tabla(t.get("tarea") or t.get("corto")), t["nivel"], t["esfuerzo"],
                                                    _esc_tabla(t.get("otra_ia") or "-")))
+        out.append("")
+    if etapas_validas(radar):
+        out += ["## Ruteo por etapa del desarrollo", "", (radar.get("ruteo_claude") or {}).get("etapas_nota", ""), "",
+                "| Etapa | Claude por defecto | ¿Otra IA primero? | Por qué |", "|---|---|---|---|"]
+        for e in etapas_validas(radar):
+            out.append("| %s | %s/%s | %s | %s |" % (_esc_tabla(e.get("nombre") or e["id"]), e["_fila"]["nivel"], e["_fila"]["esfuerzo"],
+                                                    "sí, si tiene cupo (%s)" % _esc_tabla(e.get("categoria")) if e.get("delegable") else "no",
+                                                    _esc_tabla(e.get("motivo"))))
         out.append("")
     for c in radar.get("categorias") or []:
         out += ["## %s" % c.get("nombre", c.get("id")), "", texto_respaldo(c), "", "| Plan | Herramienta | Por qué | Datos privados | Condiciones |",
@@ -2171,6 +2324,8 @@ def main(argv=None):
     sub.add_parser("hoy").set_defaults(f=cmd_hoy)
     s = sub.add_parser("consejos"); s.add_argument("--pedido"); s.add_argument("--todo", action="store_true"); s.set_defaults(f=cmd_consejos)
     sub.add_parser("recordar").set_defaults(f=cmd_recordar)
+    s = sub.add_parser("ruteo"); s.add_argument("tarea", nargs="*"); s.add_argument("--sensible", action="store_true")
+    s.add_argument("--json", action="store_true"); s.set_defaults(f=cmd_ruteo)
     s = sub.add_parser("funciones"); s.add_argument("palabras", nargs="*"); s.add_argument("--pendientes", action="store_true"); s.set_defaults(f=cmd_funciones)
     a = ap.parse_args(argv)
     if not getattr(a, "f", None):
