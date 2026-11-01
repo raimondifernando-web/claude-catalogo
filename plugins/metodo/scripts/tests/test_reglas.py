@@ -26,6 +26,16 @@ def correr(config_dir):
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", timeout=30)
 
 
+def sin_guia(lineas):
+    """Quita el bloque de la guía de modelos (con su línea en blanco de antes): estas pruebas miran solo las reglas."""
+    if reglas.GINI in lineas and reglas.GFIN in lineas:
+        a, b = lineas.index(reglas.GINI), lineas.index(reglas.GFIN)
+        if a > 0 and lineas[a - 1] == "":
+            a -= 1
+        return lineas[:a] + lineas[b + 1:]
+    return lineas
+
+
 @unittest.skipIf(ES_WINDOWS, "reglas.py es para Mac")
 class ReglasTest(unittest.TestCase):
     def setUp(self):
@@ -63,7 +73,7 @@ class ReglasTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("Reglas del método actualizadas a 25 ✓", r.stdout)
 
-        texto = self.ficha.read_text(encoding="utf-8").splitlines()
+        texto = sin_guia(self.ficha.read_text(encoding="utf-8").splitlines())
         self.assertEqual(texto[:3], propio_arriba)
         self.assertEqual(texto[-3:], propio_abajo)
         a, b = texto.index(reglas.INI), texto.index(reglas.FIN)
@@ -84,7 +94,7 @@ class ReglasTest(unittest.TestCase):
         self.ficha.write_text("\n".join(["Lo mío.", ""] + largo + ["", "Lo mío de abajo."]) + "\n", encoding="utf-8")
         r = correr(self.cfg)
         self.assertIn("Reglas del método actualizadas a 25 ✓", r.stdout)
-        texto = self.ficha.read_text(encoding="utf-8").splitlines()
+        texto = sin_guia(self.ficha.read_text(encoding="utf-8").splitlines())
         self.assertEqual(texto[texto.index(reglas.INI):texto.index(reglas.FIN) + 1], reglas.bloque_nuevo(PLANTILLA))
         self.assertEqual(texto[0], "Lo mío.")
         self.assertEqual(texto[-1], "Lo mío de abajo.")

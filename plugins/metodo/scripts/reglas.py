@@ -48,8 +48,12 @@ def escribir_atomico(ficha: Path, lineas: list, fin_de_linea: str = "\n"):
         raise
 
 
+_RESPALDADAS = set()   # fichas ya respaldadas en esta corrida: una sola copia aunque se cambie dos veces (reglas + guía)
+
+
 def respaldo(ficha: Path, guardar: int = 5):
-    if ficha.exists():
+    if ficha.exists() and str(ficha) not in _RESPALDADAS:
+        _RESPALDADAS.add(str(ficha))
         copia = ficha.with_name(ficha.name + ".antes-reglas-" + time.strftime("%Y%m%d-%H%M%S"))
         fd = os.open(copia, os.O_WRONLY | os.O_CREAT | os.O_EXCL, ficha.stat().st_mode & 0o777)   # con los permisos de la ficha desde el inicio
         with os.fdopen(fd, "wb") as f: f.write(ficha.read_bytes())
