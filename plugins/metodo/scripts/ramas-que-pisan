@@ -1,0 +1,122 @@
+#!/usr/bin/env -S python3 -I
+"""Qué ramas abiertas tocan los MISMOS archivos que vas a tocar, y cuántas hay abiertas a la vez.
+
+Disparador: encadenado — lo corre unir-a-main (aviso antes de unir) y la regla «hijas sin pisarse» antes de abrir una
+sesión hija de desarrollo (con la lista de archivos que va a tocar). También a mano:
+    ramas-que-pisan [--repo CARPETA] [--max N] [--dias N] [archivo ...]
+
+Sin archivos usa los de la rama actual contra origin/main. «Abierta» = rama con commits que main no tiene y con
+actividad en los últimos --dias (7). Como los equipos grandes, NO hay un tope fijo de ramas: lo que importa es que sean
+CORTAS (se unen en horas) y que no choquen. Frena (sale con 1) si hay otra rama sobre un archivo GRANDE (≥ 60 KB) que
+también vas a tocar. Avisa, sin frenar: choque en un archivo chico, ramas LARGAS (más de --larga días sin unir:
+conviene unirlas o partirlas) y, solo si pasás --max N, el tope que quieras. Antes de unir, unir-a-main prueba la
+combinación con el main nuevo (cola), así que ramas cortas + pruebas es lo que escala.
+Termina siempre con una línea: «Todo al día ✓» o «Falta: … ✗».
+"""
+import argparse
+import subprocess
+import sys
+import time
+
+GRANDE = 60_000   # bytes: a partir de acá un archivo lo reescriben muchas sesiones y se pisan
+
+
+def git(repo, *args):
+    r = subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True, errors="replace")
+    return r.stdout if r.returncode == 0 else ""
+
+
+def ramas(repo, dias):
+    """{nombre: (archivos, edad_en_dias, ref)} de las ramas con commits que origin/main no tiene."""
+    ahora = time.time()
+    salida = git(repo, "for-each-ref", "--format=%(refname)\t%(committerdate:unix)", "refs/heads", "refs/remotes/origin")
+    vistas = {}
+    for linea in salida.splitlines():
+        ref, _, fecha = linea.partition("\t")
+        nombre = ref.replace("refs/heads/", "", 1).replace("refs/remotes/origin/", "", 1)
+        if nombre in ("main", "master", "m4", "estable", "HEAD") or not fecha.isdigit():
+            continue
+        edad = (ahora - int(fecha)) / 86400
+        if nombre in vistas and vistas[nombre][1] <= edad:
+            continue
+        vistas[nombre] = (ref, edad)
+    out = {}
+    for nombre, (ref, edad) in vistas.items():
+        if edad > dias:
+            continue
+        archivos = {p for p in git(repo, "diff", "--name-only", "-z", f"origin/main...{ref}").split("\0") if p}
+        # ya unida por squash: lo que la rama cambió ya está igual en main
+        if archivos and git(repo, "diff", "--name-only", "-z", "origin/main", ref, "--", *sorted(archivos)).strip("\0"):
+            out[nombre] = (archivos, ref)
+    return out
+
+
+def antiguedad_sin_unir(repo, ref):
+    """Días desde el commit MÁS VIEJO de la rama que main no tiene."""
+    f = git(repo, "log", "--reverse", "--format=%ct", f"origin/main..{ref}").splitlines()
+    return (time.time() - int(f[0])) / 86400 if f and f[0].isdigit() else 0
+
+
+def tamano(repo, ruta):
+    s = git(repo, "cat-file", "-s", f"origin/main:{ruta}").strip()
+    return int(s) if s.isdigit() else 0
+
+
+def principal(a):
+    repo = a.repo
+    if not git(repo, "rev-parse", "--show-toplevel").strip():
+        print("Falta: esto no es un repo de git ✗")
+        return 2
+    git(repo, "fetch", "-q", "origin")
+    actual = git(repo, "branch", "--show-current").strip()
+    abiertas = ramas(repo, a.dias)
+    mias = set(a.archivos)
+    if not mias and actual and actual not in ("main", "master"):
+        mias = {p for p in git(repo, "diff", "--name-only", "-z", "origin/main...HEAD").split("\0") if p}
+    otras = {n: v for n, v in abiertas.items() if n != actual}
+    print(f"Ramas abiertas (con commits sin unir y movimiento en {a.dias} días): {len(abiertas)}"
+          + (f" — tope {a.max}" if a.max else ""))
+    faltas = []
+    if a.max and len(otras) > a.max:
+        faltas.append(f"hay {len(otras)} ramas ajenas abiertas (tope {a.max}): uní o descartá alguna antes de abrir otra")
+    choques = {}
+    for nombre, (archivos, _) in sorted(otras.items()):
+        for p in sorted(archivos & mias):
+            choques.setdefault(p, []).append(nombre)
+    for p, quienes in sorted(choques.items()):
+        grande = tamano(repo, p) >= GRANDE
+        marca = "ARCHIVO GRANDE" if grande else "aviso"
+        print(f"  · {p} [{marca}] — también lo toca: {', '.join(quienes)}")
+        if grande:
+            faltas.append(f"{p} es grande y ya lo toca {quienes[0]}" + (f" (+{len(quienes) - 1})" if len(quienes) > 1 else ""))
+    largas = sorted((antiguedad_sin_unir(repo, ref), n) for n, (_, ref) in abiertas.items())
+    largas = [(d, n) for d, n in largas if d > a.larga]
+    if largas:
+        print(f"Ramas LARGAS (más de {a.larga:g} días sin unir; unilas o partilas en cambios chicos): "
+              + ", ".join(f"{n} ({d:.0f} d)" for d, n in reversed(largas[-6:])) + (f" y {len(largas) - 6} más" if len(largas) > 6 else ""))
+    calientes = {}
+    for archivos, _ in abiertas.values():
+        for p in archivos:
+            calientes[p] = calientes.get(p, 0) + 1
+    top = sorted(((n, p) for p, n in calientes.items() if n >= 2), reverse=True)[:5]
+    if top:
+        print("Archivos más pisados entre ramas abiertas: " + "; ".join(f"{p} ({n} ramas)" for n, p in top))
+    if faltas:
+        print("Falta: " + " · ".join(faltas) + " ✗")
+        return 1
+    print("Todo al día ✓" if not choques else "Todo al día ✓ (con avisos: archivos chicos compartidos)")
+    return 0
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Qué ramas abiertas pisan los archivos que vas a tocar.")
+    ap.add_argument("archivos", nargs="*", help="archivos que se van a tocar (por defecto, los de la rama actual)")
+    ap.add_argument("--repo", default=".")
+    ap.add_argument("--max", type=int, default=0, help="tope opcional de ramas ajenas abiertas (0 = sin tope, lo normal)")
+    ap.add_argument("--larga", type=float, default=2, help="días sin unir a partir de los cuales una rama es «larga»")
+    ap.add_argument("--dias", type=int, default=7)
+    return principal(ap.parse_args())
+
+
+if __name__ == "__main__":
+    sys.exit(main())

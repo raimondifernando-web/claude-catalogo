@@ -1,0 +1,189 @@
+#!/usr/bin/env -S python3 -I
+"""Copias de trabajo (git worktree) de un proyecto: dónde viven, en qué estado están y limpieza de las ya unidas.
+
+Disparador: encadenado — lo corre unir-a-main después de unir (limpia las copias YA unidas y sin cambios de
+`.worktrees/`), y la regla «copias dentro del proyecto» al abrir una sesión hija (`nueva`). También a mano:
+    copias-de-trabajo nueva <tema> [--rama area/tema]     crea <carpeta>/.worktrees/<tema> desde origin/main
+    copias-de-trabajo listar [--md]                       todas las copias del repo con su estado (solo lee)
+    copias-de-trabajo limpiar [--aplicar]                 saca las de `.worktrees/` unidas y limpias (sin --aplicar: muestra)
+
+Convención: las copias de un proyecto viven DENTRO de la carpeta del proyecto, en `<proyecto>/.worktrees/<tema>`
+(ignorada por git), nunca sueltas en ~/Proyectos. Nunca se borra una copia con cambios sin guardar o con commits que
+main no tenga; la rama no se borra (solo la carpeta). Termina con «Todo al día ✓» o «Falta: … ✗».
+"""
+import argparse
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+DIR = ".worktrees"
+
+
+def git(cwd, *args, ok=(0,)):
+    r = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, errors="replace")
+    if r.returncode not in ok:
+        raise SystemExit(f"Falta: git {' '.join(args)} falló: {(r.stderr or r.stdout).strip()[:300]} ✗")
+    return r
+
+
+def raiz(repo):
+    return Path(git(repo, "rev-parse", "--show-toplevel").stdout.strip())
+
+
+CACHES = ("__pycache__/", ".pytest_cache/", ".DS_Store", ".mypy_cache/", ".ruff_cache/")
+
+
+def tuvo_trabajo(ruta, rama):
+    """True si la rama tiene en su historial local algo más que su creación (commits, merges): es decir, si no es una
+    copia recién creada y vacía, que también parece «unida» porque no tiene nada que main no tenga."""
+    if rama == "(suelta)":
+        return False
+    log = git(ruta, "reflog", "show", "--format=%gs", f"refs/heads/{rama}", ok=(0, 128)).stdout.splitlines()
+    # solo cuentan commits propios; un «merge origin/main: Fast-forward» o un pull de una copia vacía NO es trabajo
+    return any(l.startswith(("commit", "cherry-pick", "rebase", "revert")) for l in log)
+
+
+def archivos_ignorados(ruta):
+    """Archivos que git ignora y no son cachés conocidas (.env, bases locales, salidas): sacar la copia los perdería."""
+    out = git(ruta, "status", "--ignored", "--porcelain", "-z").stdout.split("\0")
+    ign = [l[3:] for l in out if l.startswith("!! ")]
+    return [p for p in ign if not any(p.endswith(c) or f"/{c}" in f"/{p}" for c in CACHES)]
+
+
+def en_uso(ruta):
+    """¿Hay algún proceso con archivos abiertos adentro de esa carpeta? (otra sesión parada ahí)."""
+    try:
+        r = subprocess.run(["lsof", "-t", "+D", str(ruta)], capture_output=True, text=True, timeout=10)
+        return bool(r.stdout.strip())
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def copias(repo):
+    """Lista de dicts con el estado de cada copia del repo (menos la principal)."""
+    bloques = git(repo, "worktree", "list", "--porcelain").stdout.strip().split("\n\n")
+    out = []
+    for i, b in enumerate(bloques):
+        campos = dict(l.split(" ", 1) if " " in l else (l, "") for l in b.splitlines())
+        ruta = campos.get("worktree", "")
+        if i == 0 or not ruta:
+            continue
+        rama = campos.get("branch", "").replace("refs/heads/", "") or "(suelta)"
+        existe = Path(ruta).is_dir()
+        sucias = len(git(ruta, "status", "--porcelain", "--untracked-files=no").stdout.splitlines()) if existe else 0
+        sin_unir, unida, edad, ignorados = 0, False, None, []
+        if existe:
+            cuenta = git(ruta, "rev-list", "--count", "origin/main..HEAD", ok=(0, 128))
+            if cuenta.returncode or not cuenta.stdout.strip().isdigit():
+                sin_unir = -1          # no se pudo comparar con main: nunca se da por unida
+            else:
+                sin_unir = int(cuenta.stdout.strip())
+            if sin_unir == 0:
+                unida = tuvo_trabajo(ruta, rama)      # una copia recién creada y vacía NO es «unida»
+            elif sin_unir > 0:   # ¿unida por squash? lo que cambió ya está igual en main
+                archivos = [p for p in git(ruta, "diff", "--name-only", "-z", "origin/main...HEAD").stdout.split("\0") if p]
+                unida = bool(archivos) and not git(ruta, "diff", "--name-only", "-z", "origin/main", "HEAD", "--", *archivos).stdout.strip("\0")
+            f = git(ruta, "log", "-1", "--format=%ct").stdout.strip()
+            edad = (time.time() - int(f)) / 86400 if f.isdigit() else None
+            ignorados = archivos_ignorados(ruta)
+        out.append({"ruta": ruta, "rama": rama, "existe": existe, "sucias": sucias, "sin_unir": sin_unir,
+                    "unida": unida, "edad": edad, "ignorados": ignorados, "dentro": f"/{DIR}/" in ruta + "/"})
+    return out
+
+
+def estado(c):
+    if not c["existe"]:
+        return "carpeta borrada (git la recuerda)"
+    if c["sucias"]:
+        return f"CON TRABAJO SIN GUARDAR ({c['sucias']} archivos)"
+    if c["sin_unir"] < 0:
+        return "no se pudo comparar con main"
+    if c["unida"] and c.get("ignorados"):
+        return f"unida a main, pero con archivos ignorados (.env, bases…): {len(c['ignorados'])}"
+    if c["unida"]:
+        return "unida a main"
+    return f"CON TRABAJO SIN UNIR ({c['sin_unir']} commits)"
+
+
+def listar(a):
+    repo = raiz(a.repo)
+    git(repo, "fetch", "-q", "origin", "main", ok=(0, 1, 128))
+    cs = copias(repo)
+    if a.md:
+        print("| Carpeta | Rama | Estado | Último cambio | ¿Dentro del proyecto? |\n|---|---|---|---|---|")
+        for c in sorted(cs, key=lambda c: (c["unida"], c["ruta"])):
+            edad = "—" if c["edad"] is None else f"hace {c['edad']:.0f} d"
+            print(f"| `{c['ruta']}` | `{c['rama']}` | {estado(c)} | {edad} | {'sí' if c['dentro'] else 'no (suelta)'} |")
+    else:
+        for c in cs:
+            print(f"{estado(c):38} {c['rama']:40} {c['ruta']}")
+    unidas = sum(1 for c in cs if c["unida"] and not c["sucias"])
+    print(f"\n{len(cs)} copias: {unidas} unidas y limpias, {len(cs) - unidas} con trabajo sin unir, sin guardar o sin carpeta.")
+    return 0
+
+
+def limpiar(a):
+    repo = raiz(a.repo)
+    git(repo, "fetch", "-q", "origin", "main", ok=(0, 1, 128))
+    actual = Path(os.getcwd()).resolve()
+    candidatas = [c for c in copias(repo) if c["dentro"] and c["existe"] and c["unida"] and not c["sucias"]
+                  and not c["ignorados"] and (c["edad"] is None or c["edad"] >= 0.25)]
+    hechas = 0
+    for c in candidatas:
+        ruta = Path(c["ruta"]).resolve()
+        if actual == ruta or ruta in actual.parents or repo.resolve() == ruta or en_uso(ruta):
+            print(f"  · {c['ruta']}: en uso (es esta copia o hay una sesión adentro); se limpia después de cerrar")
+            continue
+        if not a.aplicar:
+            print(f"  · se sacaría {c['ruta']} (rama {c['rama']}, {estado(c)})")
+            continue
+        r = subprocess.run(["git", "-C", str(repo), "worktree", "remove", c["ruta"]], capture_output=True, text=True)
+        if r.returncode:
+            print(f"  · no se pudo sacar {c['ruta']}: {r.stderr.strip()[:200]}")
+        else:
+            hechas += 1
+            print(f"  · sacada {c['ruta']} (la rama {c['rama']} queda)")
+    git(repo, "worktree", "prune", ok=(0, 1))
+    print(f"Todo al día ✓ ({hechas} sacadas)" if a.aplicar else f"Todo al día ✓ ({len(candidatas)} se podrían sacar; usá --aplicar)")
+    return 0
+
+
+def nueva(a):
+    proyecto = Path(a.repo).resolve()
+    repo = raiz(proyecto)
+    tema = a.tema.strip().replace(" ", "-")
+    if not tema or "/" in tema:
+        raise SystemExit("Falta: el tema es una palabra corta, sin barras ✗")
+    destino = proyecto / DIR / tema
+    if destino.exists():
+        raise SystemExit(f"Falta: {destino} ya existe ✗")
+    rama = a.rama or f"{proyecto.name.lower()}/{tema}"
+    git(repo, "fetch", "-q", "origin", "main")
+    # ignorada por git sin tocar el .gitignore del proyecto
+    info = Path(git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip()) / "info"
+    info.mkdir(exist_ok=True)
+    excl = info / "exclude"
+    if f"{DIR}/" not in (excl.read_text() if excl.exists() else ""):
+        with open(excl, "a") as f:
+            f.write(f"\n{DIR}/\n")
+    git(repo, "worktree", "add", "-q", "-b", rama, str(destino), "origin/main")
+    print(f"Todo al día ✓ copia nueva en {destino} (rama {rama}, desde origin/main)")
+    return 0
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--repo", default=".")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("listar"); p.add_argument("--md", action="store_true"); p.set_defaults(f=listar)
+    p = sub.add_parser("limpiar"); p.add_argument("--aplicar", action="store_true"); p.set_defaults(f=limpiar)
+    # limpiar saca SOLO copias de .worktrees/ unidas, con historia propia, sin cambios ni archivos ignorados, de más de 6 h y sin nadie adentro
+    p = sub.add_parser("nueva"); p.add_argument("tema"); p.add_argument("--rama"); p.set_defaults(f=nueva)
+    a = ap.parse_args()
+    return a.f(a)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
