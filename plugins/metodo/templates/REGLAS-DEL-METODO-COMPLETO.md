@@ -42,7 +42,7 @@ las reglas 1-10 no cubren: dos sesiones editan el mismo archivo, una sesión hac
 
 11. **Una sesión, un tema.** Podés abrir varias sesiones en la misma carpeta y en la misma rama: cada cierre sube solo
     lo suyo (regla 13). Lo **más prolijo** es que cada una trabaje en **su propia copia de la carpeta** y en **su propia
-    rama** `<tema>/<AAAA-MM-DD>`, nunca en `main` (Claude la crea con `/metodo:otra-sesion`), pero no es condición.
+    rama** `<tema>/<AAAA-MM-DD>`, nunca en `main` (salvo en un repo propio de un solo tema, donde se puede trabajar en `main`; Claude la crea con `/metodo:otra-sesion`), pero no es condición.
     Dos cosas sí la exigen: que las sesiones necesiten **ramas distintas** (cambiar de rama en una carpeta reescribe
     los archivos para todas las sesiones de esa carpeta), o que vayan a editar **el mismo archivo a la vez** (eso no se
     puede separar: lo sube la primera que cierra y la segunda avisa).
@@ -79,7 +79,7 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     agentes a la vez) mirá cuánto te queda: el de Claude en `/usage` (o el panel de uso de la app) y el de cualquier otra
     IA a la que le delegues trabajo. Si usás Codex, el kit trae la medición:
     `bash "$(find ~/.claude/plugins/cache/claude-catalogo/metodo -name codex-cupo | sort -V | tail -1)"`.
-    Con **70% o más**, solo tareas chicas y avisás; con **90% o más**, no lanzás y avisás. **Una tarea grande a la vez**:
+    Con **70% o más**, solo tareas chicas y avisás; con **85% o más del cupo de Claude**, solo coordinás y delegás lo pesado; con **90% o más de cualquier otra IA**, no lanzás y avisás. **Una tarea grande a la vez**:
     varias en paralelo se comen el cupo antes de que alguna termine. Estimá la tarea antes de lanzarla, no después.
     **Tareas que se repiten solas.** Para vigilar algo cada tanto, `/loop` con 15 minutos o más (cada vuelta gasta cupo);
     vence a los 7 días. Para repetir una tarea hasta que salga bien, el «Ralph» de `oh-my-claudecode-fixed`, siempre con

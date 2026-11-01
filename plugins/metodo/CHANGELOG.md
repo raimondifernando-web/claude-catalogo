@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.61.4 — 2026-11-01
+**Dos reglas del método dejan de contradecirse con la práctica**: la 16 (gasto) tiene un solo número para Claude, y la 11 (una sesión, un tema) aclara que un repo propio de un solo tema puede trabajar en `main`.
+- **El problema:** en la misma regla convivían dos topes distintos para el gasto de Claude (85 % y 90 %), y nadie sabía cuál valía.
+- **Qué cambia:** con 70 % o más, solo tareas chicas; con **85 % o más del cupo de Claude**, solo coordinás y delegás lo pesado; con **90 % o más de cualquier otra IA** (Codex, Gemini…), no lanzás y avisás. Se pone al día solo en la ficha al abrir sesión.
+- **Regla 11:** el «nunca `main`» vale para repos que comparten varias personas o proyectos; en un repo propio de un solo tema se puede trabajar en `main`.
+- **Qué tenés que hacer:** nada.
+
 ## 0.61.3 — 2026-10-29
 **Los agentes que son de UNA empresa o proyecto ahora se identifican con su nombre entre corchetes**, y un control del catálogo impide que se cuele uno con datos de alguien en la lista de agentes generales. Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** había agentes que solo servían para una empresa (llevaban sus cuentas y sistemas adentro) pero no lo decían, y en la lista parecían generales; recién al usarlos se notaba, y faltaba la versión general.
