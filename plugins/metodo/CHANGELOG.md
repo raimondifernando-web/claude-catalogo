@@ -1,5 +1,14 @@
 # metodo — qué cambia para vos
 
+## 0.66.0 — 2026-11-01
+**Lo que detectan los vigías ahora se procesa solo**: un circuito diario lee lo que juntaron (versiones nuevas, guías y consejos de modelos, uso de modelos), cierra el ruido, le pide a la IA más barata con cupo que clasifique, otro modelo revisa antes de cerrar, mide cuánto sirvió cada vigía y se ajusta solo.
+- **El problema:** los vigías detectaban y apilaban; procesarlo dependía de que alguien se acordara, y los avisos se juntaban por semanas.
+- **Qué cambia:** al abrir sesión, una vez por día, se lanza en segundo plano `scripts/circuito.py`. Cierra solo lo que es ruido seguro (una versión que ya quedó vieja porque salió otra) y aprende el ruido que se repite. La IA barata (la que elige el radar, con `delegar.py`) propone qué descartar, aplicar o escalar; **solo se aplica el descarte**, que es reversible, y lo confirma un revisor distinto (Claude Sonnet) o se deshace. Lo que no es seguro queda escalado con dueño.
+- **Lo ves así:** si algo lleva más de unos días sin procesar, al abrir sesión aparece UNA línea «Vigías · N sin procesar…»; si te toca a vos, una sola cosa. Una vez por semana deja un informe corto en `<config de Claude>/metodo/circuito/informes/` que dice solo qué cambió.
+- **Topes:** 2 vueltas por hallazgo, 6 llamadas por día y US$ 2 estimados por semana (se cambia en `<config de Claude>/metodo/circuito/familias.json`). Si la IA no devuelve nada útil, se pausa 3 días. Nunca instala, borra ni toca tus sistemas.
+- **Qué tenés que hacer:** nada, salvo una vez: si aparece «pegá una vez en tu Terminal … delegar.py --aceptar», pegalo y escribí SI (es el permiso para mandar el texto de los avisos a otra IA). [manual-ok: un permiso para mandar datos a un tercero lo da la persona; no se automatiza]
+- **Nota de versión:** nació como 0.63.0; al rebasar sobre las uniones de #110 (0.62.0) y #111 (0.65.0) pasa a 0.66.0.
+
 ## 0.65.0 — 2026-11-01
 **Cada etapa del trabajo sabe qué IA, qué modelo y qué esfuerzo usar, y abrir una sesión sin decidirlo ya no pasa en silencio.**
 - **El problema:** se abrían sesiones y ayudantes con el modelo de siempre (por ejemplo, todas en Sonnet con esfuerzo alto) sin mirar si la tarea lo necesitaba ni si otra IA tenía cupo libre. Ahí se va la plata.
