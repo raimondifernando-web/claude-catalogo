@@ -77,7 +77,6 @@ jobs:
           python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_radar.py' -q
           python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_ruteo.py' -q
           python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_radar_modelos.py' -q
-          python3 -m unittest discover -s plugins/metodo/scripts/tests -p 'test_radar_modelos.py' -q
       - name: Abrir o actualizar el PR (solo si hubo un cambio relevante)
         if: steps.radar.outputs.hay_cambios == 'true'
         env:
@@ -87,8 +86,11 @@ jobs:
           set -euo pipefail
           # Rama fija: mientras el PR no se apruebe, cada corrida lo actualiza en vez de abrir uno nuevo.
           rama="radar/auto"
-          git config user.name "radar-bot"
-          git config user.email "radar-bot@users.noreply.github.com"
+          # Identidad real de GitHub (la de github-actions[bot]): con un correo inventado el commit queda «sin atribuir» y el
+          # ruleset proteger-main pide una aprobación extra de una persona (require_extra_approval_for_unattributed_changes).
+          # Nunca se unió un commit de radar-bot a main en 17 días (2026-11-01). A confirmar en la prueba en repo privado.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$rama"
           git add plugins/metodo/radar/RADAR.yaml plugins/metodo/radar/RADAR.md plugins/metodo/radar/MODELOS.json
           git commit -m "radar: actualización automática de fuentes públicas"
