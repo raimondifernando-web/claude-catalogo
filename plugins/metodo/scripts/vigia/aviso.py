@@ -223,6 +223,49 @@ def lanzar_detector(ahora, lanzamientos):
     return True
 
 
+def lanzar_circuito(ahora, lanzamientos):
+    """Circuito de los vigías (circuito.py): una vez por día, desacoplado, procesa lo que detectaron los vigías.
+    Misma forma de lanzar que el detector; la marca va antes del Popen para no reintentar en cada sesión."""
+    script = Path(__file__).resolve().parent.parent / "circuito.py"
+    previo = parsear_fecha(lanzamientos.get("circuito"))
+    if os.environ.get("VIGIA_SIN_CIRCUITO") or not script.is_file() or (previo and ahora - previo < timedelta(hours=20)):
+        return False
+    marca = dict(lanzamientos)
+    marca["circuito"] = iso(ahora)
+    escribir_lanzamientos(marca)
+    cmd = [sys.executable, str(script), "ciclo", "--procesar", "--si-vencido", "1"]
+    comunes = dict(stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True, cwd=str(Path.home()))
+    if os.name == "nt":
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+        try:   # igual que el detector: salirse del job de la sesión para que no lo maten al cerrarla
+            subprocess.Popen(cmd, creationflags=flags | getattr(subprocess, "CREATE_BREAKAWAY_FROM_JOB", 0x01000000), **comunes)
+        except OSError:
+            subprocess.Popen(cmd, creationflags=flags, **comunes)
+    else:
+        subprocess.Popen(cmd, start_new_session=True, **comunes)
+    return True
+
+
+def aviso_circuito():
+    """Lo que el circuito dejó atrasado (aviso.txt), en una línea. Se apaga con "aviso_al_abrir": false en su familias.json."""
+    base = dir_config_metodo() / "circuito"
+    try:
+        if (leer_json(base / "familias.json") or {}).get("aviso_al_abrir") is False:
+            return None
+    except Exception:
+        pass
+    try:
+        lineas = [l.strip() for l in (base / "aviso.txt").read_text(encoding="utf-8").splitlines() if l.strip()]
+    except OSError:
+        return None
+    if not lineas:
+        return None
+    if lineas[0].startswith("Para vos"):
+        return lineas[0][:400]
+    para_vos = [l for l in lineas if l.startswith("Para vos")]
+    return " · ".join([lineas[0].split(" — ")[0]] + para_vos)[:400]
+
+
 def armar_mensaje(estado, ahora, intento, lanzamientos):
     """(visible, contexto) o None si no hay nada que decir."""
     primer_lanzamiento = parsear_fecha(lanzamientos.get("primero"))
@@ -365,6 +408,15 @@ def principal():
                 "⚠️ Vigía: no pude leer su estado ({}).".format(type(exc).__name__),
                 "El estado del vigía de actualizaciones está ilegible: ofrecé revisarlo con la skill `vigia`.",
             )
+    try:
+        lanzar_circuito(ahora, leer_lanzamientos())
+        c = aviso_circuito()
+        if c:
+            ctx = ("Circuito de los vigías (plugin metodo): " + c + ". Lo atrasado lo procesa solo la pasada diaria; si "
+                   "sigue, revisalo con `circuito.py pendientes` (scripts del plugin metodo).")
+            mensaje = (mensaje[0] + " · " + c, mensaje[1] + " " + ctx) if mensaje else (c, ctx)
+    except Exception:
+        pass
     if mensaje and avisar_aca("vigia", cwd=cwd):
         emitir(mensaje)
     return 0

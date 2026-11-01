@@ -531,6 +531,7 @@ def entorno_hermetico(home, path_extra=()):
     env["USERPROFILE"] = str(home)
     env["GH_CONFIG_DIR"] = str(Path(home) / ".gh-vacio")
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["VIGIA_SIN_CIRCUITO"] = "1"     # las pruebas del aviso no lanzan el circuito de los vigías (tiene sus pruebas)
     base = [str(p) for p in path_extra] + [os.path.dirname(sys.executable)]
     if ES_WINDOWS:
         base.append(os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32"))
