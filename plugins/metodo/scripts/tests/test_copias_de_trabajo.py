@@ -50,8 +50,36 @@ class Copias(unittest.TestCase):
         self.assertIn("CON TRABAJO SIN UNIR", out)
         self.assertIn("2 copias", out)
 
+    def unir_con_trabajo_viejo(self, tema):
+        """Crea la copia, hace un commit de hace 2 días, lo une a main y deja la copia unida."""
+        self.cdt("nueva", tema)
+        copia = self.repo / "proy" / ".worktrees" / tema
+        (copia / "proy" / f"{tema}.py").write_text("x\n")
+        git(copia, "add", "-A")
+        fecha = "@%d +0000" % (__import__("time").time() - 2 * 86400)
+        subprocess.run(["git", "-C", str(copia), "commit", "-q", "-m", tema], check=True, capture_output=True,
+                       env={**ENV, "GIT_COMMITTER_DATE": fecha, "GIT_AUTHOR_DATE": fecha})
+        git(copia, "push", "-q", "origin", "HEAD:main")
+        git(self.repo, "fetch", "-q", "origin", "main")
+        return copia
+
+    def test_una_copia_recien_creada_y_vacia_no_se_saca(self):
+        self.cdt("nueva", "fresca")
+        self.cdt("limpiar", "--aplicar")
+        self.assertTrue((self.repo / "proy" / ".worktrees" / "fresca").exists())
+
+    def test_una_copia_con_archivos_ignorados_no_se_saca(self):
+        copia = self.unir_con_trabajo_viejo("conlocal")
+        (copia / ".gitignore").write_text("datos.local\n")
+        git(copia, "add", "-A"); git(copia, "commit", "-q", "-m", "ign")
+        (copia / "datos.local").write_text("cosas que no están en git\n")
+        # la copia ahora tiene un commit sin unir: la dejamos unida de nuevo
+        git(copia, "push", "-q", "origin", "HEAD:main"); git(self.repo, "fetch", "-q", "origin", "main")
+        self.cdt("limpiar", "--aplicar")
+        self.assertTrue((copia / "datos.local").exists())
+
     def test_limpiar_saca_solo_las_unidas_y_limpias_de_worktrees(self):
-        self.cdt("nueva", "unida"); self.cdt("nueva", "conlabor")
+        self.unir_con_trabajo_viejo("unida"); self.cdt("nueva", "conlabor")
         trabajo = self.repo / "proy" / ".worktrees" / "conlabor"
         (trabajo / "proy" / "b.py").write_text("b\n"); git(trabajo, "add", "-A"); git(trabajo, "commit", "-q", "-m", "b")
         rc, out = self.cdt("limpiar")                       # sin --aplicar solo muestra
@@ -63,8 +91,7 @@ class Copias(unittest.TestCase):
         self.assertTrue(trabajo.exists())                   # con trabajo sin unir: no se toca
 
     def test_no_saca_la_copia_donde_estas_parado(self):
-        self.cdt("nueva", "unida")
-        copia = self.repo / "proy" / ".worktrees" / "unida"
+        copia = self.unir_con_trabajo_viejo("unida")
         rc, out = self.cdt("limpiar", "--aplicar", cwd=copia)
         self.assertTrue(copia.exists(), out)
 

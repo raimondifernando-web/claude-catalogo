@@ -44,9 +44,9 @@ def ramas(repo, dias):
     for nombre, (ref, edad) in vistas.items():
         if edad > dias:
             continue
-        archivos = {p for p in git(repo, "diff", "--name-only", f"origin/main...{ref}").splitlines() if p}
+        archivos = {p for p in git(repo, "diff", "--name-only", "-z", f"origin/main...{ref}").split("\0") if p}
         # ya unida por squash: lo que la rama cambió ya está igual en main
-        if archivos and git(repo, "diff", "--name-only", "origin/main", ref, "--", *sorted(archivos)).strip():
+        if archivos and git(repo, "diff", "--name-only", "-z", "origin/main", ref, "--", *sorted(archivos)).strip("\0"):
             out[nombre] = (archivos, ref)
     return out
 
@@ -72,7 +72,7 @@ def principal(a):
     abiertas = ramas(repo, a.dias)
     mias = set(a.archivos)
     if not mias and actual and actual not in ("main", "master"):
-        mias = {p for p in git(repo, "diff", "--name-only", "origin/main...HEAD").splitlines() if p}
+        mias = {p for p in git(repo, "diff", "--name-only", "-z", "origin/main...HEAD").split("\0") if p}
     otras = {n: v for n, v in abiertas.items() if n != actual}
     print(f"Ramas abiertas (con commits sin unir y movimiento en {a.dias} días): {len(abiertas)}"
           + (f" — tope {a.max}" if a.max else ""))

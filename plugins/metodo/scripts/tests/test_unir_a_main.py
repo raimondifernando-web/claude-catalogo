@@ -318,6 +318,28 @@ class UnirAMain(unittest.TestCase):
         self.commit("pruebas que siempre pasan")
         self.assertEqual(self.unir(persona=False), 3)
 
+    def test_carpeta_nueva_con_package_json_de_pruebas_trivial_pide_a_la_persona(self):
+        sh("git", "rm", "-q", "-r", "tests", cwd=self.repo)
+        self.escribir("proy/.claude/pruebas.sh", "exit 0\n")
+        self.escribir("proy/app.py", "a = 1\n")
+        self.commit("proy")
+        sh("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo)
+        self.escribir("nueva/package.json", '{"scripts": {"test": "true"}}\n')
+        self.escribir("nueva/evil.py", "x = 1\n")
+        self.commit("carpeta nueva con pruebas de mentira")
+        self.assertEqual(self.unir(persona=False), 3)
+        self.assertIn("nueva/package.json", " ".join(self.preguntas))
+
+    def test_un_script_dentro_de_una_carpeta_docs_es_codigo_y_requirements_tambien(self):
+        sh("git", "rm", "-q", "-r", "tests", cwd=self.repo)
+        self.commit("sin tests")
+        sh("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo)
+        self.escribir("tools/docs/run.py", "print(1)\n")
+        self.escribir("requirements.txt", "x==1\n")
+        self.commit("scripts")
+        self.assertEqual(self.unir(persona=False), 1)
+        self.assertIn("escribí las pruebas", self.salida)
+
     def test_sin_pruebas_pero_solo_documentos_une_solo(self):
         sh("git", "rm", "-q", "-r", "tests", cwd=self.repo)
         self.commit("sin tests")

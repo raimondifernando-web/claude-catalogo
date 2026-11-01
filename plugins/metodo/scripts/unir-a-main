@@ -339,18 +339,37 @@ def zona_sensible(repo, cambiados, base):
     return out
 
 
+DOC_EXTRA = (".html", ".csv", ".json", ".yaml", ".yml")   # en carpetas de documentación también valen como texto
+
+
 def es_codigo(p):
-    """Texto y documentación no necesitan pruebas; todo lo demás sí."""
+    """Texto y documentación no necesitan pruebas; todo lo demás sí. Una carpeta llamada docs/ NO vuelve documento a un
+    script (docs/run.py, tools/docs/x.sh); y requirements*.txt es código (decide qué se instala)."""
     q = "/" + p.lower()
-    return not (q.endswith(DOCUMENTOS) or q.startswith(("/docs/", "/.claude/prompts/")) or "/docs/" in q
-                or "/.claude/prompts/" in q)
+    nombre = q.rsplit("/", 1)[-1]
+    if "/.claude/pruebas.d/" in q:   # las declaraciones de pruebas las cuida la zona sensible
+        return False
+    if nombre.startswith("requirements") and nombre.endswith(".txt"):
+        return True
+    if q.endswith(DOCUMENTOS):
+        return False
+    en_docs = q.startswith(("/docs/", "/.claude/prompts/")) or "/docs/" in q or "/.claude/prompts/" in q
+    return not (en_docs and q.endswith(DOC_EXTRA))
 
 
-def pruebas_en(carpeta):
+def pruebas_en(carpeta, raiz=None):
     """Pruebas de UNA carpeta: (descripción, comando) o (None, None). Solo DETECTA; no ejecuta nada."""
+    raiz_ = raiz or carpeta
+
     def existe(ruta):   # solo archivos comunes: un enlace o una cola que apunte a /dev/zero no cuenta (ni cuelga al programa)
         p = carpeta / ruta
-        return p.is_file() and not p.is_symlink()
+        if not p.is_file() or p.is_symlink():
+            return False
+        try:   # ni él ni ninguna carpeta del camino puede ser un enlace, y debe quedar dentro del repo
+            return p.resolve().is_relative_to(raiz_.resolve()) and all(
+                not q.is_symlink() for q in [p, *p.parents] if q != raiz_ and raiz_ in q.parents)
+        except (OSError, ValueError):
+            return False
 
     def texto(ruta):
         return (carpeta / ruta).read_text(errors="replace") if existe(ruta) else ""
@@ -388,10 +407,10 @@ def pruebas_del_cambio(copia, cambiados=()):
     def buscar(d):
         if d not in cache:
             decl = copia / ".claude" / "pruebas.d" / (d.replace("/", "__") + ".sh") if d else None
-            if decl is not None and decl.is_file() and not decl.is_symlink():
+            if decl is not None and decl.is_file() and not decl.is_symlink() and decl.resolve().is_relative_to(copia.resolve()):
                 cache[d] = (f"{d} (.claude/pruebas.d)", 'bash "$RAIZ"/.claude/pruebas.d/%s' % shlex.quote(decl.name))
             else:
-                desc, cmd = pruebas_en(copia / d if d else copia)
+                desc, cmd = pruebas_en(copia / d if d else copia, copia)
                 cache[d] = (desc, shlex.join(cmd)) if cmd else (None, None)
         return cache[d]
 
@@ -626,11 +645,18 @@ def principal(a, revisor=None, aprobador=None):
     repo = Path(sh("git", "-C", a.repo, "rev-parse", "--show-toplevel").stdout.strip())
     comun = Path(git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip())
     with open(comun / "unir-a-main.lock", "w") as cerrojo:
-        try:
-            fcntl.flock(cerrojo, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            print("Hay otra unión en curso en este repo: espero mi turno (después pruebo mi rama sobre el main nuevo)…")
-            fcntl.flock(cerrojo, fcntl.LOCK_EX)
+        espera = 0
+        while True:
+            try:
+                fcntl.flock(cerrojo, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if espera == 0:
+                    print("Hay otra unión en curso en este repo: espero mi turno (después pruebo mi rama sobre el main nuevo)…")
+                if espera >= 3600:
+                    raise Frena("la unión que va antes lleva más de 1 hora: ¿quedó colgada? Volvé a lanzarlo más tarde")
+                time.sleep(5)
+                espera += 5
         return _principal(a, revisor, aprobador)
 
 
@@ -697,6 +723,12 @@ def _principal(a, revisor=None, aprobador=None):
                                  or (campos[0] != campos[1] and campos[4] == "M")
                                  or (campos[4] == "A" and campos[1] == "100755")):   # archivo nuevo ejecutable
             humano.append(f"{limpio(ruta, 80)}: es un submódulo, un enlace simbólico, un ejecutable nuevo o cambia permisos")
+        if len(campos) >= 5 and campos[4] == "A":   # declarar «sus» pruebas en una carpeta nueva lo mira una persona
+            if re.search(r"(^|/)(package\.json|Package\.swift)$", ruta):
+                humano.append(f"{limpio(ruta, 80)}: declara cómo se prueba una carpeta nueva")
+            elif re.search(r"(^|/)tests?/test_[^/]*\.py$", ruta) and not git(
+                    repo, "ls-tree", base, ruta.rsplit("/", 1)[0] + "/", ok=(0, 128)).stdout.strip():
+                humano.append(f"{limpio(ruta, 80)}: crea la carpeta de pruebas de un proyecto nuevo")
         if len(campos) >= 5 and campos[4] == "D" and re.search(r"(^|/)(tests?/|test_[^/]*\.py$|[^/]*_test\.py$)", ruta):
             humano.append(f"{limpio(ruta, 80)}: borra un archivo de pruebas")
     nums = git(repo, "diff", "--numstat", "-z", "--no-renames", "--ignore-submodules=none", f"{base}...{head}").stdout

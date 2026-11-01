@@ -32,6 +32,34 @@ def raiz(repo):
     return Path(git(repo, "rev-parse", "--show-toplevel").stdout.strip())
 
 
+CACHES = ("__pycache__/", ".pytest_cache/", ".DS_Store", ".mypy_cache/", ".ruff_cache/")
+
+
+def tuvo_trabajo(ruta, rama):
+    """True si la rama tiene en su historial local algo más que su creación (commits, merges): es decir, si no es una
+    copia recién creada y vacía, que también parece «unida» porque no tiene nada que main no tenga."""
+    if rama == "(suelta)":
+        return False
+    log = git(ruta, "reflog", "show", "--format=%gs", f"refs/heads/{rama}", ok=(0, 128)).stdout.splitlines()
+    return any(l.strip() and not l.startswith("branch: Created") for l in log)
+
+
+def archivos_ignorados(ruta):
+    """Archivos que git ignora y no son cachés conocidas (.env, bases locales, salidas): sacar la copia los perdería."""
+    out = git(ruta, "status", "--ignored", "--porcelain", "-z", "--untracked-files=no").stdout.split("\0")
+    ign = [l[3:] for l in out if l.startswith("!! ")]
+    return [p for p in ign if not any(p.endswith(c) or f"/{c}" in f"/{p}" for c in CACHES)]
+
+
+def en_uso(ruta):
+    """¿Hay algún proceso con archivos abiertos adentro de esa carpeta? (otra sesión parada ahí)."""
+    try:
+        r = subprocess.run(["lsof", "-t", "+D", str(ruta)], capture_output=True, text=True, timeout=10)
+        return bool(r.stdout.strip())
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
 def copias(repo):
     """Lista de dicts con el estado de cada copia del repo (menos la principal)."""
     bloques = git(repo, "worktree", "list", "--porcelain").stdout.strip().split("\n\n")
@@ -44,18 +72,23 @@ def copias(repo):
         rama = campos.get("branch", "").replace("refs/heads/", "") or "(suelta)"
         existe = Path(ruta).is_dir()
         sucias = len(git(ruta, "status", "--porcelain", "--untracked-files=no").stdout.splitlines()) if existe else 0
-        sin_unir, unida, edad = 0, False, None
+        sin_unir, unida, edad, ignorados = 0, False, None, []
         if existe:
-            sin_unir = int(git(ruta, "rev-list", "--count", "origin/main..HEAD", ok=(0, 128)).stdout.strip() or 0)
+            cuenta = git(ruta, "rev-list", "--count", "origin/main..HEAD", ok=(0, 128))
+            if cuenta.returncode or not cuenta.stdout.strip().isdigit():
+                sin_unir = -1          # no se pudo comparar con main: nunca se da por unida
+            else:
+                sin_unir = int(cuenta.stdout.strip())
             if sin_unir == 0:
-                unida = True
-            else:   # ¿unida por squash? lo que cambió ya está igual en main
-                archivos = [p for p in git(ruta, "diff", "--name-only", "origin/main...HEAD").stdout.splitlines() if p]
-                unida = bool(archivos) and not git(ruta, "diff", "--name-only", "origin/main", "HEAD", "--", *archivos).stdout.strip()
+                unida = tuvo_trabajo(ruta, rama)      # una copia recién creada y vacía NO es «unida»
+            elif sin_unir > 0:   # ¿unida por squash? lo que cambió ya está igual en main
+                archivos = [p for p in git(ruta, "diff", "--name-only", "-z", "origin/main...HEAD").stdout.split("\0") if p]
+                unida = bool(archivos) and not git(ruta, "diff", "--name-only", "-z", "origin/main", "HEAD", "--", *archivos).stdout.strip("\0")
             f = git(ruta, "log", "-1", "--format=%ct").stdout.strip()
             edad = (time.time() - int(f)) / 86400 if f.isdigit() else None
+            ignorados = archivos_ignorados(ruta)
         out.append({"ruta": ruta, "rama": rama, "existe": existe, "sucias": sucias, "sin_unir": sin_unir,
-                    "unida": unida, "edad": edad, "dentro": f"/{DIR}/" in ruta + "/"})
+                    "unida": unida, "edad": edad, "ignorados": ignorados, "dentro": f"/{DIR}/" in ruta + "/"})
     return out
 
 
@@ -64,6 +97,10 @@ def estado(c):
         return "carpeta borrada (git la recuerda)"
     if c["sucias"]:
         return f"CON TRABAJO SIN GUARDAR ({c['sucias']} archivos)"
+    if c["sin_unir"] < 0:
+        return "no se pudo comparar con main"
+    if c["unida"] and c.get("ignorados"):
+        return f"unida a main, pero con archivos ignorados (.env, bases…): {len(c['ignorados'])}"
     if c["unida"]:
         return "unida a main"
     return f"CON TRABAJO SIN UNIR ({c['sin_unir']} commits)"
@@ -90,12 +127,13 @@ def limpiar(a):
     repo = raiz(a.repo)
     git(repo, "fetch", "-q", "origin", "main", ok=(0, 1, 128))
     actual = Path(os.getcwd()).resolve()
-    candidatas = [c for c in copias(repo) if c["dentro"] and c["existe"] and c["unida"] and not c["sucias"]]
+    candidatas = [c for c in copias(repo) if c["dentro"] and c["existe"] and c["unida"] and not c["sucias"]
+                  and not c["ignorados"] and (c["edad"] is None or c["edad"] >= 0.25)]
     hechas = 0
     for c in candidatas:
         ruta = Path(c["ruta"]).resolve()
-        if actual == ruta or ruta in actual.parents:
-            print(f"  · {c['ruta']}: es la copia donde estás; se limpia desde otra sesión o después de cerrar")
+        if actual == ruta or ruta in actual.parents or repo.resolve() == ruta or en_uso(ruta):
+            print(f"  · {c['ruta']}: en uso (es esta copia o hay una sesión adentro); se limpia después de cerrar")
             continue
         if not a.aplicar:
             print(f"  · se sacaría {c['ruta']} (rama {c['rama']}, {estado(c)})")
@@ -140,6 +178,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("listar"); p.add_argument("--md", action="store_true"); p.set_defaults(f=listar)
     p = sub.add_parser("limpiar"); p.add_argument("--aplicar", action="store_true"); p.set_defaults(f=limpiar)
+    # limpiar saca SOLO copias de .worktrees/ unidas, con historia propia, sin cambios ni archivos ignorados, de más de 6 h y sin nadie adentro
     p = sub.add_parser("nueva"); p.add_argument("tema"); p.add_argument("--rama"); p.set_defaults(f=nueva)
     a = ap.parse_args()
     return a.f(a)
