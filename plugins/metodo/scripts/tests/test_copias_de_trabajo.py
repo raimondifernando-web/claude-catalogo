@@ -14,6 +14,7 @@ def git(cwd, *a):
     return subprocess.run(["git", "-C", str(cwd), *a], capture_output=True, text=True, check=True, env=ENV)
 
 
+@unittest.skipIf(os.name == "nt", "herramienta de Mac/Linux (git, rutas y bash propios); en Windows no se usa")
 class Copias(unittest.TestCase):
     def setUp(self):
         self.t = tempfile.TemporaryDirectory()
