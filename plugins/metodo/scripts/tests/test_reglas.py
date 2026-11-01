@@ -158,6 +158,60 @@ class NombreTest(unittest.TestCase):
         self.assertIn("Quién habla: Ana.", r.stdout)
 
 
+@unittest.skipIf(ES_WINDOWS, "reglas.py es para Mac")
+class GuiaModelosTest(unittest.TestCase):
+    """La guía de modelos llega sola: se escribe, se importa en la ficha, no se repite y no pisa una guía propia."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.cfg = Path(self.tmp.name)
+        self.ficha = self.cfg / "CLAUDE.md"
+        self.guia = self.cfg / "GUIA-MODELOS.md"
+
+    def test_crea_la_guia_y_la_importa(self):
+        r = correr(self.cfg)
+        self.assertIn("Guía de modelos: guía de modelos al día, importada en tu ficha", r.stdout)
+        self.assertIn("claude-opus-5-5", self.guia.read_text(encoding="utf-8"))
+        self.assertEqual(self.ficha.read_text(encoding="utf-8").count("@GUIA-MODELOS.md"), 1)
+
+    def test_segunda_corrida_no_hace_nada(self):
+        correr(self.cfg)
+        antes = (self.guia.read_bytes(), self.ficha.read_bytes())
+        r = correr(self.cfg)
+        self.assertNotIn("Guía de modelos", r.stdout)
+        self.assertEqual(antes, (self.guia.read_bytes(), self.ficha.read_bytes()))
+
+    def test_si_cambia_el_radar_se_rearma_sin_tocar_la_ficha(self):
+        correr(self.cfg)
+        self.guia.write_text(self.guia.read_text(encoding="utf-8") + "viejo\n", encoding="utf-8")
+        ficha = self.ficha.read_bytes()
+        r = correr(self.cfg)
+        self.assertIn("guía de modelos al día", r.stdout)
+        self.assertNotIn("viejo", self.guia.read_text(encoding="utf-8"))
+        self.assertEqual(ficha, self.ficha.read_bytes())
+
+    def test_una_guia_propia_no_se_pisa(self):
+        self.guia.write_text("# Mi guía\n", encoding="utf-8")
+        self.ficha.write_text("@GUIA-MODELOS.md\n", encoding="utf-8")
+        correr(self.cfg)
+        self.assertEqual(self.guia.read_text(encoding="utf-8"), "# Mi guía\n")
+        self.assertEqual(self.ficha.read_text(encoding="utf-8").count("@GUIA-MODELOS.md"), 1)
+
+    def test_import_propio_en_la_ficha_no_se_duplica(self):
+        self.ficha.write_text("hola\n@GUIA-MODELOS.md\n", encoding="utf-8")
+        correr(self.cfg)
+        self.assertEqual(self.ficha.read_text(encoding="utf-8").count("@GUIA-MODELOS.md"), 1)
+        self.assertFalse(self.guia.exists())
+
+    def test_la_guia_no_lleva_nada_personal(self):
+        import re
+        import guia_modelos
+        t = guia_modelos.texto_actual()
+        self.assertIsNotNone(t)
+        self.assertFalse(re.search(r"Fer\b|Mandamiento|TIBP|\bPM\b", t, re.I))
+        guia_modelos.probar()
+
 
 if __name__ == "__main__":
     unittest.main()

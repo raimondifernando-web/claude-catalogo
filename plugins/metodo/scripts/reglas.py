@@ -96,6 +96,48 @@ def sincronizar(plantilla: Path, ficha: Path) -> str:
     return "Reglas del método agregadas ({}) ✓".format(numero(nuevo))
 
 
+GINI = "<!-- guia-modelos:inicio -->"
+GFIN = "<!-- guia-modelos:fin -->"
+IMPORTAR = "@GUIA-MODELOS.md"
+
+
+def sincronizar_guia(base: Path, ficha: Path) -> str:
+    """Escribe <config>/GUIA-MODELOS.md (armada con el radar del paquete) y hace que la ficha la importe.
+
+    Solo escribe si cambió el radar. Si ya hay una guía propia (archivo sin nuestra marca o un `@GUIA-MODELOS.md` fuera de
+    nuestro bloque) no toca nada. Nunca rompe la sincronización de reglas: cualquier error se calla."""
+    try:
+        import guia_modelos
+        destino = base / "GUIA-MODELOS.md"
+        crudo = ficha.read_bytes().decode("utf-8") if ficha.exists() else ""
+        eol = "\r\n" if "\r\n" in crudo else "\n"
+        actual = crudo.splitlines()
+        tiene = GINI in actual and GFIN in actual and actual.index(GINI) < actual.index(GFIN)
+        fuera = actual[:actual.index(GINI)] + actual[actual.index(GFIN) + 1:] if tiene else actual
+        propia = (destino.exists() and guia_modelos.MARCA not in destino.read_text(encoding="utf-8")[:300]) \
+            or any(l.strip() == IMPORTAR for l in fuera)
+        if propia:
+            return ""
+        texto = guia_modelos.texto_actual()
+        if texto is None:
+            return ""
+        hecho = []
+        if not destino.exists() or destino.read_text(encoding="utf-8") != texto:
+            fd, tmp = tempfile.mkstemp(prefix=".GUIA-MODELOS.", dir=str(base))
+            with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+                f.write(texto)
+            os.chmod(tmp, 0o644)
+            os.replace(tmp, destino)
+            hecho.append("guía de modelos al día")
+        if not tiene:
+            respaldo(ficha)
+            escribir_atomico(ficha, actual + ([""] if actual else []) + [GINI, IMPORTAR, GFIN], eol)
+            hecho.append("importada en tu ficha")
+        return ("Guía de modelos: " + ", ".join(hecho) + " ✓") if hecho else ""
+    except Exception:
+        return ""
+
+
 NOMBRE = re.compile(r"^\s*(?:[-*]\s*)?(Llamame)\s*:\s*(.+?)\s*$")
 VARIOS = re.compile(r"^\s*(?:[-*]\s*)?Personas en esta computadora\s*:\s*(.+?)\s*$")
 
@@ -143,6 +185,9 @@ def main(argv):
         except OSError:
             return 0  # otra sesión está escribiendo: ella se encarga
         linea = sincronizar(plantilla, ficha)
+        guia = "" if "✗" in linea else sincronizar_guia(ficha.parent, ficha)   # ficha con marcas rotas: no se toca nada
+    if guia:
+        print(guia)
     if linea:
         print(linea)
     nombre = aviso_nombre(ficha)
