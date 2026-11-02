@@ -1,5 +1,13 @@
 # metodo — qué cambia para vos
 
+## 0.69.0 — 2026-11-02
+**Una regla, un solo lugar: Claude te frena antes de guardar una regla que ya escribiste en otro archivo.** Se aplica solo; no hay nada que correr.
+- **El problema:** la misma regla terminaba escrita en tu ficha, en tus reglas y en la ficha de cada proyecto. Se corregía en un lado, quedaba vieja en el otro y cada sesión cargaba el texto dos veces.
+- **Qué cambia:** al guardar una regla (archivos `CLAUDE.md` y `rules/`), si ya está escrita en otro archivo, el cambio no se guarda y Claude te dice dónde está. La solución es dejar la completa en un lugar y una línea con puntero («→ ver …») en el otro. Lo que ya estaba repetido antes de esta versión no molesta. Si una regla tiene que estar en los dos lados a propósito, la línea termina en `<!-- eco: motivo -->`.
+- **Aviso semanal:** una vez por semana, al abrir la sesión y solo si hay algo, una línea: reglas repetidas nuevas, ficha que engorda o rutas que ya no existen.
+- **Si no lo querés:** `REGLAS_UNICAS_OFF=1` apaga el freno.
+- **Qué tenés que hacer:** nada.
+
 ## 0.68.0 — 2026-11-01
 **Claude te contesta corto y en orden: la respuesta primero, pasos cortos y un solo próximo paso.** Se aplica solo; no hay nada que correr.
 - **El problema:** respuestas largas que marean y no dicen qué hacer ahora.
