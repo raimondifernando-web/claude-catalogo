@@ -1,4 +1,4 @@
-# Las 25 reglas del método
+# Las 26 reglas del método
 
 > Texto completo de las reglas (ejemplos, comandos, excepciones). Tu `~/.claude/CLAUDE.md` lleva la versión corta
 > (`REGLAS-DEL-METODO.md`), que se pone al día sola; este archivo se lee cuando una regla toca lo que vas a hacer.
@@ -242,3 +242,13 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     repo pide credencial). La prueba no deja restos (borra la rama, el PR y las etiquetas que crea, aunque falle), se
     puede repetir, y si el repo de prueba falla no se sigue con los otros. El check `controles` pide en el PR una línea
     `Probado-en: <repo privado> (<qué corriste>)` cuando se toca una de estas piezas (`scripts/probado-en.py`).
+
+## La forma de cada respuesta (regla 26)
+
+26. **La forma de cada respuesta importa tanto como el contenido.** Para quien se marea con textos largos, y sirve a todos.
+    - La primera línea es la respuesta o la acción, nunca el contexto.
+    - Varios pasos: numerados, cortos, con «paso N de M».
+    - Cerrá con UN solo próximo paso de menos de 2 minutos, con tiempos concretos («3 minutos», no «un rato»).
+    - Mostrá lo ya logrado en una línea. Cero relleno y cero repetir lo que la persona ya sabe.
+    - Nunca se recorta un aviso de plata, datos o algo irreversible.
+    - Un aviso de una línea en cada mensaje lo recuerda (`forma-respuesta.py`, hook `UserPromptSubmit`); se apaga con `FORMA_RESPUESTA=0`.

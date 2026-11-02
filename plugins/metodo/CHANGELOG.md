@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.68.0 — 2026-11-01
+**Claude te contesta corto y en orden: la respuesta primero, pasos cortos y un solo próximo paso.** Se aplica solo; no hay nada que correr.
+- **El problema:** respuestas largas que marean y no dicen qué hacer ahora.
+- **Qué cambia:** regla 26 en el bloque de reglas de tu ficha (se actualiza sola al abrir la sesión) y un aviso de una línea en cada mensaje. La primera línea es la respuesta o la acción; los pasos van numerados con «paso N de M»; cierra con UN solo próximo paso de menos de 2 minutos. Los avisos de plata, datos o algo irreversible nunca se recortan.
+- **Si no lo querés:** `FORMA_RESPUESTA=0` apaga el aviso de una línea.
+- **Qué tenés que hacer:** nada.
+
 ## 0.67.0 — 2026-11-01
 **Tus sesiones ahora traen una guía de «qué modelo y qué esfuerzo usar para cada tarea»**, y se mantiene sola.
 - **El problema:** el método sabía elegir modelo y esfuerzo, pero esa guía no llegaba a las sesiones de quien trabaja con el paquete: cada una elegía de memoria.
