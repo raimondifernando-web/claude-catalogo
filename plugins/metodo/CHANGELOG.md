@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.69.2 — 2026-11-05
+**El aviso de cupo de Codex ya no se queda trabado en «no lanzar».** Se aplica solo; no hay nada que correr.
+- **El problema:** si el último registro de Codex decía 98 %, el aviso repetía «NO lanzar» para siempre, aunque la ventana ya se hubiera renovado.
+- **Qué cambia:** si la fecha de renovación de esa medición ya pasó, dice «sin dato» y no frena nada. Si el dato sigue vigente, funciona igual que antes.
+- **Qué tenés que hacer:** nada.
+
 ## 0.69.1 — 2026-11-04
 **Dos arreglos de seguridad en lo que corre solo en tu computadora.** Se aplican solos; no hay nada que correr.
 - **El revisor automático de los vigías** ahora corre sin herramientas, sin conectores y en una carpeta vacía: lee el hallazgo y contesta, nada más. Ya no abre páginas de internet.
