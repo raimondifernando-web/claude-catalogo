@@ -4,6 +4,7 @@
 # 2026-10-25: el plan gratis mide una ventana de 30 días; Plus mide 5 h y 7 días. Se toma, de la última línea de cupo, la
 # ventana más llena. Y si lo último que dijo Codex es «You've hit your usage limit … try again at <fecha>» (en ese caso el
 # registro trae las ventanas vacías), se informa agotado hasta esa fecha.
+# 2026-11-05: si la fecha de renovación (`resets_at`) de la última medición ya pasó, el dato está viejo → «sin dato» (no frena).
 python3 - <<'PY'
 import glob, json, os, re, sys, time
 from datetime import datetime
@@ -11,6 +12,7 @@ archivos = sorted(glob.glob(os.path.expanduser("~/.codex/sessions/*/*/*/*.jsonl"
 if not archivos:
     print("Codex: sin registros"); sys.exit(0)
 tope = re.compile(r"hit your usage limit.*?try again at ([A-Z][a-z]{2} \d{1,2}(?:st|nd|rd|th)?, \d{4} \d{1,2}:\d{2} [AP]M)")
+ahora = time.time()
 for f in archivos:
     ultimo = None  # ("tope", fecha) o ("cupo", porcentaje)
     for linea in open(f, encoding="utf-8", errors="replace"):
@@ -18,9 +20,12 @@ for f in archivos:
         if m:
             ultimo = ("tope", m.group(1)); continue
         if '"rate_limits"' in linea:
-            p = [float(x) for x in re.findall(r'"used_percent":([0-9.]+)', linea)]
-            if p:
-                ultimo = ("cupo", max(p))
+            # Cada ventana trae `used_percent` y, si el registro la tiene, `resets_at` (epoch). Una ventana cuya
+            # renovación ya pasó no dice nada del cupo de hoy: se descarta (si todas, «sin dato», nunca «agotado»).
+            ventanas = [(float(a), b) for a, b in re.findall(r'"used_percent":([0-9.]+)(?:[^{}]*?"resets_at":(\d+))?', linea)]
+            if ventanas:
+                vigentes = [a for a, b in ventanas if not b or int(b) > ahora]
+                ultimo = ("cupo", max(vigentes)) if vigentes else ("vencido", None)
     if ultimo is None:
         continue
     if ultimo[0] == "tope":
@@ -32,6 +37,8 @@ for f in archivos:
         if hasta > datetime.now():
             print(f"Codex: agotado hasta el {hasta:%d/%m %H:%M} — NO lanzar"); sys.exit(2)
         print("Codex: el tope anterior ya se renovó — OK"); sys.exit(0)
+    if ultimo[0] == "vencido":
+        print("Codex: sin dato (la última medición es de una ventana que ya se renovó) — no frena"); sys.exit(0)
     p = int(ultimo[1])
     if p >= 90: print(f"Codex: {p}% del cupo (la ventana más llena) — NO lanzar"); sys.exit(2)
     if p >= 70: print(f"Codex: {p}% del cupo (la ventana más llena) — solo tareas chicas"); sys.exit(1)

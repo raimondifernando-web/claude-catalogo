@@ -9,9 +9,13 @@ SCRIPT = Path(__file__).resolve().parent.parent / "codex-cupo"
 CIERRE = ',"credits":{"has_credits":false,"unlimited":false,"balance":null}}}'
 
 
-def linea(primary, secondary):
+FUTURO = 4102444800  # 2100-01-01
+PASADO = 1793119846 - 10 * 24 * 3600  # una renovación que ya ocurrió
+
+
+def linea(primary, secondary, resets=FUTURO):
     def v(w):
-        return "null" if w is None else '{"used_percent":%s,"window_minutes":%d,"resets_at":1}' % w
+        return "null" if w is None else '{"used_percent":%s,"window_minutes":%d,"resets_at":%d}' % (w + (resets,))
     return '{"payload":{"rate_limits":{"limit_id":"codex","primary":%s,"secondary":%s%s\n' % (v(primary), v(secondary), CIERRE)
 
 
@@ -47,6 +51,24 @@ class TestCodexCupo(unittest.TestCase):
         codigo, texto = self.correr(linea(None, None))
         self.assertEqual(codigo, 0)
         self.assertIn("desconocido", texto)
+
+    def test_dato_viejo_ya_renovado_no_dice_agotado(self):
+        # el 27/10 el registro decía 98 % y «NO lanzar»; pasada la renovación ese dato no vale: «sin dato», no frena
+        codigo, texto = self.correr(linea(("98.0", 300), ("45.0", 10080), resets=PASADO))
+        self.assertEqual(codigo, 0)
+        self.assertIn("sin dato", texto)
+        self.assertNotIn("NO lanzar", texto)
+        self.assertNotIn("agotado", texto)
+        # solo una ventana vencida: manda la que sigue vigente
+        v = lambda w, r: '{"used_percent":%s,"window_minutes":%d,"resets_at":%d}' % (w + (r,))
+        mixta = '{"payload":{"rate_limits":{"limit_id":"codex","primary":%s,"secondary":%s%s\n' % (
+            v(("99.0", 300), PASADO), v(("20.0", 10080), FUTURO), CIERRE)
+        codigo, texto = self.correr(mixta)
+        self.assertEqual(codigo, 0)
+        self.assertIn("20%", texto)
+
+    def test_dato_vigente_sigue_igual(self):
+        self.assertEqual(self.correr(linea(("98.0", 300), ("45.0", 10080)))[0], 2)
 
     def tope(self, fecha):
         return ('{"payload":{"message":"You\'ve hit your usage limit. Upgrade to Pro or try again at %s."}}\n' % fecha)
