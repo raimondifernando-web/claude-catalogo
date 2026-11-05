@@ -47,7 +47,35 @@ class TestSensibles(unittest.TestCase):
 
     def test_tilde_y_mayusculas(self):
         self._lista("~/Proyectos/Cliente | contrato\n")
-        self.assertTrue(P.carpeta_sensible(Path.home() / "proyectos" / "CLIENTE" / "app"))
+        self.assertIn("contrato", P.carpeta_sensible(Path.home() / "proyectos" / "CLIENTE" / "app"))
+        self.assertIn("contrato", P.carpeta_sensible("~/proyectos/cliente/app"))
+
+    def test_acentos_nfd_y_nfc_son_la_misma_carpeta(self):
+        import unicodedata
+        nfc = unicodedata.normalize("NFC", "Nómina")
+        nfd = unicodedata.normalize("NFD", "Nómina")
+        self._lista("%s | contrato\n" % (self.tmp / nfc))
+        self.assertIn("contrato", P.carpeta_sensible(self.tmp / nfd / "x"))
+
+    def test_archivo_ilegible_falla_cerrado_y_ruta_suelta_va_a_casa(self):
+        f = self.tmp / "s.txt"
+        f.write_text("x | y\n", encoding="utf-8")
+        os.environ["METODO_SENSIBLES"] = str(f)
+        f.chmod(0)
+        self.addCleanup(lambda: f.chmod(0o600))
+        if os.access(f, os.R_OK):
+            self.skipTest("este usuario lee igual (root)")
+        self.assertIsNotNone(P.carpeta_sensible(self.tmp / "cualquiera"))
+        f.chmod(0o600)
+        f.write_text("Clientes/acme | c\n", encoding="utf-8")
+        self.assertEqual(P.leer_sensibles()[0][0], (Path.home() / "Clientes" / "acme").resolve())
+
+    def test_csv_en_latin1_y_nombres_tecnicos_sin_falsos_avisos(self):
+        (self.tmp / "ventas.csv").write_bytes("nombre,tel\xe9fono\n".encode("latin-1"))
+        (self.tmp / "cv_results.csv").write_text("score\n", encoding="utf-8")
+        (self.tmp / "leaderboard.csv").write_text("score\n", encoding="utf-8")
+        hall = P.planillas_con_personas(["ventas.csv", "cv_results.csv", "leaderboard.csv"], raiz=self.tmp)
+        self.assertEqual(hall, ["ventas.csv"])
 
     def test_planillas(self):
         (self.tmp / "contactos.csv").write_text("x\n", encoding="utf-8")

@@ -10,14 +10,17 @@ Sin archivo, o vacío, no hay nada sensible por contrato. Solo biblioteca están
 """
 import os
 import re
+import sys
+import unicodedata
 from pathlib import Path
 
 # Planillas y listados: lo que más seguido trae datos de personas. Es un AVISO, nunca un freno.
 EXT_PLANILLA = (".csv", ".tsv", ".xls", ".xlsx", ".xlsm", ".ods", ".numbers")
 # Nombres que delatan un listado de personas (clientes, empleados, contactos, sueldos…).
 NOMBRE_PERSONAS = re.compile(
-    r"(cliente|contacto|empleado|nomina|nómina|sueldo|liquidaci|legajo|paciente|usuario|socio|suscriptor|lead|"
-    r"padron|padrón|alumno|candidato|cv_|curriculum|currículum|dni|extracto)", re.I)
+    r"(cliente|contacto|empleado|nomina|nómina|sueldo|liquidaci|legajo|paciente|usuario|socio|suscriptor|"
+    r"(?<![a-z])leads?(?![a-z])|padron|padrón|alumno|candidato|curriculum|currículum|"
+    r"(?<![a-z])dni(?![a-z])|extracto)", re.I)
 COLUMNAS_PERSONAS = re.compile(r"(e-?mail|correo|tel[eé]fono|celular|whatsapp|dni|cuit|cuil|domicilio|direcci[oó]n|apellido)", re.I)
 
 
@@ -31,23 +34,29 @@ def archivo_sensibles():
 
 
 def leer_sensibles(archivo=None):
-    """[(Path resuelta, motivo)]. Líneas «ruta | motivo»; ignora vacías y #. Un archivo ilegible = sin lista."""
+    """[(Path resuelta, motivo)]. Líneas «ruta | motivo»; ignora vacías y #. Sin archivo = sin lista. Si el archivo EXISTE pero
+    no se puede leer, falla cerrado: devuelve la raíz del disco como sensible (nada se delega) y lo dice por stderr."""
     ruta = Path(archivo) if archivo else archivo_sensibles()
-    try:
-        texto = ruta.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
+    if not ruta.exists():
         return []
+    try:
+        texto = ruta.read_text(encoding="utf-8-sig", errors="replace")
+    except OSError as e:
+        sys.stderr.write("Aviso de privacidad: no pude leer %s (%s); por precaución no se delega nada hasta arreglarlo.\n" % (ruta, e.__class__.__name__))
+        return [(Path(os.path.abspath(os.sep)), "la lista de carpetas sensibles existe pero no se puede leer")]
     salida = []
     for linea in texto.splitlines():
         linea = linea.strip()
         if not linea or linea.startswith("#"):
             continue
         parte, _, motivo = linea.partition("|")
-        parte = parte.strip()
+        parte = os.path.expanduser(parte.strip())
         if not parte:
             continue
+        if not os.path.isabs(parte):      # una ruta suelta dependería de la carpeta desde donde se corre: se cuenta desde tu carpeta personal
+            parte = os.path.join(str(Path.home()), parte)
         try:
-            p = Path(os.path.expanduser(parte)).resolve()
+            p = Path(parte).resolve()
         except (OSError, RuntimeError):
             continue
         salida.append((p, motivo.strip() or "carpeta marcada como sensible"))
@@ -55,13 +64,14 @@ def leer_sensibles(archivo=None):
 
 
 def _norm(p):
-    return str(p).replace("\\", "/").rstrip("/").lower() + "/"
+    return unicodedata.normalize("NFC", str(p)).replace("\\", "/").rstrip("/").casefold() + "/"
 
 
 def carpeta_sensible(ruta, lista=None):
     """Motivo (str) si `ruta` es una carpeta sensible, está adentro de una, o CONTIENE una (delegar el repo entero
     mandaría también su contenido). None si no. macOS no distingue mayúsculas."""
     lista = leer_sensibles() if lista is None else lista
+    ruta = os.path.expanduser(str(ruta))
     try:
         r = _norm(Path(ruta).resolve())
     except (OSError, RuntimeError):
@@ -78,22 +88,30 @@ def carpeta_sensible(ruta, lista=None):
 def _cabecera_con_personas(ruta):
     try:
         with open(ruta, "rb") as f:
-            primera = f.readline(4096).decode("utf-8", "replace")
+            cruda = f.readline(4096)
     except OSError:
         return False
-    return bool(COLUMNAS_PERSONAS.search(primera))
+    for enc in ("utf-8-sig", "latin-1"):      # Excel en español suele exportar en Windows-1252
+        try:
+            if COLUMNAS_PERSONAS.search(cruda.decode(enc)):
+                return True
+        except UnicodeDecodeError:
+            continue
+    return False
 
 
-def planillas_con_personas(archivos, raiz=None, tope=5):
+def planillas_con_personas(archivos, raiz=None, tope=5, max_lecturas=50):
     """Hasta `tope` rutas relativas que parecen planillas con datos de personas: extensión de planilla Y (nombre que lo
     delata, o —si es texto— columnas como mail/teléfono/DNI). Solo avisa; no lee más que la primera línea."""
     hallados = []
+    lecturas = 0
     for rel in archivos:
         base = os.path.basename(str(rel)).lower()
         if not base.endswith(EXT_PLANILLA):
             continue
         sospechosa = bool(NOMBRE_PERSONAS.search(base))
-        if not sospechosa and base.endswith((".csv", ".tsv")) and raiz is not None:
+        if not sospechosa and base.endswith((".csv", ".tsv")) and raiz is not None and lecturas < max_lecturas:
+            lecturas += 1
             sospechosa = _cabecera_con_personas(os.path.join(str(raiz), str(rel)))
         if sospechosa:
             hallados.append(str(rel))

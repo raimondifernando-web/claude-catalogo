@@ -493,7 +493,16 @@ class TestCarpetaPrivada(BaseDelegar):
         self.assertIn("No se delega en carpetas privadas", err)
         self.assertFalse((self.tmp / "codex_args.json").exists())
 
+    def _restaurar_sensibles(self):
+        if self._prev_sensibles is None:
+            os.environ.pop("METODO_SENSIBLES", None)
+        else:
+            os.environ["METODO_SENSIBLES"] = self._prev_sensibles
+
     def _lista_sensibles(self, *carpetas):
+        if not hasattr(self, "_prev_sensibles"):
+            self._prev_sensibles = os.environ.get("METODO_SENSIBLES")
+            self.addCleanup(self._restaurar_sensibles)
         archivo = self.tmp / "sensibles-prueba.txt"
         archivo.write_text("# prueba\n" + "".join("%s | contrato de prueba\n" % c for c in carpetas), encoding="utf-8")
         os.environ["METODO_SENSIBLES"] = str(archivo)
@@ -508,10 +517,15 @@ class TestCarpetaPrivada(BaseDelegar):
 
     def test_repo_que_contiene_una_sensible_tampoco_sale(self):
         repo = self.crear_repo_git("consultoria")
+        (repo / "clientes" / "acme").mkdir(parents=True)
+        (repo / "src").mkdir()
         self._lista_sensibles(repo / "clientes" / "acme")
         cod, out, err = self.correr("desarrollo", str(repo), "tarea")
         self.assertEqual(cod, 65)
         self.assertIn("contiene una carpeta sensible", err)
+        # apuntando a una subcarpeta hermana de la sensible, la raíz del repo la contiene igual
+        cod, out, err = self.correr("desarrollo", str(repo / "src"), "tarea")
+        self.assertEqual(cod, 65, err)
 
     def test_otra_carpeta_con_lista_o_sin_lista_sigue_igual(self):
         repo = self.crear_repo_git("otro/proyecto")
@@ -525,13 +539,13 @@ class TestCarpetaPrivada(BaseDelegar):
 
     def test_planilla_con_personas_avisa_pero_no_frena(self):
         repo = self.crear_repo_git("con-planilla")
-        (repo / "clientes_2026.csv").write_text("nombre,email\nAna,a@x.com\n", encoding="utf-8")
+        (repo / "datos_2026.csv").write_text("nombre,email\nAna,a@x.com\n", encoding="utf-8")
         subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
         subprocess.run(["git", "-C", str(repo), "commit", "-m", "planilla"], check=True)
         cod, out, err = self.correr("desarrollo", str(repo), "tarea")
         self.assertEqual(cod, 0, err)
         self.assertIn("datos de personas", err)
-        self.assertIn("clientes_2026.csv", err)
+        self.assertIn("datos_2026.csv", err)
 
 
 @unittest.skipIf(ES_WINDOWS, "scripts falsos de bash/sh")
