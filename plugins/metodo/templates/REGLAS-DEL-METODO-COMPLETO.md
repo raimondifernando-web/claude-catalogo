@@ -202,7 +202,7 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     Con otra IA pasa lo mismo, más fuerte: Codex y Gemini no ven NINGUNA skill de Claude. `delegar.py` pega al principio del pedido el
     texto de las skills que el pedido nombra (o que se piden con `--skills a,b`), con tope de tamaño (`guias.py`). Y antes de delegar,
     Claude decide quién lo hace: lo que es oficio de Claude (diseño de pantallas, seguridad, castellano, skills con conectores) lo hace su
-    agente especialista; programar algo mecánico con una prueba clara de éxito va a Codex/Gemini con las guías pegadas.
+    agente especialista; programar algo mecánico con una prueba clara de éxito va a la IA que elige el radar (regla 18), con las guías pegadas.
     Si hay que desviarse de la receta, lo dice en una línea. Las recetas del paquete están en `recetas/`; las propias de la
     persona, en `<config de Claude>/recetas/` (la propia gana si se llaman igual).
 
