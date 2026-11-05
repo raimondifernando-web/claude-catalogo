@@ -119,20 +119,26 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     pérdida de dinero o datos, una obligación legal o daño a un tercero, o nadie lo detectaría? ¿hay que leer más de
     10 archivos o 50 páginas?; (4) ubicá la fila del trabajo (explorar, probar, cierre, calcular, investigar,
     implementar, documentar, leer documentos, revisar código, planear, seguridad; imagen, video, voz y transcribir van
-    a la mejor herramienta conectada); una etapa con varias tareas es UNA sola elección; (5) un cambio mínimo (hasta 2
-    archivos y 20 líneas, sin datos de personas) se hace en esta sesión; (6) el resto lo calcula `radar.py ruteo
-    <fila> --si <N>` (N = cuántas preguntas dieron sí), sin gastar IA y con el cupo de hoy: copiá su línea «Ruteo:
-    <IA>/<modelo>/<esfuerzo> porque <motivo>» al pedido, con `model` y `effort` iguales (abrir una sesión sin esa
-    línea se frena una vez); si el programa no existe o falla, usá el nivel por defecto de la fila y avisá
-    «provisorio»; (7) lo que calcula o mueve dinero, cambia producción, borra datos, envía algo a terceros o es
-    difícil lleva un control: una prueba automática o un revisor distinto del autor; el tema nunca sube el modelo,
-    sube el control; (8) si falla la IA (cupo, límite), el programa elige otra del mismo nivel; si falla el resultado,
-    se sube un nivel con el error a la vista, máximo 2 veces. Para mandar trabajo a otra IA usá `delegar.py
-    <categoría> <carpeta-del-repo> <pedido.txt> --archivo` (`--revisar` solo lee): se niega en carpetas sensibles y
-    avisa si hay planillas con datos de personas; la primera vez pide `delegar.py --aceptar`, que corre la persona. Un
-    cupo sin usar es plata tirada.
+    a la mejor herramienta conectada); una etapa con varias tareas es UNA sola elección. Nivel por defecto: bajo =
+    explorar, probar, cierre, calcular; medio = investigar, implementar, documentar, leer documentos, revisar código;
+    alto = planear, seguridad. Bajo y medio suben un nivel con 2 o más «sí»; alto baja a medio solo con 0 «sí»; (5) un
+    cambio mínimo (hasta 2 archivos y unas 20 líneas, sin datos de personas ni carpetas sensibles) se hace en esta
+    sesión; (6) el resto lo calcula `radar.py ruteo <fila> --si <N> [--personas] [--edita] --repo <carpeta>` (N =
+    cuántas preguntas dieron sí; `--personas` si hay datos de personas o clientes; `--edita` si crea o cambia
+    archivos), sin gastar IA y con el cupo de hoy: copiá su línea «Ruteo: <IA>/<modelo>/<esfuerzo> porque <motivo>» al
+    pedido, con `model` y `effort` iguales (abrir una sesión sin esa línea se frena una vez); si el programa no existe
+    o falla, usá el nivel por defecto de la fila y avisá «provisorio»; (7) lo que calcula o mueve dinero, cambia
+    producción, borra datos, envía algo a terceros o es difícil lleva un control: una prueba automática o un revisor
+    distinto del autor; el tema por sí solo no sube el modelo (sumar cuatro importes usa lo barato): lo fijan la fila
+    y las tres preguntas, y el tema suma un control; (8) si falla la IA (cupo, límite), repetí el ruteo con `--sin
+    <IA>`: otra IA, mismo nivel; si falla el resultado, repetilo con `--subir` y el error a la vista; máximo 2
+    subidas, después parás e informás. Para mandar trabajo a otra IA usá `delegar.py <categoría del radar>
+    <carpeta-del-repo> <pedido.txt> --archivo` (`--revisar` solo lee): se niega en carpetas sensibles y avisa si hay
+    planillas con datos de personas; la primera vez pide `delegar.py --aceptar`, que corre la persona: el código del
+    repo viaja a otra empresa y los planes gratuitos pueden entrenar con lo enviado, así que nunca con claves ni datos
+    de personas sin «no entrenar» registrado. Un cupo sin usar es plata tirada.
 
-    **Filas del trabajo** (la fila fija el nivel por defecto; las 3 preguntas lo suben o bajan un escalón por cada «sí» de más o de menos):
+    **Filas del trabajo** (la fila fija el nivel por defecto; con 2 o más «sí» de las 3 preguntas sube un nivel, y «alto» baja a «medio» solo con 0 «sí»):
 
     | Fila | Nivel por defecto |
     |---|---|
@@ -169,8 +175,8 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
     un nivel más barato (el ruteo de la regla 18): proponé una sesión aparte, con el pedido completo (qué hacer, qué
     archivos, cómo se sabe que está hecho, qué no tocar, qué necesita tu «sí») y su línea «Ruteo:». Una etapa del
     trabajo es una sola elección: sus tareas la heredan; no se abre una sesión por tarea. Al volver, revisá lo que
-    entregó antes de decir «hecho». No para preguntas, arreglos chicos ni si pisaría archivos ajenos. Copia aparte del
-    proyecto: `/metodo:otra-sesion`.
+    entregó antes de decir «hecho»: lo que cuenta la otra sesión es su relato, no la prueba. No para preguntas,
+    arreglos chicos ni si pisaría archivos ajenos. Copia aparte del proyecto: `/metodo:otra-sesion`.
 
 ## Antes de elegir un servicio técnico (regla 21)
 
