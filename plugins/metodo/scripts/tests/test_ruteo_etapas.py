@@ -12,7 +12,7 @@ import unittest
 
 from test_radar import Base, R, YAML_REAL
 
-ETAPAS = ["explorar", "investigar", "planear", "implementar", "probar", "revisar", "seguridad", "documentar", "cierre"]
+ETAPAS = ["explorar", "investigar", "planear", "implementar", "probar", "leer", "calcular", "revisar", "seguridad", "documentar", "cierre"]
 SCRIPT = str(R.__file__) if hasattr(R, "__file__") else "radar.py"
 
 
@@ -27,7 +27,7 @@ def hook(entrada, env_extra=None):
 
 
 class Etapas(Base):
-    def test_el_radar_real_trae_las_nueve_etapas_con_fila_valida(self):
+    def test_el_radar_real_trae_las_once_etapas_con_fila_valida(self):
         self.assertEqual([e["id"] for e in R.etapas_validas(real())], ETAPAS)
 
     def test_seguridad_y_planear_nunca_salen_de_claude(self):
@@ -37,10 +37,12 @@ class Etapas(Base):
             self.assertEqual(res["ia"], "Claude")
             self.assertEqual(res["modelo"], "opus")
 
-    def test_implementar_con_cupo_libre_va_a_otra_ia_y_con_datos_privados_queda_en_claude(self):
+    def test_resolver_etapa_ya_no_manda_primero_a_otra_ia(self):
+        """Regla multi-IA (2026-11-05): la elección de IA la hace radar_ruteo (cupo por ritmo, privacidad, registro); acá solo el nivel de Claude."""
         r = real()
         e = R.etapa_para(r, "implementar")
-        self.assertNotEqual(R.resolver_etapa(r, e)["ia"], "Claude")
+        res = R.resolver_etapa(r, e)
+        self.assertEqual((res["ia"], res["modelo"]), ("Claude", "sonnet"))
         sens = R.resolver_etapa(r, e, sensible=True)
         self.assertEqual((sens["ia"], sens["modelo"]), ("Claude", "sonnet"))
         self.assertIn("se queda en Claude", sens["linea"])

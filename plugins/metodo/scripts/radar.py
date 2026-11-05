@@ -68,6 +68,7 @@ from pathlib import Path
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 import radar_modelos as RM
+import radar_ruteo as RR
 
 AQUI = Path(__file__).resolve().parent
 RADAR_EMPAQUETADO = AQUI.parent / "radar" / "RADAR.yaml"
@@ -1352,27 +1353,10 @@ def resolver_etapa(radar, etapa, sensible=False, prueba=None, rapido=False):
     fila = etapa["_fila"]
     claude = {"ia": "Claude", "modelo": fila["nivel"], "modelo_api": modelo_de_alias(radar, fila["nivel"]) or "",
               "esfuerzo": fila["esfuerzo"], "saltados": []}
-    elegido = None
-    if etapa.get("delegable") and not sensible and not rapido:
-        c = buscar_categoria(radar, etapa.get("categoria") or "")
-        prueba = cargar_prueba() if prueba is None else prueba
-        cache = {}
-        for plan in (c or {}).get("planes") or []:
-            herr = str(plan.get("herramienta", ""))
-            if not herr.startswith(HERRAMIENTAS_DELEGABLES):
-                continue
-            m = motivo_salto(plan, radar, False, prueba, cache)
-            if m is None:
-                elegido = {"ia": herr, "modelo": plan.get("modelo") or plan.get("modelo_api") or "el que trae la herramienta",
-                           "modelo_api": plan.get("modelo_api") or "", "esfuerzo": fila["esfuerzo"], "saltados": claude["saltados"],
-                           "categoria": c["id"]}
-                break
-            claude["saltados"].append("%s: %s" % (herr, m))
+    elegido = None   # la elección de IA la hace radar_ruteo (cupo por ritmo, privacidad, registro); acá solo el nivel de Claude
     r = elegido or claude
     motivo = _limpio(etapa.get("motivo") or "", 160)
-    if elegido:
-        motivo += "; %s tiene cupo (`delegar.py %s <repo> <pedido> --archivo`)" % (r["ia"], r["categoria"])
-    elif sensible and etapa.get("delegable"):
+    if sensible and etapa.get("delegable"):
         motivo += "; toca datos privados o configuración propia: se queda en Claude"
     r["motivo"] = motivo
     r["etapa"] = etapa["id"]
@@ -1398,21 +1382,19 @@ Disparador: encadenado (lo pide el freno de `radar.py recordar` al abrir una ses
     texto = " ".join(a.tarea or []).strip()
     if not texto:
         print("\n".join(tabla_etapas(radar)))
-        print("Uso: radar.py ruteo <etapa o descripción de la tarea> [--sensible]  → IA, modelo, esfuerzo y la línea «Ruteo:» para el pedido.")
+        print("Uso: radar.py ruteo <fila> --si 0-3 [--personas] [--edita] [--repo <carpeta>] [--cupo-sesion <usado>,<renovación>] [--sin <IA>] [--subir] [--a-fondo] [--json]  → IA, modelo, esfuerzo y la línea «Ruteo:» para el pedido.")
         return 0
-    e = etapa_para(radar, texto)
-    if not e:
-        print("No reconozco la etapa de «%s». Las que hay: %s" % (_limpio(texto), ", ".join(x["id"] for x in etapas_validas(radar))))
+    r = RR.resolver_seguro(sys.modules[__name__], radar, texto, si=a.si, personas=(a.personas or a.sensible), edita=a.edita, repo=a.repo,
+                           cupo_sesion=a.cupo_sesion, sin=a.sin or "", subir=a.subir, a_fondo=a.a_fondo)
+    if r is None:
+        print("No reconozco la fila de «%s». Las que hay: %s, %s" % (_limpio(texto), ", ".join(x["id"] for x in etapas_validas(radar)),
+              ", ".join(f["id"] for f in (radar.get("ruteo_claude") or {}).get("producir") or [])))
         return 2
-    r = resolver_etapa(radar, e, sensible=a.sensible)
     if a.json:
-        print(json.dumps(r, ensure_ascii=False))
+        print(json.dumps({k: r[k] for k in ("fila", "nivel", "ia", "modelo", "esfuerzo", "como", "motivo", "avisos", "linea")},
+                         ensure_ascii=False))
         return 0
-    print("Etapa: %s · IA: %s · modelo: %s%s · esfuerzo: %s" % (e["id"], r["ia"], r["modelo"],
-          " (%s)" % r["modelo_api"] if r.get("modelo_api") and r["modelo_api"] != r["modelo"] else "", r["esfuerzo"]))
-    if r["saltados"]:
-        print("Saltó: " + "; ".join(r["saltados"]) + ".")
-    print("Para el pedido (copiala tal cual): " + r["linea"])
+    print(r["linea"])
     return 0
 
 
@@ -2325,7 +2307,11 @@ def main(argv=None):
     s = sub.add_parser("consejos"); s.add_argument("--pedido"); s.add_argument("--todo", action="store_true"); s.set_defaults(f=cmd_consejos)
     sub.add_parser("recordar").set_defaults(f=cmd_recordar)
     s = sub.add_parser("ruteo"); s.add_argument("tarea", nargs="*"); s.add_argument("--sensible", action="store_true")
-    s.add_argument("--json", action="store_true"); s.set_defaults(f=cmd_ruteo)
+    s.add_argument("--json", action="store_true"); s.add_argument("--si", type=int, default=None)
+    s.add_argument("--personas", action="store_true"); s.add_argument("--edita", action="store_true")
+    s.add_argument("--repo"); s.add_argument("--cupo-sesion", dest="cupo_sesion"); s.add_argument("--sin")
+    s.add_argument("--subir", action="store_true"); s.add_argument("--a-fondo", dest="a_fondo", action="store_true")
+    s.set_defaults(f=cmd_ruteo)
     s = sub.add_parser("funciones"); s.add_argument("palabras", nargs="*"); s.add_argument("--pendientes", action="store_true"); s.set_defaults(f=cmd_funciones)
     a = ap.parse_args(argv)
     if not getattr(a, "f", None):
