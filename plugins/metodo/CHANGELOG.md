@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.69.4 — 2026-11-05
+**Una sola regla para elegir IA, modelo y esfuerzo, igual para todas tus sesiones.** Se pone al día sola en tu ficha; no hay nada que correr.
+- **Qué cambia:** las reglas 16, 18 y 20 ya no nombran ninguna IA (los nombres y el orden viven en el radar, que se actualiza solo). La 18 ahora dice cómo se decide: primero las claves y la privacidad, tres preguntas sobre el trabajo, y un programa (`radar.py ruteo`) elige IA, modelo y esfuerzo con el cupo de hoy. Si el trabajo toca plata, producción o contratos, no sube el modelo: suma un control.
+- **Privacidad:** lo que marques como sensible por contrato y los datos de personas o clientes solo van a una IA que vos registraste con «no entrenar». Tu código va a cualquiera.
+- **Cupo:** se compara con el tiempo que falta para que se renueve; un dato viejo o ausente dice «sin dato» y no frena nada.
+- **Qué tenés que hacer:** nada.
+
 ## 0.69.3 — 2026-11-05
 **Lo que marcaste como sensible por contrato ya no sale a otra IA.** Se aplica solo; no hay nada que correr.
 - **Qué cambia:** `delegar.py` lee tu lista de carpetas sensibles (un archivo local tuyo, `metodo/sensibles.txt`, que nunca viaja). Si el trabajo está en una de esas carpetas, o en un repo que la contiene, no se delega y te dice por qué.
