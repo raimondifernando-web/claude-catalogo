@@ -63,33 +63,80 @@ ECO = re.compile(r"<!--\s*eco\s*:", re.I)
 CODIGO_COMUN = {"main", "git", "true", "false", "none", "null", "claude", "python3", "bash", "sh"}
 
 
-# ---- órdenes por nombre de IA. El nombre va solo: «codex-cupo» o «agy-delegar» son programas, no un nombre.
+# ---- órdenes por nombre de IA. El nombre va solo: «codex-cupo», «agy-delegar» o «gemini.json» son programas/archivos, no un nombre.
 _IA = r"(?:codex|gemini|antigravity|openai|chatgpt|gpt-?\d[\w.]*|perplexity|grok|deepseek|mistral|copilot|kimi|qwen)"
-NOMBRE_IA = r"(?<![A-Za-z0-9_\-/])" + _IA + r"(?![A-Za-z0-9_\-])"
+NOMBRE_IA = r"(?<![A-Za-z0-9_\-/.])" + _IA + r"(?![A-Za-z0-9_\-]|\.[A-Za-z])"
 _ORDEN = r"(?:primero|siempre|antes que|por defecto|de entrada|preferentemente|prioridad|en primer lugar)"
-_VERBO = (r"(?:\bus[aáeo]\w*|\busar\w*|\bmand[aáe]\w*|\bdeleg[aáu]\w*|\bderiv[aáe]\w*|\benvi[aáe]\w*|\bpas[aáe]\w*|"
-          r"\bimplement[aáe]\w*|\brevis[aáe]\w*|\bcorr[eé]\w*|\bped[ií]\w*|\bva(?:n)?\s+(?:a|al)\b|\bvuelve\w*\s+(?:a|al)\b|"
-          r"\bqued[aá]\w*\s+(?:en|con)\b|\bhacelo\w*\s+(?:en|con)\b)")
+
+
+def _verbo(raiz: str, tildada: str) -> str:
+    """Imperativo con voseo (usá), infinitivo (usar) y con pronombre (usalo). No el presente («esto usa X», «pasa lo mismo») ni
+    sustantivos (usuario, uso, paso, correo, pedido)."""
+    return rf"{raiz}(?:{tildada}|ar|alo|ala|alos|alas)"
+
+
+_VERBOS = "|".join([_verbo("us", "á"), _verbo("mand", "á"), _verbo("deleg", "á"), _verbo("deriv", "á"), _verbo("envi", "á|ía"),
+                    _verbo("pas", "á"), _verbo("implement", "á"), _verbo("revis", "á"), _verbo("corr", "é"), _verbo("ped", "í"),
+                    r"pedir(?:le|les)?", r"hacelo", r"vuelv(?:e|an)\s+(?:a|al)", r"va(?:n)?\s+(?:a|al)", r"qued(?:a|an|á)\s+(?:en|con)"])
+_VERBO = r"(?<![A-Za-zÁ-úñ])(?:" + _VERBOS + r")(?![A-Za-zÁ-úñ])"
+_SEP = r"[\s:()\-–>=]{1,6}"
 ORDEN_IA = [
-    re.compile(NOMBRE_IA + r"(?:\s*[/,y]\s*" + _IA + r")*\s+" + _ORDEN, re.I),          # «Codex primero», «Gemini siempre»
+    re.compile(NOMBRE_IA + r"(?:\s*[/,y]\s*" + _IA + r")*" + _SEP + _ORDEN, re.I),          # «Codex primero», «Gemini: siempre»
     re.compile(_ORDEN + r"\s+(?:a\s+|con\s+|en\s+)?(?:la\s+)?(?:IA\s+)?" + NOMBRE_IA, re.I),     # «primero Codex»
-    re.compile(_VERBO + r"[^.;:\n]{0,28}?" + NOMBRE_IA, re.I),                                  # «usá Codex», «va a Codex/Gemini»
+    re.compile(_VERBO + r"[^.;\n]{0,40}?" + NOMBRE_IA, re.I),                                   # «usá Codex», «va a Codex/Gemini»
 ]
+NEGACION = re.compile(r"\b(?:nunca|jam[aá]s|no|ni|evit[aá]\w*|prohib\w+|sin)\b", re.I)
 IA_OK = re.compile(r"<!--\s*ia-ok\s*:", re.I)
+_ITEM = re.compile(r"(?:[-*+]|\d+[.)])\s")
+
+
+def _con_orden(texto: str) -> bool:
+    """True si hay una orden por nombre de IA que no está negada (una PROHIBICIÓN —«nunca uses X con datos…»— no es una orden)."""
+    for r in ORDEN_IA:
+        for m in r.finditer(texto):
+            if not NEGACION.search(texto[max(0, m.start() - 25):m.start() + 6]):
+                return True
+    return False
+
+
+def _normal(linea: str) -> str:
+    """Línea sin viñeta ni numeración, con espacios únicos: un cambio de formato no la vuelve «nueva»."""
+    return re.sub(r"\s+", " ", _ITEM.sub("", linea.strip(), count=1)).strip()
 
 
 def ordenes_ia(texto: str) -> list:
-    """[(n° de línea, línea)] con una orden por nombre de IA. Ignora bloques de código, títulos y líneas con `ia-ok`."""
-    out, fence = [], False
+    """[(n° de línea, texto)] con una orden por nombre de IA. Une las líneas partidas de un mismo ítem, mira también los títulos,
+    ignora bloques de código y las líneas con `ia-ok`."""
+    out, fence, buf, ini = [], False, [], 0
+
+    def cerrar():
+        nonlocal buf
+        if buf:
+            u = " ".join(buf)
+            if not IA_OK.search(u) and _con_orden(u):
+                out.append((ini, _normal(u)))
+        buf = []
+
     for i, linea in enumerate(texto.splitlines(), 1):
         s = linea.strip()
         if s.startswith("```"):
+            cerrar()
             fence = not fence
             continue
-        if fence or not s or s.startswith("#") or IA_OK.search(s):
+        if fence or not s:
+            cerrar()
             continue
-        if any(r.search(s) for r in ORDEN_IA):
-            out.append((i, s))
+        if s.startswith(("#", "|", ">")) or _ITEM.match(s):
+            cerrar()
+            ini = i
+            buf = [s.lstrip("#").strip() if s.startswith("#") else s]
+            if s.startswith(("#", "|")):
+                cerrar()
+        else:
+            if not buf:
+                ini = i
+            buf.append(s)
+    cerrar()
     return out
 
 
@@ -338,7 +385,7 @@ def cmd_hook() -> int:
         propuesto = nuevo_texto(h, actual)
         if propuesto == actual:
             return 0
-        previas_l = {x.strip() for x in actual.splitlines()}
+        previas_l = {_normal(x) for x in actual.splitlines()}
         nuevas_ia = [(n, l) for n, l in ordenes_ia(propuesto) if l not in previas_l]
         if nuevas_ia:
             sys.stderr.write(mensaje_ordenes(nuevas_ia) + "\n")

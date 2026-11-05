@@ -171,10 +171,28 @@ class TestOrdenesPorNombreDeIA(Base):
             self.assertEqual(r.returncode, 2, linea)
 
     def test_describir_sin_ordenar_o_nombrar_un_programa_pasa(self):
-        for linea in ("Codex y Gemini tampoco ven tus skills de Claude.", "Mirá `codex-cupo` antes de lanzar un trabajo grande.",
+        for linea in ("Codex y Gemini tampoco ven tus skills de Claude.", "Revisá `codex-cupo` antes de lanzar un trabajo grande.",
                       "El orden de las IA lo da el radar y cambia por semana."):
             r = hook(self.cfg, self.cfg / "rules" / "ia.md", "- " + linea + "\n")
             self.assertEqual(r.returncode, 0, linea + r.stderr)
+
+    def test_una_prohibicion_o_un_sustantivo_no_es_una_orden(self):
+        for linea in ("Nunca uses Codex con datos de clientes.", "El usuario final no envía datos a OpenAI.",
+                      "Corré codex.py y revisá gemini.json antes de seguir.", "El paso 3 pide el pedido de OpenAI."):
+            r = hook(self.cfg, self.cfg / "rules" / "ia.md", "- " + linea + "\n")
+            self.assertEqual(r.returncode, 0, linea + r.stderr)
+
+    def test_titulos_puntuacion_y_lineas_partidas_tambien_se_miran(self):
+        for texto in ("## 1. Usá Gemini primero\n", "- Codex: primero\n", "- Gemini -> siempre\n", "- Usá\n  Codex para todo.\n",
+                      "- Usá, para las tareas de backend, Codex\n"):
+            r = hook(self.cfg, self.cfg / "rules" / "ia.md", texto)
+            self.assertEqual(r.returncode, 2, texto)
+
+    def test_cambiar_la_viñeta_de_una_linea_vieja_no_la_vuelve_nueva(self):
+        archivo = self.cfg / "rules" / "ia.md"
+        archivo.write_text("- Codex primero para implementar.\n", encoding="utf-8")
+        r = hook(self.cfg, archivo, "* Codex primero   para implementar.\n")
+        self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_orden_a_proposito_con_marca_y_dentro_de_un_bloque_de_codigo(self):
         r = hook(self.cfg, self.cfg / "rules" / "ia.md", "- Usá Codex para esto <!-- ia-ok: pedido de la persona -->\n")
