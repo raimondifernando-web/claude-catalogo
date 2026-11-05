@@ -236,13 +236,15 @@ ruteo_claude:
       nombre: "Explorar o buscar (código, archivos, inventario)"
       fila: buscar_mover
       categoria: tareas_baratas
+      nivel_base: N1
       delegable: false
       motivo: "solo lee y cuenta; Haiku tiene las herramientas a mano y es el más barato"
-      palabras: [explorar, explore, buscar, inventario, ubicar, encontrar]
+      palabras: [explorar, explore, buscar, mover, inventario, ubicar, encontrar]
     - id: investigar
       nombre: "Investigar en la web"
       fila: investigar
       categoria: investigacion_web
+      nivel_base: N2
       delegable: true
       motivo: "juntar y contrastar fuentes; una búsqueda con citas sale más barata afuera"
       palabras: ["investig*", research, "en la web", relevar]
@@ -250,13 +252,15 @@ ruteo_claude:
       nombre: "Planear o diseñar (arquitectura, alcance, qué NO se hace)"
       fila: arquitectura_seguridad_plata
       categoria: agentes_largos
+      nivel_base: N3
       delegable: false
       motivo: "hay que juzgar y el error sale caro; un plan chico de 1-2 archivos baja a sonnet/medium"
-      palabras: ["plan*", "dise*", "arquitectur*", alcance, spec]
+      palabras: [plan, planear, "planific*", "dise*", "arquitectur*", alcance, spec, analizar para decidir]
     - id: implementar
       nombre: "Implementar (código acotado, arreglos, scripts)"
       fila: implementar_acotado
       categoria: desarrollo
+      nivel_base: N2
       delegable: true
       motivo: "tarea acotada con criterio claro; Codex o Gemini con cupo primero, Claude si toca datos o configuración propia"
       palabras: ["implement*", arreglar, fix, script, "program*", codigo]
@@ -264,13 +268,31 @@ ruteo_claude:
       nombre: "Probar (correr pruebas y leer el resultado)"
       fila: buscar_mover
       categoria: tareas_baratas
+      nivel_base: N1
       delegable: false
       motivo: "correr y leer es mecánico; ESCRIBIR pruebas nuevas es la etapa implementar"
       palabras: ["prob*", "test*", correr pruebas]
+    - id: leer
+      nombre: "Leer o revisar documentos"
+      fila: revisar
+      categoria: documentos_largos
+      nivel_base: N2
+      delegable: false
+      motivo: "leer y resumir documentos largos"
+      palabras: [leer documentos, revisar documentos, documentos largos, resumir documento]
+    - id: calcular
+      nombre: "Calcular o armar planillas"
+      fila: planillas
+      categoria: datos_planillas
+      nivel_base: N1
+      delegable: false
+      motivo: "cuentas y planillas; plata y producción suman control, no modelo"
+      palabras: [calcular, planilla, planillas, sumar]
     - id: revisar
       nombre: "Revisar (segunda opinión de un cambio)"
       fila: revisar
       categoria: revision
+      nivel_base: N2
       delegable: true
       motivo: "la revisión la hace alguien distinto del autor; otra IA con cupo, solo lectura"
       palabras: ["revis*", review, segunda opinion, critic]
@@ -278,23 +300,43 @@ ruteo_claude:
       nombre: "Seguridad, plata o algo irreversible"
       fila: arquitectura_seguridad_plata
       categoria: revision
+      nivel_base: N3
       delegable: false
       motivo: "toca claves, configuración o plata: se queda en Claude con el nivel más alto que no sea a pedido"
-      palabras: [seguridad, security, secreto, "vulnerab*", plata, irreversible]
+      palabras: [seguridad, security, secreto, "vulnerab*"]
     - id: documentar
       nombre: "Documentar (guías, fichas, avisos, changelog)"
       fila: implementar_acotado
       categoria: escritura
+      nivel_base: N2
       delegable: false
       motivo: "escribir en castellano sobre lo ya decidido; si es texto para un tercero, después pasa por humanizalo"
-      palabras: ["document*", guia, ficha, changelog, aviso, readme]
+      palabras: ["document*", redactar, guia, ficha, changelog, aviso, readme]
     - id: cierre
       nombre: "Cierre (controles, conteos, traspaso)"
       fila: buscar_mover
       categoria: tareas_baratas
+      nivel_base: N1
       delegable: false
       motivo: "los controles y conteos son mecánicos; el texto del traspaso lo escribe la sesión que trabajó, sin abrir otra"
       palabras: [cierre, cerrar, handoff, traspaso]
+  niveles_nota: "Modelo por nivel y por IA (2026-11-05). N1/N2/N3 → esfuerzo low/medium/high. Claude: alias. Codex y Antigravity son una PROPUESTA (verificado: false) a confirmar con el radar de modelos; `tope` solo si la persona lo nombra."
+  niveles:
+    Claude Code:
+      N1: haiku
+      N2: sonnet
+      N3: opus
+      tope: fable
+    Codex:
+      N1: gpt-6-luna
+      N2: gpt-6.1-terra
+      N3: gpt-6.1-sol
+      tope: gpt-6.1-sol-pro
+    Antigravity:
+      N1: gemini-3.5-flash-lite
+      N2: gemini-3.8-flash
+      N3: gemini-4-argon
+      tope: gemini-4-argon
   producir_nota: "Filas de PRODUCIR y CONSULTAR (2026-11-05): imagen, video, voz, transcribir e investigar no se resuelven por nivel de Claude sino por herramienta. `radar.py ruteo <fila>` recorre los planes de la `categoria` en orden y toma el primero cuyo nombre figura en ~/.claude/metodo/herramientas.txt para esa fila; cada plan trae `via` (comando, conector, api o web). Investigar tiene dos modos marcados en el plan: `citas` (rápido, con fuentes) y `fondo` (caro, solo con --a-fondo). Lo escribe una persona a mano."
   producir:
     - id: imagen
@@ -311,7 +353,7 @@ ruteo_claude:
       palabras: [transcribir, desgrabar, "subtitulos*"]
     - id: investigar
       categoria: investigacion_web
-      palabras: [investigar, competidor, buscar en internet, con citas, a fondo]
+      palabras: [investigar, competidor, buscar en internet, con citas]
 categorias:
   - id: desarrollo
     nombre: "Desarrollo (programar)"
