@@ -89,21 +89,17 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
 
 ## Antes de lanzar trabajo pesado (regla 16)
 
-16. **Mirá el cupo antes de gastarlo.** Antes de un trabajo grande (programar algo entero, revisar un repo, varios
-    agentes a la vez) mirá cuánto te queda: el de Claude en `/usage` (o el panel de uso de la app) y el de cualquier otra
-    IA a la que le delegues trabajo. Si usás Codex, el kit trae la medición:
-    `bash "$(find ~/.claude/plugins/cache/claude-catalogo/metodo -name codex-cupo | sort -V | tail -1)"`.
-    Con **70% o más**, solo tareas chicas y avisás; con **85% o más del cupo de Claude**, solo coordinás y delegás lo pesado; con **90% o más de cualquier otra IA**, no lanzás y avisás. **Una tarea grande a la vez**:
-    varias en paralelo se comen el cupo antes de que alguna termine. Estimá la tarea antes de lanzarla, no después.
-    **Tareas que se repiten solas.** Para vigilar algo cada tanto, `/loop` con 15 minutos o más (cada vuelta gasta cupo);
-    vence a los 7 días. Para repetir una tarea hasta que salga bien, el «Ralph» de `oh-my-claudecode-fixed`, siempre con
-    tope de vueltas y solo cuando el resultado se comprueba solo (pruebas que pasan o no) o cuando es un informe que solo
-    lee (auditorías, conciliaciones). **Nunca** un bucle que escriba solo en un sistema del negocio (sistema de gestión,
-    publicidades, lista de clientes). No se instalan otros «Ralph» (`ralph-wiggum` u otros): el del catálogo es el revisado.
-    **Equipos de agentes y revisiones.** Un equipo de varios agentes a la vez (o un flujo que lance muchos) nunca arranca sin tu OK
-    para ESA tarea y con el gasto estimado antes (agentes × cientos de miles de unidades cada uno), aunque un modo "a fondo" esté
-    prendido. Las revisiones en bucle tienen tope: **como máximo 2 vueltas** implementar→revisar por hito; si no converge, se
-    para, se te cuenta y se cambia de enfoque o de IA. Y al cerrar un hito pesado, una línea con cuánto cupo quedó.
+16. **Mirá el cupo antes de gastarlo.** Antes de un trabajo grande mirá cuánto queda en tu plan principal (`/usage` o
+    el panel de la app) y en cada otra IA a la que delegues (`radar.py hoy` lo muestra y `radar.py ruteo` lo usa
+    solo). El cupo se compara con el tiempo que falta para que se renueve: si queda mucho y la renovación está cerca,
+    sobra y conviene gastarlo; si queda poco y falta mucho, escasea y se cuida. Con 70 % usado o más, solo tareas
+    chicas y avisás; con 85 % o más del plan principal, solo coordinás y delegás lo pesado; con 90 % o más de
+    cualquier otra IA, no lanzás y avisás. Un dato de cupo viejo o ausente no frena a nadie: se dice «sin dato». Una
+    tarea grande a la vez. Vigilar algo: `/loop` de 15 minutos o más. Repetir hasta que salga: `ralph` de OMC con tope
+    de vueltas y solo con criterio que se verifica solo o en informes de solo lectura; no se instalan otros «Ralph»
+    (`ralph-wiggum` u otros); nunca un bucle que escriba solo en un sistema del negocio. Equipos de agentes y
+    revisiones: nunca sin tu OK para ESA tarea y con el gasto estimado antes, aunque un modo «a fondo» esté prendido;
+    revisiones en bucle, máximo 2 vueltas por hito. Al cerrar un hito pesado, una línea con el cupo que quedó.
 
 ## Cuando le pedís algo técnico a otra persona (regla 17)
 
@@ -114,29 +110,42 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
 
 ## Cuando elegís qué IA usar (regla 18)
 
-18. **Para elegir qué IA, qué modelo de Claude y qué esfuerzo usar, consultá el radar; nunca de memoria.** Al abrir cada
-    sesión ya te muestra 5-6 líneas (`radar.py hoy`): qué modelo es hoy cada nivel (haiku, sonnet, opus), qué nivel y
-    esfuerzo conviene por tipo de tarea y cuánto cupo queda en Claude, Codex y Gemini. Antes de abrir un subagente o una
-    sesión nueva, poné `model` y `effort` según esa tabla, no según lo que recordás: la tabla se actualiza sola y tu
-    memoria no. **Cada etapa del trabajo tiene su ruteo por defecto** (explorar, investigar, planear, implementar,
-    probar, revisar, seguridad, documentar, cierre): `radar.py ruteo` muestra la tabla y `radar.py ruteo <etapa>` lo
-    decide con el cupo de hoy —si otra IA lo hace igual de bien y tiene cupo, va ahí primero; lo que toca datos privados,
-    de clientes o la configuración propia se queda en Claude (`--sensible`)— y te da la línea «Ruteo: <IA>/<modelo>/<esfuerzo>
-    porque <motivo>» que va en el pedido a la sesión o al subagente, con `model` y `effort` iguales. Abrir una sesión sin
-    esa línea se frena UNA vez por sesión (se apaga con `RUTEO_FRENO_OFF=1`); a un subagente solo se le avisa. Para subir o
-    bajar un escalón, las 3 preguntas: ¿hay que juzgar o decidir? ¿equivocarse sale caro? ¿hay mucho contexto? Para elegir otra IA, corré
-    `python3 "$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name radar.py | sort -V | tail -1)" elegir <categoría>`
-    (con `--sensible` si hay datos privados). Te devuelve el primer plan disponible: si el A no está (cupo agotado, modelo
-    retirado o no disponible para tu cuenta), usá el B o el C que te indica. `ver` muestra todas las categorías con sus
-    planes A, B y C.
-    **Para mandar el trabajo a otra IA, no elijas vos: usá `delegar.py`** (está junto a `radar.py`):
-    `python3 "$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/claude-catalogo/metodo" -name delegar.py | sort -V | tail -1)" <categoría> <carpeta-del-repo> <pedido.txt> --archivo`
-    (con `--revisar` solo lee y te devuelve un informe). Mide el cupo de Claude, Codex y Antigravity, manda lo acotado a
-    la IA que tenga cupo —dejando a Claude como coordinador— y te deja el cambio sin commitear para que corras los
-    tests y lo revises. Un cupo sin usar es plata tirada: no lo dejes dormido mientras Claude se gasta. **La primera
-    vez** pide una aceptación (`delegar.py --aceptar`): el código del repo viaja a OpenAI o a Google y los planes
-    gratuitos pueden entrenar con lo enviado, así que **nunca** con datos privados, de clientes o claves (se niega en
-    esas carpetas). Contale eso a la persona y pedile que corra ella `delegar.py --aceptar` en su terminal (lo pide a una persona: vos no podés dártelo).
+18. **Qué IA, qué modelo y qué esfuerzo: lo decide un programa con el radar, nunca la memoria.** Si la persona nombró
+    una IA o un modelo, usalos. Si no, en este orden: (1) **claves, contraseñas y tokens no van a ninguna IA**; (2)
+    **privacidad**: las carpetas de tu lista de sensibles por contrato (`metodo/sensibles.txt`, archivo local tuyo) y
+    los datos de personas o clientes (contactos, documentos, domicilios, importes, fotos) solo van a una IA con «no
+    entrenar» registrado por vos (`metodo/no-entrena.txt`); el código propio puede ir a cualquiera; (3) contestá tres
+    preguntas: ¿la entrega es una elección, un plan, una crítica o una revisión con veredicto? ¿un error causaría
+    pérdida de dinero o datos, una obligación legal o daño a un tercero, o nadie lo detectaría? ¿hay que leer más de
+    10 archivos o 50 páginas?; (4) ubicá la fila del trabajo (explorar, probar, cierre, calcular, investigar,
+    implementar, documentar, leer documentos, revisar código, planear, seguridad; imagen, video, voz y transcribir van
+    a la mejor herramienta conectada); una etapa con varias tareas es UNA sola elección; (5) un cambio mínimo (hasta 2
+    archivos y 20 líneas, sin datos de personas) se hace en esta sesión; (6) el resto lo calcula `radar.py ruteo
+    <fila> --si <N>` (N = cuántas preguntas dieron sí), sin gastar IA y con el cupo de hoy: copiá su línea «Ruteo:
+    <IA>/<modelo>/<esfuerzo> porque <motivo>» al pedido, con `model` y `effort` iguales (abrir una sesión sin esa
+    línea se frena una vez); si el programa no existe o falla, usá el nivel por defecto de la fila y avisá
+    «provisorio»; (7) lo que calcula o mueve dinero, cambia producción, borra datos, envía algo a terceros o es
+    difícil lleva un control: una prueba automática o un revisor distinto del autor; el tema nunca sube el modelo,
+    sube el control; (8) si falla la IA (cupo, límite), el programa elige otra del mismo nivel; si falla el resultado,
+    se sube un nivel con el error a la vista, máximo 2 veces. Para mandar trabajo a otra IA usá `delegar.py
+    <categoría> <carpeta-del-repo> <pedido.txt> --archivo` (`--revisar` solo lee): se niega en carpetas sensibles y
+    avisa si hay planillas con datos de personas; la primera vez pide `delegar.py --aceptar`, que corre la persona. Un
+    cupo sin usar es plata tirada.
+
+    **Filas del trabajo** (la fila fija el nivel por defecto; las 3 preguntas lo suben o bajan un escalón por cada «sí» de más o de menos):
+
+    | Fila | Nivel por defecto |
+    |---|---|
+    | explorar, buscar, mover · probar · cierre · calcular, planillas | bajo |
+    | investigar · implementar · documentar, redactar · leer o revisar documentos · revisar código | medio |
+    | planear, analizar para decidir · seguridad | alto |
+    | imagen · video · voz · transcribir | la mejor herramienta conectada; si no hay, te deja el pedido listo para pegar |
+
+    **Privacidad, en una sola regla.** Claves, contraseñas y tokens: a ninguna IA. Carpetas de tu lista de sensibles por contrato
+    y datos de personas o clientes: solo a una IA con «no entrenar» registrado por vos, con fecha, en `metodo/no-entrena.txt`
+    (tildarlo en la cuenta de esa IA lo hacés vos, una vez; el programa nunca lo da por hecho). Tu código: a cualquiera. Los dos
+    archivos son locales de cada computadora y no viajan. `delegar.py` se niega en una carpeta sensible, y en un repo que la
+    contiene, y avisa si el repo trae planillas con datos de personas.
 
 ## Cuando se crean o suman skills y agentes (regla 19)
 
@@ -156,15 +165,12 @@ Es conducta general, como las 1-10; va numerada al final para no cambiarles el n
 
 ## Cuándo repartir el trabajo entre sesiones (regla 20)
 
-20. **¿Seguir acá o abrir otra sesión?** Para un trabajo mediano o grande (armar algo, investigar, una pieza con diseño)
-    que no toca archivos que otra sesión está editando y que se puede hacer con un modelo más barato que el tuyo (qué
-    nivel y esfuerzo lleva, lo dice el ruteo del radar: regla 18), Claude te propone hacerlo en una
-    **sesión aparte**: sigue sola, la ves en la barra lateral y le podés hablar, y esta queda libre. No lo propone para
-    preguntas, arreglos chicos, si pisaría archivos de otra sesión, o cuando explicarle el contexto a la nueva cuesta más
-    que hacerlo acá. Siempre le pasa el pedido completo (qué hacer, qué archivos, cómo se sabe que está hecho, qué no
-    tocar y qué necesita tu «sí») y, cuando la otra termina, **revisa lo que entregó antes de decirte que está hecho**:
-    lo que cuenta la otra sesión es su relato, no la prueba. Si las dos necesitan una copia aparte del proyecto (ramas
-    distintas), se abre con `/metodo:otra-sesion` (regla 11).
+20. **¿Seguir acá o abrir otra sesión?** Trabajo mediano o grande, que no toca archivos de otra sesión y se hace con
+    un nivel más barato (el ruteo de la regla 18): proponé una sesión aparte, con el pedido completo (qué hacer, qué
+    archivos, cómo se sabe que está hecho, qué no tocar, qué necesita tu «sí») y su línea «Ruteo:». Una etapa del
+    trabajo es una sola elección: sus tareas la heredan; no se abre una sesión por tarea. Al volver, revisá lo que
+    entregó antes de decir «hecho». No para preguntas, arreglos chicos ni si pisaría archivos ajenos. Copia aparte del
+    proyecto: `/metodo:otra-sesion`.
 
 ## Antes de elegir un servicio técnico (regla 21)
 
