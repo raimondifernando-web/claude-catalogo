@@ -295,6 +295,23 @@ ruteo_claude:
       delegable: false
       motivo: "los controles y conteos son mecánicos; el texto del traspaso lo escribe la sesión que trabajó, sin abrir otra"
       palabras: [cierre, cerrar, handoff, traspaso]
+  producir_nota: "Filas de PRODUCIR y CONSULTAR (2026-11-05): imagen, video, voz, transcribir e investigar no se resuelven por nivel de Claude sino por herramienta. `radar.py ruteo <fila>` recorre los planes de la `categoria` en orden y toma el primero cuyo nombre figura en ~/.claude/metodo/herramientas.txt para esa fila; cada plan trae `via` (comando, conector, api o web). Investigar tiene dos modos marcados en el plan: `citas` (rápido, con fuentes) y `fondo` (caro, solo con --a-fondo). Lo escribe una persona a mano."
+  producir:
+    - id: imagen
+      categoria: imagenes_generar
+      palabras: [imagen, foto, "ilustracion*", logo, banner, posteo con imagen]
+    - id: video
+      categoria: video
+      palabras: [video, reel, clip, "animacion*"]
+    - id: voz
+      categoria: voz_tts
+      palabras: [voz en off, "locucion*", leer en voz alta]
+    - id: transcribir
+      categoria: transcripcion
+      palabras: [transcribir, desgrabar, "subtitulos*"]
+    - id: investigar
+      categoria: investigacion_web
+      palabras: [investigar, competidor, buscar en internet, con citas, a fondo]
 categorias:
   - id: desarrollo
     nombre: "Desarrollo (programar)"
@@ -330,6 +347,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
+        via: comando
         verificado: true
         respaldo:
           - Artificial Analysis Coding Agent Index v2.0
@@ -347,6 +365,7 @@ categorias:
         condiciones: "Con cuenta gratis, revisá la privacidad de la cuenta antes de mandar código privado."
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
+        via: comando
         verificado: true
         respaldo:
           - Artificial Analysis Coding Agent Index v2.0
@@ -364,6 +383,7 @@ categorias:
         condiciones: "Gemini 4 Argon en Antigravity es solo para suscriptores de Google AI Ultra (en la app de Gemini, desde AI Pro; por API, US$2/10 por millón hasta el 30/11/2026 y US$4/20 después, según Google). Con otra cuenta, Antigravity usa el mejor Gemini que tenga (delegar.py lo resuelve solo). En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: /usage en Antigravity CLI
         cupo: antigravity
+        via: comando
         verificado: false
         respaldo:
           - Artificial Analysis Coding Agent Index v2.0
@@ -407,6 +427,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
+        via: comando
         verificado: true
         respaldo:
           - "Qodo, ¿qué modelo conviene para revisar código? (13 modelos)"
@@ -424,6 +445,7 @@ categorias:
         condiciones: "Gemini 4 Argon en Antigravity es solo para suscriptores de Google AI Ultra (en la app de Gemini, desde AI Pro; por API, US$2/10 por millón hasta el 30/11/2026 y US$4/20 después, según Google). Con otra cuenta, Antigravity usa el mejor Gemini que tenga (delegar.py lo resuelve solo). Con Gemini 3.8 Flash la revisión queda a la par de Codex (47,0% contra 46,6% en Qodo). En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: /usage en Antigravity CLI
         cupo: antigravity
+        via: comando
         verificado: true
         respaldo:
           - "ironbee-ai/code-review-benchmarks (21 modelos, 50 pull requests)"
@@ -440,6 +462,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
+        via: comando
         verificado: true
         respaldo:
           - "Qodo, ¿qué modelo conviene para revisar código? (13 modelos)"
@@ -512,6 +535,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
+        via: comando
         verificado: false
         respaldo:
           - Arena WebDev
@@ -528,6 +552,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
+        via: comando
         verificado: false
         respaldo:
           - Arena WebDev
@@ -543,6 +568,7 @@ categorias:
         condiciones: "Gemini 4 Argon en Antigravity es solo para suscriptores de Google AI Ultra (en la app de Gemini, desde AI Pro; por API, US$2/10 por millón hasta el 30/11/2026 y US$4/20 después, según Google). Con otra cuenta, Antigravity usa el mejor Gemini que tenga (delegar.py lo resuelve solo). En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: /usage en Antigravity CLI
         cupo: antigravity
+        via: comando
         verificado: false
         respaldo:
           - Arena WebDev
@@ -598,6 +624,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
+        via: comando
         verificado: true
         respaldo:
           - Arena texto
@@ -614,6 +641,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
+        via: comando
         verificado: false
       - plan: C
         herramienta: app web de Gemini
@@ -627,6 +655,7 @@ categorias:
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
         cupo: none
+        via: web
         verificado: false
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
@@ -692,6 +721,8 @@ categorias:
         condiciones: ""
         como_ver_cupo: panel de uso de ChatGPT
         cupo: none
+        via: web
+        fondo: true
         verificado: false
         respaldo:
           - "Arena búsqueda"
@@ -707,6 +738,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
+        via: comando
         verificado: false
         respaldo:
           - "Arena búsqueda"
@@ -722,6 +754,8 @@ categorias:
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
         cupo: none
+        via: web
+        fondo: true
         verificado: false
       - plan: D
         herramienta: "Perplexity (MCP oficial, desde una sesión de Claude)"
@@ -735,6 +769,9 @@ categorias:
         condiciones: "La API no entrena con lo que mandás por defecto; sin retención cero salvo acuerdo escrito. Claves y secretos nunca en la consulta."
         como_ver_cupo: "Saldo prepago: console.perplexity.ai → Billing (poné un tope mensual)"
         cupo: none
+        via: conector
+        citas: perplexity_ask
+        fondo: perplexity_research
         verificado: false
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
@@ -796,6 +833,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
+        via: comando
         verificado: true
         respaldo:
           - Arena documentos
@@ -812,6 +850,7 @@ categorias:
         condiciones: "Plan gratis: Google usa los datos. Con la API paga, mirá los términos (a verificar)."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
         cupo: none
+        via: api
         verificado: false
       - plan: C
         herramienta: Codex
@@ -825,6 +864,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
+        via: comando
         verificado: false
         respaldo:
           - Artificial Analysis AA-LCR v1.1
@@ -864,6 +904,7 @@ categorias:
         condiciones: No subas fotos de personas ni de clientes sin permiso.
         como_ver_cupo: panel de uso de ChatGPT
         cupo: none
+        via: web
         verificado: true
         respaldo:
           - "Arena texto a imagen y edición"
@@ -880,6 +921,7 @@ categorias:
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: app de Gemini
         cupo: none
+        via: web
         verificado: false
         respaldo:
           - "Arena texto a imagen y edición"
@@ -896,6 +938,7 @@ categorias:
         condiciones: "Sin medición independiente: se usa por la licencia comercial, no por calidad."
         como_ver_cupo: cuenta de Adobe
         cupo: none
+        via: conector
         verificado: false
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
@@ -951,6 +994,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
+        via: comando
         verificado: true
         respaldo:
           - "Arena visión"
@@ -967,6 +1011,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
+        via: comando
         verificado: false
       - plan: C
         herramienta: Antigravity
@@ -980,6 +1025,7 @@ categorias:
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: /usage en Antigravity CLI
         cupo: antigravity
+        via: comando
         verificado: false
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
@@ -1033,6 +1079,7 @@ categorias:
         condiciones: Necesita un plan de Google AI para generar video en la app de Gemini.
         como_ver_cupo: app de Gemini
         cupo: none
+        via: web
         verificado: false
         respaldo:
           - Arena texto a video
@@ -1049,6 +1096,7 @@ categorias:
         condiciones: "Sin cuenta propia todavía: hay que contratarla. Proveedor chino: sin material de clientes."
         como_ver_cupo: panel de la plataforma elegida
         cupo: none
+        via: api
         verificado: false
         respaldo:
           - Arena texto a video
@@ -1065,6 +1113,7 @@ categorias:
         condiciones: "Sin medición independiente."
         como_ver_cupo: cuenta de Adobe
         cupo: none
+        via: conector
         verificado: false
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
@@ -1120,6 +1169,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: panel de ElevenLabs
         cupo: none
+        via: api
         verificado: true
         respaldo:
           - Artificial Analysis Speech to Text
@@ -1136,6 +1186,7 @@ categorias:
         condiciones: "Plan gratis: Google usa los datos; con audios de clientes usá la API paga."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
         cupo: none
+        via: api
         verificado: false
         respaldo:
           - Artificial Analysis Speech to Text
@@ -1151,6 +1202,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: panel de uso de la API de OpenAI
         cupo: none
+        via: api
         verificado: false
         respaldo:
           - Artificial Analysis Speech to Text
@@ -1166,6 +1218,7 @@ categorias:
         condiciones: "Sin revisar privacidad ni cuenta: hay que contratarla antes de usarlo."
         como_ver_cupo: panel de Mistral
         cupo: none
+        via: api
         verificado: false
         respaldo:
           - Artificial Analysis Speech to Text
@@ -1211,6 +1264,7 @@ categorias:
         condiciones: "Orden a verificar: la tabla de Artificial Analysis no se pudo abrir directamente."
         como_ver_cupo: panel de ElevenLabs
         cupo: none
+        via: api
         verificado: false
         respaldo:
           - Artificial Analysis Text to Speech
@@ -1226,6 +1280,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: panel de la API de OpenAI
         cupo: none
+        via: api
         verificado: false
       - plan: C
         herramienta: API de Gemini
@@ -1239,6 +1294,7 @@ categorias:
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
         cupo: none
+        via: api
         verificado: false
         respaldo:
           - Artificial Analysis Text to Speech
@@ -1277,6 +1333,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
+        via: comando
         verificado: true
         respaldo:
           - "Vals AI, modelado en Excel y finanzas"
@@ -1293,6 +1350,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
+        via: comando
         verificado: false
       - plan: C
         herramienta: API / app web de Gemini
@@ -1306,6 +1364,7 @@ categorias:
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
         cupo: none
+        via: api
         verificado: false
     ranking:
       fuente: "Vals AI, Excel Modeling Benchmark v1.1 (% de aciertos)"
@@ -1374,6 +1433,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: panel de la API de OpenAI
         cupo: none
+        via: api
         verificado: true
         respaldo:
           - Artificial Analysis LLM Leaderboard
@@ -1391,6 +1451,7 @@ categorias:
         condiciones: "En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: "AI Studio: aistudio.google.com/usage"
         cupo: none
+        via: api
         verificado: false
       - plan: C
         herramienta: Claude Code
@@ -1404,6 +1465,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
+        via: comando
         verificado: false
         respaldo:
           - Artificial Analysis LLM Leaderboard
@@ -1452,6 +1514,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: /usage en Claude Code
         cupo: claude
+        via: comando
         verificado: true
         respaldo:
           - Arena Agent
@@ -1468,6 +1531,7 @@ categorias:
         condiciones: ""
         como_ver_cupo: "/status en Codex, o bash scripts/codex-cupo"
         cupo: codex
+        via: comando
         verificado: true
         respaldo:
           - Arena Agent
@@ -1484,6 +1548,7 @@ categorias:
         condiciones: "Gemini 4 Argon en Antigravity es solo para suscriptores de Google AI Ultra (en la app de Gemini, desde AI Pro; por API, US$2/10 por millón hasta el 30/11/2026 y US$4/20 después, según Google). Con otra cuenta, Antigravity usa el mejor Gemini que tenga (delegar.py lo resuelve solo). En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes."
         como_ver_cupo: /usage en Antigravity CLI
         cupo: antigravity
+        via: comando
         verificado: false
         respaldo:
           - Arena Agent
