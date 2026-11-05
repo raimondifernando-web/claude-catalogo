@@ -41,6 +41,8 @@ FIJAS = [
     ("plugins/*/scripts/*/tests/*", "pruebas que corre el control obligatorio"),
     ("plugins/*/scripts/unir-a-main", "el control de unión de los repos del cliente"),
     ("plugins/*/scripts/nombres-prohibidos", "instala un hook de git en la Mac del cliente"),
+    ("plugins/*/scripts/circuito.py", "lo lanza el vigía solo, una vez por día, en la Mac del cliente"),
+    ("plugins/*/templates/REGLAS-DEL-METODO*", "se copia sola a la ficha de cada cliente"),
     ("plugins/*/hooks/*", "un hook: corre solo en la Mac del cliente"),
     ("plugins/*/.mcp.json", "un servidor MCP: corre solo en la Mac del cliente"),
     ("plugins/*/.lsp.json", "un servidor de lenguaje: corre solo en la Mac del cliente"),

@@ -3,10 +3,12 @@
 Corre con CLAUDE_CONFIG_DIR apuntando a una carpeta temporal: nunca toca la ficha real.
 """
 import os
+import re
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
@@ -215,12 +217,24 @@ class GuiaModelosTest(unittest.TestCase):
         self.assertFalse(self.guia.exists())
 
     def test_la_guia_no_lleva_nada_personal(self):
-        import re
         import guia_modelos
         t = guia_modelos.texto_actual()
         self.assertIsNotNone(t)
         self.assertFalse(re.search(r"Fer\b|Mandamiento|TIBP|\bPM\b", t, re.I))
         guia_modelos.probar()
+
+    def test_la_copia_bajada_de_main_no_entra_a_la_guia(self):
+        # la copia que baja `radar.py actualizar` no espera las 48 h de `estable`: a las instrucciones permanentes no llega
+        import guia_modelos
+        radar_mod = guia_modelos._cargar_radar()
+        cache = Path(self.cfg) / "metodo" / "radar" / "RADAR.yaml"
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        texto = radar_mod.RADAR_EMPAQUETADO.read_text(encoding="utf-8")
+        texto = re.sub(r"(?m)^actualizado:.*$", "actualizado: 2099-01-01", texto, count=1).replace("Claude Code", "CopiaBajada", 1)
+        cache.write_text(texto, encoding="utf-8")
+        with mock.patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": str(self.cfg)}):
+            self.assertEqual(radar_mod.cargar()[1], "caché")     # radar.py sí la usa
+            self.assertNotIn("CopiaBajada", guia_modelos.texto_actual())
 
 
 if __name__ == "__main__":
