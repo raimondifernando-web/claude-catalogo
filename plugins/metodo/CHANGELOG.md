@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.69.3 — 2026-11-05
+**Lo que marcaste como sensible por contrato ya no sale a otra IA.** Se aplica solo; no hay nada que correr.
+- **Qué cambia:** `delegar.py` lee tu lista de carpetas sensibles (un archivo local tuyo, `metodo/sensibles.txt`, que nunca viaja). Si el trabajo está en una de esas carpetas, o en un repo que la contiene, no se delega y te dice por qué.
+- **Aviso:** si el repo trae planillas que parecen tener datos de personas o clientes (clientes, contactos, sueldos, columnas de mail o teléfono), te avisa antes de mandarlo. Es solo un aviso.
+- **Sin lista:** todo sigue igual que antes.
+- **Qué tenés que hacer:** nada.
+
 ## 0.69.2 — 2026-11-05
 **El aviso de cupo de Codex ya no se queda trabado en «no lanzar».** Se aplica solo; no hay nada que correr.
 - **El problema:** si el último registro de Codex decía 98 %, el aviso repetía «NO lanzar» para siempre, aunque la ventana ya se hubiera renovado.

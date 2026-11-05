@@ -99,6 +99,7 @@ if str(AQUI) not in sys.path:
 
 import radar
 import guias
+import privacidad
 
 TOPE_PEDIDO = 100 * 1024
 MODELO_VALIDO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -263,6 +264,11 @@ def es_carpeta_privada(repo_path):
     llaves = carpeta_de_llaves(repo_path)
     if llaves:
         return True, "%s: ahí no se delega; delegá desde la carpeta del proyecto" % llaves
+
+    # carpetas sensibles por contrato (lista local sensibles.txt): ni ellas, ni lo que las contiene, salen a otra IA
+    sensible = privacidad.carpeta_sensible(repo_path)
+    if sensible:
+        return True, sensible
 
     extra = os.environ.get("METODO_NO_DELEGAR", "").strip()
     if extra:
@@ -1198,6 +1204,14 @@ def main(argv=None):
             "No se delega en carpetas privadas: %s. Hacelo en esta sesión.\n" % motivo
         )
         return 65
+
+    # 2b. Aviso (no freno): planillas que parecen tener datos de personas o clientes
+    r_ls = git(repo_path, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+    if r_ls is not None and r_ls.returncode == 0:
+        archivos_repo = [x for x in r_ls.stdout.split("\0") if x]
+        aviso = privacidad.aviso_planillas(privacidad.planillas_con_personas(archivos_repo, raiz=repo_path))
+        if aviso:
+            sys.stderr.write(aviso + "\n")
 
     # 3. Cargar radar y buscar categoría (2 categoría desconocida)
     radar_data, _ = radar.cargar()
