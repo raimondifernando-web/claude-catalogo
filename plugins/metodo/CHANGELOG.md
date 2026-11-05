@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.69.5 — 2026-11-05
+**Una regla ya no puede mandar a una IA por su nombre.** Se aplica solo; no hay nada que correr.
+- **El problema:** una regla que dice «usá tal IA primero» queda vieja en cuanto cambian los cupos o sale otra IA, y choca con las demás reglas.
+- **Qué cambia:** al guardar una regla (`CLAUDE.md` y `rules/`), si una línea nueva ordena por nombre de IA («X primero», «usá X», «mandalo a X»), el cambio no se guarda y Claude te dice cómo escribirla sin el nombre: el orden lo da el radar. Describir sin ordenar («X no ve tus skills») sigue pasando. Lo que ya estaba escrito antes no molesta.
+- **Si de verdad querés una orden por nombre:** terminá la línea con `<!-- ia-ok: motivo -->`.
+- **Qué tenés que hacer:** nada.
+
 ## 0.69.4 — 2026-11-05
 **Una sola regla para elegir IA, modelo y esfuerzo, igual para todas tus sesiones.** Se pone al día sola en tu ficha; no hay nada que correr.
 - **Qué cambia:** las reglas 16, 18 y 20 ya no nombran ninguna IA (los nombres y el orden viven en el radar, que se actualiza solo). La 18 ahora dice cómo se decide: primero las claves y la privacidad, tres preguntas sobre el trabajo, y un programa (`radar.py ruteo`) elige IA, modelo y esfuerzo con el cupo de hoy. Si el trabajo toca plata, producción o contratos, no sube el modelo: suma un control.

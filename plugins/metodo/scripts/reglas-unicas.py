@@ -20,10 +20,16 @@ Salida de emergencia visible: una unidad que termina en `<!-- eco: motivo -->` e
 Los duplicados que ya existían al instalar se anotan en la base (<config>/metodo/reglas-unicas-base.json) y no frenan
 a nadie; lo que se agrega DESPUÉS sí. La base se crea sola la primera vez (el usuario no corre nada).
 
+Segunda revisión (mismo hook): una REGLA no ordena por nombre de IA. «Codex primero», «usá Gemini», «mandalo a Antigravity»
+frenan al guardarse; el orden de las IA vive en el radar (que cambia por semana), no en las reglas (que casi no cambian).
+Solo mira las líneas nuevas o cambiadas; una línea que describe sin ordenar («Codex no ve tus skills») pasa; una orden a
+propósito termina en `<!-- ia-ok: motivo -->`.
+
 Uso:
   reglas-unicas.py hook                    (lo llama Claude Code; lee el JSON del hook por la entrada estándar)
   reglas-unicas.py revisar [--todo] [--cwd DIR]   lista los duplicados (sale 1 si hay alguno fuera de la base)
   reglas-unicas.py aviso [--forzar]        una vez por semana, solo si hay algo: repetidas nuevas, ficha que engorda, rutas rotas
+  reglas-unicas.py ordenes [--archivos A B…]   lista las órdenes por nombre de IA (sale 1 si hay alguna); sin --archivos, tus reglas
   reglas-unicas.py base                    anota los duplicados de hoy como conocidos
 Variables: CLAUDE_CONFIG_DIR (default ~/.claude) · REGLAS_UNICAS_OFF=1 apaga el hook.
 Python 3.8+, solo librería estándar. Nunca bloquea por un error propio (si algo falla, deja pasar)."""
@@ -55,6 +61,45 @@ INI = "<!-- reglas-del-metodo:inicio -->"
 FIN = "<!-- reglas-del-metodo:fin -->"
 ECO = re.compile(r"<!--\s*eco\s*:", re.I)
 CODIGO_COMUN = {"main", "git", "true", "false", "none", "null", "claude", "python3", "bash", "sh"}
+
+
+# ---- órdenes por nombre de IA. El nombre va solo: «codex-cupo» o «agy-delegar» son programas, no un nombre.
+_IA = r"(?:codex|gemini|antigravity|openai|chatgpt|gpt-?\d[\w.]*|perplexity|grok|deepseek|mistral|copilot|kimi|qwen)"
+NOMBRE_IA = r"(?<![A-Za-z0-9_\-/])" + _IA + r"(?![A-Za-z0-9_\-])"
+_ORDEN = r"(?:primero|siempre|antes que|por defecto|de entrada|preferentemente|prioridad|en primer lugar)"
+_VERBO = (r"(?:\bus[aáeo]\w*|\busar\w*|\bmand[aáe]\w*|\bdeleg[aáu]\w*|\bderiv[aáe]\w*|\benvi[aáe]\w*|\bpas[aáe]\w*|"
+          r"\bimplement[aáe]\w*|\brevis[aáe]\w*|\bcorr[eé]\w*|\bped[ií]\w*|\bva(?:n)?\s+(?:a|al)\b|\bvuelve\w*\s+(?:a|al)\b|"
+          r"\bqued[aá]\w*\s+(?:en|con)\b|\bhacelo\w*\s+(?:en|con)\b)")
+ORDEN_IA = [
+    re.compile(NOMBRE_IA + r"(?:\s*[/,y]\s*" + _IA + r")*\s+" + _ORDEN, re.I),          # «Codex primero», «Gemini siempre»
+    re.compile(_ORDEN + r"\s+(?:a\s+|con\s+|en\s+)?(?:la\s+)?(?:IA\s+)?" + NOMBRE_IA, re.I),     # «primero Codex»
+    re.compile(_VERBO + r"[^.;:\n]{0,28}?" + NOMBRE_IA, re.I),                                  # «usá Codex», «va a Codex/Gemini»
+]
+IA_OK = re.compile(r"<!--\s*ia-ok\s*:", re.I)
+
+
+def ordenes_ia(texto: str) -> list:
+    """[(n° de línea, línea)] con una orden por nombre de IA. Ignora bloques de código, títulos y líneas con `ia-ok`."""
+    out, fence = [], False
+    for i, linea in enumerate(texto.splitlines(), 1):
+        s = linea.strip()
+        if s.startswith("```"):
+            fence = not fence
+            continue
+        if fence or not s or s.startswith("#") or IA_OK.search(s):
+            continue
+        if any(r.search(s) for r in ORDEN_IA):
+            out.append((i, s))
+    return out
+
+
+def mensaje_ordenes(lineas: list) -> str:
+    out = ["Una regla no ordena por nombre de IA: el orden de las IA cambia por semana y vive en el radar, no en las reglas."]
+    for _n, l in lineas[:3]:
+        out.append("  • «" + (l[:110] + ("…" if len(l) > 110 else "")) + "»")
+    out.append("Qué hacer: escribí la regla sin el nombre («lo decide el radar», `radar.py ruteo …`). Si la orden por nombre es a "
+               "propósito, terminá la línea con `<!-- ia-ok: motivo -->`. No se guardó el cambio.")
+    return "\n".join(out)
 
 
 def config_dir() -> Path:
@@ -293,6 +338,11 @@ def cmd_hook() -> int:
         propuesto = nuevo_texto(h, actual)
         if propuesto == actual:
             return 0
+        previas_l = {x.strip() for x in actual.splitlines()}
+        nuevas_ia = [(n, l) for n, l in ordenes_ia(propuesto) if l not in previas_l]
+        if nuevas_ia:
+            sys.stderr.write(mensaje_ordenes(nuevas_ia) + "\n")
+            return 2
         cwd = Path(h.get("cwd") or os.getcwd())
         otros = [a for a in archivos_de_reglas(cfg, cwd) if a.resolve() != p.resolve()]
         base = cargar_base(cfg)
@@ -398,6 +448,22 @@ def cmd_aviso(cwd: Path, forzar: bool) -> int:
     return 0
 
 
+def cmd_ordenes(archivos: list, cwd: Path) -> int:
+    """Lista las órdenes por nombre de IA. Sin archivos: los de reglas de esta computadora. Sale 1 si encuentra alguna."""
+    cfg = config_dir()
+    rutas = [Path(a) for a in archivos] if archivos else archivos_de_reglas(cfg, cwd)
+    n = 0
+    for r in rutas:
+        for num, l in ordenes_ia(leer(r)):
+            n += 1
+            print(f"  {corto(str(r))}:{num}  «{l[:110]}»")
+    if n:
+        print(f"✗ {n} orden(es) por nombre de IA en reglas: el orden de las IA lo da el radar, no la regla")
+        return 1
+    print("✓ ninguna orden por nombre de IA en las reglas")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="una regla, un solo hogar")
     sub = ap.add_subparsers(dest="cmd")
@@ -408,6 +474,9 @@ def main(argv=None) -> int:
     p = sub.add_parser("aviso")
     p.add_argument("--forzar", action="store_true", help="ignorar el «una vez por semana»")
     p.add_argument("--cwd", type=Path, default=Path.cwd())
+    p = sub.add_parser("ordenes")
+    p.add_argument("--archivos", nargs="*", default=[])
+    p.add_argument("--cwd", type=Path, default=Path.cwd())
     p = sub.add_parser("base")
     p.add_argument("--cwd", type=Path, default=Path.cwd())
     a = ap.parse_args(argv)
@@ -417,6 +486,8 @@ def main(argv=None) -> int:
         return cmd_revisar(a.todo, a.cwd)
     if a.cmd == "aviso":
         return cmd_aviso(a.cwd, a.forzar)
+    if a.cmd == "ordenes":
+        return cmd_ordenes(a.archivos, a.cwd)
     if a.cmd == "base":
         cfg = config_dir()
         pares = hallar(corpus(archivos_de_reglas(cfg, a.cwd), cfg))
