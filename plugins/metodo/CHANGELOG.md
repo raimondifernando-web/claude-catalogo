@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.69.1 — 2026-11-04
+**Dos arreglos de seguridad en lo que corre solo en tu computadora.** Se aplican solos; no hay nada que correr.
+- **El revisor automático de los vigías** ahora corre sin herramientas, sin conectores y en una carpeta vacía: lee el hallazgo y contesta, nada más. Ya no abre páginas de internet.
+- **La guía de modelos** se arma solo con lo que trae el paquete, que ya pasó la espera de 48 h, y solo acepta textos con forma de dato. Lo raro se omite.
+- **Menos datos afuera:** lo que el circuito manda a otra IA ya no lleva los nombres ni los enlaces de lo que tenés instalado, solo el tipo y el cambio de versión.
+- **Qué tenés que hacer:** nada.
+
 ## 0.69.0 — 2026-11-02
 **Una regla, un solo lugar: Claude te frena antes de guardar una regla que ya escribiste en otro archivo.** Se aplica solo; no hay nada que correr.
 - **El problema:** la misma regla terminaba escrita en tu ficha, en tus reglas y en la ficha de cada proyecto. Se corregía en un lado, quedaba vieja en el otro y cada sesión cargaba el texto dos veces.
