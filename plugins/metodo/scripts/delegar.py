@@ -138,15 +138,7 @@ NOMBRES_NO_COPIAR = {"settings.local.json"}
 TRAMOS_NO_COPIAR_EN_CLAUDE = {"hooks"}
 NOMBRE_CONFIG_EN_CLAUDE = re.compile(r"^(settings.*\.json|launch\.json|mcp.*\.json)$", re.I)
 # 4) Contenido (los primeros 64 KB): claves privadas y llaves con forma conocida, aunque el archivo se llame de cualquier modo.
-CONTENIDO_SECRETO = re.compile(
-    rb"-----BEGIN [A-Z ]*PRIVATE KEY-----|(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}(?![0-9A-Z])|(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9]{36}"
-    rb"|(?<![A-Za-z0-9_-])sk-[A-Za-z0-9_-]{20,}|(?<![A-Za-z0-9])xox[abpr]-|(?<![A-Za-z0-9_])AIza[0-9A-Za-z_-]{35}"
-    rb'|"private_key"\s*:'
-    # llaves de servicios comunes (Stripe, Notion, HuggingFace, GitLab, Google OAuth) y JWT (tres tramos que empiezan con eyJ)
-    rb"|(?<![A-Za-z0-9])[sr]k_(?:live|test)_[A-Za-z0-9]{16,}|(?<![A-Za-z0-9_])ntn_[A-Za-z0-9]{20,}"
-    rb"|(?<![A-Za-z0-9_])secret_[A-Za-z0-9]{40,}|(?<![A-Za-z0-9_])hf_[A-Za-z0-9]{30,}|(?<![A-Za-z0-9_-])glpat-[A-Za-z0-9_-]{20,}"
-    rb"|(?<![A-Za-z0-9_])ya29\.[A-Za-z0-9_-]{20,}"
-    rb"|(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")
+CONTENIDO_SECRETO = guias.CONTENIDO_SECRETO
 TOPE_CONTENIDO = 64 * 1024
 # Lo que imprime agy sin pantalla cuando se le niega una herramienta (no hay quién apruebe): antes terminaba «bien» sin hacer
 # nada. Solo cuenta si la salida es corta o agy terminó con error (una respuesta larga puede citar esas palabras).
@@ -1295,11 +1287,11 @@ def main(argv=None):
     if error:
         sys.stderr.write("Pedido rechazado: %s\n" % error)
         return 64
-    # Al revisar, el repo puede ser ajeno: sus skills no entran al pedido como instrucciones. Las guías pasan el mismo control de
-    # claves que un archivo del repo.
-    pedido_texto, _adjuntas, _avisos = guias.adjuntar(
-        pedido_texto, [x for x in args.skills.split(",") if x], None if args.revisar else str(repo_path),
-        es_clave=lambda c: bool(CONTENIDO_SECRETO.search(c.encode("utf-8", "replace"))))
+    # Al revisar, el repo puede ser ajeno: sus skills no se cargan. Un pedido que vive adentro del repo tampoco elige guías
+    # (podría nombrar una skill tuya para que salga): ahí valen solo las de --skills.
+    pedido_en_repo = args.archivo and (os.path.realpath(args.pedido) + os.sep).startswith(os.path.realpath(repo_path) + os.sep)
+    pedido_texto, _adjuntas, _avisos = guias.adjuntar(pedido_texto, [x for x in args.skills.split(",") if x],
+                                                      None if args.revisar else str(repo_path), solo_extra=bool(pedido_en_repo))
     _r = guias.resumen(_adjuntas, _avisos)
     if _r:
         print(_r)
