@@ -77,8 +77,117 @@ class TestGuias(Base):
         self.assertEqual(guias.adjuntar("usá /mi-guia", repo=str(self.tmp))[1], [])
 
 
+@unittest.skipIf(TD.ES_WINDOWS, "enlaces simbólicos")
+class TestSkillsDelRepo(Base):
+    """Lo que el repo delegado trae en .claude/skills no puede sacar de la máquina nada que no sea su propio texto."""
+
+    def repo_con_skill(self, nombre="demo", cuerpo="GUIA DEL REPO"):
+        d = self.tmp / "repo" / ".claude" / "skills" / nombre
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "SKILL.md").write_text(cuerpo + "\n", encoding="utf-8")
+        return self.tmp / "repo"
+
+    def afuera(self):
+        d = self.tmp / "afuera"
+        d.mkdir(exist_ok=True)
+        (d / "SKILL.md").write_text("DATO DE AFUERA\n", encoding="utf-8")
+        return d
+
+    def test_skill_comun_del_repo_viaja(self):
+        repo = self.repo_con_skill()
+        t, adj, _ = guias.adjuntar("usá la skill demo", repo=str(repo))
+        self.assertEqual(adj, ["demo"])
+        self.assertIn("GUIA DEL REPO", t)
+
+    def test_enlace_al_archivo_no_saca_nada_de_afuera(self):
+        repo = self.repo_con_skill()
+        ruta = repo / ".claude" / "skills" / "demo" / "SKILL.md"
+        ruta.unlink()
+        ruta.symlink_to(self.afuera() / "SKILL.md")
+        t, adj, _ = guias.adjuntar("usá la skill demo", repo=str(repo))
+        self.assertEqual(adj, [])
+        self.assertNotIn("DATO DE AFUERA", t)
+
+    def test_enlace_a_la_carpeta_de_la_skill_no_saca_nada_de_afuera(self):
+        repo = self.repo_con_skill()
+        (repo / ".claude" / "skills" / "otra").symlink_to(self.afuera())
+        t, adj, _ = guias.adjuntar("usá la skill otra", repo=str(repo))
+        self.assertEqual(adj, [])
+        self.assertNotIn("DATO DE AFUERA", t)
+
+    def test_enlace_a_toda_la_carpeta_claude_no_saca_nada_de_afuera(self):
+        d = self.tmp / "otro" / "skills" / "demo"
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text("DATO DE AFUERA\n", encoding="utf-8")
+        repo = self.tmp / "repo2"
+        repo.mkdir()
+        (repo / ".claude").symlink_to(self.tmp / "otro")
+        t, adj, _ = guias.adjuntar("usá la skill demo", repo=str(repo))
+        self.assertEqual(adj, [])
+        self.assertNotIn("DATO DE AFUERA", t)
+
+    def test_enlace_a_una_tuberia_no_cuelga(self):
+        repo = self.repo_con_skill()
+        ruta = repo / ".claude" / "skills" / "demo" / "SKILL.md"
+        ruta.unlink()
+        os.mkfifo(str(self.tmp / "tubo"))
+        ruta.symlink_to(self.tmp / "tubo")
+        self.assertEqual(guias.adjuntar("usá la skill demo", repo=str(repo))[1], [])
+
+    def test_el_repo_no_tapa_una_skill_de_plugin_ni_una_tuya(self):
+        repo = self.repo_con_skill("mi-guia", "VERSION DEL REPO")
+        self.skill("mi-guia", "VERSION TUYA")
+        d = self.tmp / "config" / "plugins" / "cache" / "m" / "p" / "1.0" / "skills" / "de-plugin"
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text("VERSION DEL PLUGIN\n", encoding="utf-8")
+        repo2 = self.repo_con_skill("de-plugin", "VERSION DEL REPO")
+        self.assertEqual(repo, repo2)
+        t, adj, _ = guias.adjuntar("usá /mi-guia y /de-plugin", repo=str(repo))
+        self.assertEqual(sorted(adj), ["de-plugin", "mi-guia"])
+        self.assertIn("VERSION TUYA", t)
+        self.assertIn("VERSION DEL PLUGIN", t)
+        self.assertNotIn("VERSION DEL REPO", t)
+
+    def test_control_de_claves_extra(self):
+        self.skill("rara", "dato AKIA" + "A" * 16)
+        self.assertEqual(guias.adjuntar("usá /rara", repo=str(self.tmp))[1], ["rara"])  # el filtro propio no la ve
+        t, adj, av = guias.adjuntar("usá /rara", repo=str(self.tmp), es_clave=lambda c: "AKIA" in c)
+        self.assertEqual(adj, [])
+        self.assertNotIn("AKIA", t)
+        self.assertTrue(any("forma de clave" in a for a in av))
+
+
 @unittest.skipIf(TD.ES_WINDOWS, "scripts falsos de bash/sh")
 class TestDeLaPuntaALaPunta(Base):
+    def repo_con_guia(self, nombre):
+        repo = self.crear_repo_git(nombre)
+        d = repo / ".claude" / "skills" / "del-repo"
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text("GUIA DEL REPO\n", encoding="utf-8")
+        return repo
+
+    def test_al_editar_la_skill_del_repo_viaja(self):
+        repo = self.repo_con_guia("repo-editar")
+        subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x"], check=True, capture_output=True)
+        cod, _, err = self.correr("desarrollo", str(repo), "hacé algo con la skill del-repo")
+        self.assertEqual(cod, 0, err)
+        self.assertIn("GUIA DEL REPO", (self.tmp / "codex_stdin.txt").read_text(encoding="utf-8"))
+
+    def test_al_revisar_no_se_cargan_skills_del_repo(self):
+        repo = self.repo_con_guia("repo-revisar")
+        cod, _, err = self.correr("desarrollo", str(repo), "revisá con la skill del-repo", "--revisar")
+        self.assertEqual(cod, 0, err)
+        self.assertNotIn("GUIA DEL REPO", (self.tmp / "codex_stdin.txt").read_text(encoding="utf-8"))
+
+    def test_una_skill_con_llave_conocida_no_sale(self):
+        self.skill("con-llave", "dato AKIA" + "A" * 16 + " fin")
+        repo = self.crear_repo_git("repo-llave")
+        cod, out, err = self.correr("desarrollo", str(repo), "hacé algo con la skill con-llave")
+        self.assertEqual(cod, 0, err)
+        self.assertNotIn("AKIA", (self.tmp / "codex_stdin.txt").read_text(encoding="utf-8"))
+        self.assertIn("forma de clave", out)
+
     def test_delegar_a_codex_con_pedido_que_nombra_una_skill_llega_con_la_guia(self):
         self.skill("mi-guia", "REGLA ESPECIAL: usá tabs")
         self.codex_falso()

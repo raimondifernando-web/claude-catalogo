@@ -1295,7 +1295,11 @@ def main(argv=None):
     if error:
         sys.stderr.write("Pedido rechazado: %s\n" % error)
         return 64
-    pedido_texto, _adjuntas, _avisos = guias.adjuntar(pedido_texto, [x for x in args.skills.split(",") if x], str(repo_path))
+    # Al revisar, el repo puede ser ajeno: sus skills no entran al pedido como instrucciones. Las guías pasan el mismo control de
+    # claves que un archivo del repo.
+    pedido_texto, _adjuntas, _avisos = guias.adjuntar(
+        pedido_texto, [x for x in args.skills.split(",") if x], None if args.revisar else str(repo_path),
+        es_clave=lambda c: bool(CONTENIDO_SECRETO.search(c.encode("utf-8", "replace"))))
     _r = guias.resumen(_adjuntas, _avisos)
     if _r:
         print(_r)

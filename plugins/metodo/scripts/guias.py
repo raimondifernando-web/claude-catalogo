@@ -27,16 +27,23 @@ FORMA_DE_CLAVE = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY|\bsk-[A-Za-z0-9]{20,
 USA_CONECTORES = re.compile(r"mcp__|Claude in Chrome|\bconector(es)?\b|\bMCP\b")
 
 
+def _propia_del_repo(f, repo):
+    """¿`f` es un archivo común que está de verdad en <repo>/.claude/skills/<nombre>/? Un enlace en cualquier tramo podría
+    traer un archivo de la máquina, que saldría a otra IA."""
+    esperada = os.path.join(os.path.realpath(repo), ".claude", "skills", os.path.basename(os.path.dirname(f)), "SKILL.md")
+    return os.path.realpath(f) == esperada and os.path.isfile(esperada)
+
+
 def skills_conocidas(repo=None):
     cfg = os.environ.get("CLAUDE_CONFIG_DIR", os.path.expanduser("~/.claude"))
     rutas = {}
-    pats = [cfg + "/skills/*/SKILL.md"]
-    if repo:
-        pats.append(os.path.join(repo, ".claude", "skills", "*", "SKILL.md"))
-    pats.append(cfg + "/plugins/cache/*/*/*/skills/*/SKILL.md")
-    for pat in pats:
+    for pat in (cfg + "/skills/*/SKILL.md", cfg + "/plugins/cache/*/*/*/skills/*/SKILL.md"):
         for f in sorted(glob.glob(pat), reverse=True):  # la versión más nueva primero
             rutas.setdefault(os.path.basename(os.path.dirname(f)), f)
+    if repo:  # al final: el repo trabajado es ajeno y nunca tapa una skill tuya ni de un plugin
+        for f in sorted(glob.glob(os.path.join(glob.escape(repo), ".claude", "skills", "*", "SKILL.md"))):
+            if _propia_del_repo(f, repo):
+                rutas.setdefault(os.path.basename(os.path.dirname(f)), f)
     return rutas
 
 
@@ -60,8 +67,9 @@ def _cuerpo(ruta):
     return t[m.end():] if m else t
 
 
-def adjuntar(texto, extra=(), repo=None):
-    """(texto_final, [adjuntas], [avisos]). Nunca lanza: ante un error devuelve el texto como vino."""
+def adjuntar(texto, extra=(), repo=None, es_clave=None):
+    """(texto_final, [adjuntas], [avisos]). Nunca lanza: ante un error devuelve el texto como vino. `repo` = también vale lo que
+    traiga <repo>/.claude/skills. `es_clave` = control de claves de quien llama, además del propio (recibe el texto de la guía)."""
     if os.environ.get("GUIAS_OFF"):
         return texto, [], []
     try:
@@ -84,7 +92,7 @@ def adjuntar(texto, extra=(), repo=None):
                 avisos.append("«%s» es de la sesión de Claude: no se adjunta" % n)
                 continue
             cuerpo = _cuerpo(conocidas[n]).strip()
-            if FORMA_DE_CLAVE.search(cuerpo):
+            if FORMA_DE_CLAVE.search(cuerpo) or (es_clave and es_clave(cuerpo)):
                 avisos.append("«%s» tiene algo con forma de clave: no se adjunta" % n)
                 continue
             if USA_CONECTORES.search(cuerpo):

@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.69.6 — 2026-11-06
+**Al delegar a otra IA, el proyecto en el que trabajás ya no puede colar archivos ajenos al pedido.** Se aplica solo; no hay nada que correr.
+- **El problema:** las guías (skills) que nombra un pedido viajan a la otra IA. Una guía que venía dentro del proyecto podía ser un atajo a otro archivo de tu computadora, y ese archivo salía con el pedido.
+- **Qué cambia:** de un proyecto solo viajan guías que son archivos comunes de su propia carpeta. Nunca reemplazan a una guía tuya o de un paquete. Al pedir una revisión, las guías del proyecto no se usan. Y todas las guías pasan el mismo control de claves que los archivos.
+- **Qué tenés que hacer:** nada.
+
 ## 0.69.5 — 2026-11-05
 **Una regla ya no puede mandar a una IA por su nombre.** Se aplica solo; no hay nada que correr.
 - **El problema:** una regla que dice «usá tal IA primero» queda vieja en cuanto cambian los cupos o sale otra IA, y choca con las demás reglas.
