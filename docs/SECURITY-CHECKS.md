@@ -1305,3 +1305,17 @@ Alcance: diff entre el último check (a817a8ec, metodo 0.60.0) y 7c7a460: script
 - Bajo: 14 agentes nuevos terminan con «Casos de evaluación: ~/Proyectos/Tech/docs/…», ruta a una carpeta local privada (sin contenido; conviene quitar la línea). `marketing-analyst` nombra «Fernando» en el campo `origen` (ya estaba antes de este alcance).
 - Límites: no probado en la máquina de un cliente ni en Windows; no se corrieron escáneres de historial de git completo.
 - Veredicto: **PASS con condiciones**. Sin hallazgos críticos ni altos.
+
+### 2026-11-06 · metodo 0.61.3 → 0.69.6 (commit 0993a914a4dd820ab6d783a34310f8dd06fb8dbb; PR #106 a #125) — PASS con condiciones
+
+Alcance: lo agregado desde el último check aprobado (7c7a460) hasta metodo 0.69.5 (3fb326d) y el arreglo de 0.69.6. Revisores distintos del autor: `security-reviewer` (solo lectura) en cinco pasadas, cuatro con Opus y una con Sonnet, y Gemini (`agy-delegar --revisar`) en dos. Un hallazgo alto encontrado en este check se corrigió antes de aprobar.
+- Corregido (0.69.1): el revisor automático del circuito corre sin herramientas, sin hooks, sin conectores y en una carpeta vacía; la guía de modelos lee solo el radar del paquete y filtra cada campo.
+- Corregido (0.69.6): al delegar a otra IA, las guías que vienen del repo se limitan a archivos propios de su carpeta, sin enlaces, y van rotuladas como dato; no se cargan al revisar; todas las guías pasan el mismo control de claves que los archivos. El problema estaba desde 0.57.0.
+- Secretos: 0 patrones de claves en lo agregado (la única coincidencia es la lista de patrones de un check anterior). Historial: 41 valores con forma de clave en 718 commits, ninguno en este rango; son ejemplos y pruebas. Clientes: `git grep` = 0. Caracteres invisibles: 0.
+- Hooks: 23 comandos, todos fijos y entrecomillados; la única variable es la raíz del plugin. Sin `shell=True`, `eval`, `exec` ni `os.system` en lo agregado.
+- Dependencias: `npm audit` 0 vulnerabilidades. `pip-audit` no corrió: `metodo` no tiene `requirements.txt`.
+- Pruebas: `controles` de GitHub en verde sobre el arreglo; 1748 de `metodo`, con 2 cortes por tiempo en una máquina cargada que pasaron al repetirlas; 101 del vigía y 76 de controles OK.
+- Medios abiertos, para próximas versiones: filtro de qué alertas puede cerrar solo el circuito; texto de IA en el aviso de arranque; configuración del circuito que puede lanzar programas; carpeta sin pruebas en `unir-a-main`; radar bajado de `main` con filtro parcial y fuentes sin lista de servidores; controles de lo que Codex toca en la carpeta real; archivos de filtros fuera de la zona sensible; pedidos armados con texto de un repo que eligen guías; escritura de marcas antes del registro en el circuito.
+- Bajos: nombre propio del autor en textos públicos, descripción de hooks desactualizada y otros detalles sin riesgo directo.
+- Límites: no probado en la máquina de un cliente, ni en un Windows real, ni en Cowork; `claude -p` con esas opciones y el aislamiento real de Codex no se comprobaron. El detalle completo queda fuera del repo.
+- Veredicto: **PASS con condiciones**. Sin hallazgos críticos ni altos abiertos en el paquete.
