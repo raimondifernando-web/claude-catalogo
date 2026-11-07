@@ -1,6 +1,6 @@
 # Radar de modelos
 
-> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-11-01**.
+> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-11-07**.
 > `[a verificar]` = dato de la investigación que todavía no se leyó de primera mano.
 
 Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B o el C.
@@ -48,6 +48,8 @@ Ruteo por ETAPA del desarrollo (2026-11-01): cada etapa arranca con su IA, model
 | Planear o diseñar (arquitectura, alcance, qué NO se hace) | opus/high | no | hay que juzgar y el error sale caro; un plan chico de 1-2 archivos baja a sonnet/medium |
 | Implementar (código acotado, arreglos, scripts) | sonnet/low | sí, si tiene cupo (desarrollo) | tarea acotada con criterio claro; Codex o Gemini con cupo primero, Claude si toca datos o configuración propia |
 | Probar (correr pruebas y leer el resultado) | haiku/low | no | correr y leer es mecánico; ESCRIBIR pruebas nuevas es la etapa implementar |
+| Leer o revisar documentos | sonnet/medium | no | leer y resumir documentos largos |
+| Calcular o armar planillas | sonnet/low | no | cuentas y planillas; plata y producción suman control, no modelo |
 | Revisar (segunda opinión de un cambio) | sonnet/medium | sí, si tiene cupo (revision) | la revisión la hace alguien distinto del autor; otra IA con cupo, solo lectura |
 | Seguridad, plata o algo irreversible | opus/high | no | toca claves, configuración o plata: se queda en Claude con el nivel más alto que no sea a pedido |
 | Documentar (guías, fichas, avisos, changelog) | sonnet/low | no | escribir en castellano sobre lo ya decidido; si es texto para un tercero, después pasa por humanizalo |

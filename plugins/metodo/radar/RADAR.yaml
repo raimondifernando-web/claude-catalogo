@@ -1,6 +1,6 @@
 # RADAR.yaml — qué IA usar para cada cosa, con plan A, B y C. Lo lee `scripts/radar.py`.
 # Lo mantiene un PR automático (.github/workflows/radar.yml) que una persona aprueba; el RADAR.md se genera con `radar.py md`.
-actualizado: 2026-11-01
+actualizado: 2026-11-07
 nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual. Orden A/B/C revisado a mano el 2026-10-29 contra Arena, Artificial Analysis y otras fuentes independientes; cada plan trae su evidencia."
 vigentes:
   actualizado: 2026-10-08
@@ -239,15 +239,26 @@ ruteo_claude:
       nivel_base: N1
       delegable: false
       motivo: "solo lee y cuenta; Haiku tiene las herramientas a mano y es el más barato"
-      palabras: [explorar, explore, buscar, mover, inventario, ubicar, encontrar]
+      palabras:
+        - explorar
+        - explore
+        - buscar
+        - mover
+        - inventario
+        - ubicar
+        - encontrar
     - id: investigar
-      nombre: "Investigar en la web"
+      nombre: Investigar en la web
       fila: investigar
       categoria: investigacion_web
       nivel_base: N2
       delegable: true
       motivo: "juntar y contrastar fuentes; una búsqueda con citas sale más barata afuera"
-      palabras: ["investig*", research, "en la web", relevar]
+      palabras:
+        - "investig*"
+        - research
+        - en la web
+        - relevar
     - id: planear
       nombre: "Planear o diseñar (arquitectura, alcance, qué NO se hace)"
       fila: arquitectura_seguridad_plata
@@ -255,7 +266,15 @@ ruteo_claude:
       nivel_base: N3
       delegable: false
       motivo: "hay que juzgar y el error sale caro; un plan chico de 1-2 archivos baja a sonnet/medium"
-      palabras: [plan, planear, "planific*", "dise*", "arquitectur*", alcance, spec, analizar para decidir]
+      palabras:
+        - plan
+        - planear
+        - "planific*"
+        - "dise*"
+        - "arquitectur*"
+        - alcance
+        - spec
+        - analizar para decidir
     - id: implementar
       nombre: "Implementar (código acotado, arreglos, scripts)"
       fila: implementar_acotado
@@ -263,7 +282,13 @@ ruteo_claude:
       nivel_base: N2
       delegable: true
       motivo: "tarea acotada con criterio claro; Codex o Gemini con cupo primero, Claude si toca datos o configuración propia"
-      palabras: ["implement*", arreglar, fix, script, "program*", codigo]
+      palabras:
+        - "implement*"
+        - arreglar
+        - fix
+        - script
+        - "program*"
+        - codigo
     - id: probar
       nombre: "Probar (correr pruebas y leer el resultado)"
       fila: buscar_mover
@@ -271,23 +296,34 @@ ruteo_claude:
       nivel_base: N1
       delegable: false
       motivo: "correr y leer es mecánico; ESCRIBIR pruebas nuevas es la etapa implementar"
-      palabras: ["prob*", "test*", correr pruebas]
+      palabras:
+        - "prob*"
+        - "test*"
+        - correr pruebas
     - id: leer
-      nombre: "Leer o revisar documentos"
+      nombre: Leer o revisar documentos
       fila: revisar
       categoria: documentos_largos
       nivel_base: N2
       delegable: false
-      motivo: "leer y resumir documentos largos"
-      palabras: [leer documentos, revisar documentos, documentos largos, resumir documento]
+      motivo: leer y resumir documentos largos
+      palabras:
+        - leer documentos
+        - revisar documentos
+        - documentos largos
+        - resumir documento
     - id: calcular
-      nombre: "Calcular o armar planillas"
+      nombre: Calcular o armar planillas
       fila: planillas
       categoria: datos_planillas
       nivel_base: N1
       delegable: false
       motivo: "cuentas y planillas; plata y producción suman control, no modelo"
-      palabras: [calcular, planilla, planillas, sumar]
+      palabras:
+        - calcular
+        - planilla
+        - planillas
+        - sumar
     - id: revisar
       nombre: "Revisar (segunda opinión de un cambio)"
       fila: revisar
@@ -295,7 +331,11 @@ ruteo_claude:
       nivel_base: N2
       delegable: true
       motivo: "la revisión la hace alguien distinto del autor; otra IA con cupo, solo lectura"
-      palabras: ["revis*", review, segunda opinion, critic]
+      palabras:
+        - "revis*"
+        - review
+        - segunda opinion
+        - critic
     - id: seguridad
       nombre: "Seguridad, plata o algo irreversible"
       fila: arquitectura_seguridad_plata
@@ -303,7 +343,11 @@ ruteo_claude:
       nivel_base: N3
       delegable: false
       motivo: "toca claves, configuración o plata: se queda en Claude con el nivel más alto que no sea a pedido"
-      palabras: [seguridad, security, secreto, "vulnerab*"]
+      palabras:
+        - seguridad
+        - security
+        - secreto
+        - "vulnerab*"
     - id: documentar
       nombre: "Documentar (guías, fichas, avisos, changelog)"
       fila: implementar_acotado
@@ -311,7 +355,14 @@ ruteo_claude:
       nivel_base: N2
       delegable: false
       motivo: "escribir en castellano sobre lo ya decidido; si es texto para un tercero, después pasa por humanizalo"
-      palabras: ["document*", redactar, guia, ficha, changelog, aviso, readme]
+      palabras:
+        - "document*"
+        - redactar
+        - guia
+        - ficha
+        - changelog
+        - aviso
+        - readme
     - id: cierre
       nombre: "Cierre (controles, conteos, traspaso)"
       fila: buscar_mover
@@ -319,7 +370,11 @@ ruteo_claude:
       nivel_base: N1
       delegable: false
       motivo: "los controles y conteos son mecánicos; el texto del traspaso lo escribe la sesión que trabajó, sin abrir otra"
-      palabras: [cierre, cerrar, handoff, traspaso]
+      palabras:
+        - cierre
+        - cerrar
+        - handoff
+        - traspaso
   niveles_nota: "Modelo por nivel y por IA (2026-11-05). N1/N2/N3 → esfuerzo low/medium/high. Claude: alias. Codex y Antigravity son una PROPUESTA (verificado: false) a confirmar con el radar de modelos; `tope` solo si la persona lo nombra."
   niveles:
     Claude Code:
@@ -341,19 +396,39 @@ ruteo_claude:
   producir:
     - id: imagen
       categoria: imagenes_generar
-      palabras: [imagen, foto, "ilustracion*", logo, banner, posteo con imagen]
+      palabras:
+        - imagen
+        - foto
+        - "ilustracion*"
+        - logo
+        - banner
+        - posteo con imagen
     - id: video
       categoria: video
-      palabras: [video, reel, clip, "animacion*"]
+      palabras:
+        - video
+        - reel
+        - clip
+        - "animacion*"
     - id: voz
       categoria: voz_tts
-      palabras: [voz en off, "locucion*", leer en voz alta]
+      palabras:
+        - voz en off
+        - "locucion*"
+        - leer en voz alta
     - id: transcribir
       categoria: transcripcion
-      palabras: [transcribir, desgrabar, "subtitulos*"]
+      palabras:
+        - transcribir
+        - desgrabar
+        - "subtitulos*"
     - id: investigar
       categoria: investigacion_web
-      palabras: [investigar, competidor, buscar en internet, con citas]
+      palabras:
+        - investigar
+        - competidor
+        - buscar en internet
+        - con citas
 categorias:
   - id: desarrollo
     nombre: "Desarrollo (programar)"
@@ -1704,7 +1779,7 @@ fuentes_auto:
       hash: d55bff4595b88224
     openai:
       url: "https://developers.openai.com/api/docs/deprecations"
-      hash: f831715883d3c856
+      hash: c92ba08302480013
     google:
       url: "https://ai.google.dev/gemini-api/docs/deprecations"
       hash: 89a2cf370a523f6c
@@ -1713,8 +1788,8 @@ fuentes_auto:
       proveedor: Anthropic
       titulo: Prompting best practices
       url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices.md"
-      hash: 3291f607fd698cc8
-      cambio: 2026-11-01
+      hash: 56a2b1357ad96a45
+      cambio: 2026-11-07
     anthropic_migracion:
       proveedor: Anthropic
       titulo: "Guías de migración por modelo (índice)"
@@ -1731,51 +1806,56 @@ fuentes_auto:
       proveedor: OpenAI
       titulo: Prompt engineering
       url: "https://developers.openai.com/api/docs/guides/prompt-engineering.md"
-      hash: f4e96377a56bc067
+      hash: 313168c9dc56cfa9
+      cambio: 2026-11-07
     google_ultimo_modelo:
       proveedor: Google
       titulo: "Novedades y migración del último Gemini"
       url: "https://ai.google.dev/gemini-api/docs/latest-model.md.txt"
-      hash: ec1c49ff460e5b08
-      cambio: 2026-10-29
+      hash: 0be00542581e4b2f
+      cambio: 2026-11-07
     google_prompting:
       proveedor: Google
       titulo: Prompt design strategies
       url: "https://ai.google.dev/gemini-api/docs/prompting-strategies.md.txt"
-      hash: 4aaf698c290acb61
+      hash: 45e91e02d1b8957a
+      cambio: 2026-11-07
     claude_code_memory:
       proveedor: Claude Code
       titulo: "Claude Code — memory (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/memory.md"
-      hash: 027ae08228620503
+      hash: b4f483c895f4b42c
+      cambio: 2026-11-07
     claude_code_settings:
       proveedor: Claude Code
       titulo: "Claude Code — settings (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/settings.md"
-      hash: edca99ec6ed90a7d
+      hash: 53683b0645be6690
+      cambio: 2026-11-07
     claude_code_skills:
       proveedor: Claude Code
       titulo: "Claude Code — skills (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/skills.md"
-      hash: 8ac4e5919b4e1d10
-      cambio: 2026-11-01
+      hash: a9046170eb1150b4
+      cambio: 2026-11-07
     claude_code_sub_agents:
       proveedor: Claude Code
       titulo: "Claude Code — sub-agents (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/sub-agents.md"
-      hash: 485e3c2a61356faa
-      cambio: 2026-11-01
+      hash: 2c3ba3596bcd0f74
+      cambio: 2026-11-07
     claude_code_mcp:
       proveedor: Claude Code
       titulo: "Claude Code — mcp (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/mcp.md"
-      hash: 1e10d0cc4064c716
-      cambio: 2026-11-01
+      hash: a900554cde59f917
+      cambio: 2026-11-07
     claude_code_plugins_reference:
       proveedor: Claude Code
       titulo: "Claude Code — plugins-reference (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/plugins-reference.md"
-      hash: d6fcec69f40c7b17
+      hash: 8b02e7d1528bfa8f
+      cambio: 2026-11-07
     claude_code_plugin_marketplaces:
       proveedor: Claude Code
       titulo: "Claude Code — plugin-marketplaces (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
@@ -1785,7 +1865,8 @@ fuentes_auto:
       proveedor: Claude Code
       titulo: "Claude Code — large-codebases (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/large-codebases.md"
-      hash: 92a75d6471df39e5
+      hash: 0a5d937e216cee54
+      cambio: 2026-11-07
   proveedores:
     - id: anthropic
       nombre: Anthropic
@@ -2155,33 +2236,33 @@ fuentes_auto:
       canales:
         titulo: Canales
         url: "https://code.claude.com/docs/en/channels.md"
-        hash: 74f7990526de310f
-        cambio: 2026-11-01
+        hash: 9d66151a60f174ac
+        cambio: 2026-11-07
       rutinas:
         titulo: Rutinas
         url: "https://code.claude.com/docs/en/routines.md"
-        hash: a32f0ceced294be5
-        cambio: 2026-11-01
+        hash: 868d01a7e0cc4e51
+        cambio: 2026-11-07
       worktrees:
         titulo: Worktrees
         url: "https://code.claude.com/docs/en/worktrees.md"
-        hash: 81133cb84366fccf
-        cambio: 2026-10-29
+        hash: ae1050156c9abaaa
+        cambio: 2026-11-07
       subagentes:
         titulo: Subagentes
         url: "https://code.claude.com/docs/en/sub-agents.md"
-        hash: 485e3c2a61356faa
-        cambio: 2026-11-01
+        hash: 2c3ba3596bcd0f74
+        cambio: 2026-11-07
       hooks:
         titulo: Hooks
         url: "https://code.claude.com/docs/en/hooks-guide.md"
-        hash: da64114c65e48772
-        cambio: 2026-11-01
+        hash: afe94d7f27d76e9d
+        cambio: 2026-11-07
       skills:
         titulo: Skills
         url: "https://code.claude.com/docs/en/skills.md"
-        hash: 8ac4e5919b4e1d10
-        cambio: 2026-11-01
+        hash: a9046170eb1150b4
+        cambio: 2026-11-07
       plugins:
         titulo: Plugins
         url: "https://code.claude.com/docs/en/plugins/overview.md"
@@ -2195,8 +2276,8 @@ fuentes_auto:
       scheduled_escritorio:
         titulo: Scheduled tasks de escritorio
         url: "https://code.claude.com/docs/en/desktop-scheduled-tasks.md"
-        hash: 1160b877d6e6c92a
-        cambio: 2026-10-29
+        hash: 14bd3da93697fc76
+        cambio: 2026-11-07
       workflows:
         titulo: "Workflows dinámicos y ultracode"
         url: "https://code.claude.com/docs/en/workflows.md"
@@ -2215,8 +2296,8 @@ fuentes_auto:
       modelo_effort:
         titulo: "Configuración de modelo y effort"
         url: "https://code.claude.com/docs/en/model-config.md"
-        hash: 6c88ac054b6ddf81
-        cambio: 2026-11-01
+        hash: 79a56734d5e45d43
+        cambio: 2026-11-07
     changelogs:
       claude_code:
         proveedor: Anthropic
@@ -2232,14 +2313,14 @@ fuentes_auto:
         titulo: Codex CLI
         url: "https://github.com/openai/codex/releases.atom"
         tipo: atom_estable
-        version: "0.166.0"
+        version: "0.167.0"
         corte: 2
-        cambio: 2026-11-01
+        cambio: 2026-11-07
       gemini_cli:
         proveedor: Google
         titulo: Gemini CLI
         url: "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/docs/changelogs/latest.md"
         tipo: gemini_latest
-        version: "0.66.0"
+        version: "0.67.0"
         corte: 2
-        cambio: 2026-10-29
+        cambio: 2026-11-07
