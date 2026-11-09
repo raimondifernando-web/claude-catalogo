@@ -1,6 +1,6 @@
 {
   "name": "escala-desarrollo",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "description": "Capa L4 para desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive) y 17 agentes. Revisores de solo lectura (code-reviewer, security-reviewer) explican en castellano qué arreglar primero. Construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer, documentation-engineer. Decidir y gestionar: product-manager, technology-scout, jefe-de-ingenieria, jefe-de-proyectos, analista-de-bi. Investigación: research-analyst y afines.",
   "author": {
     "name": "Fernando Raimondi"
