@@ -1319,3 +1319,16 @@ Alcance: lo agregado desde el último check aprobado (7c7a460) hasta metodo 0.69
 - Bajos: nombre propio del autor en textos públicos, descripción de hooks desactualizada y otros detalles sin riesgo directo.
 - Límites: no probado en la máquina de un cliente, ni en un Windows real, ni en Cowork; `claude -p` con esas opciones y el aislamiento real de Codex no se comprobaron. El detalle completo queda fuera del repo.
 - Veredicto: **PASS con condiciones**. Sin hallazgos críticos ni altos abiertos en el paquete.
+
+### 2026-11-09 · metodo 0.69.6 → 0.70.0 (commit 5df4153fad0afce0b07c4e832e04a8ef3c7451c4; PR #129) — PASS con condiciones
+
+Alcance: lo agregado desde el último check aprobado (0993a91) hasta metodo 0.70.0: el portero (`scripts/portero.py`, hook `UserPromptSubmit`, sus pruebas y su entrada en `hooks.json`) más dos sincronizaciones de skills sin código. Revisores distintos del autor: `security-reviewer` (solo lectura) en dos pasadas, una con Sonnet sobre el borrador (2 medios, corregidos antes de publicar: palabras del pedido en la rama «sin pieza» y texto de `mapa.json` sin filtrar) y una con Opus, en limpio, sobre lo publicado.
+- Datos: el texto del pedido no se guarda ni sale de la computadora; el registro lleva solo palabras que están en el índice (≤6) y en la rama «sin pieza» ninguna. Sin red en el script. El `session_id` se sanea (no escapa de su carpeta); `cwd` solo se usa para sacar palabras.
+- Ejecución: un solo subproceso, con lista fija y sin shell (`mapa.py actualizar`, una vez); la carga dinámica solo toma el `mapa.py` del propio paquete o del caché del catálogo. Un paquete apagado no se saltea: solo se sugiere `/plugin enable`, que escribe la persona.
+- Secretos: 0 patrones de claves en lo agregado (3 coincidencias del buscador son etiquetas y textos de prueba). Clientes: `git grep` = 0. Caracteres invisibles: 0. Sin `shell=True`, `eval`, `exec` ni `os.system`.
+- Hooks: 1 comando nuevo, fijo y entrecomillado, con `timeout` 5 y las tres variantes de Python.
+- Dependencias: biblioteca estándar; nada que auditar. Pruebas: `controles` y `tests` de GitHub en verde en macOS, Ubuntu y Windows (21 pruebas del portero); disparo real comprobado en una sesión limpia.
+- Medios abiertos, para la próxima versión: (1) la lista de caracteres permitidos en lo impreso admite espacios y «/» sin tope por campo: un paquete de terceros podría colar una frase en la línea (mitigado: sin saltos de línea, tope 220, y ese paquete ya corre sus propios hooks); (2) `mapa.py actualizar` se espera hasta 25 s dentro de un hook de 5 s y la marca de intento se escribe antes: pasarlo a proceso suelto o acortarlo.
+- Bajos: la carpeta completa en el registro, lectura de stdin sin tope antes de cortar, permisos solo en archivos nuevos, estados por sesión que no se limpian, errores que solo quedan en `errores.log`, nombres reservados de Windows en `session_id`.
+- Límites: no probado en la máquina de un cliente ni en Cowork; el revisor no ejecutó código. El detalle completo queda fuera del repo.
+- Veredicto: **PASS con condiciones**. Sin hallazgos críticos ni altos.
