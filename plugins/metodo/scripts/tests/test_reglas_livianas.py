@@ -39,7 +39,7 @@ class PesoAlArrancar(unittest.TestCase):
             open(os.path.join(cfg, "CLAUDE.md"), "w").write("# Ficha\n" + "x" * 45_000 + "\n")
             open(os.path.join(proy, "CLAUDE.md"), "w").write("# Proyecto\nhola\n")
             p = subprocess.run([sys.executable, os.path.join(METODO, "scripts", "claude-md-check.py"), proy],
-                               capture_output=True, text=True, env=dict(os.environ, CLAUDE_CONFIG_DIR=cfg))
+                               capture_output=True, text=True, encoding="utf-8", env=dict(os.environ, CLAUDE_CONFIG_DIR=cfg, PYTHONUTF8="1"))
             self.assertEqual(p.returncode, 0, p.stdout)
             self.assertIn("Peso al arrancar", p.stdout)
             self.assertIn("ficha personal", p.stdout)

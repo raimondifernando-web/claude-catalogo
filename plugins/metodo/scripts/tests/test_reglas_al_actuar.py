@@ -15,7 +15,7 @@ def correr(cfg, datos, *args, env_extra=None):
     env.pop("REGLAS_AL_ACTUAR_OFF", None)
     env.update(env_extra or {})
     p = subprocess.run([sys.executable, PROG, *args], input=json.dumps(datos), capture_output=True,
-                       text=True, env=env, timeout=20)
+                       text=True, encoding="utf-8", env=env, timeout=20)
     return p.returncode, p.stderr
 
 
@@ -118,7 +118,7 @@ class ReglasAlActuar(unittest.TestCase):
         env.pop("REGLAS_AL_ACTUAR_OFF", None)
         datos = json.dumps(bash("git reset --hard HEAD", sesion="par"))
         ps = [subprocess.Popen([sys.executable, PROG], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, text=True, env=env) for _ in range(6)]
+                               stderr=subprocess.PIPE, text=True, encoding="utf-8", env=env) for _ in range(6)]
         rcs = []
         for p in ps:
             p.communicate(datos, timeout=20)
@@ -155,7 +155,7 @@ class ReglasAlActuar(unittest.TestCase):
 
     def test_entrada_rota_deja_pasar(self):
         env = dict(os.environ, CLAUDE_CONFIG_DIR=self.cfg)
-        p = subprocess.run([sys.executable, PROG], input="no es json", capture_output=True, text=True, env=env)
+        p = subprocess.run([sys.executable, PROG], input="no es json", capture_output=True, text=True, encoding="utf-8", env=env)
         self.assertEqual(p.returncode, 0)
 
 
