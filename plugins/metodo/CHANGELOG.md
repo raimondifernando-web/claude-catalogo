@@ -1,5 +1,13 @@
 # metodo — qué cambia para vos
 
+## 0.71.0 — 2026-11-09
+**Cada sesión arranca más liviana: las reglas largas llegan justo cuando hacen falta.** Se aplica solo; no hay nada que correr.
+- **El problema:** las reglas del método se cargaban enteras en cada sesión, aunque casi siempre no tocaran lo que se estaba haciendo, y la versión corta había crecido de 11,8 KB a 16,5 KB en tres semanas.
+- **Qué cambia:** las 13 reglas más largas quedan con lo esencial (la ficha baja unos 7 KB, unos 3.000 tokens por sesión). Lo de plata, claves, datos de personas y lo irreversible sigue siempre en la ficha. El texto entero queda en `REGLAS-DEL-METODO-COMPLETO.md`.
+- **Reglas al actuar:** el detalle de lo que cuida una acción (unir a `main`, borrar o reescribir historia, tocar los ajustes de Claude, dejar algo que arranca solo, crear un repo, escribir un workflow, elegir IA, abrir otra sesión, lanzar bucles o equipos) aparece solo justo antes de esa acción: la frena UNA vez con el texto de la regla y al reintentar deja pasar. Vale también dentro de los ayudantes. Podés sumar reglas propias en `<config de Claude>/reglas-al-actuar/` o en `<proyecto>/.claude/reglas-al-actuar/`. Se apaga con `REGLAS_AL_ACTUAR_OFF=1`.
+- **Aviso de peso:** el control de `CLAUDE.md` que corre al abrir y al cerrar ahora suma todo lo que se carga al arrancar y, si una parte se pasa, dice qué bloque creció y a dónde moverlo. Es un aviso: nunca frena ni borra nada.
+- **Qué tenés que hacer:** nada.
+
 ## 0.70.0 — 2026-11-09
 **Portero: al pedir algo, Claude ve en una línea qué herramienta tuya encaja.** Se aplica solo; no hay nada que correr.
 - **El problema:** tenés skills, agentes, paquetes y conectores instalados, y las sesiones los ignoran: nada las obliga a mirar qué hay antes de ponerse a trabajar.
