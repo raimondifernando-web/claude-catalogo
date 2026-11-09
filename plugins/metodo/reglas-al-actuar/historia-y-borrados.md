@@ -1,6 +1,6 @@
 ---
 herramientas: Bash|PowerShell
-patron: git\s+push\b.*(--force|\s-f\b)|git\s+reset\s+--hard|filter-branch|filter-repo|gh\s+repo\s+delete|\brm\s+(-\S*\s+)*-\S*[rR]|git\s+clean\b|\s-delete\b|Remove-Item\b.*-Recurse
+patron: git\s+push\b.*(--force|\s-f\b|--delete)|git\s+branch\s+-D\b|git\s+checkout\s+--\s|git\s+restore\b|rmdir\s+/s|\bdel\s+/s|git\s+reset\s+--hard|filter-branch|filter-repo|gh\s+repo\s+delete|\brm\s+(-\S*\s+)*-\S*[rR]|git\s+clean\b|\s-delete\b|Remove-Item\b.*-Recurse
 ---
 Vas a borrar algo o a reescribir la historia (regla 3 y regla 13 del método).
 1. Nunca `--force` ni `reset --hard`: si hace falta reacomodar, una rama nueva o un commit que deshace.

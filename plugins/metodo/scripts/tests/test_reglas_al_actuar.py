@@ -73,8 +73,39 @@ class ReglasAlActuar(unittest.TestCase):
         self.assertEqual(rc, 2)
         self.assertIn("Texto propio.", err)
 
+    def aprobar(self, proy):
+        os.makedirs(os.path.join(self.cfg, "metodo"), exist_ok=True)
+        with open(os.path.join(self.cfg, "metodo", "reglas-al-actuar-proyectos.txt"), "a", encoding="utf-8") as f:
+            f.write(proy + "\n")
+
+    def test_regla_de_proyecto_sin_aprobar_no_vale(self):
+        with tempfile.TemporaryDirectory() as proy:
+            os.makedirs(os.path.join(proy, ".claude", "reglas-al-actuar"))
+            with open(os.path.join(proy, ".claude", "reglas-al-actuar", "x.md"), "w", encoding="utf-8") as f:
+                f.write("---\nherramientas: Bash\npatron: hacer-algo\n---\nDel proyecto.\n")
+            self.assertEqual(correr(self.cfg, bash("hacer-algo ya", cwd=proy))[0], 0)
+
+    def test_proyecto_no_pisa_una_regla_del_paquete(self):
+        with tempfile.TemporaryDirectory() as proy:
+            self.aprobar(proy)
+            os.makedirs(os.path.join(proy, ".claude", "reglas-al-actuar"))
+            with open(os.path.join(proy, ".claude", "reglas-al-actuar", "historia-y-borrados.md"), "w", encoding="utf-8") as f:
+                f.write("---\nherramientas: Bash\npatron: nunca-coincide\n---\nApagada.\n")
+            rc, err = correr(self.cfg, bash("git reset --hard", cwd=proy))
+            self.assertEqual(rc, 2)
+            self.assertNotIn("Apagada.", err)
+
+    def test_patron_explosivo_de_proyecto_se_ignora(self):
+        with tempfile.TemporaryDirectory() as proy:
+            self.aprobar(proy)
+            os.makedirs(os.path.join(proy, ".claude", "reglas-al-actuar"))
+            with open(os.path.join(proy, ".claude", "reglas-al-actuar", "mala.md"), "w", encoding="utf-8") as f:
+                f.write("---\nherramientas: Bash\npatron: (a+)+$\n---\nMala.\n")
+            self.assertEqual(correr(self.cfg, bash("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab", cwd=proy))[0], 0)
+
     def test_regla_del_proyecto(self):
         with tempfile.TemporaryDirectory() as proy:
+            self.aprobar(proy)
             os.makedirs(os.path.join(proy, ".claude", "reglas-al-actuar"))
             with open(os.path.join(proy, ".claude", "reglas-al-actuar", "x.md"), "w", encoding="utf-8") as f:
                 f.write("---\nherramientas: Bash\npatron: hacer-algo\n---\nDel proyecto.\n")
@@ -96,12 +127,13 @@ class ReglasAlActuar(unittest.TestCase):
 
     def test_regla_del_proyecto_va_rotulada_y_con_tope(self):
         with tempfile.TemporaryDirectory() as proy:
+            self.aprobar(proy)
             os.makedirs(os.path.join(proy, ".claude", "reglas-al-actuar"))
             with open(os.path.join(proy, ".claude", "reglas-al-actuar", "y.md"), "w", encoding="utf-8") as f:
                 f.write("---\nherramientas: Bash\npatron: algo-largo\n---\n" + "z" * 20000 + "\n")
             rc, err = correr(self.cfg, bash("algo-largo", cwd=proy))
             self.assertEqual(rc, 2)
-            self.assertIn("Regla del proyecto", err)
+            self.assertIn("aprobó la carpeta", err)
             self.assertLess(err.count("z"), 9000)
 
     def test_apagado(self):
