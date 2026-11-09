@@ -1,5 +1,9 @@
 # escala-desarrollo
 
+## 0.15.1 — 2026-11-09
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.15.0 — 2026-10-29
 **3 agentes nuevos:** `jefe-de-ingenieria` (arquitectura mínima y reparto de tareas de desarrollo), `jefe-de-proyectos` (plan, riesgos y cambios de alcance) y `analista-de-bi` (KPIs y tableros de gestión). Se aplican solos con la actualización.
 
