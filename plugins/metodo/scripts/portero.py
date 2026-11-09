@@ -42,7 +42,7 @@ MAX_LINEA = 220
 MIN_PEDIDO = 25
 VERSION_INDICE = 2
 
-ETIQUETAS = ("<task-notification", "<command-", "<cross-session-message", "<system-reminder", "<side-sessions-event")
+ETIQUETAS = ("<task-notification", "<command-", "<cross-session-message", "<system-reminder", "<side-sessions-event", "<ci-monitor-event", "<agent-message", "<local-command")
 CONFIRMA = {"si", "ok", "okay", "dale", "listo", "no", "gracias", "perfecto", "bueno", "genial", "adelante", "hecho",
             "vale", "claro", "seguime", "segui", "continua", "continuar", "buenisimo", "joya", "barbaro", "muchas",
             "por", "favor", "entendido", "exacto", "correcto", "bien", "todo", "eso", "esa", "ese", "yes", "thanks"}
