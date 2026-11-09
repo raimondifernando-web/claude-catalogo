@@ -1,5 +1,9 @@
 # rubro-finanzas-legal
 
+## 0.4.1 — 2026-11-09
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.4.0 — 2026-10-30
 **3 agentes nuevos:** `oficial-de-cumplimiento-y-datos-ar` (bases de clientes y privacidad, Ley 25.326), `revisor-de-contratos` (semáforo de riesgos, solo lectura) y `redactor-de-sop` (procedimientos de una página). Orientativos: no reemplazan a un abogado. Se aplican solos con la actualización.
 
