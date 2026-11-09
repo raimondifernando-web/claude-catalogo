@@ -164,8 +164,9 @@ class TestMapaMinimo(Base):
 
     def test_permisos_privados_y_rotacion(self):
         self.correr("armame una planilla excel con totales", sesion="perm")
-        self.assertEqual(oct(self.estado.stat().st_mode & 0o777), "0o700")
-        self.assertEqual(oct((self.estado / "registro.jsonl").stat().st_mode & 0o777), "0o600")
+        if os.name != "nt":  # en Windows no existen los modos 0700/0600
+            self.assertEqual(oct(self.estado.stat().st_mode & 0o777), "0o700")
+            self.assertEqual(oct((self.estado / "registro.jsonl").stat().st_mode & 0o777), "0o600")
         (self.estado / "registro.jsonl").write_text("x" * (1024 * 1024 + 10))
         self.correr("armame otra planilla excel con formulas distintas", sesion="perm2")
         self.assertTrue((self.estado / "registro.jsonl.1").exists())
