@@ -8,6 +8,12 @@
 - **Aviso de peso:** el control de `CLAUDE.md` que corre al abrir y al cerrar ahora suma todo lo que se carga al arrancar y, si una parte se pasa, dice qué bloque creció y a dónde moverlo. Es un aviso: nunca frena ni borra nada.
 - **Qué tenés que hacer:** nada.
 
+## 0.70.0 — 2026-11-09
+**Portero: al pedir algo, Claude ve en una línea qué herramienta tuya encaja.** Se aplica solo; no hay nada que correr.
+- **El problema:** tenés skills, agentes, paquetes y conectores instalados, y las sesiones los ignoran: nada las obliga a mirar qué hay antes de ponerse a trabajar.
+- **Qué cambia:** en cada pedido que parece una tarea («armame…», «revisá…», «analizá…»), un aviso de una línea dice «Para esto: skill … · agente … · conector …», cruzando las palabras del pedido con el mapa local de tu ecosistema (sin IA, sin que el texto salga de tu computadora; el registro guarda solo hasta 6 palabras sueltas). Si la pieza está en un paquete apagado, dice cómo prenderla; si no hay nada que encaje, propone `/metodo:buscar-skill-externa` una vez por sesión. Calla ante confirmaciones, comandos y mensajes cortos.
+- **Qué tenés que hacer:** nada. Para apagarlo: `PORTERO_OFF=1` o crear el archivo `<config de Claude>/state/portero/apagado`.
+
 ## 0.69.6 — 2026-11-06
 **Al delegar a otra IA, el proyecto en el que trabajás ya no puede colar archivos ajenos al pedido.** Se aplica solo; no hay nada que correr.
 - **El problema:** las guías (skills) que nombra un pedido viajan a la otra IA. Una guía que venía dentro del proyecto podía ser un atajo a otro archivo de tu computadora, y ese archivo salía con el pedido.
