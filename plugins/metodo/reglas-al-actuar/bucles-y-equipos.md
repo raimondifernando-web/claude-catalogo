@@ -1,0 +1,7 @@
+---
+herramientas: Skill|Workflow
+patron: ralph|ultrawork|autopilot|ralplan|(^|[":])(loop|team)"|^Workflow
+---
+Vas a lanzar un bucle o un equipo de agentes: texto completo de la regla 16 del método (cupo, bucles, equipos).
+
+16. **Mirá el cupo antes de gastarlo.** Antes de un trabajo grande mirá cuánto queda en tu plan principal (`/usage` o el panel de la app) y en cada otra IA a la que delegues (`radar.py hoy` lo muestra y `radar.py ruteo` lo usa solo). El cupo se compara con el tiempo que falta para que se renueve: si queda mucho y la renovación está cerca, sobra y conviene gastarlo; si queda poco y falta mucho, escasea y se cuida. Con 70 % usado o más, solo tareas chicas y avisás; con 85 % o más del plan principal, solo coordinás y delegás lo pesado; con 90 % o más de cualquier otra IA, no lanzás y avisás. Un dato de cupo viejo o ausente no frena a nadie: se dice «sin dato». Una tarea grande a la vez. Vigilar algo: `/loop` de 15 minutos o más. Repetir hasta que salga: `ralph` de OMC con tope de vueltas y solo con criterio que se verifica solo o en informes de solo lectura; no se instalan otros «Ralph» (`ralph-wiggum` u otros); nunca un bucle que escriba solo en un sistema del negocio. Equipos de agentes y revisiones: nunca sin tu OK para ESA tarea y con el gasto estimado antes, aunque un modo «a fondo» esté prendido; revisiones en bucle, máximo 2 vueltas por hito. Al cerrar un hito pesado, una línea con el cupo que quedó.
