@@ -1332,3 +1332,10 @@ Alcance: lo agregado desde el último check aprobado (0993a91) hasta metodo 0.70
 - Bajos: la carpeta completa en el registro, lectura de stdin sin tope antes de cortar, permisos solo en archivos nuevos, estados por sesión que no se limpian, errores que solo quedan en `errores.log`, nombres reservados de Windows en `session_id`.
 - Límites: no probado en la máquina de un cliente ni en Cowork; el revisor no ejecutó código. El detalle completo queda fuera del repo.
 - Veredicto: **PASS con condiciones**. Sin hallazgos críticos ni altos.
+
+### 2026-11-09 · metodo 0.70.0 → 0.71.0 (commit baa065718b9057ca461ed80d1793d82f36af477d; PR #130) — PASS con condiciones
+
+Alcance: las reglas livianas de `metodo` 0.71.0: reglas al actuar (`scripts/reglas-al-actuar.py` y `.sh`, con las reglas del paquete y las opcionales del proyecto), reglas cortas del método, aviso de peso de las fichas (`scripts/reglas.py`, `scripts/guia_modelos.py`), plantillas `REGLAS-DEL-METODO*.md` y sus pruebas. Revisor distinto del autor: `security-reviewer` (solo lectura), sobre el código del PR.
+- Hallazgos: 0 críticos · 0 altos · 1 medio y 4 bajos, todos arreglados dentro del mismo PR. El medio: texto de un repo clonado podía inyectar «reglas» en el freno. Arreglo: las reglas de `<proyecto>/.claude/reglas-al-actuar/` valen solo si la persona agregó esa carpeta a `<config>/metodo/reglas-al-actuar-proyectos.txt`; nunca pisan un nombre del paquete ni de la persona; tope total 8.000 caracteres; van rotuladas como «del proyecto». Pruebas: `test_regla_de_proyecto_sin_aprobar_no_vale`, `test_proyecto_no_pisa_una_regla_del_paquete`.
+- Datos: nada sale de la computadora; el freno solo lee archivos locales y escribe su estado por sesión en `<config>/state/`. Sin red, sin secretos.
+- Condición: en la primera sesión de un cliente con 0.71.0, verificar que el freno aparece una sola vez por acción (no en cada turno). Informe privado: `.claude/security-checks/2026-11-09-metodo-0.71.0.md`.
