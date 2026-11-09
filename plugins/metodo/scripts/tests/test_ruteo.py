@@ -761,7 +761,8 @@ class TestHooksJson(unittest.TestCase):
         previos = [g for g in datos["hooks"]["PreToolUse"]
                    if g.get("matcher") not in ("Bash|PowerShell|Read|Grep|Write|Edit|MultiEdit", "Write|Agent|Task|Workflow", "Bash|PowerShell",
                                                "SendMessage|mcp__ccd_session_mgmt__send_message", "Bash|PowerShell|Write|Edit|MultiEdit",
-                                               "Agent|Task", "Write|Edit|MultiEdit")]       # el último: freno de reglas repetidas (reglas-unicas, regla «un solo hogar»)
+                                               "Agent|Task", "Write|Edit|MultiEdit",       # freno de reglas repetidas (reglas-unicas, regla «un solo hogar»)
+                                               "Bash|PowerShell|Read|Write|Edit|MultiEdit|NotebookEdit|Skill|Workflow|mcp__.*")]  # reglas al actuar (0.71.0): frena UNA vez con la regla
         self.assertEqual(len(previos), 1)
         self.assertEqual(sorted(previos[0]["matcher"].split("|")), ["Agent", "Task", "mcp__ccd_session__start_session"])
         orden = previos[0]["hooks"][0]
