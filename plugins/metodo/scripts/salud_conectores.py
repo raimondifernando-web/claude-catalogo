@@ -44,6 +44,7 @@ TTL_PESADO = 24 * 3600         # uso en transcripts y duplicados: cada 24 h
 DIAS_USO = 30
 TOPE_SEGUNDOS_USO = 150        # el recorrido de transcripts corta aquí y marca «parcial»
 MAX_CARPETAS = 30
+NOMBRE_LIMPIO = re.compile(r"^[A-Za-z0-9._:@ -]{1,80}$")
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 RX_USO = re.compile(rb'"name"\s*:\s*"mcp__([A-Za-z0-9_.\-]+?)__')
 
@@ -105,20 +106,61 @@ def parsear_mcp_list(texto):
             est = "roto"
         else:
             est = "otro"
-        out.append({"nombre": m.group("n").strip(), "destino": m.group("d").strip(), "estado": est})
+        nombre = m.group("n").strip()
+        if not NOMBRE_LIMPIO.match(nombre):
+            continue                       # un nombre con signos raros nunca llega al contexto de Claude
+        out.append({"nombre": nombre, "destino": m.group("d").strip(), "estado": est})
     return out
+
+
+def _settings_ajeno(carpeta):
+    """¿La carpeta trae ajustes de proyecto que cambian qué servidores arranca o con qué entorno? (se mira el texto, sin interpretarlo)"""
+    for nombre in ("settings.json", "settings.local.json"):
+        try:
+            with open(os.path.join(carpeta, ".claude", nombre), encoding="utf-8", errors="replace") as f:
+                t = f.read(200000)
+        except OSError:
+            continue
+        if any(k in t for k in ("enableAllProjectMcpServers", "enabledMcpjsonServers", "mcpServers", '"env"')):
+            return True
+    return False
+
+
+def _carpeta_propia(propia):
+    """¿Está dentro de una carpeta que la persona declaró suya en <config>/metodo/salud-carpetas-propias.txt (una ruta por línea)?"""
+    try:
+        with open(os.path.join(config(), "metodo", "salud-carpetas-propias.txt"), encoding="utf-8") as f:
+            lineas = [l.split("#", 1)[0].strip() for l in f]
+    except OSError:
+        return False
+    for l in lineas:
+        if not l:
+            continue
+        try:
+            base = os.path.realpath(os.path.expanduser(l))
+            if os.path.commonpath([propia, base]) == base:
+                return True
+        except (OSError, ValueError):
+            continue
+    return False
 
 
 def carpeta_segura(cwd):
     """`claude mcp list` NO pide confirmar la confianza de la carpeta y arranca los servidores locales de su `.mcp.json`:
     desde una carpeta ajena podría ejecutar código sin tu permiso. Por eso solo se corre dentro de la carpeta de trabajo si ni ella ni
-    sus carpetas madre tienen `.mcp.json`; si no, se corre desde tu carpeta personal (se pierden los servidores propios de esa carpeta)."""
-    home = os.path.abspath(os.path.expanduser("~"))
+    sus carpetas madre (ya resueltos los enlaces simbólicos) tienen `.mcp.json`, y la carpeta no trae ajustes que cambien servidores o
+    entorno; si no, se corre desde tu carpeta personal (se pierden los servidores propios de esa carpeta). Las carpetas que declarás tuyas
+    en <config>/metodo/salud-carpetas-propias.txt se saltean esa revisión."""
+    home = os.path.realpath(os.path.expanduser("~"))
     try:
-        propia = os.path.abspath(cwd) if cwd else ""
+        propia = os.path.realpath(cwd) if cwd else ""
     except (OSError, ValueError):
         propia = ""
     if not propia or not os.path.isdir(propia):
+        return home
+    if _carpeta_propia(propia):
+        return propia                      # carpeta que la propia persona declaró suya: ahí sí vale ver sus servidores de proyecto
+    if _settings_ajeno(propia):
         return home
     d = propia
     while d and d != home:                 # tu carpeta personal tiene el `.mcp.json` que armaste vos: no cuenta como ajeno
@@ -131,8 +173,34 @@ def carpeta_segura(cwd):
     return propia
 
 
+def ejecutable_claude(cwd=None):
+    """Ruta de `claude`, nunca una que viva dentro de la carpeta del proyecto: en Windows `which` mira primero la carpeta actual y un
+    `claude.cmd` de un repo ajeno se ejecutaría solo."""
+    viejo = os.environ.get("NoDefaultCurrentDirectoryInExePath")
+    os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"
+    try:
+        exe = shutil.which("claude")
+    finally:
+        if viejo is None:
+            os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
+        else:
+            os.environ["NoDefaultCurrentDirectoryInExePath"] = viejo
+    if not exe:
+        return None
+    try:
+        real = os.path.realpath(exe)
+        for c in (cwd, os.getcwd()):
+            if c:
+                c = os.path.realpath(c)
+                if os.path.commonpath([real, c]) == c and c != os.path.realpath(os.path.expanduser("~")):
+                    return None
+    except (OSError, ValueError):
+        return None
+    return exe
+
+
 def correr_mcp_list(cwd):
-    exe = shutil.which("claude")           # en Windows encuentra claude.cmd
+    exe = ejecutable_claude(cwd)           # en Windows encuentra claude.cmd
     if not exe:
         return None
     try:
@@ -270,9 +338,11 @@ def duplicados_de_paquetes():
     for clave, carpeta in sorted(plugins_habilitados().items()):
         if clave in exc or clave.split("@")[0] in exc or clave.split("@")[0] == "metodo":
             continue                    # «metodo» es quien trae este control: nunca se propone apagarlo
+        if not NOMBRE_LIMPIO.match(clave):
+            continue
         sk, ag = _nombres_skills(os.path.join(carpeta, "skills")), _nombres_md(os.path.join(carpeta, "agents"))
         total = len(sk) + len(ag)
-        rep = sorted((sk & propias_skills) | (ag & propios_agentes))
+        rep = sorted(n for n in ((sk & propias_skills) | (ag & propios_agentes)) if NOMBRE_LIMPIO.match(n))
         n = len(rep)
         if n >= 3 or (n >= 2 and n * 2 >= total):
             out.append({"plugin": clave, "n": n, "total": total, "ejemplos": rep[:5]})
@@ -284,9 +354,10 @@ def refrescar(cwd):
     lock = _ruta("salud-ecosistema.lock")
     os.makedirs(os.path.dirname(lock), exist_ok=True)
     try:
-        if os.path.exists(lock) and time.time() - os.path.getmtime(lock) < 600:
-            return 0
-        open(lock, "w").close()
+        if os.path.exists(lock) and time.time() - os.path.getmtime(lock) >= 600:
+            os.unlink(lock)                # candado viejo (un refresco que murió)
+        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)      # atómico: solo uno lo crea; no sigue enlaces
+        os.close(fd)
     except OSError:
         return 0
     try:
@@ -315,7 +386,7 @@ def refrescar(cwd):
 def lanzar_refresco(cwd):
     """Segundo plano, sin esperar y sin ventana."""
     cmd = [sys.executable, os.path.abspath(__file__), "refrescar", "--cwd", cwd or ""]
-    kw = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL, "cwd": cwd or None}
+    kw = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL, "cwd": os.path.expanduser("~")}   # nunca dentro de la carpeta del proyecto
     if os.name == "nt":
         kw["creationflags"] = 0x00000008 | 0x08000000      # DETACHED_PROCESS | CREATE_NO_WINDOW
     else:

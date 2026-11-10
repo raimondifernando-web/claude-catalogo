@@ -1,5 +1,13 @@
 # metodo — qué cambia para vos
 
+## 0.73.1 — 2026-11-10
+**Arreglos de seguridad del aviso de conectores (0.73.0), a pedido de la revisión independiente.** Se aplica solo; no hay nada que correr.
+- **Windows:** el control ya no puede ejecutar un `claude.cmd` que viva dentro de la carpeta de un proyecto ajeno; busca `claude` solo en tu instalación y arranca la medición desde tu carpeta personal.
+- **Carpetas ajenas:** antes de listar los conectores, además de `.mcp.json` mira los ajustes del proyecto y resuelve los enlaces simbólicos; si la carpeta no es de confianza, mide desde tu carpeta personal. Las carpetas tuyas se declaran en `<config de Claude>/metodo/salud-carpetas-propias.txt` (una ruta por línea).
+- **Nombres:** los nombres de paquetes y conectores con signos raros no entran en el aviso. El candado de la medición en segundo plano ahora es atómico.
+- **Regla «leer la web»:** aclara que no se manda a `r.jina.ai` ninguna dirección con claves o internas.
+- **Qué tenés que hacer:** nada.
+
 ## 0.73.0 — 2026-11-10
 **Al abrir una sesión te avisa, en una línea, si un conector que usás perdió el permiso o si un paquete repite piezas tuyas.** Se aplica solo; no hay nada que correr.
 - **El problema:** un conector con el permiso vencido (o caído) deja de andar y nadie avisa: te enterás cuando algo falla. Y un paquete instalado puede repetir con el mismo nombre las skills o agentes que ya tenés y quedar prendido meses, cargando contexto de más.
