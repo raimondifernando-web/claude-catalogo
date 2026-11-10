@@ -1,6 +1,6 @@
 # metodo — qué cambia para vos
 
-## 0.72.0 — 2026-11-10
+## 0.73.0 — 2026-11-10
 **Al abrir una sesión te avisa, en una línea, si un conector que usás perdió el permiso o si un paquete repite piezas tuyas.** Se aplica solo; no hay nada que correr.
 - **El problema:** un conector con el permiso vencido (o caído) deja de andar y nadie avisa: te enterás cuando algo falla. Y un paquete instalado puede repetir con el mismo nombre las skills o agentes que ya tenés y quedar prendido meses, cargando contexto de más.
 - **Qué cambia:** el aviso de apertura suma como mucho dos líneas, solo si hay algo para atender: «Conectores por firmar (los usás): …» y «Paquete duplicado: … repite N piezas tuyas». Mide solo conectores que llamaste en los últimos 30 días; los que no usás no te molestan. La medición corre en segundo plano (a lo sumo cada 6 horas) y el aviso solo lee su resultado, así que no demora la apertura.
@@ -9,6 +9,8 @@
 - **Se apaga** con `SALUD_OFF=1` o creando `<config de Claude>/metodo/salud.apagado`. Si un paquete repite piezas a propósito, anotalo en `<config de Claude>/metodo/salud-excepciones.txt` (`paquete@catalogo  # motivo`).
 - **Límite:** `claude mcp list` no muestra los conectores de claude.ai (los administra la app): esos no entran. En Windows no está probado en una máquina real.
 - **Qué tenés que hacer:** nada.
+
+## 0.72.0 — 2026-11-10
 **Los agentes de un proyecto pueden vivir en su carpeta sin que el mapa, el portero ni los controles los pierdan.** Se aplica solo; no hay nada que correr.
 - **El problema:** cada agente guardado en la carpeta general (`~/.claude/agents`) se carga en TODAS las sesiones, aunque sea de un solo proyecto. La doc oficial pone un tope de 15.000 tokens para esas descripciones y la forma de respetarlo es que cada agente viva donde se usa (`<proyecto>/.claude/agents/`). Pero el mapa, los disparadores, el aviso de skills en ayudantes y `herramientas-para` solo miraban la carpeta general.
 - **Qué cambia:** una lista de carpetas de agentes (`<config de Claude>/metodo/raices-agentes.txt`: una ruta por línea, `~` y comodines valen; si falta, sigue siendo solo `~/.claude/agents`). El mapa inventaría todas las raíces y anota en cada agente `raiz` (personal · kit-pyme · proyecto:<carpeta>) y `ruta`; los disparadores, `skill-en-agente` y `herramientas-para` leen la misma lista. Un enlace a una carpeta compartida no duplica piezas.
