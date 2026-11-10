@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import re
 import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # raices_agentes.py del mismo directorio
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from mapa_io import (
@@ -438,31 +439,46 @@ def inventariar_archivo(io: IO) -> Dict[str, Any]:
 
 
 def inventariar_agentes(io: IO) -> List[Dict[str, Any]]:
-    """Inventaria ~/.claude/agents/*.md (agentes personales)."""
-    agents_dir = io.claude_dir / "agents"
+    """Inventaria los agentes propios en TODAS las raíces (raices_agentes.py: ~/.claude/agents, ~/.claude/kit-pyme/agents,
+    <proyecto>/.claude/agents según <config>/metodo/raices-agentes.txt). Cada ítem lleva `raiz` (personal · kit-pyme · proyecto:<carpeta>)
+    y `ruta` (donde vive de verdad). Decisión 2026-11-10: los agentes de proyecto viven en su carpeta, no en ~/.claude/agents."""
+    import raices_agentes
     items: List[Dict[str, Any]] = []
-    if not io.es_dir(agents_dir):
-        return items
-    for e in io.listar(agents_dir):
-        if e.es_dir or not e.nombre.endswith(".md") or e.nombre.startswith("."):
+    cd = str(io.claude_dir)
+    vistos = set()
+    for r in raices_agentes.raices(claude_dir=cd):
+        if not io.es_dir(r):
             continue
-        agente_file = e.ruta
-        f = ficha_md(io, agente_file, agente_file.stem)
-        item = {
-            "nombre": f["nombre"],
-            "archivo": agente_file.name,
-            "descripcion": f["descripcion"],
-            "descripcion_bytes": f["descripcion_bytes"],
-            "modelo": f["modelo"],
-            "herramientas": f["herramientas"],
-            "skills_precargadas": f["skills_precargadas"],
-            "es_pm": f["nombre"].startswith("pm-") or agente_file.stem.startswith("pm-"),
-            "tamano_bytes": f["tamano_bytes"],
-            "fecha_modificacion": f["fecha_modificacion"],
-        }
-        item.update(campos_uso_vacios())
-        items.append(item)
+        for e in io.listar(r):
+            if e.es_dir or not e.nombre.endswith(".md") or e.nombre.startswith("."):
+                continue
+            real = os.path.realpath(str(e.ruta))
+            if real in vistos:
+                continue
+            vistos.add(real)
+            agente_file = e.ruta
+            _cuerpo_agente(io, items, agente_file, raices_agentes.raiz_de(str(agente_file), claude_dir=cd))
     return items
+
+
+def _cuerpo_agente(io: IO, items: List[Dict[str, Any]], agente_file, raiz: str) -> None:
+    f = ficha_md(io, agente_file, agente_file.stem)
+    item = {
+        "nombre": f["nombre"],
+        "archivo": agente_file.name,
+        "descripcion": f["descripcion"],
+        "descripcion_bytes": f["descripcion_bytes"],
+        "modelo": f["modelo"],
+        "herramientas": f["herramientas"],
+        "skills_precargadas": f["skills_precargadas"],
+        "es_pm": f["nombre"].startswith("pm-") or agente_file.stem.startswith("pm-"),
+        "tamano_bytes": f["tamano_bytes"],
+        "fecha_modificacion": f["fecha_modificacion"],
+        "raiz": raiz,
+        "ruta": str(agente_file).replace(str(io.claude_dir.parent), "~", 1),
+    }
+    item.update(campos_uso_vacios())
+    items.append(item)
 
 
 # ------------------------------------------------------------------------------

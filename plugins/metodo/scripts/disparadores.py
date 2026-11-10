@@ -179,7 +179,9 @@ def juntar_piezas(home, catalogo, scripts_extra=()):
             piezas.append(p)
     if home:
         skills_en(os.path.join(home, "skills"), "personal")
-        agentes_en(os.path.join(home, "agents"), "personal")
+        import raices_agentes   # mismo directorio: ~/.claude/agents + kit-pyme + <proyecto>/.claude/agents
+        for _r in raices_agentes.raices(claude_dir=home):
+            agentes_en(_r, "personal")
         scripts_en(os.path.join(home, "scripts"), "personal")
         comandos_en(os.path.join(home, "commands"), "personal")
         for h in sorted(glob.glob(os.path.join(home, "hooks", "*"))):

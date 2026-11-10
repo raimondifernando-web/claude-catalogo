@@ -37,7 +37,13 @@ def puede_skill(tools):
 def indice_agentes(cwd):
     """{nombre_corto: [(plugin_o_'', tools, ruta)]}"""
     idx = {}
-    pats = [(CFG + "/agents/*.md", ""), (cwd + "/.claude/agents/*.md", "")]
+    pats = [(cwd + "/.claude/agents/*.md", "")]
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import raices_agentes
+        pats = [(r + "/*.md", "") for r in raices_agentes.raices(CFG)] + pats
+    except Exception:
+        pats = [(CFG + "/agents/*.md", "")] + pats
     for p in glob.glob(CFG + "/plugins/cache/*/*/*"):
         plug = p.split(os.sep)[-3]
         pats += [(p + "/agents/**/*.md", plug), (p + "/*.md", plug)]
