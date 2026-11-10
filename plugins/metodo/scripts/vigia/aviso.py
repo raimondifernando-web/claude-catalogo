@@ -12,6 +12,7 @@ Al abrir una sesión de Claude Code hace dos cosas, en menos de un segundo:
    intento en las últimas 24 h, lanza `vigia.py --si-toca` DESACOPLADO y vuelve
    enseguida: la sesión no espera la búsqueda.
 
+Salud de conectores y paquetes duplicados (salud_conectores.py): suma sus líneas a este mismo aviso; se apaga con SALUD_OFF=1.
 Apagado: `VIGIA_OFF=1` o el archivo `<config>/vigia/apagado` → sale sin hacer nada.
 `<config>` es $CLAUDE_CONFIG_DIR si está definida; si no, ~/.claude.
 
@@ -332,6 +333,16 @@ def armar_mensaje(estado, ahora, intento, lanzamientos):
     return visible, contexto
 
 
+def salud_lineas(cwd):
+    """Conectores por firmar / caídos que usás y paquetes duplicados (salud_conectores.py, solo lee su caché). Nunca rompe el aviso."""
+    import importlib.util
+    ruta = Path(__file__).resolve().parent.parent / "salud_conectores.py"
+    spec = importlib.util.spec_from_file_location("salud_conectores", str(ruta))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.aviso_lineas(cwd)
+
+
 def emitir(mensaje):
     salida = {
         "systemMessage": mensaje[0],
@@ -415,6 +426,13 @@ def principal():
             ctx = ("Circuito de los vigías (plugin metodo): " + c + ". Lo atrasado lo procesa solo la pasada diaria; si "
                    "sigue, revisalo con `circuito.py pendientes` (scripts del plugin metodo).")
             mensaje = (mensaje[0] + " · " + c, mensaje[1] + " " + ctx) if mensaje else (c, ctx)
+    except Exception:
+        pass
+    try:
+        sal = salud_lineas(cwd)
+        if sal:
+            vis, ctx = " · ".join(v for v, _ in sal), " ".join(c for _, c in sal)
+            mensaje = (mensaje[0] + " · " + vis, mensaje[1] + " " + ctx) if mensaje else (vis, ctx)
     except Exception:
         pass
     if mensaje and avisar_aca("vigia", cwd=cwd):
