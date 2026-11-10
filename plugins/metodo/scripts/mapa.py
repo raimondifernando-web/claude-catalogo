@@ -547,7 +547,7 @@ def recolectar_piezas_para_busqueda(inv: Dict[str, Any]) -> List[Dict[str, Any]]
             "tipo": "agente",
             "nombre": a.get("nombre", ""),
             "descripcion": a.get("descripcion", ""),
-            "donde_vive": f"~/.claude/agents/{a.get('archivo', a.get('nombre', '') + '.md')}",
+            "donde_vive": a.get("ruta") or f"~/.claude/agents/{a.get('archivo', a.get('nombre', '') + '.md')}",
             "raw": a,
         })
 

@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.72.0 — 2026-11-10
+**Los agentes de un proyecto pueden vivir en su carpeta sin que el mapa, el portero ni los controles los pierdan.** Se aplica solo; no hay nada que correr.
+- **El problema:** cada agente guardado en la carpeta general (`~/.claude/agents`) se carga en TODAS las sesiones, aunque sea de un solo proyecto. La doc oficial pone un tope de 15.000 tokens para esas descripciones y la forma de respetarlo es que cada agente viva donde se usa (`<proyecto>/.claude/agents/`). Pero el mapa, los disparadores, el aviso de skills en ayudantes y `herramientas-para` solo miraban la carpeta general.
+- **Qué cambia:** una lista de carpetas de agentes (`<config de Claude>/metodo/raices-agentes.txt`: una ruta por línea, `~` y comodines valen; si falta, sigue siendo solo `~/.claude/agents`). El mapa inventaría todas las raíces y anota en cada agente `raiz` (personal · kit-pyme · proyecto:<carpeta>) y `ruta`; los disparadores, `skill-en-agente` y `herramientas-para` leen la misma lista. Un enlace a una carpeta compartida no duplica piezas.
+- **Qué no cambia:** sin el archivo, todo funciona igual que antes. Nada se mueve ni se apaga: eso lo decide cada uno.
+
 ## 0.71.0 — 2026-11-09
 **Cada sesión arranca más liviana: las reglas largas llegan justo cuando hacen falta.** Se aplica solo; no hay nada que correr.
 - **El problema:** las reglas del método se cargaban enteras en cada sesión, aunque casi siempre no tocaran lo que se estaba haciendo, y la versión corta había crecido de 11,8 KB a 16,5 KB en tres semanas.

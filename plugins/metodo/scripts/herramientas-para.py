@@ -132,6 +132,8 @@ def piezas_por_disco(q):
     cand = {}
     pats = [("skill", os.path.join(CFG, "skills", "*", "SKILL.md")),
             ("agente", os.path.join(CFG, "agents", "*.md")),
+            ("agente", os.path.join(CFG, "kit-pyme", "agents", "*.md")),
+            ("agente", os.path.join(os.path.dirname(CFG), "Proyectos", "*", ".claude", "agents", "*.md")),
             ("skill", os.path.join(CFG, "plugins", "cache", "*", "*", "*", "skills", "*", "SKILL.md")),
             ("agente", os.path.join(CFG, "plugins", "cache", "*", "*", "*", "agents", "*.md"))]
     for tipo, pat in pats:
