@@ -1,4 +1,4 @@
-"""raices_agentes: sin archivo = solo ~/.claude/agents; con archivo lee rutas, comodines y comentarios; un enlace al kit no duplica;
+"""raices_agentes (vale en Windows: las rutas se comparan con «/»): sin archivo = solo ~/.claude/agents; con archivo lee rutas, comodines y comentarios; un enlace al kit no duplica;
 buscar() encuentra en cualquier raíz; raiz_de() etiqueta personal / kit-pyme / proyecto:<carpeta>; RAICES_AGENTES manda.
 Disparador: encadenado — python3 -m unittest discover -s scripts/tests."""
 import os
@@ -7,7 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # ~/.claude/scripts/tests → scripts/
+sys.path.insert(0, str(Path(__file__).resolve().parent))       # claude-skills-shared/scripts y el plugin (misma carpeta)
 import raices_agentes as ra  # noqa: E402
 
 AG = "---\nname: x\ndescription: x\n---\n"
@@ -23,7 +24,10 @@ class Raices(unittest.TestCase):
         self.w(".claude/agents/general.md")
         self.w(".claude/kit-pyme/agents/conciliador.md")
         self.w("Proyectos/Uno/.claude/agents/pm-uno.md")
-        os.symlink(os.path.join(self.h, ".claude/kit-pyme/agents"), os.path.join(self.h, "Proyectos/Uno/.claude/agents/kit-pyme"))
+        try:   # en Windows crear enlaces puede pedir permiso: sin enlace la prueba sigue valiendo
+            os.symlink(os.path.join(self.h, ".claude/kit-pyme/agents"), os.path.join(self.h, "Proyectos/Uno/.claude/agents/kit-pyme"))
+        except OSError:
+            pass
         os.environ.pop("RAICES_AGENTES", None)
 
     def tearDown(self):
@@ -34,17 +38,21 @@ class Raices(unittest.TestCase):
         with open(os.path.join(self.h, rel), "w", encoding="utf-8") as f:
             f.write(AG)
 
+    def n(self, ruta):
+        """Ruta con «/» y con el HOME temporal como «~», para comparar igual en Windows y en Mac."""
+        return ruta.replace(self.h, "~").replace(os.sep, "/")
+
     def conf(self, texto):
         with open(os.path.join(self.h, ".claude/metodo/raices-agentes.txt"), "w", encoding="utf-8") as f:
             f.write(texto)
 
     def test_sin_archivo_solo_personal(self):
-        self.assertEqual(ra.raices(claude_dir=self.cd), [os.path.join(self.h, ".claude/agents")])
+        self.assertEqual([self.n(x) for x in ra.raices(claude_dir=self.cd)], ["~/.claude/agents"])
         self.assertEqual([os.path.basename(x) for x in ra.archivos(claude_dir=self.cd)], ["general.md"])
 
     def test_archivo_con_comodines_y_comentarios(self):
         self.conf("# raíces\n~/.claude/agents\n~/.claude/kit-pyme/agents\n~/Proyectos/*/.claude/agents\n~/no-existe\n")
-        r = [x.replace(self.h, "~") for x in ra.raices(claude_dir=self.cd)]
+        r = [self.n(x) for x in ra.raices(claude_dir=self.cd)]
         self.assertEqual(r, ["~/.claude/agents", "~/.claude/kit-pyme/agents", "~/Proyectos/Dos/.claude/agents", "~/Proyectos/Uno/.claude/agents"])
         self.assertTrue(all(not x.startswith("/private") or self.h.startswith("/private") for x in ra.raices(claude_dir=self.cd)))  # sin resolver enlaces
         nombres = sorted(os.path.basename(x) for x in ra.archivos(claude_dir=self.cd))
@@ -52,8 +60,8 @@ class Raices(unittest.TestCase):
 
     def test_buscar_y_raiz_de(self):
         self.conf("~/.claude/agents\n~/.claude/kit-pyme/agents\n~/Proyectos/*/.claude/agents\n")
-        self.assertTrue(ra.buscar("conciliador", claude_dir=self.cd).endswith("kit-pyme/agents/conciliador.md"))
-        self.assertTrue(ra.buscar("pm-uno", claude_dir=self.cd).endswith("Uno/.claude/agents/pm-uno.md"))
+        self.assertTrue(self.n(ra.buscar("conciliador", claude_dir=self.cd)).endswith("kit-pyme/agents/conciliador.md"))
+        self.assertTrue(self.n(ra.buscar("pm-uno", claude_dir=self.cd)).endswith("Uno/.claude/agents/pm-uno.md"))
         self.assertIsNone(ra.buscar("nadie", claude_dir=self.cd))
         self.assertEqual(ra.raiz_de(os.path.join(self.h, ".claude/agents/general.md"), claude_dir=self.cd), "personal")
         self.assertEqual(ra.raiz_de(os.path.join(self.h, ".claude/kit-pyme/agents/conciliador.md"), claude_dir=self.cd), "kit-pyme")
@@ -62,7 +70,7 @@ class Raices(unittest.TestCase):
     def test_variable_de_entorno_manda(self):
         self.conf("~/.claude/agents\n")
         os.environ["RAICES_AGENTES"] = os.path.join(self.h, "Proyectos/Dos/.claude/agents")
-        self.assertEqual(ra.raices(claude_dir=self.cd), [os.path.join(self.h, "Proyectos/Dos/.claude/agents")])
+        self.assertEqual([self.n(x) for x in ra.raices(claude_dir=self.cd)], ["~/Proyectos/Dos/.claude/agents"])
 
 
 if __name__ == "__main__":
