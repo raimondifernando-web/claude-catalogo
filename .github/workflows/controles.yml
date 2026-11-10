@@ -4,12 +4,24 @@
 # espera a que pasen este check y `zona-sensible` y recién ahí une. Lo que entra a `main` llega a los clientes
 # 48 h después por la rama `estable` (estable.yml), así que un error tiene tiempo de verse y revertirse.
 #
+# Desde 2026-11-10 (C271b; análisis en Tech/docs/2026-11-10-pruebas-obligatorias-catalogo.md) `controles` es el JOB
+# RESUMEN, el único nombre que exige el ruleset. Siempre corre (no depende de `paths:`: un check obligatorio de un
+# workflow que se saltea queda «pendiente» y bloquea el PR, doc de GitHub «Troubleshooting required status checks») y
+# espera a:
+#   - `controles-mac`: lo de siempre (metadatos y pruebas en macOS, Python 3.12);
+#   - `tests` y `hook-bash`: la matriz Mac/Linux/Windows del plugin `metodo` (la misma de vigia-tests.yml, mismos
+#     nombres de job: la compuerta de `estable` los lee por prefijo). Solo corren si el PR toca el plugin o sus
+#     controles (job `cambios`); si no, se saltean A PROPÓSITO.
+# Un job salteado cuenta como éxito para GitHub, así que el resumen NO se fía de eso: exige `success` de todo lo que
+# tenía que correr, y si `cambios` falla o no se pudo decidir qué correr, el resumen falla (nunca «verde sin pruebas»).
+#
 # Seguridad:
 #   - corre con `pull_request` (el código del PR, con permisos de solo lectura); NUNCA `pull_request_target` acá;
 #   - sin secretos: la lista de nombres de clientes la revisa zona-sensible.yml con el código de main;
 #   - un PR que cambie este archivo o los scripts de control cae en la zona sensible (zona-sensible.yml, que corre
 #     siempre la versión de `main`) y necesita la etiqueta `ok-fernando-<commit>`, que pone solo el dueño;
-#   - `workflow_dispatch` existe para el robot del radar: sus PR los abre GITHUB_TOKEN, que no dispara `pull_request`.
+#   - `workflow_dispatch` existe para el robot del radar: sus PR los abre GITHUB_TOKEN, que no dispara `pull_request`;
+#     ahí no hay base para comparar y `cambios` manda correr todo.
 name: controles
 
 on:
@@ -25,7 +37,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  controles:
+  cambios:
+    # Decide si el PR toca el plugin `metodo` (o sus controles). Ante CUALQUIER duda o error manda correr todo.
+    name: cambios
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      metodo: ${{ steps.dif.outputs.metodo }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Qué toca el PR
+        id: dif
+        env:
+          EVENTO: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          CABEZA: ${{ github.event.pull_request.head.sha }}
+          PATRON: '^(plugins/metodo/|scripts/radar-fuentes\.py$|scripts/estable-avanzar\.py$|scripts/controles\.sh$|\.github/workflows/(vigia-tests|estable|controles)\.yml$|\.github/rulesets/)'
+        run: |
+          set +e   # GitHub corre `bash -e`: un «grep no encontró» (código 1) no puede cortar el script, se mira abajo
+          corre=true   # por defecto, correr todo: solo un «no toca nada de esto» comprobado lo apaga
+          if [ "$EVENTO" = "pull_request" ] && [ -n "$BASE" ] && [ -n "$CABEZA" ]; then
+            if lista=$(git diff --name-only "$BASE...$CABEZA" 2>/dev/null) && [ -n "$lista" ]; then
+              printf '%s\n' "$lista" | grep -Eq "$PATRON"
+              case $? in
+                1) corre=false ;;   # grep: ninguna ruta coincide
+                *) corre=true ;;    # 0 = coincide; 2 = error de grep: correr todo
+              esac
+            fi
+          fi
+          echo "metodo=$corre" >> "$GITHUB_OUTPUT"
+          echo "pruebas multi-sistema: $corre"
+
+  controles-mac:
     # En Mac, como las computadoras de los clientes: varias pruebas del método son de macOS (firmlinks, lanzadores).
     runs-on: macos-latest
     timeout-minutes: 20
@@ -50,3 +96,100 @@ jobs:
           git config --global user.email "controles@localhost"   # algunas pruebas crean repos de juguete
           git config --global user.name "controles"
           bash scripts/controles.sh
+
+  tests:
+    # Copia de la matriz de vigia-tests.yml (que sigue corriendo después de cada unión a `main`). Las dos tienen que ser
+    # iguales: lo comprueba scripts/tests/test_matriz_pruebas.py.
+    name: tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    needs: cambios
+    if: ${{ needs.cambios.outputs.metodo == 'true' }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.9", "3.12"]
+        exclude:
+          # actions/setup-python ya no trae 3.9 en el Ubuntu nuevo de GitHub; 3.9 queda cubierto en Mac y Windows.
+          - os: ubuntu-latest
+            python: "3.9"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: PyYAML (lo usa skill-externa y su prueba)
+        run: python -m pip install "pyyaml==6.0.3"
+      - name: Identidad de git para las pruebas (algunas crean repos de juguete)
+        shell: bash
+        run: |
+          git config --global user.email "controles@localhost"
+          git config --global user.name "controles"
+      - name: unittest
+        run: python -m unittest discover -s plugins/metodo/scripts/vigia/tests -v
+      - name: unittest del buzón, del radar y de estable
+        run: python -m unittest discover -s plugins/metodo/scripts/tests -v
+
+  hook-bash:
+    # El comando REAL de hooks/hooks.json, corrido con bash (en Windows, Git Bash) desde rutas con espacios, con un
+    # python3 falso primero en el PATH (como el alias de la Microsoft Store). Detalle en vigia-tests.yml.
+    name: comando del hook con bash (${{ matrix.os }})
+    needs: cambios
+    if: ${{ needs.cambios.outputs.metodo == 'true' }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: hook de punta a punta
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASH_EXE="$(command -v bash)"
+          if command -v cygpath >/dev/null 2>&1; then
+            BASH_EXE="$(cygpath -w "$BASH_EXE")"  # el bash de Git for Windows, no el de WSL
+          fi
+          unset GH_TOKEN GITHUB_TOKEN || true
+          python plugins/metodo/scripts/vigia/tests/ci_hook.py --bash "$BASH_EXE"
+
+  controles:
+    # JOB RESUMEN: el único que exige el ruleset. Siempre corre (también si algo falló o se canceló).
+    name: controles
+    needs: [cambios, controles-mac, tests, hook-bash]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resumen (exige success de todo lo que tenía que correr)
+        env:
+          CAMBIOS: ${{ needs.cambios.result }}
+          METODO: ${{ needs.cambios.outputs.metodo }}
+          MAC: ${{ needs.controles-mac.result }}
+          TESTS: ${{ needs.tests.result }}
+          HOOK: ${{ needs.hook-bash.result }}
+        run: |
+          falla() { echo "::error::$1"; exit 1; }
+          [ "$MAC" = "success" ] || falla "controles-mac: $MAC"
+          [ "$CAMBIOS" = "success" ] || falla "cambios: $CAMBIOS (si no se pudo decidir qué correr, no se aprueba)"
+          case "$METODO" in
+            true)
+              [ "$TESTS" = "success" ] || falla "tests (matriz Mac/Linux/Windows): $TESTS"
+              [ "$HOOK" = "success" ] || falla "comando del hook con bash: $HOOK"
+              echo "controles ✓: controles-mac, tests y hook en verde" ;;
+            false)
+              echo "controles ✓: controles-mac en verde; el PR no toca el plugin metodo ni sus controles (matriz salteada a propósito)" ;;
+            *) falla "cambios no devolvió true ni false ($METODO)" ;;
+          esac
