@@ -36,11 +36,15 @@ class Base(unittest.TestCase):
         for d in (self.cfg / "state", self.cfg / "metodo", self.cfg / "projects" / "p", self.bin, self.cwd):
             d.mkdir(parents=True)
         falso = self.bin / "claude"
-        falso.write_text("#!/bin/sh\necho x >> \"%s/llamadas\"\ncat <<'EOF'\n%s\nEOF\n" % (t, SALIDA_FALSA))
-        falso.chmod(falso.stat().st_mode | stat.S_IEXEC)
+        if os.name != "nt":
+            self._falso(falso, t)
         self.env = dict(os.environ, CLAUDE_CONFIG_DIR=str(self.cfg), PATH=str(self.bin) + os.pathsep + os.environ["PATH"])
         self.env.pop("SALUD_OFF", None)
         self.llamadas = t / "llamadas"
+
+    def _falso(self, falso, t):
+        falso.write_text("#!/bin/sh\necho x >> \"%s/llamadas\"\ncat <<'EOF'\n%s\nEOF\n" % (t, SALIDA_FALSA), encoding="utf-8")
+        falso.chmod(falso.stat().st_mode | stat.S_IEXEC)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -50,12 +54,12 @@ class Base(unittest.TestCase):
 
     def transcripto(self, texto, edad_dias=1):
         f = self.cfg / "projects" / "p" / "s.jsonl"
-        f.write_text(texto)
+        f.write_text(texto, encoding="utf-8")
         viejo = time.time() - edad_dias * 86400
         os.utime(f, (viejo, viejo))
 
     def n_llamadas(self):
-        return len(self.llamadas.read_text().split()) if self.llamadas.exists() else 0
+        return len(self.llamadas.read_text(encoding="utf-8").split()) if self.llamadas.exists() else 0
 
 
 class Parseo(Base):
@@ -70,6 +74,7 @@ class Parseo(Base):
         self.assertEqual(s.normalizar("plugin:productivity:google calendar"), "plugin_productivity_google_calendar")
 
 
+@unittest.skipIf(os.name == "nt", "el claude falso es un script sh (no hay sh en Windows)")
 class Aviso(Base):
     def test_sin_cache_no_imprime_y_lanza_refresco(self):
         r = self.correr("aviso", entrada=json.dumps({"source": "startup", "cwd": str(self.cwd)}))
@@ -104,10 +109,10 @@ class Aviso(Base):
         self.assertEqual(self.correr("aviso", entrada=e).stdout, "")                      # nada usado: silencio
         self.transcripto('{"name":"mcp__n8n-oficial__x"}\n')
         self.correr("refrescar", "--cwd", str(self.cwd))
-        est = json.loads((self.cfg / "state" / "salud-ecosistema.json").read_text())
+        est = json.loads((self.cfg / "state" / "salud-ecosistema.json").read_text(encoding="utf-8"))
         est["pesado"]["ts"] = 0                                                           # forzar uso viejo no cambia el aviso; probamos los otros frenos
         self.assertEqual(self.correr("aviso", entrada=json.dumps({"source": "compact", "cwd": str(self.cwd)})).stdout, "")
-        (self.cfg / "metodo" / "salud.apagado").write_text("")
+        (self.cfg / "metodo" / "salud.apagado").write_text("", encoding="utf-8")
         self.assertEqual(self.correr("aviso", entrada=e).stdout, "")
 
     def test_transcripto_viejo_no_cuenta_como_uso(self):
@@ -126,6 +131,7 @@ class Aviso(Base):
         self.assertIn("sin dato", self.correr("informe", "--breve", "--cwd", str(self.cwd)).stdout)
 
 
+@unittest.skipIf(os.name == "nt", "el claude falso es un script sh (no hay sh en Windows)")
 class EnElAvisoDeApertura(Base):
     """El control viaja dentro de vigia/aviso.py (el aviso de apertura que ya existe): la prueba de disparo real."""
 
@@ -141,7 +147,7 @@ class EnElAvisoDeApertura(Base):
     def test_la_linea_sale_en_el_aviso_de_apertura(self):
         env, cfg = self.entorno()
         (cfg / "projects" / "p").mkdir(parents=True)
-        (cfg / "projects" / "p" / "s.jsonl").write_text('{"name":"mcp__n8n-oficial__x"}\n')
+        (cfg / "projects" / "p" / "s.jsonl").write_text('{"name":"mcp__n8n-oficial__x"}\n', encoding="utf-8")
         aviso = AQUI.parent / "vigia" / "aviso.py"
         entrada = json.dumps({"cwd": str(self.cwd), "source": "startup", "session_id": "t1"})
         subprocess.run([sys.executable, str(AQUI.parent / "salud_conectores.py"), "refrescar", "--cwd", str(self.cwd)], env=env, timeout=60)
@@ -161,7 +167,7 @@ class Seguridad(Base):
         home = os.path.abspath(os.path.expanduser("~"))
         ajena = Path(self.tmp.name) / "repo-ajeno" / "sub"
         ajena.mkdir(parents=True)
-        (Path(self.tmp.name) / "repo-ajeno" / ".mcp.json").write_text("{}")
+        (Path(self.tmp.name) / "repo-ajeno" / ".mcp.json").write_text("{}", encoding="utf-8")
         self.assertEqual(s.carpeta_segura(str(ajena)), home)
         self.assertEqual(s.carpeta_segura(str(self.cwd)), os.path.abspath(str(self.cwd)))
 
@@ -172,27 +178,28 @@ class Seguridad(Base):
         self.transcripto('{"name":"mcp__n8n-oficial__x"}\n')
         u1, _ = s.contar_usos()
         f = self.cfg / "projects" / "p" / "s.jsonl"
-        cache = json.loads((self.cfg / "state" / "salud-usos.json").read_text())
+        cache = json.loads((self.cfg / "state" / "salud-usos.json").read_text(encoding="utf-8"))
         cache["archivos"][str(f)][2]["n8n-oficial"] = 99      # si lo relee, vuelve a 1; si usa la caché, queda 99
-        (self.cfg / "state" / "salud-usos.json").write_text(json.dumps(cache))
+        (self.cfg / "state" / "salud-usos.json").write_text(json.dumps(cache), encoding="utf-8")
         u2, _ = s.contar_usos()
         self.assertEqual(u1["n8n-oficial"], 1)
         self.assertEqual(u2["n8n-oficial"], 99)
 
 
+@unittest.skipIf(os.name == "nt", "el claude falso es un script sh (no hay sh en Windows)")
 class Duplicados(Base):
     def armar_plugin(self, nombre, skills, agentes):
         p = Path(self.tmp.name) / "plugins" / nombre
         for s in skills:
             (p / "skills" / s).mkdir(parents=True)
-            (p / "skills" / s / "SKILL.md").write_text("---\nname: %s\n---\n" % s)
+            (p / "skills" / s / "SKILL.md").write_text("---\nname: %s\n---\n" % s, encoding="utf-8")
         (p / "agents").mkdir(parents=True, exist_ok=True)
         for a in agentes:
-            (p / "agents" / (a + ".md")).write_text("---\nname: %s\n---\n" % a)
+            (p / "agents" / (a + ".md")).write_text("---\nname: %s\n---\n" % a, encoding="utf-8")
         return p
 
     def habilitar(self, plugins):
-        (self.cfg / "settings.json").write_text(json.dumps({"enabledPlugins": {k: True for k in plugins}, "env": {"SECRETO": "no-leer"}}))
+        (self.cfg / "settings.json").write_text(json.dumps({"enabledPlugins": {k: True for k in plugins}, "env": {"SECRETO": "no-leer"}}), encoding="utf-8")
         (self.cfg / "plugins").mkdir(exist_ok=True)
         (self.cfg / "plugins" / "installed_plugins.json").write_text(json.dumps(
             {"plugins": {k: [{"installPath": str(v)}] for k, v in plugins.items()}}))
@@ -200,9 +207,9 @@ class Duplicados(Base):
     def propias(self):
         for s in ("a", "b", "c"):
             (self.cfg / "skills" / s).mkdir(parents=True, exist_ok=True)
-            (self.cfg / "skills" / s / "SKILL.md").write_text("x")
+            (self.cfg / "skills" / s / "SKILL.md").write_text("x", encoding="utf-8")
         (self.cfg / "agents").mkdir(exist_ok=True)
-        (self.cfg / "agents" / "ag.md").write_text("x")
+        (self.cfg / "agents" / "ag.md").write_text("x", encoding="utf-8")
 
     def test_paquete_que_repite_se_avisa_al_cambiar_la_lista_con_el_comando(self):
         self.propias()
@@ -229,7 +236,7 @@ class Duplicados(Base):
         self.propias()
         p = self.armar_plugin("rubro-x", ["a", "b", "c"], [])
         self.habilitar({"rubro-x@mercado": p})
-        (self.cfg / "metodo" / "salud-excepciones.txt").write_text("rubro-x@mercado  # se entrega al cliente a propósito\n")
+        (self.cfg / "metodo" / "salud-excepciones.txt").write_text("rubro-x@mercado  # se entrega al cliente a propósito\n", encoding="utf-8")
         self.correr("refrescar", "--cwd", str(self.cwd))
         self.assertEqual(self.correr("aviso", entrada=json.dumps({"source": "startup", "cwd": str(self.cwd)})).stdout, "")
 
