@@ -1,6 +1,6 @@
 # RADAR.yaml — qué IA usar para cada cosa, con plan A, B y C. Lo lee `scripts/radar.py`.
 # Lo mantiene un PR automático (.github/workflows/radar.yml) que una persona aprueba; el RADAR.md se genera con `radar.py md`.
-actualizado: 2026-11-01
+actualizado: 2026-11-09
 nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual. Orden A/B/C revisado a mano el 2026-10-29 contra Arena, Artificial Analysis y otras fuentes independientes; cada plan trae su evidencia."
 vigentes:
   actualizado: 2026-10-08
@@ -239,15 +239,26 @@ ruteo_claude:
       nivel_base: N1
       delegable: false
       motivo: "solo lee y cuenta; Haiku tiene las herramientas a mano y es el más barato"
-      palabras: [explorar, explore, buscar, mover, inventario, ubicar, encontrar]
+      palabras:
+        - explorar
+        - explore
+        - buscar
+        - mover
+        - inventario
+        - ubicar
+        - encontrar
     - id: investigar
-      nombre: "Investigar en la web"
+      nombre: Investigar en la web
       fila: investigar
       categoria: investigacion_web
       nivel_base: N2
       delegable: true
       motivo: "juntar y contrastar fuentes; una búsqueda con citas sale más barata afuera"
-      palabras: ["investig*", research, "en la web", relevar]
+      palabras:
+        - "investig*"
+        - research
+        - en la web
+        - relevar
     - id: planear
       nombre: "Planear o diseñar (arquitectura, alcance, qué NO se hace)"
       fila: arquitectura_seguridad_plata
@@ -255,7 +266,15 @@ ruteo_claude:
       nivel_base: N3
       delegable: false
       motivo: "hay que juzgar y el error sale caro; un plan chico de 1-2 archivos baja a sonnet/medium"
-      palabras: [plan, planear, "planific*", "dise*", "arquitectur*", alcance, spec, analizar para decidir]
+      palabras:
+        - plan
+        - planear
+        - "planific*"
+        - "dise*"
+        - "arquitectur*"
+        - alcance
+        - spec
+        - analizar para decidir
     - id: implementar
       nombre: "Implementar (código acotado, arreglos, scripts)"
       fila: implementar_acotado
@@ -263,7 +282,13 @@ ruteo_claude:
       nivel_base: N2
       delegable: true
       motivo: "tarea acotada con criterio claro; Codex o Gemini con cupo primero, Claude si toca datos o configuración propia"
-      palabras: ["implement*", arreglar, fix, script, "program*", codigo]
+      palabras:
+        - "implement*"
+        - arreglar
+        - fix
+        - script
+        - "program*"
+        - codigo
     - id: probar
       nombre: "Probar (correr pruebas y leer el resultado)"
       fila: buscar_mover
@@ -271,23 +296,34 @@ ruteo_claude:
       nivel_base: N1
       delegable: false
       motivo: "correr y leer es mecánico; ESCRIBIR pruebas nuevas es la etapa implementar"
-      palabras: ["prob*", "test*", correr pruebas]
+      palabras:
+        - "prob*"
+        - "test*"
+        - correr pruebas
     - id: leer
-      nombre: "Leer o revisar documentos"
+      nombre: Leer o revisar documentos
       fila: revisar
       categoria: documentos_largos
       nivel_base: N2
       delegable: false
-      motivo: "leer y resumir documentos largos"
-      palabras: [leer documentos, revisar documentos, documentos largos, resumir documento]
+      motivo: leer y resumir documentos largos
+      palabras:
+        - leer documentos
+        - revisar documentos
+        - documentos largos
+        - resumir documento
     - id: calcular
-      nombre: "Calcular o armar planillas"
+      nombre: Calcular o armar planillas
       fila: planillas
       categoria: datos_planillas
       nivel_base: N1
       delegable: false
       motivo: "cuentas y planillas; plata y producción suman control, no modelo"
-      palabras: [calcular, planilla, planillas, sumar]
+      palabras:
+        - calcular
+        - planilla
+        - planillas
+        - sumar
     - id: revisar
       nombre: "Revisar (segunda opinión de un cambio)"
       fila: revisar
@@ -295,7 +331,11 @@ ruteo_claude:
       nivel_base: N2
       delegable: true
       motivo: "la revisión la hace alguien distinto del autor; otra IA con cupo, solo lectura"
-      palabras: ["revis*", review, segunda opinion, critic]
+      palabras:
+        - "revis*"
+        - review
+        - segunda opinion
+        - critic
     - id: seguridad
       nombre: "Seguridad, plata o algo irreversible"
       fila: arquitectura_seguridad_plata
@@ -303,7 +343,11 @@ ruteo_claude:
       nivel_base: N3
       delegable: false
       motivo: "toca claves, configuración o plata: se queda en Claude con el nivel más alto que no sea a pedido"
-      palabras: [seguridad, security, secreto, "vulnerab*"]
+      palabras:
+        - seguridad
+        - security
+        - secreto
+        - "vulnerab*"
     - id: documentar
       nombre: "Documentar (guías, fichas, avisos, changelog)"
       fila: implementar_acotado
@@ -311,7 +355,14 @@ ruteo_claude:
       nivel_base: N2
       delegable: false
       motivo: "escribir en castellano sobre lo ya decidido; si es texto para un tercero, después pasa por humanizalo"
-      palabras: ["document*", redactar, guia, ficha, changelog, aviso, readme]
+      palabras:
+        - "document*"
+        - redactar
+        - guia
+        - ficha
+        - changelog
+        - aviso
+        - readme
     - id: cierre
       nombre: "Cierre (controles, conteos, traspaso)"
       fila: buscar_mover
@@ -319,7 +370,11 @@ ruteo_claude:
       nivel_base: N1
       delegable: false
       motivo: "los controles y conteos son mecánicos; el texto del traspaso lo escribe la sesión que trabajó, sin abrir otra"
-      palabras: [cierre, cerrar, handoff, traspaso]
+      palabras:
+        - cierre
+        - cerrar
+        - handoff
+        - traspaso
   niveles_nota: "Modelo por nivel y por IA (2026-11-05). N1/N2/N3 → esfuerzo low/medium/high. Claude: alias. Codex y Antigravity son una PROPUESTA (verificado: false) a confirmar con el radar de modelos; `tope` solo si la persona lo nombra."
   niveles:
     Claude Code:
@@ -341,19 +396,39 @@ ruteo_claude:
   producir:
     - id: imagen
       categoria: imagenes_generar
-      palabras: [imagen, foto, "ilustracion*", logo, banner, posteo con imagen]
+      palabras:
+        - imagen
+        - foto
+        - "ilustracion*"
+        - logo
+        - banner
+        - posteo con imagen
     - id: video
       categoria: video
-      palabras: [video, reel, clip, "animacion*"]
+      palabras:
+        - video
+        - reel
+        - clip
+        - "animacion*"
     - id: voz
       categoria: voz_tts
-      palabras: [voz en off, "locucion*", leer en voz alta]
+      palabras:
+        - voz en off
+        - "locucion*"
+        - leer en voz alta
     - id: transcribir
       categoria: transcripcion
-      palabras: [transcribir, desgrabar, "subtitulos*"]
+      palabras:
+        - transcribir
+        - desgrabar
+        - "subtitulos*"
     - id: investigar
       categoria: investigacion_web
-      palabras: [investigar, competidor, buscar en internet, con citas]
+      palabras:
+        - investigar
+        - competidor
+        - buscar en internet
+        - con citas
 categorias:
   - id: desarrollo
     nombre: "Desarrollo (programar)"
@@ -817,24 +892,24 @@ categorias:
         verificado: false
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
-      fecha: 2026-10-13
+      fecha: 2026-11-09
       verificado: false
       items:
         - puesto: 1
-          modelo: gpt-5.6-sol-xhigh
-          puntaje: 1261
+          modelo: Qwen3.8-Max
+          puntaje: 1259
         - puesto: 2
-          modelo: qwen3.8-max
-          puntaje: 1261
+          modelo: "GPT-5.6 Sol (xHigh)"
+          puntaje: 1258
         - puesto: 3
-          modelo: claude-opus-4-6-search
-          puntaje: 1251
+          modelo: "Claude Opus 4.6 (Search)"
+          puntaje: 1252
         - puesto: 4
-          modelo: gpt-5.5-search
-          puntaje: 1247
+          modelo: "GPT-5.5 (Search)"
+          puntaje: 1245
         - puesto: 5
-          modelo: claude-fable-5.1-high
-          puntaje: 1246
+          modelo: "Claude Opus 5 (High)"
+          puntaje: 1239
     arena:
       config: search
       split: latest
@@ -1159,24 +1234,24 @@ categorias:
         verificado: false
     ranking:
       fuente: "Arena (dataset en Hugging Face)"
-      fecha: 2026-09-22
+      fecha: 2026-11-09
       verificado: false
       items:
         - puesto: 1
-          modelo: gemini-omni-1.1-flash
-          puntaje: 1516
+          modelo: Gemini Omni 1.2 Flash
+          puntaje: 1540
         - puesto: 2
-          modelo: gemini-omni-flash
+          modelo: Gemini Omni 1.1 Flash
           puntaje: 1513
         - puesto: 3
-          modelo: flux-3-video
-          puntaje: 1493
+          modelo: gemini-omni-flash
+          puntaje: 1509
         - puesto: 4
-          modelo: grok-imagine-video-1.5-agent
-          puntaje: 1492
+          modelo: FLUX 3 Video
+          puntaje: 1491
         - puesto: 5
-          modelo: dreamina-seedance-2.0-720p
-          puntaje: 1479
+          modelo: Grok Imagine Video 1.5
+          puntaje: 1488
     arena:
       config: text_to_video
       split: latest

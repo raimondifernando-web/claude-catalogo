@@ -1,6 +1,6 @@
 # Radar de modelos
 
-> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-11-01**.
+> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-11-09**.
 > `[a verificar]` = dato de la investigación que todavía no se leyó de primera mano.
 
 Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B o el C.
@@ -48,6 +48,8 @@ Ruteo por ETAPA del desarrollo (2026-11-01): cada etapa arranca con su IA, model
 | Planear o diseñar (arquitectura, alcance, qué NO se hace) | opus/high | no | hay que juzgar y el error sale caro; un plan chico de 1-2 archivos baja a sonnet/medium |
 | Implementar (código acotado, arreglos, scripts) | sonnet/low | sí, si tiene cupo (desarrollo) | tarea acotada con criterio claro; Codex o Gemini con cupo primero, Claude si toca datos o configuración propia |
 | Probar (correr pruebas y leer el resultado) | haiku/low | no | correr y leer es mecánico; ESCRIBIR pruebas nuevas es la etapa implementar |
+| Leer o revisar documentos | sonnet/medium | no | leer y resumir documentos largos |
+| Calcular o armar planillas | sonnet/low | no | cuentas y planillas; plata y producción suman control, no modelo |
 | Revisar (segunda opinión de un cambio) | sonnet/medium | sí, si tiene cupo (revision) | la revisión la hace alguien distinto del autor; otra IA con cupo, solo lectura |
 | Seguridad, plata o algo irreversible | opus/high | no | toca claves, configuración o plata: se queda en Claude con el nivel más alto que no sea a pedido |
 | Documentar (guías, fichas, avisos, changelog) | sonnet/low | no | escribir en castellano sobre lo ya decidido; si es texto para un tercero, después pasa por humanizalo |
@@ -112,7 +114,7 @@ Orden PROVISORIO: hay 3 fuentes independientes, pero no todos los planes se apoy
 | C | app web (Gemini Deep Research) (Google, Deep Research) [a verificar] | A VERIFICAR. Es el peor ubicado de los medidos: Gemini 3.1 Pro con búsqueda es 15.º en Arena búsqueda (1209 contra 1261) y saca 72% en BrowseComp en la prueba de Parallel (contra 85-86% de GPT y Perplexity). Pero en DeepSearchQA le gana a Perplexity (77 contra 68%). Nadie midió el Deep Research de Google en BrowseComp. Gratis en la app con los planes de Google AI. | no | En el plan gratis Google usa lo que mandás para mejorar sus productos: sin código privado ni datos de clientes. |
 | D | Perplexity (MCP oficial, desde una sesión de Claude) (Perplexity, Agent API) [a verificar] | A VERIFICAR el lugar. Su buscador es el mejor medido por Artificial Analysis (BrowseComp 87 contra 74 del de OpenAI, mismo modelo; índice 80, empatado 1.º con Exa) y su Agent API saca 86% en BrowseComp en la prueba de Parallel (GPT-5.6 Sol: 85%); pero en DeepSearchQA queda en 68% (Gemini 77, GPT 85) y no figura en Arena búsqueda. Respuesta ya sintetizada y con citas (`perplexity_ask`, preset fast); `perplexity_search` da resultados crudos con fecha y dominio; `perplexity_research` es el profundo y caro. El MCP oficial (v1.0) ya corre sobre la Agent API. | sí | La API no entrena con lo que mandás por defecto; sin retención cero salvo acuerdo escrito. Claves y secretos nunca en la consulta. |
 
-Ranking (Arena (dataset en Hugging Face), 2026-10-13): 1. gpt-5.6-sol-xhigh; 2. qwen3.8-max; 3. claude-opus-4-6-search; 4. gpt-5.5-search; 5. claude-fable-5.1-high
+Ranking (Arena (dataset en Hugging Face), 2026-11-09): 1. Qwen3.8-Max; 2. GPT-5.6 Sol (xHigh); 3. Claude Opus 4.6 (Search); 4. GPT-5.5 (Search); 5. Claude Opus 5 (High)
 
 ## Documentos largos
 
@@ -160,7 +162,7 @@ Orden PROVISORIO: hay 2 fuentes independientes, pero no todos los planes se apoy
 | B | API de Wan 3.0 (Alibaba) (Alibaba, Wan 3.0) [a verificar] | 1.º en texto a video de Artificial Analysis (1174) y 6.º en Arena (1476); 3.º en imagen a video en Arena y 4.º en Artificial Analysis. Reemplaza a Sora: OpenAI la discontinuó (app web el 2026-04-26, API el 2026-09-24). Para imagen a video, MiniMax H3 es 1.º en Arena y en Artificial Analysis (empatado). | no | Sin cuenta propia todavía: hay que contratarla. Proveedor chino: sin material de clientes. |
 | C | Adobe Express (conector) (Adobe) [a verificar] | Cortes rápidos y redimensionado con el conector de Adobe (sin medición independiente). | sí | Sin medición independiente. |
 
-Ranking (Arena (dataset en Hugging Face), 2026-09-22): 1. gemini-omni-1.1-flash; 2. gemini-omni-flash; 3. flux-3-video; 4. grok-imagine-video-1.5-agent; 5. dreamina-seedance-2.0-720p
+Ranking (Arena (dataset en Hugging Face), 2026-11-09): 1. Gemini Omni 1.2 Flash; 2. Gemini Omni 1.1 Flash; 3. gemini-omni-flash; 4. FLUX 3 Video; 5. Grok Imagine Video 1.5
 
 ## Transcripción de audio
 
