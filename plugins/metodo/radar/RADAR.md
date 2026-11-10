@@ -1,6 +1,6 @@
 # Radar de modelos
 
-> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-11-09**.
+> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-11-10**.
 > `[a verificar]` = dato de la investigación que todavía no se leyó de primera mano.
 
 Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B o el C.
@@ -14,7 +14,7 @@ Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B
 | Claude Haiku | claude-haiku-5-5 | 2026-10-07 |
 | Claude Sonnet | claude-sonnet-5-5 | 2026-09-28 |
 | Claude Opus | claude-opus-5-5 | 2026-09-22 |
-| Claude Fable | claude-fable-5-1 | 2026-09-01 |
+| Claude Fable | claude-fable-5-2 | 2026-11-09 |
 | GPT Sol | gpt-6.1-sol | 2026-09-29 |
 | GPT Astra | gpt-6-astra | 2026-09-03 |
 | GPT Luna | gpt-6-luna | 2026-09-22 |
