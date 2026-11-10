@@ -1,5 +1,9 @@
 # Tests del vigía de actualizaciones, del buzón y de la rama `estable` (plugin metodo) en Mac, Linux y Windows.
 # Sin secretos, sin red real (los tests simulan GitHub/npm/PyPI) y con permisos de solo lectura.
+# Desde 2026-11-10 (C271b) este workflow corre DESPUÉS de cada unión a `main` (push) y a mano: sus resultados son lo que
+# lee la compuerta de `estable` (scripts/estable-avanzar.py, por prefijo de nombre de job). Los PR ya no lo disparan: las
+# MISMAS pruebas corren dentro del check obligatorio `controles` (controles.yml, job resumen). La matriz está copiada en
+# los dos archivos y scripts/tests/test_matriz_pruebas.py comprueba que sean iguales.
 name: vigia-tests
 
 on:
@@ -11,21 +15,15 @@ on:
       - "scripts/estable-avanzar.py"
       - ".github/workflows/vigia-tests.yml"
       - ".github/workflows/estable.yml"
-      - ".github/rulesets/**"
-  pull_request:
-    paths:
-      - "plugins/metodo/**"
-      - "scripts/radar-fuentes.py"
-      - "scripts/estable-avanzar.py"
-      - ".github/workflows/vigia-tests.yml"
-      - ".github/workflows/estable.yml"
+      - ".github/workflows/controles.yml"
+      - "scripts/controles.sh"
       - ".github/rulesets/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Una rama de trabajo corre una vez (en el PR, no también en el push) y una corrida nueva cancela la vieja.
+# Una corrida por unión (el PR corre las mismas pruebas dentro de `controles`, no acá).
 concurrency:
   group: vigia-tests-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -47,12 +45,18 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python }}
       - name: PyYAML (lo usa skill-externa y su prueba)
         run: python -m pip install "pyyaml==6.0.3"
+      - name: Identidad de git para las pruebas (algunas crean repos de juguete)
+        shell: bash
+        run: |
+          git config --global user.email "controles@localhost"
+          git config --global user.name "controles"
       - name: unittest
         run: python -m unittest discover -s plugins/metodo/scripts/vigia/tests -v
       - name: unittest del buzón, del radar y de estable
@@ -74,6 +78,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
