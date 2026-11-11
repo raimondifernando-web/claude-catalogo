@@ -37,7 +37,8 @@ una disciplina y sirven para cualquier empresa.
 ## Dónde se guarda
 - Agente **personal** (sirve en todas tus carpetas): `~/.claude/agents/<nombre>.md`
 - Agente **de esta empresa/carpeta**: `.claude/agents/<nombre>.md` dentro de la carpeta de trabajo (así viaja
-  con el repositorio y lo ve quien te acompaña).
+  con el repositorio y lo ve quien te acompaña). **El PM de una empresa siempre va acá**, nunca en `~/.claude/agents/`:
+  la sesión principal de la carpeta lo busca en `<carpeta>/.claude/agents/pm-*.md` para arrancar como él.
 Nombre en minúsculas con guiones. Un archivo por agente.
 
 ## Formato (lo mínimo que funciona)
@@ -53,6 +54,8 @@ skills:            # opcional: skills que ya tiene que conocer al arrancar
 ```
 Campos opcionales útiles: `tools:` (lista blanca de herramientas; si un agente solo lee, sacale `Write` y
 `Edit`), `disallowedTools:` (lista negra; no combinar con `tools:`), `effort:` (`low|medium|high`).
+**Un PM no lleva `tools:` restrictiva**: sin la lista hereda todo, incluida `Agent` (la herramienta con la que delega).
+Si por algún motivo tiene lista, tiene que traer `Agent` (el doc oficial: un agente principal solo puede delegar con `Agent`).
 
 ## Proceso
 1. **Capturar la intención** (preguntá solo lo que falta): ¿qué empresa o disciplina? ¿PM o especialista?
@@ -65,7 +68,20 @@ Campos opcionales útiles: `tools:` (lista blanca de herramientas; si un agente 
 3. **Verificar**: `ls` del archivo; en una sesión nueva, `/agents` lo lista; probalo con una tarea real chica.
 4. **Registrar**: una línea en el `CLAUDE.md` de la carpeta ("Agentes: `pm-miempresa` → coordina; …") para que
    la próxima sesión sepa que existe. Sin esto, el agente queda huérfano.
-5. **Disparador y prueba de disparo (regla 23)**: escribí en el cuerpo del agente una línea `Disparador: …` con quién lo
+5. **Si es un PM de empresa: las reglas «siempre» van en la ficha, no en el PM, y la sesión arranca como él.**
+   a) Si el `CLAUDE.md` de la carpeta no tiene la sección «Reglas de pedidos y respuestas (todas las sesiones de esta carpeta)»,
+   agregala con `templates/reglas-pedidos-respuestas.md` (las 5 reglas: confirmar antes de mover o borrar, pedido mezclado →
+   «fuera de scope», cifras solo medidas, plantilla de respuesta corta, acción sobre varios elementos). La ficha la leen TODAS las
+   sesiones de la carpeta (también las hijas); el PM solo cuando arranca como PM o lo invocan. El PM las cita, no las copia.
+   b) Activá la sesión principal como PM: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agente-principal.py" --carpeta .` (Windows: `py -3`).
+   Pone `"agent": "pm-<empresa>"` en `.claude/settings.local.json` (personal, git no lo versiona), le suma `Agent` al PM si tenía una
+   lista de herramientas, y termina en «Todo al día ✓». Rige desde la PRÓXIMA sesión de la carpeta (las abiertas no cambian).
+   Con `--simular` solo muestra qué haría. Normalmente ni hace falta: el hook de apertura de `metodo` lo hace solo la primera vez.
+   c) Si la persona pide volver a la sesión de siempre («sacá el jefe de proyecto de esta carpeta»): corré el mismo programa con
+   `--deshacer`; deja anotado que esa carpeta no lo quiere y no se vuelve a aplicar solo.
+   Las copias de trabajo (sesiones hijas) pueden heredar el PM desde la carpeta principal: el PM trae la sección «Si sos una sesión
+   hija» (ejecuta ella) y el hook de apertura se lo recuerda.
+6. **Disparador y prueba de disparo (regla 23)**: escribí en el cuerpo del agente una línea `Disparador: …` con quién lo
    invoca y cuándo — *encadenado* (lo nombra tu PM o una skill: cuál), *por intención* (la `description` empieza con
    «Invocar cuando…» y trae las frases con las que se lo pide) o *manual a propósito* (y por qué). Un PM se dispara porque
    abrís la sesión con él. Si el agente **revisa, audita o controla algo**, «por intención» no alcanza: engancharlo a un paso
@@ -94,5 +110,7 @@ agentes se ve cuál es de qué proyecto y se nota qué versión general falta. L
   invocaste 3 veces, archivalo.
 - PM que hace de todo → se convierte en un chat genérico. El PM **deriva**; si no tiene a quién derivar, primero
   se crea el especialista.
+- Meter en el PM las reglas que toda sesión debe cumplir → una sesión que no lo invoque nunca las ve. Van en el `CLAUDE.md` de la carpeta.
+- PM con `tools:` sin `Agent` → arranca como sesión principal y no puede delegar: es justo lo que se quería evitar.
 - Pegar el contexto del negocio dentro del agente → se desactualiza y se duplica. Va en `CLAUDE.md`; el agente
   dice "leé CLAUDE.md antes de actuar".
