@@ -639,7 +639,8 @@ class ArreglosDeRevision(Base):
                 self.assertFalse(os.path.exists(self.ajustes()))
 
     def test_el_aviso_no_lleva_la_ruta_de_la_carpeta(self):
-        self.c = os.path.join(self.h, 'raro"$(echo x)')
+        # Windows no admite «"» en un nombre de carpeta (WinError 123); «$(…)», «&» y «;» sí, y alcanzan para la prueba.
+        self.c = os.path.join(self.h, 'raro$(echo x)&;' if os.name == "nt" else 'raro"$(echo x)&;')
         os.makedirs(os.path.join(self.c, ".claude", "agents"))
         self.pm()
         out = self.hook()
