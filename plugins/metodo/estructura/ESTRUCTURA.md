@@ -284,10 +284,11 @@ Documentación oficial de Claude Code, verificada el 2026-10-13. Si una cambia, 
 | Clave | Página | Qué sostiene |
 |---|---|---|
 | memory | https://code.claude.com/docs/en/memory.md | `CLAUDE.md` se lee desde la carpeta de arranque hacia arriba; `CLAUDE.local.md` igual; `.claude/rules/`; menos de 200 líneas |
-| settings | https://code.claude.com/docs/en/settings.md | `settings.json` se lee solo de la carpeta de arranque, sin herencia; `settings.local.json` personal |
+| settings | https://code.claude.com/docs/en/settings.md | `settings.json` se lee solo de la carpeta de arranque, sin herencia; `settings.local.json` personal (en un repositorio de git se lee desde la raíz del repo y lo heredan las copias de trabajo y las subcarpetas); el ajuste `agent` (la sesión arranca como un agente) vale en cualquiera: `recetas/arneses.md` E1–E7 |
 | skills | https://code.claude.com/docs/en/skills.md | las skills se buscan hacia arriba solo hasta la raíz del repositorio |
-| sub-agents | https://code.claude.com/docs/en/sub-agents.md | los agentes, igual: hasta la raíz del repositorio |
+| sub-agents | https://code.claude.com/docs/en/sub-agents.md | los agentes, igual: hasta la raíz del repositorio; un agente principal solo delega si tiene `Agent` (`recetas/arneses.md` E1–E7) |
 | mcp | https://code.claude.com/docs/en/mcp.md | `.mcp.json` del proyecto; `~/.claude.json` personal |
 | plugins-reference | https://code.claude.com/docs/en/plugins-reference.md | un paquete lleva skills, agentes, avisos y conectores; no lleva `CLAUDE.md` ni permisos |
 | plugin-marketplaces | https://code.claude.com/docs/en/plugin-marketplaces.md | `.claude-plugin/marketplace.json`; el repositorio puede ser privado |
+| worktrees | https://code.claude.com/docs/en/worktrees.md | qué comparte una copia de trabajo con la carpeta principal (permisos, `settings.local.json`; desde la app de escritorio, también los ajustes del proyecto): `recetas/arneses.md` E2 |
 | large-codebases | https://code.claude.com/docs/en/large-codebases.md | reglas por carpeta y qué no se hereda |
