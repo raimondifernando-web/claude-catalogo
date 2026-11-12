@@ -839,7 +839,7 @@ def _cerrar_sin_herramientas(r, llave, texto_de, avisos, a, gasto):
     if r["error"]:
         avisos.append("la respuesta se cortó: %s" % R.limpiar(r["error"], llave))
     avisos += avisos_de_cierre(r["stop"], r["categoria"], a.max_salida)
-    texto = R.limpiar(texto_de, llave)
+    texto = R.limpiar(_sin_invisibles(texto_de), llave)
     if not texto.strip():
         avisos.append("la respuesta quedó VACÍA y se cobró igual (%s): el modelo gastó todo el máximo en razonar. Repetí con --esfuerzo low o medium, o subí --max-salida" % R.usd(gasto))
     return escribir_respuesta(texto, a.salida, avisos)
@@ -952,7 +952,7 @@ def correr_con_herramientas(a, llave, modelo, esfuerzo, sistema, pedido, piezas,
         try:
             texto, info = armar_salida(bloques_todos, uso_web, datetime.date.today().isoformat(), busq_tot, lect_tot)
         except Exception as e:      # nunca perder la respuesta por un bloque raro: texto plano
-            texto = "\n".join(str(b.get("text", "")) for b in bloques_todos if isinstance(b, dict) and b.get("type") == "text")
+            texto = "\n".join(_sin_invisibles(b.get("text", "")) for b in bloques_todos if isinstance(b, dict) and b.get("type") == "text")
             info = {"sin_cita": 0, "errores": []}
             avisos.append("no pude armar la lista de fuentes (%s): va el texto sin citas" % e.__class__.__name__)
         texto = R.limpiar(texto, llave)

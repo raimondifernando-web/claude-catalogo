@@ -167,6 +167,8 @@ def confirmar_en_terminal(texto):
     """Para SUBIR un límite: pide escribir una palabra al azar, leída de la terminal (no de la entrada estándar). Sube la vara para que
     una sesión no lo haga sola; NO es una barrera absoluta (una IA con una terminal de verdad podría escribirla): es una regla de conducta."""
     palabra = "".join(__import__("random").SystemRandom().choice("abcdefghjkmnpqrstuvwxyz") for _ in range(5))
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        return False                     # sin una terminal de verdad no se pregunta (y no se queda colgado esperando)
     try:
         if os.name == "nt":
             ent, sal = open("CONIN$", "r", encoding="utf-8", errors="replace"), open("CONOUT$", "w", encoding="utf-8", errors="replace")
@@ -232,7 +234,8 @@ def claude_con_no_entrenar():
 def frenar_si_sensible(ruta, que="la carpeta"):
     if claude_con_no_entrenar():
         return
-    m = privacidad.carpeta_sensible(ruta)
+    archivo = _de_prueba("METODO_SENSIBLES") or os.path.join(config_claude(), "metodo", "sensibles.txt")   # la variable, solo en pruebas
+    m = privacidad.carpeta_sensible(ruta, lista=privacidad.leer_sensibles(archivo))
     if m:
         raise Salida(65, "Falta: %s «%s» es %s. No se manda a la API mientras Claude no figure con «no entrenar» en tu no-entrena.txt "
                          "(decisión tuya; ver la skill usar-credito-api) ✗" % (que, ruta, m))
@@ -487,16 +490,8 @@ def candado():
             try:
                 if time.time() - os.path.getmtime(ruta) > CANDADO_VIEJO:
                     viejo = ruta + ".viejo-" + marca.decode("ascii")
-                    os.replace(ruta, viejo)        # atómico: si otro ya lo renovó, se lleva el suyo y lo devolvemos abajo
-                    with open(viejo, "rb") as f:
-                        sigue_viejo = time.time() - os.path.getmtime(viejo) > CANDADO_VIEJO
-                    if sigue_viejo:
-                        os.remove(viejo)
-                    else:
-                        try:
-                            os.rename(viejo, ruta)
-                        except OSError:
-                            os.remove(viejo)
+                    os.replace(ruta, viejo)        # atómico: nos llevamos el candado vencido y nadie más lo borra
+                    os.remove(viejo)
                     continue
             except OSError:
                 pass
@@ -669,6 +664,9 @@ def leer_llave():
                              "(secret-tool) y corré, vos, en tu terminal: %s — o, como último recurso, definí la variable %s en tu perfil ✗" % (comando_guardar(), VAR_LLAVE))
         raise Salida(66, "Falta: todavía no guardaste tu llave de la API de Claude. Es una sola vez y la hacés vos (no Claude), en una terminal: "
                          "%s — te la pide oculta y la guarda en %s ✗" % (comando_guardar(), nombre_almacen(a)))
+    if llave.startswith("sk-ant-admin"):
+        raise Salida(66, "Falta: lo guardado en %s es una llave de ADMINISTRACIÓN de la organización; guardá una llave de API común "
+                         "(console.anthropic.com → API Keys): %s ✗" % (nombre_almacen(a), comando_guardar()))
     if not FORMA_LLAVE.match(llave):
         raise Salida(66, "Falta: lo guardado en %s no tiene forma de llave de la API de Claude (empieza con sk-ant-); volvé a guardarla: %s ✗" % (nombre_almacen(a), comando_guardar()))
     return llave

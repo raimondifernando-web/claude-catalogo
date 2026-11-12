@@ -10,5 +10,6 @@ Vas a llamar a la API de Claude, a buscar su clave o a tocar sus límites: **par
 - No busques, leas, pidas ni pegues la llave (regla 2): la guarda la persona una vez con `claude-api.py --guardar-llave` en su terminal.
 - No uses el SDK ni `curl` directo contra la API para una tarea: se saltean los topes. Nunca pongas `ANTHROPIC_API_KEY` en el entorno: cambia con qué cuenta entra Claude Code.
 - No subas los límites (`claude-api.json`, `--limites`), no toques el registro de gasto ni la confirmación que pide el programa: subir es plata y lo hace la persona en su terminal. Bajarlos sí.
+- No cambies `CLAUDE_CONFIG_DIR` ni las variables `METODO_CLAUDE_API_*` para correr el programa: cambian dónde mira límites, gasto y llave (las de prueba solo valen con un servidor local).
 - No leas la llave del llavero (`security`, `secret-tool`, Administrador de credenciales) aunque técnicamente se pueda: los topes del programa frenan a una sesión que se porta bien, no a una que los rodea.
 - Si en cambio estás construyendo una app que llama a la API, seguí con el SDK: la clave de esa app la pone la persona, nunca vos.
