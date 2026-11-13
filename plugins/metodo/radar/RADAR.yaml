@@ -1,6 +1,6 @@
 # RADAR.yaml — qué IA usar para cada cosa, con plan A, B y C. Lo lee `scripts/radar.py`.
 # Lo mantiene un PR automático (.github/workflows/radar.yml) que una persona aprueba; el RADAR.md se genera con `radar.py md`.
-actualizado: 2026-11-10
+actualizado: 2026-11-13
 nota: "Datos iniciales de docs/specs/INVESTIGACION-radar-de-modelos.md. Lo marcado verificado: false es «a verificar»: abrí la fuente antes de usar una cifra textual. Orden A/B/C revisado a mano el 2026-10-29 contra Arena, Artificial Analysis y otras fuentes independientes; cada plan trae su evidencia."
 vigentes:
   actualizado: 2026-11-10
@@ -1779,7 +1779,7 @@ fuentes_auto:
       hash: 5992d4f58fb2a0a3
     openai:
       url: "https://developers.openai.com/api/docs/deprecations"
-      hash: c09f30381efbe898
+      hash: 36df68cc35623a0e
     google:
       url: "https://ai.google.dev/gemini-api/docs/deprecations"
       hash: 89a2cf370a523f6c
@@ -1788,8 +1788,8 @@ fuentes_auto:
       proveedor: Anthropic
       titulo: Prompting best practices
       url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices.md"
-      hash: b971b76ec7f4b242
-      cambio: 2026-11-10
+      hash: 84dc45704244f118
+      cambio: 2026-11-13
     anthropic_migracion:
       proveedor: Anthropic
       titulo: "Guías de migración por modelo (índice)"
@@ -1800,44 +1800,44 @@ fuentes_auto:
       proveedor: OpenAI
       titulo: "Using GPT-6 (último modelo, prompting y migración)"
       url: "https://developers.openai.com/api/docs/guides/latest-model.md"
-      hash: 4df75842141f83db
-      cambio: 2026-10-29
+      hash: ce15146aecef5da3
+      cambio: 2026-11-13
     openai_prompting:
       proveedor: OpenAI
       titulo: Prompt engineering
       url: "https://developers.openai.com/api/docs/guides/prompt-engineering.md"
-      hash: 9aaf6bdf7cc5751f
-      cambio: 2026-11-10
+      hash: 96812173b9dc2e7a
+      cambio: 2026-11-13
     google_ultimo_modelo:
       proveedor: Google
       titulo: "Novedades y migración del último Gemini"
       url: "https://ai.google.dev/gemini-api/docs/latest-model.md.txt"
-      hash: eda0877cd3fd32be
-      cambio: 2026-11-10
+      hash: 31483c61437d6b20
+      cambio: 2026-11-13
     google_prompting:
       proveedor: Google
       titulo: Prompt design strategies
       url: "https://ai.google.dev/gemini-api/docs/prompting-strategies.md.txt"
-      hash: 45e91e02d1b8957a
-      cambio: 2026-11-10
+      hash: 93c51bcd99ef1fcb
+      cambio: 2026-11-13
     claude_code_memory:
       proveedor: Claude Code
       titulo: "Claude Code — memory (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/memory.md"
-      hash: b4f483c895f4b42c
-      cambio: 2026-11-10
+      hash: 7860d73e77783230
+      cambio: 2026-11-13
     claude_code_settings:
       proveedor: Claude Code
       titulo: "Claude Code — settings (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/settings.md"
-      hash: d04bacf5cd000c04
-      cambio: 2026-11-10
+      hash: fd12ec34e1597ddd
+      cambio: 2026-11-13
     claude_code_skills:
       proveedor: Claude Code
       titulo: "Claude Code — skills (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/skills.md"
-      hash: dcf7bfe8be3c866c
-      cambio: 2026-11-10
+      hash: 64cfff4c4fd7af3d
+      cambio: 2026-11-13
     claude_code_sub_agents:
       proveedor: Claude Code
       titulo: "Claude Code — sub-agents (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
@@ -1854,8 +1854,8 @@ fuentes_auto:
       proveedor: Claude Code
       titulo: "Claude Code — plugins-reference (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
       url: "https://code.claude.com/docs/en/plugins-reference.md"
-      hash: 51a657548be7b4d8
-      cambio: 2026-11-10
+      hash: d6a93d1bd3dcb02c
+      cambio: 2026-11-13
     claude_code_plugin_marketplaces:
       proveedor: Claude Code
       titulo: "Claude Code — plugin-marketplaces (si cambia, revisar ESTRUCTURA.md del plugin metodo)"
@@ -2226,13 +2226,13 @@ fuentes_auto:
       mods:
         titulo: Mods
         url: "https://code.claude.com/docs/en/plugins/mods/overview.md"
-        hash: be562389fa2c7ee9
-        cambio: 2026-11-10
+        hash: d898867a1a13dad6
+        cambio: 2026-11-13
       goal:
         titulo: /goal
         url: "https://code.claude.com/docs/en/goal.md"
-        hash: f6ebe48f9ce30abe
-        cambio: 2026-11-10
+        hash: a2de11f52503f41b
+        cambio: 2026-11-13
       canales:
         titulo: Canales
         url: "https://code.claude.com/docs/en/channels.md"
@@ -2241,8 +2241,8 @@ fuentes_auto:
       rutinas:
         titulo: Rutinas
         url: "https://code.claude.com/docs/en/routines.md"
-        hash: 868d01a7e0cc4e51
-        cambio: 2026-11-10
+        hash: 3596514f66d1414a
+        cambio: 2026-11-13
       worktrees:
         titulo: Worktrees
         url: "https://code.claude.com/docs/en/worktrees.md"
@@ -2256,38 +2256,38 @@ fuentes_auto:
       hooks:
         titulo: Hooks
         url: "https://code.claude.com/docs/en/hooks-guide.md"
-        hash: 912a81cfb43f13c9
-        cambio: 2026-11-10
+        hash: a5d84f5f6c6d2e5c
+        cambio: 2026-11-13
       skills:
         titulo: Skills
         url: "https://code.claude.com/docs/en/skills.md"
-        hash: dcf7bfe8be3c866c
-        cambio: 2026-11-10
+        hash: 64cfff4c4fd7af3d
+        cambio: 2026-11-13
       plugins:
         titulo: Plugins
         url: "https://code.claude.com/docs/en/plugins/overview.md"
-        hash: cdfe622ece99d963
-        cambio: 2026-10-29
+        hash: 3896271d40255d1b
+        cambio: 2026-11-13
       loop:
         titulo: /loop y tareas programadas
         url: "https://code.claude.com/docs/en/scheduled-tasks.md"
-        hash: 3dbaf2e94fbca10a
-        cambio: 2026-10-29
+        hash: 9efff8ae41a99c3b
+        cambio: 2026-11-13
       scheduled_escritorio:
         titulo: Scheduled tasks de escritorio
         url: "https://code.claude.com/docs/en/desktop-scheduled-tasks.md"
-        hash: 14bd3da93697fc76
-        cambio: 2026-11-10
+        hash: 0db276551fbe02e5
+        cambio: 2026-11-13
       workflows:
         titulo: "Workflows dinámicos y ultracode"
         url: "https://code.claude.com/docs/en/workflows.md"
-        hash: f2911b62297fe8e9
-        cambio: 2026-11-10
+        hash: 93c9cdc3eb665fb6
+        cambio: 2026-11-13
       nube:
         titulo: Sesiones en la nube
         url: "https://code.claude.com/docs/en/claude-code-on-the-web.md"
-        hash: 3466f4c7347d5e7e
-        cambio: 2026-11-10
+        hash: 3318a6cc0e65a965
+        cambio: 2026-11-13
       agentes_paralelo:
         titulo: Agentes en paralelo
         url: "https://code.claude.com/docs/en/agents.md"
@@ -2296,8 +2296,8 @@ fuentes_auto:
       modelo_effort:
         titulo: "Configuración de modelo y effort"
         url: "https://code.claude.com/docs/en/model-config.md"
-        hash: 6145b996be712574
-        cambio: 2026-11-10
+        hash: ed8ba67f526ce3ee
+        cambio: 2026-11-13
     changelogs:
       claude_code:
         proveedor: Anthropic
@@ -2313,14 +2313,14 @@ fuentes_auto:
         titulo: Codex CLI
         url: "https://github.com/openai/codex/releases.atom"
         tipo: atom_estable
-        version: "0.166.0"
+        version: "0.169.0"
         corte: 2
-        cambio: 2026-11-01
+        cambio: 2026-11-13
       gemini_cli:
         proveedor: Google
         titulo: Gemini CLI
         url: "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/docs/changelogs/latest.md"
         tipo: gemini_latest
-        version: "0.67.0"
+        version: "0.68.0"
         corte: 2
-        cambio: 2026-11-10
+        cambio: 2026-11-13
