@@ -754,6 +754,13 @@ def motivo_salto(plan, radar, sensible, prueba, cache_cupo):
             return "cupo agotado (%s)" % texto
         if nivel == "no_disponible":   # sin instalar o sin cuenta: se pasa al plan siguiente, con el motivo a la vista
             return "no disponible (%s)" % texto
+    prov = proveedor_saldo(plan)
+    if prov:
+        if "_saldos" not in cache_cupo:
+            cache_cupo["_saldos"] = saldos_ia()
+        s = cache_cupo["_saldos"].get(prov)
+        if s and s["estado"] == "agotado":
+            return "saldo agotado (%s)" % saldo_corto(dict(SALDO_PROV)[prov], s)
     return None
 
 
@@ -1089,22 +1096,112 @@ def otras_ia_linea(radar):
         return ""
 
 
+# --- Saldos de las IA de pago por uso (C285): los deja `saldos-ia leer` en <CEREBRO_HOME>/saldos-ia.json. Al contexto de la
+# sesión solo llega lo que arma ESTE programa (estado, monto, edad): nunca el texto que devolvió un servidor.
+SALDO_PROV = (("gemini", "Gemini API"), ("openrouter", "OpenRouter"), ("perplexity", "Perplexity"))
+SALDO_ESTADOS = ("ok", "agotado", "sin dato")
+
+
+def _cerebro_dir():
+    cerebro = os.environ.get("CEREBRO_HOME", "").strip()
+    return Path(cerebro) if cerebro else Path.home() / ".cerebro"
+
+
+def _num(v):
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and abs(v) < 1e11 else None
+
+
+def _edad_corta(seg):
+    seg = max(0, int(seg))
+    if seg < 90 * 60:
+        return "%d min" % max(1, round(seg / 60))
+    if seg < 48 * 3600:
+        return "%d h" % round(seg / 3600)
+    return "%d d" % round(seg / 86400)
+
+
+def saldos_ia(ahora=None):
+    """{proveedor: {estado, saldo, saldo_edad, sonda_edad}} con el vencimiento aplicado AHORA: pasado `valido_hasta_epoch`
+    el estado es «sin dato» (un número viejo nunca se presenta como actual). Sin archivo, roto o enorme: {}. Sin red."""
+    ahora = time.time() if ahora is None else ahora
+    try:
+        ruta = _cerebro_dir() / "saldos-ia.json"
+        if not ruta.is_file():
+            return {}
+        with open(ruta, encoding="utf-8") as f:
+            crudo = f.read(65537)
+        if len(crudo) > 65536:
+            return {}
+        prov = (json.loads(crudo) or {}).get("proveedores") or {}
+    except Exception:   # también RecursionError (JSON anidado a propósito): nunca debe tumbar el arranque de sesión
+        return {}
+    out = {}
+    for k, _n in SALDO_PROV:
+        p = prov.get(k) if isinstance(prov, dict) else None
+        if not isinstance(p, dict) or p.get("estado") not in SALDO_ESTADOS:
+            continue
+        calc, hasta = _num(p.get("calculado_epoch")), _num(p.get("valido_hasta_epoch"))
+        corrido = max(0, ahora - calc) if calc else None
+        sano = calc is not None and hasta is not None and calc <= ahora + 300 and 0 <= hasta - calc <= 24 * 3600
+        estado = p["estado"] if (sano and ahora <= hasta) else "sin dato"   # un vencimiento absurdo no deja nada fijo para siempre
+        s_edad, l_edad = _num(p.get("sonda_edad_s")), _num(p.get("saldo_edad_s"))
+        saldo = _num(p.get("saldo")) if p.get("saldo_vigente") is True and estado == "ok" else None
+        out[k] = {"estado": estado, "saldo": saldo,
+                  "sonda_edad": None if s_edad is None or corrido is None else s_edad + corrido,
+                  "saldo_edad": None if l_edad is None or corrido is None else l_edad + corrido}
+    return out
+
+
+def saldo_corto(nombre, s):
+    """«Perplexity AGOTADO (hace 5 min)» · «OpenRouter US$12.50 (hace 5 min)» · «Gemini API sin dato». Solo números propios."""
+    if s["estado"] == "agotado":
+        return "%s AGOTADO%s" % (nombre, " (hace %s)" % _edad_corta(s["sonda_edad"]) if s["sonda_edad"] is not None else "")
+    if s["estado"] == "ok":
+        if s["saldo"] is not None:
+            return "%s %sUS$%.2f%s" % (nombre, "-" if s["saldo"] < 0 else "", abs(s["saldo"]),
+                                      " (hace %s)" % _edad_corta(s["saldo_edad"]) if s["saldo_edad"] is not None else "")
+        return "%s ok, saldo sin lectura reciente" % nombre
+    return "%s sin dato" % nombre
+
+
+def saldos_texto(saldos=None):
+    saldos = saldos_ia() if saldos is None else saldos
+    if not saldos:
+        return ""
+    partes = [saldo_corto(n, saldos[k]) for k, n in SALDO_PROV if k in saldos]
+    return ("Saldos de pago por uso: %s; a una agotada no se le manda trabajo, y con «sin dato» se avisa antes de gastar."
+            % " · ".join(partes))
+
+
+def proveedor_saldo(plan):
+    """Qué saldo de pago por uso consume un plan del radar: perplexity | openrouter | gemini (API de Google) | None."""
+    h = str(plan.get("herramienta") or "").lower()
+    if "perplexity" in h:
+        return "perplexity"
+    if "openrouter" in h:
+        return "openrouter"
+    if str(plan.get("proveedor") or "").lower() == "google" and plan.get("via") == "api":
+        return "gemini"
+    return None
+
+
 def puente_gemini_texto():
     """Una frase con el estado y el saldo ESTIMADO del Puente Gemini, leída del archivo que deja el comando `puente-gemini`
     (`~/.cerebro/puente-gemini.json`). Sin archivo o roto: cadena vacía. No llama a ninguna API ni toca claves."""
-    cerebro = os.environ.get("CEREBRO_HOME", "").strip()
-    base = Path(cerebro) if cerebro else Path.home() / ".cerebro"
+    base = _cerebro_dir()
     try:
         ruta = base / "puente-gemini.json"
         if not ruta.is_file() or ruta.stat().st_size > 65536:
             return ""
         d = json.loads(ruta.read_text(encoding="utf-8"))
+        if (base / "saldos-ia.json").is_file():   # el saldo real va en la frase de saldos: acá solo si el puente está prendido
+            return "Puente Gemini: encendido." if d.get("encendido") is True else ""
         saldo = d.get("saldo_estimado")
         if not isinstance(saldo, (int, float)) or isinstance(saldo, bool):
             saldo = float(d["saldo_base"]) - float(d.get("gastado_estimado", 0))
         return "Puente Gemini: %s · saldo ~US$%.2f (estimado; el real está en AI Studio → Gasto)." % (
             "encendido" if d.get("encendido") is True else "apagado", float(saldo))
-    except (OSError, ValueError, KeyError, TypeError):
+    except Exception:   # JSON raro o anidado: sin frase, nunca un error al abrir sesión
         return ""
 
 
@@ -1155,6 +1252,9 @@ def hoy_lineas(radar, cupos=None, catalogo=None):
     puente = puente_gemini_texto()
     if puente:
         linea += " " + puente
+    saldos = saldos_texto()
+    if saldos:
+        linea += " " + saldos
     lineas.append(linea)
     otra = otras_ia_linea(radar)
     if otra:
@@ -1948,9 +2048,11 @@ def cmd_elegir(a):
         print("No conozco la categoría «%s». Las que hay: %s" % (a.categoria, _ids(radar)))
         return 2
     plan, saltados, cache = elegir(radar, c, a.sensible, delegar=getattr(a, "delegar", False))
+    prov = proveedor_saldo(plan) if plan else None
+    saldo = saldos_ia().get(prov) if prov else None
     if a.json:
-        print(json.dumps({"categoria": c["id"], "plan": plan, "respaldado": respaldo(c)[1], "saltados": [{"plan": p.get("plan"), "motivo": m} for p, m in saltados]},
-                         ensure_ascii=False))
+        print(json.dumps({"categoria": c["id"], "plan": plan, "respaldado": respaldo(c)[1], "saltados": [{"plan": p.get("plan"), "motivo": m} for p, m in saltados],
+                          "saldo": saldo}, ensure_ascii=False))
         return 0 if plan else 1
     if plan is None:
         print("Ningún plan disponible para «%s» ahora. Saltó: %s." % (c["nombre"], "; ".join(
@@ -1966,6 +2068,11 @@ def cmd_elegir(a):
     cupo = plan.get("cupo")
     if cupo and cache.get(cupo) and cache[cupo][0] == "alto":
         print("Ojo: " + cache[cupo][1] + " (solo tareas chicas).")
+    if saldo:
+        if saldo["estado"] == "sin dato":
+            print("Ojo: %s — no se sabe si queda crédito; avisá antes de gastar (se actualiza con `saldos-ia leer`)." % saldo_corto(dict(SALDO_PROV)[prov], saldo))
+        else:
+            print("Saldo: " + saldo_corto(dict(SALDO_PROV)[prov], saldo) + ".")
     if plan.get("como_ver_cupo"):
         print("Ver cupo: " + plan["como_ver_cupo"])
     return 0

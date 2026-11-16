@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.76.0 — 2026-11-16
+**El radar ya no muestra un saldo viejo como si fuera de hoy, y no te manda a una IA que se quedó sin crédito.** Llega solo con el paquete; si no usás IA de pago por uso, no cambia nada.
+- **Qué ves:** si en tu computadora existe `saldos-ia.json` (en la carpeta de datos del Bicho), la línea «Cupo» de `radar.py hoy` suma el estado real de cada IA de pago por uso, con la edad del dato: «Gemini API AGOTADO (hace 5 min) · OpenRouter US$12.50 (hace 5 min) · Perplexity sin dato». Un dato de más de 3 horas pasa a «sin dato»: nunca un número viejo como actual.
+- **Qué cambia al elegir:** `radar.py elegir` salta un plan cuya IA tiene el saldo AGOTADO (con el motivo a la vista) y, si el dato no está al día, avisa antes de gastar. El ruteo de sesiones no cambia: solo elige Claude, Codex y Antigravity, que van por plan y no por saldo.
+- **Seguridad:** al contexto de la sesión solo llega lo que arma el radar (estado, monto y edad); nunca el texto que devolvió un servidor. Sin red, sin claves: el radar solo lee el archivo.
+
 ## 0.75.0 — 2026-11-12
 **Si tenés crédito cargado en la API de Claude, cualquier sesión puede usarlo para tareas de texto grande o investigación con fuentes, con TU llave y TUS topes.** Llega solo con el paquete; lo único manual es guardar la llave una vez (abajo).
 - **Para qué sirve:** resumir, extraer, clasificar o analizar muchos archivos con Haiku, Sonnet u Opus sin gastar el plan, e investigar en internet con cada cifra citada (`--herramientas web`), hacer cuentas sobre planillas (`codigo`) o leer PDF con cita de página (`archivos`). Se pide en criollo («usá la API de Claude para…», «tenemos saldo»): la skill `usar-credito-api` arma la corrida con `scripts/claude-api.py`.
