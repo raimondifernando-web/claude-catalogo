@@ -1,4 +1,5 @@
-origen: github:alirezarezvani/claude-skills//marketing-skill/skills/marketing-strategy-pmm@19392f7
+origen: github:alirezarezvani/claude-skills//marketing-skill/skills/marketing-strategy-pmm@91a1dda
 copiado: 2026-09-27 (re-copia fija; el autor reescribió la skill entera). Licencia MIT
 auditoria: 2026-09-27 skill-security-auditor PASS + revisión a mano (scripts sin red, sin subprocess, sin eval)
 modificado: SKILL.md solo agrega sync: cowork (Mand. II)
+actualizado: 2026-11-10 19392f7 -> 91a1dda (vigía, Mand. XVI; merge de 3 vías; revisado el diff: solo texto/sin código nuevo; ver ~/.claude/vigia/PROPUESTAS-2026-11.md)

@@ -9,7 +9,7 @@
       "name": "base-segura",
       "source": "./plugins/base-segura",
       "description": "Base segura (L1): skills transversales (incluye humanizalo: que tus textos no suenen a IA, y modo-directo: respuestas del largo que corresponde) + auditor de skills externas + academy-guide (te sugiere cursos oficiales cuando aprendés a usar Claude) + agentes básicos + plantillas de CLAUDE.md. Día 1 para cualquier empresa.",
-      "version": "0.14.6",
+      "version": "0.14.7",
       "category": "productivity",
       "tags": [
         "l1",
@@ -22,7 +22,7 @@
       "name": "rubro-estudio-arquitectura",
       "source": "./plugins/rubro-estudio-arquitectura",
       "description": "Pack de rubro (L2): propuestas y honorarios, pliegos, informes de visita, adicionales, punch list, revisión de presupuestos, normativa argentina (sobre PDFs oficiales), plan semanal + ficha A3, identidad visual del estudio (tu marca en cada pieza), investigación de mercado, contenido y diseño para estudios de arquitectura y profesiones similares. Requiere base-segura.",
-      "version": "0.14.8",
+      "version": "0.14.9",
       "category": "productivity",
       "tags": [
         "arquitectura",
@@ -49,7 +49,7 @@
       "name": "escala-desarrollo",
       "source": "./plugins/escala-desarrollo",
       "description": "Capa L4 para desarrollar tus propias herramientas con Claude (vibe coding): 1 skill (research-deep-dive) y 17 agentes. Revisores de solo lectura (code-reviewer, security-reviewer) explican en castellano qué arreglar primero. Construir: python-pro, javascript-pro, sql-pro, data-analyst, prompt-engineer, documentation-engineer. Decidir y gestionar: product-manager, technology-scout, jefe-de-ingenieria, jefe-de-proyectos, analista-de-bi. Investigación: research-analyst y afines.",
-      "version": "0.15.1",
+      "version": "0.15.2",
       "category": "development",
       "tags": [
         "l4",
@@ -63,7 +63,7 @@
       "name": "escala-diseno-video",
       "source": "./plugins/escala-diseno-video",
       "description": "Escala de diseño y video (L4): presentaciones, animaciones y videos cortos, prototipos de pantallas, infografías y arte generativo. huashu-design te muestra 3 direcciones antes de hacer nada; el set de video de HyperFrames viene sin actualizaciones solas (la telemetría se apaga con dos variables). 19 skills. Recomendado junto con base-segura.",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "category": "design",
       "tags": [
         "l4",
@@ -77,7 +77,7 @@
       "name": "escala-automatizacion",
       "source": "./plugins/escala-automatizacion",
       "description": "Escala de automatización (L4): flujos con n8n, Make, Zapier y ManyChat, pipelines de datos, CI/CD, apps en Microsoft Entra y conectores MCP propios. 12 skills + 4 agentes (automation-architect, data-engineer, deployment-engineer, auditor-de-automatizaciones, que revisa seguridad de tus flujos). Recomendado junto con base-segura.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "automation",
       "tags": [
         "l4",
@@ -348,7 +348,7 @@
       "name": "rubro-marketing",
       "source": "./plugins/rubro-marketing",
       "description": "Pack de rubro (L2): marketing y ventas — copy, emails, anuncios, SEO, CRO, lanzamientos, referidos, pricing, revops y análisis de campañas (40 skills) + 23 agentes: jefe general de pyme (pm-empresa), jefes de marketing y de ventas, estrategia de negocio y de contenido, SEO, anuncios pagos, conversión, redes, marca, prensa, tienda online argentina, prospección, discovery, propuestas, pipeline, cuentas, WhatsApp B2B, soporte y customer success. Requiere base-segura.",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "category": "productivity",
       "tags": [
         "l2",

@@ -1,5 +1,9 @@
 # escala-desarrollo
 
+## 0.15.2 — 2026-11-16
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.15.1 — 2026-11-09
 - Sincronizadas skills desde ~/.claude/skills.
 
