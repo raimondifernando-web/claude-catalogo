@@ -1,4 +1,8 @@
-# escala-diseno-video — qué cambia para vos
+# escala-diseno-video
+
+## 0.1.9 — 2026-11-16
+- Sincronizadas skills desde ~/.claude/skills.
+
 
 ## 0.1.8 — 2026-10-12
 - **`frontend-ui-engineering` se mueve al plugin `agent-skills`** (mismo contenido, lo mantiene su autor y se actualiza solo). Este paquete lo declara como dependencia: se instala solo, no tenés que hacer nada. Antes quedaba repetida si ya tenías `agent-skills`.
