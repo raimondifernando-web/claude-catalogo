@@ -1,5 +1,9 @@
 # rubro-marketing
 
+## 0.4.1 — 2026-11-16
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.4.0 — 2026-10-30
 **18 agentes nuevos para vender y comunicar:** `pm-empresa` (jefe general de pyme), `pm-marketing-pyme`, `pm-ventas`, `estratega-de-negocio`, `estratega-de-contenido`, `especialista-cro`, `social-media-manager`, `guardian-de-marca`, `comunicaciones-y-prensa`, `creativo-de-anuncios`, `auditor-de-tracking`, `ecommerce-manager-ar`, `coach-de-discovery`, `redactor-de-propuestas`, `analista-de-pipeline`, `ejecutivo-de-cuentas`, `vendedor-whatsapp-b2b` y `soporte-al-cliente`. Cada uno cita sus fuentes y marca lo que no pudo verificar. Se aplican solos con la actualización.
 

@@ -1,4 +1,5 @@
-origen: github:czlonkowski/n8n-skills//skills/n8n-mcp-tools-expert@19cd793
+origen: github:czlonkowski/n8n-skills//skills/n8n-mcp-tools-expert@e037563
 actualizado: 2026-09-27 desde 2ee34c0 -> 19cd793 (vigía, Mand. XVI; 3-way merge sin conflictos)
 auditoria-2026-09-27: skill-security-auditor FAIL (2 hallazgos) leídos contra propósito = sin riesgo (falsos positivos)
 parche local re-aplicado: línea sync: del frontmatter
+actualizado: 2026-11-10 19cd793 -> e037563 (vigía, Mand. XVI; merge de 3 vías; revisado el diff: solo texto/sin código nuevo; ver ~/.claude/vigia/PROPUESTAS-2026-11.md)

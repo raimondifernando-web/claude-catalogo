@@ -1,4 +1,8 @@
-# escala-automatizacion — qué cambia para vos
+# escala-automatizacion
+
+## 0.2.1 — 2026-11-16
+- Sincronizadas skills desde ~/.claude/skills.
+
 
 ## 0.2.0 — 2026-10-29
 **Agente nuevo `auditor-de-automatizaciones`:** revisa la seguridad y la confiabilidad de tus flujos de n8n, Make y Zapier (credenciales expuestas, webhooks, manejo de errores). Solo lee y reporta.
