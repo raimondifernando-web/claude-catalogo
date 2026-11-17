@@ -8,4 +8,4 @@ Fuente: https://developers.openai.com/api/docs/guides/latest-model/gpt-6-astra.m
 - Puede delegar a subagentes menos de lo que querés: indicá cuándo y cuánto debe delegar.
 - En código es prolijo con las pruebas y en cambios chicos puede hacer más de las necesarias: pedile pruebas proporcionales al cambio.
 - Si cambiás el effort entre respuestas, usá items configuration_update y dejá igual el reasoning.effort del request, para no perder el caché.
-- Fast mode no admite residencia de datos en la UE ni trae SLA de latencia; el Ultrafast de Astra solo admite EE. UU. y procesamiento global. Trae async tool calling (async: true) y steering en medio del turno.
+- Fast mode no admite residencia de datos en la UE ni trae SLA de latencia; el Ultrafast de Astra solo admite EE. UU. y procesamiento global.
