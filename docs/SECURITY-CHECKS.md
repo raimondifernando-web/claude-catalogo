@@ -1383,7 +1383,7 @@ Alcance: el aviso de salud de `metodo` (0.73.0, PR #137): `scripts/salud_conecto
 - Límites declarados: los topes de gasto y la privacidad frenan a una sesión que se porta bien, no a quien lee el llavero o edita los archivos; el freno de verdad es el límite de gasto en la consola de Anthropic, que la skill recomienda poner.
 - Veredicto: **PASS con condiciones**: condición = 0.75.1 con los puntos 1, 2 y 5 arreglados (y una prueba por cada uno) antes de la siguiente publicación y, mientras tanto, límite de gasto puesto en la consola de Anthropic por cada persona que use `claude-api`. Detalle técnico completo, con líneas y cómo se explota cada punto: informe privado fuera del repo (no se publica mientras haya puntos abiertos).
 
-### 2026-11-16 · metodo 0.75.0 → 0.76.0 (rama claude-catalogo/saldos-ia) — PASS
+### 2026-11-16 · metodo 0.75.0 → 0.76.0 (commit 7cf2d557d337b714ce3c3c259bbbce00144e32d0; PR #148, revisado antes de unir como 96a7eab) — PASS
 - Qué: `scripts/radar.py` lee `<CEREBRO_HOME>/saldos-ia.json` (lo escribe un programa local de la persona) y suma a `radar.py hoy` el estado real de las IA de pago por uso con la edad del dato; `elegir` salta un plan con saldo agotado y avisa el «sin dato». Pruebas nuevas: `tests/test_radar_saldos.py` (9).
 - Revisor (distinto del autor, solo lectura): `security-reviewer` (opus) con la skill `agent-skills:security-and-hardening`. Sin hallazgos críticos, altos ni medios.
 - Bien (con evidencia en el código): ningún texto del archivo llega al contexto de la sesión (estado de lista cerrada, números por `_num` que rechaza NaN, infinito, booleanos y valores enormes; nombres de constantes); sin red, sin ejecución, sin claves; `--json` de `elegir` solo agrega el diccionario que arma el radar.
