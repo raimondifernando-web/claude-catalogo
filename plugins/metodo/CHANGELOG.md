@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.76.2 — 2026-11-17
+**Los controles que corren antes de cada acción ya no se saltean cuando tu computadora está cargada.** Llega solo con el paquete; no cambia nada de lo que ves.
+- **Qué pasaba:** cada control tenía 5 o 10 segundos para contestar. Con muchas sesiones abiertas y programas pesados andando (navegadores de prueba, herramientas conectadas), tardaban más y Claude mostraba «A hook of the "metodo" plugin didn't answer in time»: la acción seguía sin que ese control la revisara.
+- **Qué cambia:** el tiempo de espera de todos los controles pasa a 15 segundos. Nada más: los controles son los mismos y siguen frenando igual.
+- **Si lo seguís viendo:** es señal de que la computadora está saturada; cerrá sesiones o programas que no uses.
+
 ## 0.76.1 — 2026-11-17
 **El circuito de los vigías ya no se queda esperando para siempre cuando el revisor no contesta, y los consejos de uso por modelo están al día.** Llega solo con el paquete; no hay nada que hacer.
 - **Qué arregla:** si el revisor (el segundo par de ojos) no contestaba dos veces seguidas, el hallazgo quedaba «trabado» y nadie lo volvía a intentar: el panel lo marcaba VENCIDO para siempre. Ahora, si el silencio fue del revisor, se reintenta cada 2 días (hasta 3 veces). Si el revisor RECHAZÓ, sigue trabado: eso es una decisión, no una caída.

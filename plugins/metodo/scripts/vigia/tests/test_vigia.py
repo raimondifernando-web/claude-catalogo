@@ -473,7 +473,7 @@ class TestPortabilidad(unittest.TestCase):
         datos = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))
         hook = datos["hooks"]["SessionStart"][0]["hooks"][0]
         self.assertEqual(hook["type"], "command")
-        self.assertLessEqual(hook["timeout"], 5)
+        self.assertLessEqual(hook["timeout"], 15)
         self.assertIn('"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py"', hook["command"])
         for interprete in ("python3 ", "python ", "py -3 "):
             self.assertIn(interprete, hook["command"])
