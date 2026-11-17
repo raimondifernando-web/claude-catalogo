@@ -1,5 +1,11 @@
 # metodo — qué cambia para vos
 
+## 0.76.1 — 2026-11-17
+**Los controles que corren antes de cada acción ya no se saltean cuando tu computadora está cargada.** Llega solo con el paquete; no cambia nada de lo que ves.
+- **Qué pasaba:** cada control tenía 5 o 10 segundos para contestar. Con muchas sesiones abiertas y programas pesados andando (navegadores de prueba, herramientas conectadas), tardaban más y Claude mostraba «A hook of the "metodo" plugin didn't answer in time»: la acción seguía sin que ese control la revisara.
+- **Qué cambia:** el tiempo de espera de todos los controles pasa a 15 segundos. Nada más: los controles son los mismos y siguen frenando igual.
+- **Si lo seguís viendo:** es señal de que la computadora está saturada; cerrá sesiones o programas que no uses.
+
 ## 0.76.0 — 2026-11-16
 **El radar ya no muestra un saldo viejo como si fuera de hoy, y no te manda a una IA que se quedó sin crédito.** Llega solo con el paquete; si no usás IA de pago por uso, no cambia nada.
 - **Qué ves:** si en tu computadora existe `saldos-ia.json` (en la carpeta de datos del Bicho), la línea «Cupo» de `radar.py hoy` suma el estado real de cada IA de pago por uso, con la edad del dato: «Gemini API AGOTADO (hace 5 min) · OpenRouter US$12.50 (hace 5 min) · Perplexity sin dato». Un dato de más de 3 horas pasa a «sin dato»: nunca un número viejo como actual.

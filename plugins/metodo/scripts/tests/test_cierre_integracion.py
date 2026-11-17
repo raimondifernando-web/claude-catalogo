@@ -154,7 +154,7 @@ class Registro(unittest.TestCase):
         evento, matcher, h = e[0]
         self.assertEqual(evento, "PreToolUse")
         self.assertEqual(set(matcher.split("|")), {"SendMessage", "mcp__ccd_session_mgmt__send_message"})
-        self.assertEqual(h["timeout"], 5)
+        self.assertEqual(h["timeout"], 15)
         self.assertTrue((SCRIPTS / "freno-envio-cerrando.py").is_file())
 
     def test_freno_de_hijas_registrado_como_pretooluse(self):
@@ -163,7 +163,7 @@ class Registro(unittest.TestCase):
         evento, matcher, h = e[0]
         self.assertEqual(evento, "PreToolUse")
         self.assertEqual(set(matcher.split("|")), {"Bash", "PowerShell", "Write", "Edit", "MultiEdit"})
-        self.assertEqual(h["timeout"], 5)
+        self.assertEqual(h["timeout"], 15)
         self.assertTrue((SCRIPTS / "freno-hija.py").is_file())
 
     def test_comandos_con_alternativa_para_windows_y_que_fallan_abiertos(self):
