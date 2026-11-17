@@ -1,11 +1,11 @@
-Fuente: https://developers.openai.com/api/docs/guides/latest-model/gpt-6-astra.md (consultada 2026-11-01)
-- No acepta reasoning.effort: none; usá low.
-- Para herramientas, usá la Responses API: el tool calling no anda por Chat Completions.
-- Si el effort no es none, quitá temperature, top_p y top_logprobs.
-- Pregunta más que los modelos anteriores cuando falta un dato. Para que avance, pedile que termine el trabajo ya autorizado antes de preguntar, y que no agregue advertencias sin motivo.
-- Es más sensible a instrucciones en skills y archivos como AGENTS.md: auditalos y dejá escrito que las instrucciones del usuario mandan sobre la skill.
+Fuente: https://developers.openai.com/api/docs/guides/latest-model/gpt-6-astra.md (consultada 2026-11-17)
+- No acepta reasoning.effort: none; si usabas none, pasá a low (y si usabas minimal, probá con low).
+- Para herramientas usá la Responses API: Chat Completions acepta el modelo, pero el tool calling requiere Responses.
+- Si el effort no es none, quitá temperature, top_p y top_logprobs (y logprobs en Chat Completions).
+- Pregunta más que los modelos anteriores cuando falta un dato y puede frenarse donde esperabas que asumiera: pedile que termine primero el trabajo ya autorizado y que pida aprobación solo sobre un resultado concreto, sin advertencias por riesgos hipotéticos.
+- Es más sensible a las instrucciones de skills y archivos como AGENTS.md: auditalos y dejá escrito que las instrucciones del usuario mandan sobre las de la skill.
 - Tiende a listas, tablas y Markdown: si querés prosa, especificá el estilo.
-- Delega a subagentes por iniciativa propia: indicá cuándo y cuánto debe delegar.
-- No conviene que escriba tests de más en cambios chicos y reversibles: pedí tests solo donde hagan falta.
-- Trae async tool calling (async: true) y steering en medio del turno, que son nuevos en GPT-6.
-- Tiene Fast mode y Ultrafast; el Ultrafast de Astra solo admite residencia de datos en EE. UU.
+- Puede delegar a subagentes menos de lo que querés: indicá cuándo y cuánto debe delegar.
+- En código es prolijo con las pruebas y en cambios chicos puede hacer más de las necesarias: pedile pruebas proporcionales al cambio.
+- Si cambiás el effort entre respuestas, usá items configuration_update y dejá igual el reasoning.effort del request, para no perder el caché.
+- Fast mode no admite residencia de datos en la UE ni trae SLA de latencia; el Ultrafast de Astra solo admite EE. UU. y procesamiento global.

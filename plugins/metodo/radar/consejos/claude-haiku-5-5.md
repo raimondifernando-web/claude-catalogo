@@ -1,11 +1,11 @@
-Fuente: https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide.md y https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-haiku-5-5.md (consultada 2026-11-01)
+Fuente: https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide.md (consultada 2026-11-17)
 - Usá el ID claude-haiku-5-5, sin fecha ni alias.
-- Contá tokens de nuevo: el mismo texto ocupa unos 30 % más que en Haiku 4.5, así que los max_tokens viejos pueden cortar la respuesta.
-- thinking: {"type": "enabled", "budget_tokens": N} da error 400. Usá thinking: {"type": "adaptive"} y controlá la profundidad con output_config.effort.
-- Los tokens de pensamiento cuentan dentro de max_tokens: si los dejás sin lugar, la respuesta corta antes del texto.
-- Por defecto el bloque thinking llega con el campo vacío. Para ver el resumen, poné display: "summarized".
-- Quitá temperature, top_p y top_k.
-- No termines messages con un turno del asistente (prefill): da error 400. Usá salida estructurada o instrucciones de sistema.
-- Manejá stop_reason: "refusal": Haiku 5.5 no tiene fallback del lado del servidor.
-- Es el primer Haiku con effort: comparé low, medium y high en tus pruebas. Con prompts de agente largos y effort low a veces corta antes de terminar; subir a medium lo reduce a la mitad pero duplica los tokens de salida.
-- En low y medium a veces da un cambio por hecho sin verificarlo, y con effort low o sin pensamiento puede escribir su razonamiento en la respuesta: pedí en el prompt que verifique y, si pasa lo segundo, usá pensamiento adaptativo con medium.
+- Contá los tokens de nuevo: el mismo texto da cerca de 30 % más que en Haiku 4.5, y las imágenes grandes cuestan más (una de 2.000 x 1.500 px, unas 2,5 veces); los max_tokens y costos viejos ya no sirven.
+- thinking con budget_tokens da error 400: usá thinking adaptativo y bajá el effort donde antes no pensaba o pensaba poco.
+- Los tokens de pensamiento cuentan dentro de max_tokens: con un límite chico la respuesta puede cortar tras el pensamiento y antes del texto.
+- El pensamiento llega vacío por defecto: para ver el resumen poné display: "summarized". Leé los bloques por type, no por posición.
+- Quitá temperature, top_p y top_k, y no termines messages con un turno del asistente (prefill): da error 400; usá salida estructurada o instrucciones de sistema.
+- Acepta tool_choice forzado, pero entonces responde sin pensar; para que piense antes de llamar una herramienta, usá auto y decí en el prompt cuándo usarla.
+- Manejá stop_reason: "refusal": no tiene fallback del lado del servidor.
+- Los bloques de pensamiento de turnos anteriores quedan en el contexto y suman entrada: mantené el historial sin editar (solo agregar al final).
+- No entra en Priority Tier.

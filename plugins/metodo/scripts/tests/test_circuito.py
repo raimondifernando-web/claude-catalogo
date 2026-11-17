@@ -354,6 +354,90 @@ class TestOtrasFamilias(Base):
         self.ciclo("--procesar", hoy="2026-11-03")
         self.assertNotIn("revisado:", inf.read_text(encoding="utf-8"))
 
+    def test_revisor_mudo_traba_y_se_reintenta_a_los_2_dias(self):
+        """Trabado por silencio del revisor (infraestructura) se reintenta; trabado por RECHAZO no (2026-11-17)."""
+        d = self.tmp / "prompts"; d.mkdir()
+        inf = d / "2026-10-20-vigia-novedades.md"
+        inf.write_text("# informe\nnada útil\n", encoding="utf-8")
+        self.familias([{"id": "informes", "tipo": "informes", "glob": str(d / "*-vigia-novedades.md"),
+                        "procesador": {"categoria": "revision", "acciones_seguras": ["descartar"]}}])
+        res = "<<<JSON\n" + json.dumps([{"id": inf.name, "accion": "descartar", "motivo": "sin novedades útiles"}]) + "\nJSON>>>"
+        os.environ["CIRCUITO_DELEGAR"] = falso(self.tmp / "delegar", f"print({res!r})")
+        os.environ["CIRCUITO_REVISOR"] = rev(falso(self.tmp / "mudo", "print('nada')"))
+        self.ciclo("--procesar")
+        self.ciclo("--procesar", hoy="2026-11-02")
+        e = self.h("informes", inf.name)
+        self.assertTrue(e.get("trabado"))
+        self.assertEqual(e["trabado_desde"], "2026-11-02")
+        self.ciclo("--procesar", hoy="2026-11-03")          # 1 día: todavía no
+        self.assertTrue(self.h("informes", inf.name).get("trabado"))
+        ok = "<<<JSON\n" + json.dumps([{"id": inf.name, "veredicto": "CONFIRMADO", "motivo": "leí el informe"}]) + "\nJSON>>>"
+        os.environ["CIRCUITO_REVISOR"] = rev(falso(self.tmp / "vuelve", f"sys.stdin.read()\nprint({ok!r})"))
+        self.ciclo("--procesar", hoy="2026-11-04")          # 2 días: se reintenta y esta vez cierra
+        e = self.h("informes", inf.name)
+        self.assertEqual((e["estado"], e.get("reintentos")), ("cerrado", 1))
+
+    def test_rechazo_del_revisor_no_se_reintenta_solo(self):
+        d = self.tmp / "prompts"; d.mkdir()
+        inf = d / "2026-10-20-vigia-novedades.md"
+        inf.write_text("# informe\nnada útil\n", encoding="utf-8")
+        self.familias([{"id": "informes", "tipo": "informes", "glob": str(d / "*-vigia-novedades.md"),
+                        "procesador": {"categoria": "revision", "acciones_seguras": ["descartar"]}}])
+        res = "<<<JSON\n" + json.dumps([{"id": inf.name, "accion": "descartar", "motivo": "x"}]) + "\nJSON>>>"
+        os.environ["CIRCUITO_DELEGAR"] = falso(self.tmp / "delegar", f"print({res!r})")
+        rech = "<<<JSON\n" + json.dumps([{"id": inf.name, "veredicto": "RECHAZADO", "motivo": "tenía una regla"}]) + "\nJSON>>>"
+        os.environ["CIRCUITO_REVISOR"] = rev(falso(self.tmp / "rech", f"sys.stdin.read()\nprint({rech!r})"))
+        self.ciclo("--procesar")
+        self.ciclo("--procesar", hoy="2026-11-02")
+        self.assertTrue(self.h("informes", inf.name).get("trabado"))
+        n = len(self.libro()["gastos"])
+        self.ciclo("--procesar", hoy="2026-11-09")
+        self.assertEqual(len(self.libro()["gastos"]), n)
+        self.assertTrue(self.h("informes", inf.name).get("trabado"))
+
+    def test_escalar_a_tech_no_manda_a_la_persona_un_analisis_pendiente(self):
+        d = self.tmp / "prompts"; d.mkdir()
+        inf = d / "2026-10-20-vigia-novedades.md"
+        inf.write_text("# informe\nPendiente: abrir una sesión Sonnet\n", encoding="utf-8")
+        self.familias([{"id": "informes", "tipo": "informes", "glob": str(d / "*-vigia-novedades.md"), "escalar_a_tech": True,
+                        "procesador": {"categoria": "revision", "acciones_seguras": ["descartar"]}}])
+        res = "<<<JSON\n" + json.dumps([{"id": inf.name, "accion": "escalar", "dueno": "decision-fer", "motivo": "toca permisos"}]) + "\nJSON>>>"
+        os.environ["CIRCUITO_DELEGAR"] = falso(self.tmp / "delegar", f"print({res!r})")
+        self.ciclo("--procesar")
+        self.assertEqual(self.h("informes", inf.name)["dueno"], "tech")
+        self.assertNotIn("Para vos", (self.cfg / "metodo/circuito/aviso.txt").read_text(encoding="utf-8"))
+
+    def test_escalar_a_tech_no_esconde_lo_de_seguridad(self):
+        d = self.tmp / "prompts"; d.mkdir()
+        inf = d / "2026-10-20-vigia-novedades.md"
+        inf.write_text("# informe\nvulnerabilidad\n", encoding="utf-8")
+        self.familias([{"id": "informes", "tipo": "informes", "glob": str(d / "*-vigia-novedades.md"), "escalar_a_tech": True,
+                        "procesador": {"categoria": "revision", "acciones_seguras": ["descartar"]}}])
+        res = "<<<JSON\n" + json.dumps([{"id": inf.name, "accion": "escalar", "clasificacion": "seguridad", "dueno": "decision-fer", "motivo": "arregla una vulnerabilidad"}]) + "\nJSON>>>"
+        os.environ["CIRCUITO_DELEGAR"] = falso(self.tmp / "delegar", f"print({res!r})")
+        self.ciclo("--procesar")
+        self.assertEqual(self.h("informes", inf.name)["dueno"], "decision-fer")
+
+    def test_trabado_viejo_sin_fecha_se_reintenta_ya(self):
+        d = self.tmp / "prompts"; d.mkdir()
+        inf = d / "2026-10-20-vigia-novedades.md"
+        inf.write_text("# informe\nnada útil\n", encoding="utf-8")
+        self.familias([{"id": "informes", "tipo": "informes", "glob": str(d / "*-vigia-novedades.md"),
+                        "procesador": {"categoria": "revision", "acciones_seguras": ["descartar"]}}])
+        res = "<<<JSON\n" + json.dumps([{"id": inf.name, "accion": "descartar", "motivo": "x"}]) + "\nJSON>>>"
+        os.environ["CIRCUITO_DELEGAR"] = falso(self.tmp / "delegar", f"print({res!r})")
+        os.environ["CIRCUITO_REVISOR"] = rev(falso(self.tmp / "mudo", "print('nada')"))
+        self.ciclo("--procesar"); self.ciclo("--procesar", hoy="2026-11-02")
+        lib = self.libro(); e = lib["familias"]["informes"]["hallazgos"][inf.name]
+        e.pop("trabado_desde", None)             # como quedaron los trabados antes de este cambio
+        (self.cfg / "metodo" / "circuito" / "registro.json").write_text(json.dumps(lib), encoding="utf-8")
+        ok = "<<<JSON\n" + json.dumps([{"id": inf.name, "veredicto": "CONFIRMADO", "motivo": "ok"}]) + "\nJSON>>>"
+        os.environ["CIRCUITO_REVISOR"] = rev(falso(self.tmp / "vuelve", f"sys.stdin.read()\nprint({ok!r})"))
+        self.ciclo("--procesar", hoy="2026-11-03")
+        e = self.h("informes", inf.name)
+        self.assertEqual(e["estado"], "cerrado")
+        self.assertTrue(e["historial_silencio"])
+
     def test_registro_ajeno_con_aviso_propio_no_duplica(self):
         r = self.tmp / "hallazgos.json"
         r.write_text(json.dumps({"x": {"estado": "abierto", "titulo": "regla", "quien": "tech", "visto_primero": "2026-10-01"},

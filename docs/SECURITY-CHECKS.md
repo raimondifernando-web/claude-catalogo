@@ -1390,3 +1390,10 @@ Alcance: el aviso de salud de `metodo` (0.73.0, PR #137): `scripts/salud_conecto
 - Arreglado antes de unir (2 bajos): JSON anidado a propósito (RecursionError) ya no tumba el arranque (`except Exception` + lectura acotada a 64 KB en una sola lectura); un «agotado» con vencimiento absurdo (más de 24 h o calculado en el futuro) pasa a «sin dato» en vez de saltar el plan para siempre. Una prueba por cada uno.
 - No verificado: no corrieron escáneres de dependencias (el radar es solo biblioteca estándar); Windows y Linux reales.
 - Veredicto: **PASS**. No resuelve los abiertos de la entrada de 0.75.0 (crédito de la API y agente-principal): siguen como condición para promover a `estable`.
+
+### 2026-11-17 · metodo 0.76.0 → 0.76.1 (circuito.py: reintento del revisor mudo y `escalar_a_tech`; consejos de uso rehechos; receta arneses) — PASS
+- Qué: `circuito.py` reintenta cada 2 días (máx. 3) los hallazgos trabados por silencio del revisor (nunca los rechazados), y acepta `escalar_a_tech` por familia; 12 resúmenes de consejos y 4 notas de la receta `arneses` (solo texto).
+- Revisor (distinto del autor, solo lectura): `security-reviewer`. Sin críticos ni altos. 1 medio y 2 bajos, los 3 arreglados antes de unir: `escalar_a_tech` ya no esconde a la persona un hallazgo clasificado «seguridad»; los trabados viejos sin fecha se reintentan; el motivo del silencio queda en `historial_silencio`. 2 pruebas nuevas por esos puntos (53 en total, verdes).
+- Bien (con evidencia): el reintento no rodea los topes de llamadas ni de USD por semana; no reabre lo que un revisor rechazó (`not rechazos`); no agrega datos de terceros a los pedidos a la IA; el dueño se valida contra `DUENOS`.
+- No verificado: escáneres de dependencias (solo biblioteca estándar, sin dependencias); Windows y Linux reales.
+- Veredicto: **PASS**.
