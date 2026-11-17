@@ -767,10 +767,10 @@ class TestHooksJson(unittest.TestCase):
         self.assertEqual(sorted(previos[0]["matcher"].split("|")), ["Agent", "Task", "mcp__ccd_session__start_session"])
         orden = previos[0]["hooks"][0]
         self.assertIn(" recordar ", orden["command"])
-        self.assertLessEqual(orden["timeout"], 5)
+        self.assertLessEqual(orden["timeout"], 15)
         for g in datos["hooks"]["SessionStart"]:
             for h in g["hooks"]:
-                self.assertLessEqual(h["timeout"], 5)
+                self.assertLessEqual(h["timeout"], 15)
         # nada que pueda bloquear: ni decisiones, ni salida con código 2
         crudo = json.dumps(previos)
         for prohibido in ("permissionDecision", "exit 2", "deny"):

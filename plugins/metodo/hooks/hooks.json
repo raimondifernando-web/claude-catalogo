@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 1 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 2 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/vigia/aviso.py\" 3 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -16,7 +16,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/buzon.py\" aviso 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/buzon.py\" aviso 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/buzon.py\" aviso 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "timeout": 5,
+            "timeout": 15,
             "command": "xcode-select -p >/dev/null 2>&1 && /usr/bin/python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/reglas.py\" sincronizar 2>/dev/null || true"
           }
         ]
@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "timeout": 5,
+            "timeout": 15,
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/al-dia-auto.sh\" 2>/dev/null || true"
           }
         ]
@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "timeout": 5,
+            "timeout": 15,
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/seguridad-auto.sh\" 2>/dev/null || true"
           }
         ]
@@ -52,7 +52,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/radar.py\" hoy 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/radar.py\" hoy 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/radar.py\" hoy 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -61,7 +61,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/contexto-reanudar.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/contexto-reanudar.py\" 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/contexto-reanudar.py\" 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -70,7 +70,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/agente-principal.py\" --hook 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/agente-principal.py\" --hook 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/agente-principal.py\" --hook 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -79,7 +79,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/estructura.py\" revisar --aviso 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/estructura.py\" revisar --aviso 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/estructura.py\" revisar --aviso 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -88,7 +88,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/reglas-unicas.py\" aviso 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/reglas-unicas.py\" aviso 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/reglas-unicas.py\" aviso 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -97,7 +97,7 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/reglas-al-actuar.sh\"",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       }
@@ -109,7 +109,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/ediciones.py\" registrar 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/ediciones.py\" registrar 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/ediciones.py\" registrar 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -119,7 +119,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/verificar-modelo-hija.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/verificar-modelo-hija.py\" 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/verificar-modelo-hija.py\" 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       }
@@ -131,7 +131,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/radar.py\" recordar 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/radar.py\" recordar 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/radar.py\" recordar 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -141,7 +141,7 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/bloquear-secretos.sh\"",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -161,7 +161,7 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/skill-en-agente.sh\"",
-            "timeout": 10
+            "timeout": 15
           }
         ]
       },
@@ -171,7 +171,7 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/skills-externas/skills-cli-tranca.sh\"",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -181,7 +181,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/freno-envio-cerrando.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/freno-envio-cerrando.py\" 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/freno-envio-cerrando.py\" 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -191,7 +191,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/freno-hija.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/freno-hija.py\" 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/freno-hija.py\" 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -201,7 +201,7 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/reglas-unicas.sh\"",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -211,7 +211,7 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/reglas-al-actuar.sh\"",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       }
@@ -222,7 +222,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/recordar-nombre.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/recordar-nombre.py\" 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/recordar-nombre.py\" 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -231,7 +231,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/forma-respuesta.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/forma-respuesta.py\" 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/forma-respuesta.py\" 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       },
@@ -240,7 +240,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/cierre-hijas.py\" entrada 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/cierre-hijas.py\" entrada 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/cierre-hijas.py\" entrada 2>/dev/null || true",
-            "timeout": 10
+            "timeout": 15
           }
         ]
       },
@@ -249,7 +249,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/portero.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/portero.py\" 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/portero.py\" 2>/dev/null || true",
-            "timeout": 5
+            "timeout": 15
           }
         ]
       }
@@ -260,7 +260,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/cierre-hijas.py\" salida 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/scripts/cierre-hijas.py\" salida 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/scripts/cierre-hijas.py\" salida 2>/dev/null || true",
-            "timeout": 10
+            "timeout": 15
           }
         ]
       }
