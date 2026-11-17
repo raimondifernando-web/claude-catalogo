@@ -624,6 +624,25 @@ def bloque_datos(items):
     return "<datos>\n" + "\n".join(json.dumps(x, ensure_ascii=False) for x in items) + "\n</datos>\n"
 
 
+REINTENTO_DIAS = 2        # un hallazgo trabado porque el revisor NO CONTESTÓ (falla de infraestructura) se reintenta
+REINTENTOS_MAX = 3        # cada 2 días, hasta 3 veces; un RECHAZO del revisor sí es una decisión y no se reintenta
+
+
+def destrabar_sin_respuesta(r, fecha):
+    """Trabado por silencio del revisor ≠ trabado por rechazo. Sin esto, una caída de una noche dejaba el hallazgo
+    escalado para siempre (el procesador salta lo que ya tiene VUELTAS_MAX) y el panel marcaba VENCIDO sin que nada lo
+    volviera a intentar (2026-11-17, informe 2026-11-09)."""
+    for e in r["hallazgos"].values():
+        if (e.get("estado") == "abierto" and e.get("trabado") and not e.get("rechazos")
+                and e.get("sin_respuesta", 0) >= VUELTAS_MAX and e.get("reintentos", 0) < REINTENTOS_MAX
+                and (not e.get("trabado_desde") or dias_entre(e["trabado_desde"], fecha) >= REINTENTO_DIAS)):
+            # sin `trabado_desde` (se trabó antes de existir este reintento): ya pasó de sobra, se reintenta ya
+            e.setdefault("historial_silencio", []).append({"fecha": e.get("trabado_desde") or fecha, "motivo": e.get("ultimo_rechazo", "")})
+            for k in ("trabado", "trabado_desde", "ultimo_rechazo"):
+                e.pop(k, None)
+            e.update(vueltas=0, sin_respuesta=0, reintentos=e.get("reintentos", 0) + 1)
+
+
 def procesar(reg, fams, extra, fecha, dry=False, salida=print):
     """La IA barata con cupo (delegar.py elige por el radar) propone; se aplica solo lo seguro y reversible."""
     tope = float(extra.get("tope_semana_usd", TOPE_SEMANA_USD))
@@ -634,6 +653,7 @@ def procesar(reg, fams, extra, fecha, dry=False, salida=print):
         r = fam_reg(reg, f["id"])
         if not proc or r.get("pausada") or r.get("procesador_pausado_hasta", "") > fecha:
             continue
+        destrabar_sin_respuesta(r, fecha)
         pend = [(k, e) for k, e in r["hallazgos"].items()
                 if e.get("estado") == "abierto" and not e.get("espera") and e.get("dueno", "tech") == "tech"
                 and e.get("vueltas", 0) < VUELTAS_MAX and not e.get("propuesta")]
@@ -689,6 +709,8 @@ def procesar(reg, fams, extra, fecha, dry=False, salida=print):
                 e.update(estado="a-confirmar", por=quien, accion="descartar", motivo=mot, como_pendiente="ruido")
             else:
                 dueno = d_.get("dueno") if d_.get("dueno") in DUENOS else "tech"
+                if f.get("escalar_a_tech") and d_.get("clasificacion") != "seguridad":
+                    dueno = "tech"      # p. ej. informes: Tech hace el análisis (parte 2); lo de seguridad sigue llegando a la persona
                 e.update(propuesta={"accion": acc or "escalar", "motivo": mot, "por": quien, "fecha": fecha}, dueno=dueno)
         marcar_nativo(f, r, {k: f"circuito ({quien}): {m}" for k, m in aplicar_nativo.items()})
         salida(f"{f['id']}: {quien} decidió {len(decis)} ({len(aplicar_nativo)} descartadas a confirmar)")
@@ -743,7 +765,7 @@ def revisar(reg, fams, extra, fecha, llamadas=0, dry=False, salida=print):
                 e["sin_respuesta"] = e.get("sin_respuesta", 0) + 1
                 if e["sin_respuesta"] >= VUELTAS_MAX:      # sin revisor no se cierra: se deshace y queda para una sesión
                     deshacer[k] = ""
-                    e.update(estado="abierto", trabado=True, vueltas=VUELTAS_MAX,
+                    e.update(estado="abierto", trabado=True, trabado_desde=fecha, vueltas=VUELTAS_MAX,
                              ultimo_rechazo="el revisor no contestó dos veces: se deshizo el descarte")
                     e.pop("como_pendiente", None)
                 notas.append(f"{f['id']}: el revisor no contestó sobre {k}" + ("; se deshizo y queda para una sesión" if k in deshacer else "; queda a confirmar"))

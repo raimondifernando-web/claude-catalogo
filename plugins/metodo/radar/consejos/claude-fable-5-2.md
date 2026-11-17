@@ -1,0 +1,11 @@
+Fuente: https://platform.claude.com/docs/en/models/fable-5-2/migration-guide.md (consultada 2026-11-17)
+- Usá el ID claude-fable-5-2. claude-mythos-5-2 tiene las mismas capacidades, pero solo para organizaciones verificadas.
+- El pensamiento adaptativo siempre está activo: disabled y budget_tokens dan error 400. El effort (cinco niveles, default high; en Opus 5.5 era medium) marca la profundidad: fijalo explícito y rehacé tu prueba de niveles.
+- Una línea del prompt como «respondé directo sin deliberar» no lo frena con effort medium o más: sacala y bajá el effort. Como piensa igual, un max_tokens chico puede dejarlo sin lugar para el texto: subilo o bajá el effort.
+- Con xhigh o max puede lanzar subagentes para revisar su propio trabajo, y eso puede ser buena parte del costo: ponele expectativas en el prompt.
+- tool_choice any o tool da error 400: usá auto. Tampoco prefill ni temperature, top_p, top_k.
+- Si armás tu propio historial, mantenelo solo para agregar: cambiar system, tools o turnos anteriores y devolver bloques de pensamiento da error 400. Fable 5.1 no lee sus bloques de pensamiento.
+- Exige retención de datos de 30 días: sin eso, cada pedido da error 400 (no sirve con ZDR salvo autorización de Anthropic). No entra en Priority Tier.
+- Cuesta US$8 de entrada y US$40 de salida por millón (Fable 5.1: 10 y 50); lectura de caché US$0,20. Tiene fast mode (speed: "fast") al doble de precio.
+- Tiene límite de uso propio. Un ejecutor Fable 5.2 con la herramienta advisor solo acepta como asesor a Fable 5.2 o Mythos 5.2.
+- Manejá todas las categorías de stop_reason: "refusal"; los fallbacks permitidos son Opus 4.8 y Opus 5, sin los bloques de pensamiento.

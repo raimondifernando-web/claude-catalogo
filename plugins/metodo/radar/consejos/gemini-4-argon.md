@@ -1,10 +1,7 @@
-Fuente: https://ai.google.dev/gemini-api/docs/latest-model.md.txt (consultada 2026-11-01)
-- Elegí thinking_level: low, medium (default) o high. Probá los tres y quedate con el más bajo que cumpla tu calidad.
-- max_output_tokens es un límite duro para pensamiento más salida: si lo tenías en menos de 32.768, subilo.
-- Para respuestas de más de 64K tokens, usá background: true con max_output_tokens mayor a 65.536 (hasta 1M). Sin ese valor, el servidor corta en 64K.
-- Quitá temperature, top_p y top_k: el modelo los ignora.
-- No uses caché explícita (cachedContents): no está soportada. La caché implícita viene activa para prompts de 4.096 tokens o más.
-- Para mantener el estado de varios turnos o llamadas a funciones, usá previous_interaction_id.
-- Para prompts difíciles, subí el timeout del cliente a 15 minutos o más, o usá background.
-- Precio introductorio hasta el 30/11/2026: US$2 de entrada y US$10 de salida por millón; después, US$4 y US$20. El pensamiento se cobra como salida.
-- No está disponible en el plan gratuito.
+Fuente: https://ai.google.dev/gemini-api/docs/latest-model.md.txt (consultada 2026-11-17)
+- Es un modelo de razonamiento profundo, más eficiente que Gemini 4 Carbon: respuestas más rápidas y menos tokens por turno.
+- El pensamiento se elige con thinking_level: low, medium (default) o high.
+- Contexto unificado de 1M tokens; salida de 64K por defecto, y hasta 1M con long decode.
+- Quitá temperature, top_p y top_k: los modelos Gemini 4 ignoran los valores propios y la guía avisa que más adelante darán error 400.
+- Precio de lanzamiento hasta el 30 de noviembre: US$2 de entrada y US$10 de salida por millón; la guía descargada no trae el precio posterior.
+- Acepta texto, imágenes, audio, video y PDF, con búsqueda de Google, ejecución de código, llamadas a funciones, uso de computadora y salidas estructuradas.

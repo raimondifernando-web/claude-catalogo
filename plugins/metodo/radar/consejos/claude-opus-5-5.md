@@ -1,11 +1,10 @@
-Fuente: https://platform.claude.com/docs/en/models/opus-5-5/migration-guide.md y https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5.md (consultada 2026-11-01)
-- Usá el ID claude-opus-5-5, sin fecha.
-- El pensamiento no se puede apagar: thinking con disabled o enabled da error 400. Quitá el campo y, si querías menos pensamiento, bajá effort.
-- Controlá la profundidad solo con output_config.effort. El default es medium (en Opus 5 era high); acepta los cinco niveles, de low a max. Fijalo de forma explícita.
-- max_tokens cubre pensamiento más texto. Con effort xhigh o max, partí de 64k.
-- Las respuestas pueden empezar con bloques thinking: leé el texto por type y devolvé los bloques thinking sin tocarlos en los loops de herramientas.
-- Por defecto el thinking viene vacío. Para ver el resumen, poné thinking: {"type": "adaptive", "display": "summarized"}.
-- tool_choice any o tool da error 400: usá auto con strict tool use o salida estructurada.
-- No mandes temperature, top_p ni top_k, ni prefill al final de messages.
-- Con el mismo effort que usabas en Opus 5, Opus 5.5 piensa más por turno (sobre todo en xhigh y max): para menos pensamiento bajá el effort antes que pedirlo en el prompt. Cambiar el effort entre requests invalida el caché.
-- Si tu integración de Opus 5 corría con el pensamiento apagado: empezá en low y medí; en chats sacá del system prompt el «pensá con cuidado antes de responder».
+Fuente: https://platform.claude.com/docs/en/models/opus-5-5/migration-guide.md (consultada 2026-11-17)
+- Usá el ID claude-opus-5-5, sin fecha. Cuesta US$4 de entrada y US$20 de salida por millón (Opus 5: 5 y 25).
+- El pensamiento no se puede apagar: thinking con disabled o enabled da error 400. Quitá el campo y, si querías menos pensamiento, bajá el effort.
+- El effort es lo único que controla la profundidad: cinco niveles de low a max, default medium (en Opus 5 era high). Fijalo explícito y rehacé tu prueba de niveles.
+- max_tokens cubre pensamiento más texto; con xhigh o max, partí de 64k.
+- Las respuestas empiezan con bloques thinking: leé el texto por type y devolvé esos bloques sin modificar en los loops de herramientas. Llegan vacíos por defecto; para el resumen poné display: "summarized".
+- tool_choice any o tool da error 400: usá auto con herramientas strict o salida estructurada. Tampoco mandes temperature, top_p, top_k ni prefill.
+- El texto entre llamadas a herramientas ahora llega como bloques thinking: para mostrarlo como avance poné display: "updates" (beta) o "summarized".
+- Mantené el historial solo para agregar (sin editar system, tools ni turnos anteriores); un cambio de modelo o fallback puede dejar al otro sin esos bloques de pensamiento.
+- Manejá stop_reason: "refusal" (categorías más amplias que en Opus 5, como bio) y configurá fallback. No entra en Priority Tier.

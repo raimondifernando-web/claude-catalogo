@@ -1,5 +1,12 @@
 # metodo — qué cambia para vos
 
+## 0.76.1 — 2026-11-17
+**El circuito de los vigías ya no se queda esperando para siempre cuando el revisor no contesta, y los consejos de uso por modelo están al día.** Llega solo con el paquete; no hay nada que hacer.
+- **Qué arregla:** si el revisor (el segundo par de ojos) no contestaba dos veces seguidas, el hallazgo quedaba «trabado» y nadie lo volvía a intentar: el panel lo marcaba VENCIDO para siempre. Ahora, si el silencio fue del revisor, se reintenta cada 2 días (hasta 3 veces). Si el revisor RECHAZÓ, sigue trabado: eso es una decisión, no una caída.
+- **Ajuste nuevo, opcional:** `escalar_a_tech: true` en una familia de `familias.json` hace que lo que la IA barata escala vaya a Tech (el análisis) y no a la persona; a la persona solo llega lo que decide ella.
+- **Consejos de uso:** resúmenes rehechos de las guías oficiales de Anthropic, Google y OpenAI que cambiaron el 2026-11-10; nuevo el de `claude-fable-5-2`.
+- **Receta `arneses`:** C2 anotada (la doc ya no documenta ajustes dentro de un paquete) y 3 matices que suman cautela (A4, B3, D3).
+
 ## 0.76.0 — 2026-11-16
 **El radar ya no muestra un saldo viejo como si fuera de hoy, y no te manda a una IA que se quedó sin crédito.** Llega solo con el paquete; si no usás IA de pago por uso, no cambia nada.
 - **Qué ves:** si en tu computadora existe `saldos-ia.json` (en la carpeta de datos del Bicho), la línea «Cupo» de `radar.py hoy` suma el estado real de cada IA de pago por uso, con la edad del dato: «Gemini API AGOTADO (hace 5 min) · OpenRouter US$12.50 (hace 5 min) · Perplexity sin dato». Un dato de más de 3 horas pasa a «sin dato»: nunca un número viejo como actual.

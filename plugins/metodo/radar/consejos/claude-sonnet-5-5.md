@@ -1,11 +1,11 @@
-Fuente: https://platform.claude.com/docs/en/models/sonnet-5-5/migration-guide.md y https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-sonnet-5-5.md (consultada 2026-11-01)
-- Usá el ID claude-sonnet-5-5, sin fecha.
-- Sin campo thinking, el pensamiento ya está activo. Para apagarlo usá thinking: {"type": "between_tools"}: "disabled" da error 400, y between_tools no sirve con xhigh ni max.
-- thinking con budget_tokens da error 400. Usá thinking: {"type": "adaptive"} y output_config.effort; el default en la API es high.
-- tool_choice any o tool da error 400. Usá {"type": "auto"}, marcá la herramienta con strict: true y decí en el prompt cuándo usarla.
-- Quitá temperature, top_p y top_k, y no termines messages con un turno del asistente (prefill).
-- Hay más categorías de rechazo (stop_reason: "refusal"): manejálas y configurá fallback.
-- Los bloques de pensamiento van atados a la conversación: mantené el historial append-only.
-- Re-calibrá el effort: los niveles cambiaron y no equivalen a los de Sonnet 5. Para trabajo agéntico, arrancá en medium o high.
-- between_tools no deja cambiar el effort a mitad de conversación (error 400); para variar el effort por turno usá pensamiento adaptativo.
-- En tareas de razonamiento con salida JSON y sin pensar antes, a veces escribe el razonamiento antes del JSON: tomá el último valor JSON que parsee, o usá pensamiento adaptativo con xhigh.
+Fuente: https://platform.claude.com/docs/en/models/sonnet-5-5/migration-guide.md (consultada 2026-11-17)
+- Usá el ID claude-sonnet-5-5. Mismos precios que Sonnet 5, salvo la lectura de caché: US$0,10 por millón, la mitad.
+- Sin campo thinking, ya piensa (adaptativo). Para apagar el pensamiento previo usá thinking: {"type": "between_tools"}: "disabled" da error 400, y between_tools solo sirve con effort low, medium o high.
+- Con between_tools no podés cambiar el effort a mitad de conversación (error 400); para variarlo por turno usá pensamiento adaptativo.
+- thinking con budget_tokens ya no va. Leé los bloques por type y devolvé los de pensamiento sin tocar en los loops de herramientas; max_tokens cubre pensamiento más texto.
+- tool_choice forzado da error 400: usá auto con herramientas strict.
+- Los niveles de effort (low a max, default high en la API) están recalibrados respecto de Sonnet 5: rehacé la prueba. Para código agéntico y herramientas, arrancá en medium (high si es más difícil); para chat o baja latencia, medium o low.
+- Las notas largas entre llamadas a herramientas llegan como bloques thinking, vacíos por defecto: para mostrarlas poné display: "updates" (beta) o "summarized".
+- Rechaza en más categorías que Sonnet 5 (stop_reason: "refusal"): manejalo y configurá fallback; el fallback de servidor no reintenta bio, reasoning_extraction ni general_harms.
+- Mantené el historial solo para agregar: editar system, tools o mensajes anteriores rompe los bloques de pensamiento.
+- El caché mínimo bajó a 512 tokens.
