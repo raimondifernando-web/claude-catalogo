@@ -1,0 +1,2 @@
+origen: github:emilkowalski/skills//skills/animation-vocabulary@64eb3de (MIT, LICENSE-origen.txt)
+copia idéntica al origen (2026-11-18), copiada a mano, sin el instalador de skills del autor. Puro texto; auditada sin hallazgos.

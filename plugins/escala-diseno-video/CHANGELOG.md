@@ -1,5 +1,12 @@
 # escala-diseno-video
 
+## 0.1.10 — 2026-11-18
+**Seis skills nuevas para animar páginas web (cinco de GSAP y un vocabulario de movimiento)**, la librería de animación más usada. Llegan solas con el paquete; no hay nada que hacer.
+- `gsap-core` (base: movimientos, easing, respetar a quien pide menos movimiento), `gsap-scrolltrigger` (animar al hacer scroll, fijar secciones, parallax), `gsap-timeline` (secuencias), `gsap-plugins` (SplitText, DrawSVG, Flip, ScrollSmoother: todos gratis, también para uso comercial) y `gsap-performance` (que corra fluido).
+- Son las skills oficiales de GreenSock, copiadas sin cambios (licencia MIT, incluida en cada carpeta). Solo texto: no instalan nada ni piden claves.
+- `animation-vocabulary`: si describís un efecto sin saber cómo se llama («eso que rebota al abrirse»), te da el nombre exacto para pedírselo bien a Claude. Del autor Emil Kowalski, MIT, copia sin cambios.
+- Cuándo se usan: cuando pedís una web con movimiento («que aparezca al hacer scroll», «animá el título»). No son para video: para eso siguen `hyperframes-*`.
+
 ## 0.1.9 — 2026-11-16
 - Sincronizadas skills desde ~/.claude/skills.
 

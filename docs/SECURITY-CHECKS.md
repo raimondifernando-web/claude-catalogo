@@ -1397,3 +1397,10 @@ Alcance: el aviso de salud de `metodo` (0.73.0, PR #137): `scripts/salud_conecto
 - Bien (con evidencia): el reintento no rodea los topes de llamadas ni de USD por semana; no reabre lo que un revisor rechazó (`not rechazos`); no agrega datos de terceros a los pedidos a la IA; el dueño se valida contra `DUENOS`.
 - No verificado: escáneres de dependencias (solo biblioteca estándar, sin dependencias); Windows y Linux reales.
 - Veredicto: **PASS**.
+
+### 2026-11-18 · metodo 0.76.2 → 0.76.3 y escala-diseno-video 0.1.9 → 0.1.10 (6 skills de animación web sin código + receta `ui-web`) — PASS
+- Qué: 6 skills copiadas sin cambios (5 oficiales de GreenSock, `github:greensock/gsap-skills@aed9cfd`, y `animation-vocabulary` de `github:emilkowalski/skills@64eb3de`; las dos MIT, con su licencia en cada carpeta) y el punto 2b de la receta `ui-web`. Solo texto: ningún programa ni hook cambia.
+- Revisor (distinto del autor, solo lectura): `security-reviewer` sobre las 5 de GSAP y la receta: sin críticos, altos ni medios. Sin instrucciones ocultas ni pedidos de claves; todas las URLs son gsap.com; el único comando es `npm install gsap` y el mismo texto prohíbe un `.npmrc` con token. `animation-vocabulary`: leída entera y auditada antes de promoverla (sin dominios, comandos ni claves); la agregué después de esa revisión, también solo texto.
+- Copias idénticas al origen: verificadas byte a byte contra la copia auditada de la Mac (`cmp`); licencias bajadas del repo de cada autor en el sha fijado. Sin nombres de clientes (`git grep` = 0).
+- No verificado: escáneres de dependencias e historial (no hay dependencias ni código).
+- Veredicto: **PASS**.
