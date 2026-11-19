@@ -1,0 +1,2 @@
+origen: github:greensock/gsap-skills//skills/gsap-core@aed9cfd (MIT, LICENSE-origen.txt; organización oficial GreenSock)
+copia idéntica al origen (2026-11-18), copiada a mano, sin el instalador de skills del autor. Puro texto; auditada sin hallazgos.

@@ -37,7 +37,7 @@
       "name": "metodo",
       "source": "./plugins/metodo",
       "description": "Método de trabajo (L3): /metodo:arrancar, planear, criticar, cerrar (handoff + prompt de reanudación), crear-agente, otra-sesion, darwin-skill, vigia (avisa si hay versiones nuevas), cowork, buzon, pendientes (la lista de cada carpeta) y radar (qué IA conviene para cada tarea y qué modelo, esfuerzo y cupo hay hoy). 25 reglas del método, mapa de código a pedido, chequeo de seguridad mensual y un freno que impide mostrar claves en pantalla. /cerrar deja REANUDAR.md y /arrancar lo levanta solo.",
-      "version": "0.76.2",
+      "version": "0.76.3",
       "category": "productivity",
       "tags": [
         "l3",
@@ -62,8 +62,8 @@
     {
       "name": "escala-diseno-video",
       "source": "./plugins/escala-diseno-video",
-      "description": "Escala de diseño y video (L4): presentaciones, animaciones y videos cortos, prototipos de pantallas, infografías y arte generativo. huashu-design te muestra 3 direcciones antes de hacer nada; el set de video de HyperFrames viene sin actualizaciones solas (la telemetría se apaga con dos variables). 19 skills. Recomendado junto con base-segura.",
-      "version": "0.1.9",
+      "description": "Escala de diseño y video (L4): presentaciones, animaciones y videos cortos, prototipos de pantallas, infografías y arte generativo, y animación de páginas web con GSAP. huashu-design te muestra 3 direcciones antes de hacer nada; el set de video de HyperFrames viene sin actualizaciones solas (la telemetría se apaga con dos variables). 25 skills. Recomendado junto con base-segura.",
+      "version": "0.1.10",
       "category": "design",
       "tags": [
         "l4",

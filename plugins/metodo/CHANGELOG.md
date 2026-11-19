@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.76.3 — 2026-11-18
+**La receta de pantallas web ahora sabe cuándo usar las skills de animación.** Llega solo con el paquete; no hay nada que hacer.
+- **Qué cambia:** al construir una web que lleva movimiento (scroll, parallax, transiciones), la receta `ui-web` te manda a las skills de GSAP del paquete `escala-diseno-video` según lo que necesites, y recuerda respetar a quien pide menos movimiento.
+- Solo texto de la receta; ningún programa cambia.
+
 ## 0.76.2 — 2026-11-17
 **Los controles que corren antes de cada acción ya no se saltean cuando tu computadora está cargada.** Llega solo con el paquete; no cambia nada de lo que ves.
 - **Qué pasaba:** cada control tenía 5 o 10 segundos para contestar. Con muchas sesiones abiertas y programas pesados andando (navegadores de prueba, herramientas conectadas), tardaban más y Claude mostraba «A hook of the "metodo" plugin didn't answer in time»: la acción seguía sin que ese control la revisara.
