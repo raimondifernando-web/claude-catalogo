@@ -1,0 +1,5 @@
+origen: github:wheresryan22/anatomy@1482e8469b0a9e0d8cc18ea2740a01423d29ae80 (MIT, 2026-10-18)
+traída: 2026-11-23 por buscar-skill-externa → cuarentena → lectura del código ejecutable → OK de Fer en el chat
+vía de confianza (Mand. XVI): camino 1 (≈28.800 estrellas) + licencia MIT + actividad reciente
+auditor: FAIL con 6 CRITICAL CMD-INJECT = falsos positivos leídos (spawn/execFile con listas fijas, abren Chrome headless local; red solo a 127.0.0.1; rmSync solo de carpetas temporales)
+quitado al copiar: scripts/publish.mjs y references/publish.md (sube a una galería pública de GitHub con force-push), todos los *.test.mjs, tests/, evals/, agents/, .github/, PDFs de ejemplos, CODE_OF_CONDUCT/CONTRIBUTING/SECURITY

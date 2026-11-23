@@ -1404,3 +1404,10 @@ Alcance: el aviso de salud de `metodo` (0.73.0, PR #137): `scripts/salud_conecto
 - Copias idénticas al origen: verificadas byte a byte contra la copia auditada de la Mac (`cmp`); licencias bajadas del repo de cada autor en el sha fijado. Sin nombres de clientes (`git grep` = 0).
 - No verificado: escáneres de dependencias e historial (no hay dependencias ni código).
 - Veredicto: **PASS**.
+
+### 2026-11-23 · escala-diseno-video 0.1.10 → 0.1.11 (skill `anatomy`, con programas de ayuda) — PASS con reservas
+- Qué: `anatomy` (`github:wheresryan22/anatomy@1482e84`, MIT, ~28.800 estrellas), copia recortada de 98 archivos. Trae programas `.mjs` que arman la figura y la revisan con Chrome local.
+- Revisión (alguien distinto del autor del paquete; código ejecutable leído antes de promover): `spawn`/`execFile` solo con listas fijas de argumentos para abrir Chrome sin pantalla; red solo a 127.0.0.1; `rmSync` solo de carpetas temporales propias. El auditor automático marcó 6 críticos de inyección de comandos: leídos uno por uno, son falsos positivos.
+- Quitado a propósito: `publish.mjs` (sube a una galería pública con force-push), pruebas, PDFs, agentes y flujos de GitHub del origen.
+- No verificado: no se corrió la skill de punta a punta en una máquina limpia; escáneres de dependencias (no trae `package.json` con dependencias instaladas).
+- Veredicto: **PASS con reservas** (código ejecutable de terceros, aunque acotado y leído).

@@ -1,5 +1,10 @@
 # escala-diseno-video
 
+## 0.1.11 — 2026-11-23
+**Skill nueva: `anatomy`.** Arma figuras isométricas interactivas (un objeto físico que explica una idea técnica, con partes que se mueven y se pueden girar). Llega sola con el paquete; no hay nada que hacer.
+- Pedile «explicame cómo funciona X con una figura interactiva». Para verificar el resultado usa Node 20.10+ y Chrome o Chromium; si no están, te lo dice.
+- Origen: `github:wheresryan22/anatomy@1482e84` (MIT). Copia recortada: sin el programa que publicaba a una galería pública, sin pruebas ni PDFs de ejemplo.
+
 ## 0.1.10 — 2026-11-18
 **Seis skills nuevas para animar páginas web (cinco de GSAP y un vocabulario de movimiento)**, la librería de animación más usada. Llegan solas con el paquete; no hay nada que hacer.
 - `gsap-core` (base: movimientos, easing, respetar a quien pide menos movimiento), `gsap-scrolltrigger` (animar al hacer scroll, fijar secciones, parallax), `gsap-timeline` (secuencias), `gsap-plugins` (SplitText, DrawSVG, Flip, ScrollSmoother: todos gratis, también para uso comercial) y `gsap-performance` (que corra fluido).
