@@ -37,7 +37,7 @@
       "name": "metodo",
       "source": "./plugins/metodo",
       "description": "Método de trabajo (L3): /metodo:arrancar, planear, criticar, cerrar (handoff + prompt de reanudación), crear-agente, otra-sesion, darwin-skill, vigia (avisa si hay versiones nuevas), cowork, buzon, pendientes (la lista de cada carpeta) y radar (qué IA conviene para cada tarea y qué modelo, esfuerzo y cupo hay hoy). 25 reglas del método, mapa de código a pedido, chequeo de seguridad mensual y un freno que impide mostrar claves en pantalla. /cerrar deja REANUDAR.md y /arrancar lo levanta solo.",
-      "version": "0.76.3",
+      "version": "0.76.4",
       "category": "productivity",
       "tags": [
         "l3",
@@ -335,8 +335,8 @@
     {
       "name": "rubro-finanzas-legal",
       "source": "./plugins/rubro-finanzas-legal",
-      "description": "Pack de rubro (L2): finanzas, legal y administración de una pyme argentina — CFO, finanzas personales, trámites del auto, M&A (4 skills) + 18 agentes: impuestos, legal comercial, revisión de contratos, datos personales (Ley 25.326), flujo de caja, cobranzas, conciliación, cierre contable, compras, logística, reclamos, inventario, operaciones, SOP, RR.HH. y reclutamiento. Orientativo: no reemplaza a un contador ni a un abogado. Requiere base-segura.",
-      "version": "0.4.1",
+      "description": "Pack de rubro (L2): finanzas, legal y administración de una pyme argentina — CFO, finanzas personales, trámites del auto, M&A y análisis de mercado educativo (11 skills: resultados de empresas, estimaciones, liquidez, correlación, método SEPA y curvas de opciones) + 18 agentes: impuestos, legal comercial, revisión de contratos, datos personales (Ley 25.326), flujo de caja, cobranzas, conciliación, cierre contable, compras, logística, reclamos, inventario, operaciones, SOP, RR.HH. y reclutamiento. Orientativo: no reemplaza a un contador ni a un abogado; el análisis de mercado es educativo, no asesoramiento de inversión ni opera órdenes. Requiere base-segura.",
+      "version": "0.5.0",
       "category": "productivity",
       "tags": [
         "l2",
@@ -377,6 +377,19 @@
       "tags": [
         "es",
         "busqueda",
+        "mcp",
+        "opcional"
+      ]
+    },
+    {
+      "name": "yfinance",
+      "source": "./plugins/yfinance",
+      "description": "Datos de mercado de Yahoo Finanzas dentro de Claude (solo lectura, sin claves ni cuenta): precios, balances, estimaciones de analistas, opciones, noticias y screener. Servidor fijado en 0.14.1 con dependencias congeladas; lo corre uv, que el actualizador instala solo. No opera ni mueve plata; no es asesoramiento de inversión. Solo Mac.",
+      "version": "0.1.0",
+      "category": "productivity",
+      "tags": [
+        "es",
+        "mercado",
         "mcp",
         "opcional"
       ]

@@ -1,0 +1,11 @@
+{
+  "name": "yfinance",
+  "version": "0.1.0",
+  "description": "Datos de mercado de Yahoo Finanzas dentro de Claude Code (solo lectura, sin claves, sin cuenta): precios, balances, estimaciones de analistas, opciones, noticias y screener. Registra el servidor yfmcp con la versión fijada en 0.14.1 y sus dependencias congeladas a una fecha; lo corre con uv, que el actualizador del catálogo instala solo. No opera ni mueve plata; no es asesoramiento de inversión.",
+  "author": {
+    "name": "Fernando Raimondi"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/raimondifernando-web/claude-catalogo",
+  "repository": "https://github.com/raimondifernando-web/claude-catalogo"
+}

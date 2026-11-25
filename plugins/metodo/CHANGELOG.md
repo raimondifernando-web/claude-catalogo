@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.76.4 — 2026-11-25
+**La lista de herramientas ya descartadas suma una fila:** los programas que leen TradingView abriendo el navegador con un puerto de depuración. Llega solo con el paquete; no hay nada que hacer.
+- **Qué cambia:** si alguien te propone uno, la receta `herramientas-rechazadas` ya tiene la respuesta (va contra los términos de TradingView y deja el navegador abierto a cualquier programa de tu computadora) y qué usar en su lugar.
+- Solo texto de la receta; ningún programa cambia.
+
 ## 0.76.3 — 2026-11-18
 **La receta de pantallas web ahora sabe cuándo usar las skills de animación.** Llega solo con el paquete; no hay nada que hacer.
 - **Qué cambia:** al construir una web que lleva movimiento (scroll, parallax, transiciones), la receta `ui-web` te manda a las skills de GSAP del paquete `escala-diseno-video` según lo que necesites, y recuerda respetar a quien pide menos movimiento.
