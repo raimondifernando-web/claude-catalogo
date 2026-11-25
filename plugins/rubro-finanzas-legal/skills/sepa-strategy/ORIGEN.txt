@@ -1,0 +1,6 @@
+origen: github:himself65/finance-skills//skills/sepa-strategy@a085078 (sha completo a0850786e72aa23b92862f9f1635b0de506fe206; MIT)
+copiado: 2026-11-25 por la sesión de Tech (cuarentena-skills, camino 3 de Mand. XVI: leída entera, puro texto)
+motivo: análisis de mercado educativo; sin operar órdenes ni claves.
+auditoria: skill-security-auditor PASS; lectura completa sin hallazgos de seguridad. Auditoría interna del catálogo (docs/SECURITY-CHECKS.md)
+parche local: NOTA-LOCAL.md + 1 línea de enganche en SKILL.md (ver abajo); el resto sin cambios. Sin README/tests del repo. Al actualizar: re-copiar desde un sha auditado.
+enganche: 1 línea tras el título de SKILL.md que remite a NOTA-LOCAL.md (veredicto como 'cumple criterios', sin consejo personalizado; Mand. XXVI).

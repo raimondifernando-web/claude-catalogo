@@ -1411,3 +1411,11 @@ Alcance: el aviso de salud de `metodo` (0.73.0, PR #137): `scripts/salud_conecto
 - Quitado a propósito: `publish.mjs` (sube a una galería pública con force-push), pruebas, PDFs, agentes y flujos de GitHub del origen.
 - No verificado: no se corrió la skill de punta a punta en una máquina limpia; escáneres de dependencias (no trae `package.json` con dependencias instaladas).
 - Veredicto: **PASS con reservas** (código ejecutable de terceros, aunque acotado y leído).
+
+### 2026-11-25 · rubro-finanzas-legal 0.4.1 → 0.5.0 (7 skills de análisis de mercado) y plugin nuevo yfinance 0.1.0 — PASS con reservas
+- Qué: 7 skills de `github:himself65/finance-skills@a085078` (MIT, copiadas de una versión auditada; leídas enteras) y un plugin que registra el servidor `yfmcp==0.14.1` (PyPI, MIT, solo lectura, sin claves) con `uv tool run --exclude-newer`.
+- Revisión (alguien distinto del autor del paquete): el auditor automático dio PASS en las skills; lectura completa sin hallazgos (solo `pip install` de yfinance/pandas/numpy, ya fijado a `==1.8.0`). Ninguna skill ni el servidor expone herramientas de órdenes, brokers ni claves (las herramientas del servidor son de consulta: precios, balances, estimaciones, opciones, noticias, screener). Reparos conocidos del servidor: sus dependencias son rangos mínimos (`yfinance>=1.8.0`, `mcp>=1.30,<2`, `matplotlib`, `tabulate`, `loguru`); se mitigan congelándolas con `--exclude-newer 2026-11-25`.
+- Python: se verificó que yfinance 1.8.0 no se resuelve con Python 3.9 (necesita `curl-cffi>=0.17`, que pide 3.10 o más); las skills traen en `NOTA-LOCAL.md` cómo correr su código con `uv` y Python 3.12.
+- Quitado a propósito: ningún lector de TradingView ni de redes sociales, ningún broker ni exchange (ver receta `herramientas-rechazadas`).
+- No verificado: el servidor y el comando `uv` con Python 3.12 no se corrieron de punta a punta en una máquina limpia (en esta sesión el entorno bloqueó bajar y ejecutar paquetes de internet); las pruebas del plugin usan un `uv` falso. Sin escáner de dependencias.
+- Veredicto: **PASS con reservas** (código de terceros descargado de PyPI la primera vez que conecta; versión y fecha de congelado fijas).

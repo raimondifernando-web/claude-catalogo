@@ -1,0 +1,7 @@
+origen: github:himself65/finance-skills//skills/stock-liquidity@a085078 (sha completo a0850786e72aa23b92862f9f1635b0de506fe206; MIT)
+copiado: 2026-11-25 por la sesión de Tech (cuarentena-skills, camino 3 de Mand. XVI: leída entera, puro texto)
+motivo: análisis de mercado con datos de Yahoo (yfinance) de uso educativo; sin operar órdenes ni claves.
+auditoria: skill-security-auditor PASS; lectura completa sin hallazgos (solo pip install de yfinance/pandas/numpy). Auditoría interna del catálogo (docs/SECURITY-CHECKS.md)
+parche local: pip install de yfinance fijado a ==1.8.0 (la última estable verificada con pip index el 2026-11-25). Sin README/tests del repo. Al actualizar: re-aplicar el pin.
+actualizar: la avisa el vigía; re-copiar desde un sha auditado.
+enganche (2026-11-25, para el catálogo): NOTA-LOCAL.md + 1 línea tras el título de SKILL.md (cómo correr el Python con uv cuando el del sistema es 3.9 + reglas duras). El código del autor no se tocó. Mand. XXVI.
