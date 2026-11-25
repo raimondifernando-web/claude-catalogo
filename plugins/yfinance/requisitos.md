@@ -7,4 +7,4 @@
 - **Qué no hace:** no compra, no vende, no se conecta a ningún broker ni mueve plata; no es asesoramiento de inversión.
 
 ## TradingView (no viene incluido)
-TradingView tiene un conector oficial para Claude, pero es de **tu cuenta de claude.ai y exige tu propio plan de pago de TradingView** (con el plan Essential, 10 consultas por día; solo para uso personal). Este catálogo no puede entregarlo ni dar por hecho que tenés plan: si lo querés, lo activás vos desde los conectores de claude.ai. No se usan programas que leen TradingView por afuera (van contra sus términos): ver la receta `herramientas-rechazadas`.
+TradingView tiene un conector oficial para Claude, pero es de **tu cuenta de claude.ai y exige tu propio plan de pago de TradingView** (con el plan Essential, 10 consultas por día; solo para uso personal). Este catálogo no puede entregarlo ni dar por hecho que tenés plan: quien tenga ese plan lo conecta desde los conectores de su claude.ai; el catálogo no lo hace por nadie. No se usan programas que leen TradingView por afuera (van contra sus términos): ver la receta `herramientas-rechazadas`.

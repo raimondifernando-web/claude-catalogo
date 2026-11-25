@@ -10,7 +10,7 @@ CONGELAR_A="2026-11-25T00:00:00Z"
 UV="${YFINANCE_UV:-$HOME/.local/bin/uv}"            # el actualizador del catálogo (al-dia.sh) lo deja ahí; YFINANCE_UV solo lo usan las pruebas
 [ -x "$UV" ] || UV="$(PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin" command -v uv)"   # Claude abre esto sin el PATH de la Terminal
 if [ -z "$UV" ] || [ ! -x "$UV" ]; then
-  echo "Yahoo Finanzas: falta «uv» (lo instala solo el actualizador del catálogo). Corré el actualizador y abrí una sesión nueva." >&2
+  echo "Yahoo Finanzas: falta «uv» (lo instala solo el actualizador del catálogo); el servidor conecta en la primera sesión nueva después de eso." >&2
   exit 1
 fi
 cd / || exit 1                                       # que ninguna carpeta de proyecto (pyproject, uv.toml) se meta en el medio

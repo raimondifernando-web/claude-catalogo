@@ -5,7 +5,7 @@
 - `earnings-preview` (qué espera el mercado antes de un balance) y `earnings-recap` (cómo salió el resultado y qué cambió), `estimate-analysis` (estimaciones de analistas y sus revisiones), `stock-liquidity` (qué tan fácil es entrar y salir de una acción), `stock-correlation` (qué acciones se mueven juntas), `sepa-strategy` (método Minervini: te dice si una acción «cumple o no los criterios») y `options-payoff` (cómo paga una estrategia de opciones, con gráfico).
 - **Reglas duras, escritas en cada skill (`NOTA-LOCAL.md`):** nada ejecuta ni arma órdenes, no se mueve plata, no se da consejo de inversión personalizado y no se piden claves; cierran con «análisis educativo, no asesoramiento de inversión». Los datos vienen de Yahoo y pueden tener errores: contrastar antes de decidir.
 - **Python:** yfinance 1.8.0 necesita Python 3.10 o más y el de Apple es 3.9, así que cada skill trae la instrucción de correr su código con `uv` (que el actualizador instala solo). Si el plugin `yfinance` está conectado, las skills pueden usar sus herramientas sin Python.
-- Para tener los datos sin Python, instalá también el plugin `yfinance` (nuevo en este catálogo).
+- El plugin `yfinance` (nuevo en este catálogo) llega junto con esta actualización: el actualizador instala solo todos los paquetes del catálogo. Sus herramientas dan los datos sin Python.
 
 ## 0.4.1 — 2026-11-09
 - Sincronizadas skills desde ~/.claude/skills.
