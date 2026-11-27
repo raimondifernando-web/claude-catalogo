@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { actArmar as armar } from '../hooks/register'
+import { actAjustes as ajustes, actArmar as armar } from '../hooks/register'
 
 // 16/10/2026 12:00 en Argentina (UTC-3).
 const AHORA = Date.parse('2026-10-16T15:00:00Z')
@@ -134,4 +134,63 @@ test('si el motor lo vio corriendo después de la parada, sigue encendido; la pa
   const fin = armar([...base, { t: min(1), ev: 'stop', tipo: 'agente', n: 'general-purpose', id: 'a7' }], AHORA)
   expect(fin.trabajando).toBe(0)
   expect(fin.hoy[0]?.raices[0]?.dur).toBe(4 * 60_000)
+})
+
+test('un subagente lanzado por la conversación es luciérnaga; el Bicho encabeza la conversación', async ($, on) => {
+  mock.clock(on, { now: AHORA })
+  mock.env(on, { HOME: '/casa' })
+  const registro = [
+    { t: min(2), ev: 'start', tipo: 'agente', n: 'general-purpose', id: 'l1', s: 'abc' },
+    { t: min(2), ev: 'link', id: 'l1', padre: 'main' },
+  ].map(o => JSON.stringify(o)).join('\n')
+  on('session.measure', (_$, e) => ({ changed: e.changed }))
+  on('ui.render', ($, e) => { const { Box } = $.ui.resolve(e); return h(Box, {}) })
+  on('session.root', () => ({ value: '/casa' }) as never)
+  on('fs.list', () => ({ value: [{ name: '2026-10-16-abc.jsonl', kind: 'file', size: 1, mtimeMs: AHORA, isLink: false }] }) as never)
+  on('fs.read', (_$, e, next) => (e.path.endsWith('.jsonl') ? ({ value: registro } as never) : next(e)))
+  await $.session.measure({ context: { window: 1_000_000 }, rateLimits: [], changed: ['context'] })
+  const ui = await $.ui.mount({
+    plugin: 'paneles',
+    surface: 'desktop' as const,
+    component: 'Pane' as const,
+    requestId: 'medidor-uso',
+    props: { title: 'Uso y actividad', isFocused: false, bodyColumns: 38, placement: 'dock' as const, scroll: { offset: 0, bodyRows: 40 }, view: {} },
+  })
+  const dibujos = (await ui.findAll({ type: 'Svg' }))
+    .filter(x => String(x.props.alt).includes('agente'))
+    .map(x => `${x.props.alt}|${x.props.width}`)
+  // Primero el Bicho de la conversación (20 de ancho), debajo la luciérnaga (17).
+  expect(dibujos).toEqual(['agente trabajando|20', 'subagente trabajando|17'])
+  expect(await ui.find({ type: 'Text', text: /general-purpose/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Bicho = conversación/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('un subagente reanudado que vuelve a avisar «empezó» se ve trabajando', () => {
+  const m = armar(
+    [
+      { t: min(3), ev: 'start', tipo: 'agente', n: 'general-purpose', id: 'r1', s: 'abc' },
+      { t: min(2), ev: 'stop', tipo: 'agente', n: 'general-purpose', id: 'r1', s: 'abc' },
+      { t: min(1), ev: 'start', tipo: 'agente', n: 'general-purpose', id: 'r1', s: 'abc' },
+    ],
+    AHORA,
+  )
+  expect(m.trabajando).toBe(1)
+})
+
+test('el motor corrige el estado: reenciende al que espera pruebas y apaga al que terminó', () => {
+  const parado = [
+    { t: min(9), ev: 'start', tipo: 'agente', n: 'x', id: 'w1' },
+    { t: min(8), ev: 'stop', id: 'w1' },
+  ]
+  expect(ajustes([{ id: 'w1', status: 'waiting' }], parado)).toEqual([{ ev: 'resume', id: 'w1' }])
+  expect(ajustes([{ id: 'w1', status: 'completed' }], parado)).toEqual([])
+  const seguia = [...parado, { t: min(7), ev: 'resume', id: 'w1' }]
+  expect(ajustes([{ id: 'w1', status: 'running' }], seguia)).toEqual([])
+  expect(ajustes([{ id: 'w1', status: 'completed' }], seguia)).toEqual([{ ev: 'stop', id: 'w1' }])
+  // Recién parado: el motor todavía puede listarlo corriendo; no se reenciende hasta pasada la gracia.
+  expect(ajustes([{ id: 'w1', status: 'running' }], parado, min(8) + 2_000)).toEqual([])
+  expect(ajustes([{ id: 'w1', status: 'running' }], parado, min(8) + 11_000)).toEqual([{ ev: 'resume', id: 'w1' }])
+  // Un id que nunca se anotó (trabajo interno del motor) no se toca.
+  expect(ajustes([{ id: 'zz', status: 'running' }], parado)).toEqual([])
 })

@@ -1389,7 +1389,13 @@ export function actArmar(lineas: Record<string, unknown>[], ahora: number, sinUs
   // si el motor lo vio corriendo después de esa parada, la parada no cuenta hasta la próxima.
   const seguia = new Map<string, number>()
   const padres = new Map<string, string>()
+  // Un agente reanudado vuelve a avisar «empezó» con el mismo id: ese segundo aviso también lo reenciende.
+  const arrancados = new Set<string>()
   for (const l of lineas) {
+    if (l.ev === 'start' && l.tipo !== 'skill' && typeof l.id === 'string' && typeof l.t === 'number') {
+      if (arrancados.has(l.id)) seguia.set(l.id, Math.max(l.t, seguia.get(l.id) ?? 0))
+      arrancados.add(l.id)
+    }
     if (l.ev === 'stop' && typeof l.id === 'string' && typeof l.t === 'number') paradas.set(l.id, Math.max(l.t, paradas.get(l.id) ?? 0))
     if (l.ev === 'resume' && typeof l.id === 'string' && typeof l.t === 'number') seguia.set(l.id, Math.max(l.t, seguia.get(l.id) ?? 0))
     if (l.ev === 'link' && typeof l.id === 'string' && typeof l.padre === 'string') padres.set(l.id, l.padre)
@@ -1458,6 +1464,31 @@ export function actArmar(lineas: Record<string, unknown>[], ahora: number, sinUs
   }
 }
 
+// Los estados en que el motor considera que un agente sigue trabajando. `waiting` = esperando algo que él
+// lanzó en segundo plano (pruebas largas): ya entregó un informe, pero no terminó.
+const actVIVOS = ['pending', 'running', 'waiting']
+const actTERMINADOS = ['completed', 'failed', 'killed', 'idle']
+const actGRACIA = 10_000
+
+// Pura: compara lo anotado con lo que dice el motor de ESTA sesión y devuelve las anotaciones que faltan.
+export function actAjustes(motor: { id: string; status?: string }[], lineas: Record<string, unknown>[], ahora?: number): { ev: 'resume' | 'stop'; id: string }[] {
+  const ultima = (id: string, evs: string[]) =>
+    lineas.reduce((x, l) => (l.id === id && evs.includes(String(l.ev)) && typeof l.t === 'number' ? Math.max(x, l.t) : x), 0)
+  const out: { ev: 'resume' | 'stop'; id: string }[] = []
+  for (const a of motor) {
+    const id = actCorto(a.id)
+    if (!lineas.some(l => l.ev === 'start' && l.id === id)) continue
+    const parada = ultima(id, ['stop'])
+    // Se mira el último «empezó» posterior a la parada o un «reanudó»: cualquiera de los dos lo deja encendido.
+    const abierto = parada === 0 || ultima(id, ['resume']) > parada || ultima(id, ['start']) > parada
+    // Justo al avisar «terminó» el motor todavía puede listarlo corriendo: una parada recién anotada no se discute.
+    const reciente = ahora !== undefined && parada > 0 && ahora - parada < actGRACIA
+    if (actVIVOS.includes(String(a.status)) && !abierto && !reciente) out.push({ ev: 'resume', id })
+    else if (actTERMINADOS.includes(String(a.status)) && abierto) out.push({ ev: 'stop', id })
+  }
+  return out
+}
+
 // Agentes ya anotados como «empezó» por este módulo.
 const actVistos = new Set<string>()
 // Agentes con una parada anotada y todavía sin reanudar.
@@ -1496,7 +1527,16 @@ async function actAvisarVivo($: EngineInterface, agentId: string | undefined): P
   void actRefrescar($)
 }
 
-async function actRefrescar($: EngineInterface): Promise<void> {
+// De a un refresco por vez: dos a la vez anotaban la misma corrección dos veces.
+let actTurnoRefresco: Promise<unknown> = Promise.resolve()
+
+function actRefrescar($: EngineInterface): Promise<void> {
+  const hecho = actTurnoRefresco.then(() => actLeer($))
+  actTurnoRefresco = hecho.catch(() => undefined)
+  return hecho
+}
+
+async function actLeer($: EngineInterface): Promise<void> {
   try {
     await actCarpeta($)
     if (actDIR === '') throw new Error('No encuentro la actCarpeta de Claude de esta Mac.')
@@ -1509,6 +1549,17 @@ async function actRefrescar($: EngineInterface): Promise<void> {
       const txt = await $.fs.read(`${actDIR}/${f.name}`).catch(() => '')
       if (typeof txt === 'string') for (const l of actALineas(txt)) lineas.push(l)
     }
+    try {
+      // Sin saber qué conversación es no se anota nada (iría a un archivo compartido «sin-sesion»).
+      const motor = actSidActual === '' ? [] : await $.agent.list()
+      for (const aj of actAjustes(motor, lineas, await $.clock.now())) {
+        await actAnotar($, { s: actSidActual, ...aj })
+        lineas.push({ t: await $.clock.now(), ...aj })
+      }
+    } catch {
+      // sin la lista del motor se muestra lo anotado por los avisos
+    }
+    const visto = await $.clock.now()
     let sinUso: ActSinUso | undefined
     try {
       const r = await $.fs.read(actSIN_USO)
@@ -1517,7 +1568,7 @@ async function actRefrescar($: EngineInterface): Promise<void> {
     } catch {
       // todavía no se corrió sin-activar
     }
-    await update($, actDatos, () => actArmar(lineas, ahora, sinUso)).catch(() => undefined)
+    await update($, actDatos, () => actArmar(lineas, visto, sinUso)).catch(() => undefined)
   } catch (err) {
     await update($, actDatos, () => ({ ahora: [], hoy: [], trabajando: 0, error: String((err as Error)?.message ?? err) })).catch(() => undefined)
   }
@@ -1581,7 +1632,7 @@ async function actDibujar($: EngineInterface, e: any): Promise<unknown> { // esl
   if (m.error) return <Text color={actROJO}>{m.error}</Text>
 
   const Dibujo = e.surface === 'desktop' && 'Svg' in ui ? ui.Svg : null
-  // El dibujo de cada fila: Bicho (agente), luciérnaga (subagente) o hoja de archivo (skill).
+  // El dibujo de cada fila: Bicho (la conversación, nivel 0), luciérnaga (subagente) o hoja de archivo (skill).
   const icono = (n: ActNodo, nivel: number) => {
     if (n.tipo === 'skill') return <Text color={n.activo ? actVERDE : undefined} dimColor={!n.activo}>▤ </Text>
     const luciernaga = nivel > 0
@@ -1589,11 +1640,11 @@ async function actDibujar($: EngineInterface, e: any): Promise<unknown> { // esl
     const fuente = luciernaga ? (n.activo ? actLUCI_VERDE : actLUCI_GRIS) : n.activo ? actBICHO_VERDE : actBICHO_GRIS
     return <Dibujo source={fuente} alt={`${luciernaga ? 'subagente' : 'agente'} ${n.activo ? 'trabajando' : 'terminó'}`} width={luciernaga ? 17 : 20} height={luciernaga ? 19 : 22} isInteractive={n.activo} />
   }
-  // Una fila del árbol: agente = Bicho, subagente = luciérnaga, skill = hoja de archivo (son instrucciones).
+  // Una fila del árbol: todo lo que lanza la conversación (o un subagente) = luciérnaga; skill = hoja de archivo.
   const fila = (n: ActNodo, nivel: number, k: string): unknown[] => {
     if (nivel > 8) return []
     const esSkill = n.tipo === 'skill'
-    const etiqueta = esSkill ? 'skill' : nivel > 0 ? 'subagente' : 'agente'
+    const etiqueta = esSkill ? 'skill' : 'subagente'
     const cuando = n.activo
       ? esSkill
         ? 'ahora'
@@ -1617,10 +1668,13 @@ async function actDibujar($: EngineInterface, e: any): Promise<unknown> { // esl
   const grupos = (lista: ActSesion[], pref: string) =>
     lista.map((g, gi) => (
       <Box key={`${pref}${gi}`} flexDirection="column">
-        <Text dimColor>
-          {g.cwd || 'sesión'} · {g.sesion}
-        </Text>
-        {g.raices.flatMap((r, i) => fila(r, 0, `${pref}${gi}-${i}`))}
+        <Box flexDirection="row" gap={1}>
+          {icono({ tipo: 'agente', activo: pref === 'a' } as ActNodo, 0)}
+          <Text dimColor>
+            {g.cwd || 'sesión'} · {g.sesion}
+          </Text>
+        </Box>
+        {g.raices.flatMap((r, i) => fila(r, 1, `${pref}${gi}-${i}`))}
       </Box>
     ))
 
@@ -1642,7 +1696,7 @@ async function actDibujar($: EngineInterface, e: any): Promise<unknown> { // esl
       {m.sinUso ? (
         <Text dimColor>{`Sin activarse en ${m.sinUso.dias} días: ${m.sinUso.sin} de ${m.sinUso.total} (propios)`}</Text>
       ) : null}
-      <Text dimColor>Bicho = agente · luciérnaga = subagente · ▤ skill (instrucciones) · verde = trabajando</Text>
+      <Text dimColor>Bicho = conversación · luciérnaga = subagente · ▤ skill (instrucciones) · verde = trabajando</Text>
       </Box>
     </Box>
   )

@@ -1,5 +1,11 @@
 # paneles
 
+## 0.5.6 — 2026-11-27
+**«Actividad» ahora muestra bien a los subagentes.** Se aplica solo con la actualización; no hay nada que correr.
+- **El Bicho encabeza cada conversación** y todo lo que ella lanza (y lo que lanzan sus subagentes) se dibuja como luciérnaga. Antes, lo que lanzaba la conversación salía como otro Bicho y parecía que no había subagentes.
+- **Un subagente reanudado vuelve a verse trabajando.**
+- **El estado se corrige contra la lista del motor:** si un aviso se perdió, el panel enciende al que sigue trabajando (también al que espera algo en segundo plano) y apaga al que ya terminó.
+
 ## 0.5.5 — 2026-10-27
 **El panel de pendientes ya lee los estados cortos que escribe `/cerrar`.** Se aplica solo con la actualización; no hay nada que correr.
 - **El problema:** el panel decía «No pude leer bien PENDIENTES.md» en casi todas las listas después de cada cierre. `/metodo:cerrar` y la plantilla escriben «espera dato» y «espera OK», y el panel solo conocía «espera dato de F» y «espera OK de F».
