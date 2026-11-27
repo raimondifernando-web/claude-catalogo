@@ -1440,3 +1440,14 @@ Revisión de solo lectura (agente `security-reviewer`, distinto del autor) del d
 - Vía: `revision-seguridad`. npm audit y pip-audit no corrieron (sin `package.json` ni `requirements.txt`: no hay dependencias). Búsqueda de claves en el historial (800 commits, valores tapados): 41 coincidencias, ninguna en `plugins/paneles`; están en documentación y pruebas de otros paquetes y por su ubicación parecen ejemplos, **no verificadas una por una**.
 - No comprobado: la revisión no ejecutó pruebas ni abrió el panel (las pruebas pasaron en la sesión autora, 55/55, y los controles del PR); no se verificó qué devuelve el motor real en la lista de agentes; `register.tsx` no se releyó entero línea por línea.
 - Veredicto: **PASS**.
+
+### 2026-11-27 · agent-skills @e997ac5 (diff 1401c8b → e997ac5, 267 commits) — PASS con condiciones
+
+| Aspecto | Resultado |
+|---|---|
+| Qué cambia | Solo la entrada `agent-skills`: sha y versión 0.6.12 → 0.6.18. Suma la skill `accessibility-engineering`, el agente `accessibility-auditor` y el comando `/a11y`. Ninguna skill, agente ni comando borrado o renombrado. |
+| Origen | `addyosmani/agent-skills` · MIT · sha fijo |
+| Escáner | `skill-security-auditor`: 3 CRITICAL leídos uno por uno = falsos positivos (dos son reglas defensivas que citan «ignore previous instructions» como ejemplo a no obedecer; el tercero es una búsqueda de claves que solo lista nombres de archivo). |
+| Hooks | El plugin no registra hooks; los scripts de `hooks/` siguen sin activarse. |
+| Condiciones | El script de accesibilidad descarga con `npx` dos herramientas de versión fija: preguntar antes. Siguen las anteriores: preguntar antes de reset --hard, push, deploy, instalar paquetes o agregar MCP. |
+| Límites (lo NO comprobado) | No se leyeron los 267 commits uno por uno: archivos agregados, escáner y búsqueda de patrones de riesgo en lo sumado. |
