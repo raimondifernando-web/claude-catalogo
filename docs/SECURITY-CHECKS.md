@@ -1451,3 +1451,13 @@ Revisión de solo lectura (agente `security-reviewer`, distinto del autor) del d
 | Hooks | El plugin no registra hooks; los scripts de `hooks/` siguen sin activarse. |
 | Condiciones | El script de accesibilidad descarga con `npx` dos herramientas de versión fija: preguntar antes. Siguen las anteriores: preguntar antes de reset --hard, push, deploy, instalar paquetes o agregar MCP. |
 | Límites (lo NO comprobado) | No se leyeron los 267 commits uno por uno: archivos agregados, escáner y búsqueda de patrones de riesgo en lo sumado. |
+
+### 2026-11-27 · 25 skills externas puestas al día (rubro-marketing, rubro-estudio-arquitectura, rubro-conocimiento, escala-automatizacion, escala-desarrollo, escala-diseno-video) — PASS
+
+| Aspecto | Resultado |
+|---|---|
+| Qué cambia | 16 de `coreyhaines31/marketingskills` @2bf95ed, 3 de `czlonkowski/n8n-skills` @ecdeca6, 3 de `kepano/obsidian-skills` @9c9560a (el autor movió la carpeta), `googlemaps/agent-skills` @e7538f3, `ui-ux-pro-max` @11ca2b3 y la ruta de origen de `ecommerce-email-marketing-builder` (contenido idéntico). `seo-audit` fusionada conservando los ajustes del catálogo. |
+| Código | Solo `ui-ux-pro-max` trae código nuevo (`preview.py`, escribe una página local; sin red ni procesos). El resto es texto y datos. |
+| Escáner | `skill-security-auditor` sobre las 25: 22 sin hallazgos o PASS; 3 CRITICAL (`ai-seo`, `n8n-mcp-tools-expert`) y 1 HIGH (`ui-ux-pro-max`) leídos = falsos positivos (estadísticas; credenciales que se devuelven sin datos; borrado de su propio temporal). |
+| Advertencia | `google-maps-platform` ahora se activa con más pedidos (clima, lugares cercanos); en cada uso sigue bajando instrucciones de Google y enviando el parámetro `client=`. |
+| Límites (lo NO comprobado) | No se leyó cada línea del texto: diff revisado por patrones de riesgo y escáner. No se probó en la app de un cliente. |
