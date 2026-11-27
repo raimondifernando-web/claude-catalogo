@@ -1,5 +1,9 @@
 # escala-automatizacion
 
+## 0.2.2 — 2026-11-27
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.2.1 — 2026-11-16
 - Sincronizadas skills desde ~/.claude/skills.
 

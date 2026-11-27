@@ -1,5 +1,9 @@
 # rubro-estudio-arquitectura
 
+## 0.14.10 — 2026-11-27
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.14.9 — 2026-11-16
 - Sincronizadas skills desde ~/.claude/skills.
 

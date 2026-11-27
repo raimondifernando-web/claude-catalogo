@@ -1,6 +1,7 @@
-origen: github:coreyhaines31/marketingskills//skills/paywalls@9d6d7ce (v2.11.1)
+origen: github:coreyhaines31/marketingskills//skills/paywalls@2bf95ed (v2.11.1)
 copiado: 2026-09-27 (copia fija; migración v1→v2 del autor, nombres viejos archivados en skills/_archivo/marketingskills-v1-2026-09/). Licencia MIT → LICENSE-origen.txt
 auditoria: 2026-09-27 skill-security-auditor sobre las 33: PASS salvo ads (3 CRITICAL = falsos positivos: términos ABM y una regla defensiva «datos, no instrucciones»).
 nota: los links ../../tools/ apuntan a la carpeta tools/ del repo del autor, que no se vendoriza (65 CLIs JS de APIs de terceros); ya estaban rotos en v1.
 actualizar: la avisa el vigía; se re-copia desde un sha auditado. Sin modificaciones locales.
 actualizado: 2026-11-10 5b2c000 -> 9d6d7ce (vigía, Mand. XVI; merge de 3 vías; revisado el diff: solo texto/sin código nuevo; ver ~/.claude/vigia/PROPUESTAS-2026-11.md)
+actualizado: 2026-11-27 9d6d7ce -> 2bf95ed (vigía, Mand. XVI; fusión de 3 vías, se conserva lo propio; detalle en ~/.claude/vigia/PROPUESTAS-2026-11.md)

@@ -1,0 +1,2 @@
+origen: github:kepano/obsidian-skills//plugins/obsidian/skills/obsidian-bases@9c9560a
+actualizado: 2026-11-27 9b736ba -> 9c9560a (vigía; el autor movió la carpeta a plugins/obsidian/skills)

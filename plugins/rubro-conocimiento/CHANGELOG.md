@@ -1,5 +1,9 @@
 # rubro-conocimiento
 
+## 0.1.2 — 2026-11-27
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.1.1 — 2026-10-03
 - requisitos.md real (qué necesita cada skill y qué pasa si falta).
 

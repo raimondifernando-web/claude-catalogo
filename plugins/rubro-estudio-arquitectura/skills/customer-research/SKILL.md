@@ -3,7 +3,7 @@ name: customer-research
 description: "Marketing research, NOT support tickets. When the user wants to run or synthesize customer research, or asks what customer quotes, reviews, or feedback really mean, what is safe to conclude, and what to ask next: interviews, surveys, voice of customer, personas, JTBD, mining Reddit and reviews. For copy from research, see copywriting. For acting on it in pages, see cro."
 sync: cowork
 metadata:
-  version: 2.0.8
+  version: 2.0.9
 ---
 
 # Customer Research

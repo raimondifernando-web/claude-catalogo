@@ -1,7 +1,8 @@
-origen: github:googlemaps/agent-skills//skills/google-maps-platform@86c4393
+origen: github:googlemaps/agent-skills//skills/google-maps-platform@e7538f3
 licencia: Apache-2.0 (organización oficial googlemaps)
 traída: 2026-10-25, con auditoría previa; copia fijada en ese commit.
 aviso: en cada uso, el texto de Google ordena bajar un índice y sub-skills desde https://www.gstatic.com/googlemapsplatform-agent-skills/index.json y obedecerlos (contenido remoto que el commit fijado NO congela), y agrega a esas descargas un parámetro de seguimiento `client=<nombre del agente>`. La consulta de documentación (MCP o REST de Google) puede incluir texto del pedido. Detalle y reglas de uso: NOTA-LOCAL.md.
 decisión: incluida en el catálogo el 2026-11-09 por decisión del dueño del catálogo (Google es proveedor oficial); riesgo aceptado, con esta advertencia.
 Disparador: por intención (Google Maps, mapas, lugares, rutas, geocodificación en una app).
 actualizado: 2026-11-10 6606930 -> 86c4393 (vigía, Mand. XVI; merge de 3 vías; revisado el diff: solo texto/sin código nuevo; ver ~/.claude/vigia/PROPUESTAS-2026-11.md)
+actualizado: 2026-11-27 86c4393 -> e7538f3 (vigía, Mand. XVI; fusión de 3 vías, se conserva lo propio; detalle en ~/.claude/vigia/PROPUESTAS-2026-11.md)
