@@ -1,5 +1,10 @@
 # metodo — qué cambia para vos
 
+## 0.76.5 — 2026-11-27
+**Los PDF se leen primero como texto.** Llega solo con el paquete; no hay nada que hacer.
+- **Qué cambia:** la primera vez que una sesión (o un ayudante) va a abrir un PDF, una regla le pide pasarlo antes a texto con `markitdown` y buscar ahí; recién si el texto no trae lo que busca (tablas desarmadas, gráficos, firmas, escaneos) abre el PDF, y solo las páginas necesarias. Gasta menos cupo y es más rápido.
+- Solo texto de una regla nueva (`reglas-al-actuar/leer-pdf.md`); ningún programa cambia.
+
 ## 0.76.4 — 2026-11-25
 **La lista de herramientas ya descartadas suma una fila:** los programas que leen TradingView abriendo el navegador con un puerto de depuración. Llega solo con el paquete; no hay nada que hacer.
 - **Qué cambia:** si alguien te propone uno, la receta `herramientas-rechazadas` ya tiene la respuesta (va contra los términos de TradingView y deja el navegador abierto a cualquier programa de tu computadora) y qué usar en su lugar.
