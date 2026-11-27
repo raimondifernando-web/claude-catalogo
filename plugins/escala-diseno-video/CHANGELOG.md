@@ -1,5 +1,9 @@
 # escala-diseno-video
 
+## 0.1.12 — 2026-11-27
+- Sincronizadas skills desde ~/.claude/skills.
+
+
 ## 0.1.11 — 2026-11-23
 **Skill nueva: `anatomy`.** Arma figuras isométricas interactivas (un objeto físico que explica una idea técnica, con partes que se mueven y se pueden girar). Llega sola con el paquete; no hay nada que hacer.
 - Pedile «explicame cómo funciona X con una figura interactiva». Para verificar el resultado usa Node 20.10+ y Chrome o Chromium; si no están, te lo dice.

@@ -1,5 +1,6 @@
-origen: github:czlonkowski/n8n-skills//skills/n8n-workflow-patterns@e037563
+origen: github:czlonkowski/n8n-skills//skills/n8n-workflow-patterns@ecdeca6
 actualizado: 2026-09-27 desde c4df184 -> 19cd793 (vigía, Mand. XVI; 3-way merge sin conflictos)
 auditoria-2026-09-27: skill-security-auditor PASS (0 hallazgos)
 parche local re-aplicado: línea sync: del frontmatter
 actualizado: 2026-11-10 19cd793 -> e037563 (vigía, Mand. XVI; merge de 3 vías; revisado el diff: solo texto/sin código nuevo; ver ~/.claude/vigia/PROPUESTAS-2026-11.md)
+actualizado: 2026-11-27 e037563 -> ecdeca6 (vigía, Mand. XVI; fusión de 3 vías, se conserva lo propio; detalle en ~/.claude/vigia/PROPUESTAS-2026-11.md)
