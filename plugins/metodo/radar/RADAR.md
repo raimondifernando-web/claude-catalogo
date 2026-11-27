@@ -1,6 +1,6 @@
 # Radar de modelos
 
-> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-11-10**.
+> Generado desde `RADAR.yaml` (`radar.py md`). No se edita a mano. Última actualización: **2026-11-27**.
 > `[a verificar]` = dato de la investigación que todavía no se leyó de primera mano.
 
 Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B o el C.
@@ -15,8 +15,8 @@ Para elegir: `radar.py elegir <categoría>`; si falta el plan A te devuelve el B
 | Claude Sonnet | claude-sonnet-5-5 | 2026-09-28 |
 | Claude Opus | claude-opus-5-5 | 2026-09-22 |
 | Claude Fable | claude-fable-5-2 | 2026-11-09 |
-| GPT Sol | gpt-6.1-sol | 2026-09-29 |
-| GPT Astra | gpt-6-astra | 2026-09-03 |
+| GPT Sol | gpt-6.2-sol | 2026-11-17 |
+| GPT Astra | gpt-6.2-astra | 2026-11-17 |
 | GPT Luna | gpt-6-luna | 2026-09-22 |
 | Gemini Flash | gemini-3.8-flash | 2026-09-02 |
 | Gemini Flash-Lite | gemini-3.5-flash-lite | 2026-07-21 |
